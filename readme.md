@@ -70,5 +70,5 @@ This project is licensed under the [MIT License](LICENSE).
 
 ## Contact
 
-For any questions or suggestions, feel free to open an issue or contact [Noah Rahbek Bigum Hansen](https://github.com/B1gum).
+For any questions or suggestions, feel free to open an issue or contact [B1gum](https://github.com/B1gum).
 
