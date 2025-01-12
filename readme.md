@@ -1,31 +1,53 @@
-# WolframFlow
+# Tungsten
 
-**WolframFlow** is a Neovim plugin that seamlessly integrates Wolfram functionalities directly into your editor. Empower your workflow with capabilities like equation solving, plotting, partial derivatives, root-finding, unit conversions, and more—all within Neovim.
+**Tungsten** is a Neovim plugin that seamlessly integrates Wolfram functionalities directly into your editor. Includes capabilities like equation solving, plotting, partial derivatives, and more—all within Neovim.
 
 ## Features
 
 - **Equation Solving:** Solve single equations, systems of equations, PDEs, and ODEs.
 - **Plotting:** Generate 2D and 3D plots with extensive customization options.
 - **Calculus Operations:** Perform differentiation (including partial derivatives), integration, and summations.
-- **Root-Finding:** Find roots using Wolfram's default algorithms with support for various methods.
-- **Unit Conversion:** Convert units effortlessly, integrating with SIunitx for LaTeX support.
-- **Persistent Sessions:** Maintain a continuous Wolfram kernel session for stateful computations.
+- **Simplifying Expressions:** Easily handle simplification of expressions written in LaTex-syntax
 - **Imaginary Units:** Support for complex numbers and imaginary units.
-- **Extensible:** Modular design allowing easy addition of new functionalities.
 
 ## Installation
 
-You can install **WolframFlow** using your preferred Neovim plugin manager. Please refer to your plugin manager's documentation for specific installation instructions.
+You can install **Tungsten** using your preferred Neovim plugin manager. Please refer to your plugin manager's documentation for specific installation instructions.
+
+
+### Using packer.nvim
+
+```lua
+use 'B1gum/WolframFlow'
+```
+
+### Using lazy.nvim
+Add the following to your lazy.nvim setup configuration:
+
+```lua
+require('lazy').setup({
+  {
+    'B1gum/WolframFlow',
+    config = function()
+      -- Plugin configuration goes here
+    end
+  }
+})
+```
+
 
 ## Usage
 
-After installation, **WolframFlow** provides several commands to enhance your mathematical computations within Neovim:
+After installation, **Tungsten** provides several commands to enhance your mathematical computations within Neovim:
 
-- `:WolframSolve` – Solve single equations.
-- `:WolframSolveSystem` – Solve systems of equations.
-- `:WolframRoot` – Find roots of equations.
-- `:WolframUnitsConvert` – Convert units.
-- `:WolframPlot` – Generate plots.
+- `:TungstenAutoEval` – Evaluate expression symbolically.
+– `:TungstenAutoEvalNumeric` – Evaluate expression numerically
+- `:TungstenSolve` – Solve for variable in a single equation.
+- `:TungstenSolveSystem` – Solve systems of equations.
+- `:TungstenRoot` – Find roots of equations.
+- `:TungstenPlot` – Generate plots.
+- `:TungstenTaylor` – Generate a Taylor expansion.
+
 
 ### Example: Solving an Equation
 
@@ -33,7 +55,7 @@ After installation, **WolframFlow** provides several commands to enhance your ma
    - Visually select the equation and specify the variable, e.g., `2x + 4 = 10, x`.
 
 2. **Run the Command:**
-   - Execute `:WolframSolve`.
+   - Execute `:TungstenSolve`.
 
 3. **View the Solution:**
    - The solution (`x = 3.`) will be appended below your selection.
