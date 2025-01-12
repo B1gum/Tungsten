@@ -1,7 +1,7 @@
 -- Manages simplification commands.
 
-local utils = require("wolfram.utils")
-local async = require("wolfram.async")
+local utils = require("tungsten.utils")
+local async = require("tungsten.async")
 
 local M = {}
 
@@ -42,11 +42,11 @@ end
 
 -- Create user commands for simplify
 function M.setup_commands()
-  vim.api.nvim_create_user_command("WolframAutoSimplify", function()
+  vim.api.nvim_create_user_command("TungstenAutoSimplify", function()
     M.append_equals_and_simplify_async(false)
   end, { range = true })
 
-  vim.api.nvim_create_user_command("WolframAutoSimplifyNumeric", function()
+  vim.api.nvim_create_user_command("TungstenAutoSimplifyNumeric", function()
     M.append_equals_and_simplify_async(true)
   end, { range = true })
 end

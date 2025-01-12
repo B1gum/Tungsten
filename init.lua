@@ -1,12 +1,12 @@
 -- The main entry point that initializes the plugin and sets up commands.
 
-local evaluate = require("wolfram.evaluate")
-local simplify = require("wolfram.simplify")
-local plot     = require("wolfram.plot")
-local solve    = require("wolfram.solve")
-local telescope = require("wolfram.telescope")
-local which_key = require("wolfram.which_key")
-local tests    = require("wolfram.tests")
+local evaluate = require("tungsten.evaluate")
+local simplify = require("tungsten.simplify")
+local plot     = require("tungsten.plot")
+local solve    = require("tungsten.solve")
+local telescope = require("tungsten.telescope")
+local which_key = require("tungsten.which_key")
+local tests    = require("tungsten.tests")
 
 local M = {}
 

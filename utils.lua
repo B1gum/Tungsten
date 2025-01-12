@@ -1,5 +1,4 @@
 --------------------------------------------------------------------------------
--- /config/nvim/lua/wolfram/utils.lua
 -- Contains utility functions used across the plugin.
 --------------------------------------------------------------------------------
 
@@ -150,17 +149,6 @@ function M.extract_equation_and_variable(selection)
   return equation, variable, nil
 end
 
---------------------------------------------------------------------------------
--- bracket_if_needed: only wrap in parentheses if there's a top-level + or -
---------------------------------------------------------------------------------
-local function bracket_if_needed(expr)
-  -- If there's a top-level '+' or '-', we assume multiple terms => wrap in ()
-  if expr:find("[+%-]") then
-    return "(" .. expr .. ")"
-  else
-    return expr
-  end
-end
 
 --------------------------------------------------------------------------------
 -- preprocess_equation: Main LaTeX => Wolfram transformations
@@ -173,7 +161,6 @@ function M.preprocess_equation(equation)
   -- 1) Convert common LaTeX macros and symbols to Wolfram BEFORE escaping backslashes
   ------------------------------------------------------------------------------
   -- (IMAG UNIT SUPPORT) => e.g. \mathrm{i} or \im => I
-  -- Add them here so they become "I" in Wolfram syntax.
   equation = equation
     :gsub("\\sin", "Sin")
     :gsub("\\cos", "Cos")
@@ -191,8 +178,8 @@ function M.preprocess_equation(equation)
     :gsub("\\right", "")
     :gsub("\\sqrt", "Sqrt")
     :gsub("\\cdot", "*")
-    :gsub("\\mathrm%{i%}", "I")  -- e.g. \mathrm{i} => I
-    :gsub("\\im", "I")          -- e.g. \im => I
+    :gsub("\\mathrm%{i%}", "I")
+    :gsub("\\im", "I")
 
   equation = equation:gsub("LogBase10%^([0-9]+)%(([^()]+)%)", "LogBase10(%2)^%1")
 

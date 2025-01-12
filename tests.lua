@@ -1,16 +1,15 @@
 --------------------------------------------------------------------------------
--- /config/nvim/lua/wolfram/tests.lua
 -- Implements a test suite that logs outputs to a scratch buffer, running tests
 -- sequentially (one at a time) to avoid kernel overload.
 --------------------------------------------------------------------------------
 
-local utils     = require("wolfram.utils")
-local async     = require("wolfram.async")
-local evaluate  = require("wolfram.evaluate")
-local simplify  = require("wolfram.simplify")
-local solve     = require("wolfram.solve")
-local plot      = require("wolfram.plot")
-local taylor    = require("wolfram.taylor")
+local utils     = require("tungsten.utils")
+local async     = require("tungsten.async")
+local evaluate  = require("tungsten.evaluate")
+local simplify  = require("tungsten.simplify")
+local solve     = require("tungsten.solve")
+local plot      = require("tungsten.plot")
+local taylor    = require("tungsten.taylor")
 
 local M = {}
 
@@ -26,7 +25,7 @@ local function open_test_scratch_buffer()
   -- Create new scratch buffer
   test_bufnr = vim.api.nvim_create_buf(false, true)  -- (listed=false, scratch=true)
   vim.api.nvim_buf_set_option(test_bufnr, "bufhidden", "wipe")
-  vim.api.nvim_buf_set_option(test_bufnr, "filetype", "wolframtest")
+  vim.api.nvim_buf_set_option(test_bufnr, "filetype", "tungstentest")
   vim.api.nvim_command("botright vsplit") -- or split/tabnew
   vim.api.nvim_set_current_buf(test_bufnr)
   return test_bufnr
@@ -351,33 +350,33 @@ end
 -- 8) Setup user commands
 --------------------------------------------------------------------------------
 function M.setup_commands()
-  vim.api.nvim_create_user_command("WolframAutoEvalTest", function()
+  vim.api.nvim_create_user_command("TungstenAutoEvalTest", function()
     M.run_evaluate_test()
   end, { desc = "Run Evaluate test" })
 
-  vim.api.nvim_create_user_command("WolframAutoSimplifyTest", function()
+  vim.api.nvim_create_user_command("TungstenAutoSimplifyTest", function()
     M.run_simplify_test()
   end, { desc = "Run Simplify test" })
 
-  vim.api.nvim_create_user_command("WolframSolveTest", function()
+  vim.api.nvim_create_user_command("TungstenSolveTest", function()
     M.run_solve_for_variable_test()
   end, { desc = "Run Solve test" })
 
-  vim.api.nvim_create_user_command("WolframSolveSystemTest", function()
+  vim.api.nvim_create_user_command("TungstenSolveSystemTest", function()
     M.run_solve_system_test()
   end, { desc = "Run Solve System test" })
 
-  vim.api.nvim_create_user_command("WolframPlotTest", function()
+  vim.api.nvim_create_user_command("TungstenPlotTest", function()
     M.run_plot_test()
   end, { desc = "Run Plot test" })
 
-  vim.api.nvim_create_user_command("WolframTaylorTest", function()
+  vim.api.nvim_create_user_command("TungstenTaylorTest", function()
     M.run_taylor_test()
   end, { desc = "Run Taylor Series test" })
 
-  vim.api.nvim_create_user_command("WolframAllTests", function()
+  vim.api.nvim_create_user_command("TungstenAllTests", function()
     M.run_all_tests()
-  end, { desc = "Run all Wolfram tests" })
+  end, { desc = "Run all Tungsten tests" })
 end
 
 return M

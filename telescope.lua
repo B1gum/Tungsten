@@ -7,33 +7,33 @@ local sorters = require('telescope.sorters')
 
 local M = {}
 
--- Function to dynamically retrieve Wolfram commands
-local function get_wolfram_commands()
+-- Function to dynamically retrieve Tungsten commands
+local function get_tungsten_commands()
   local commands = vim.api.nvim_get_commands({})
-  local wolfram_commands = {}
+  local tungsten_commands = {}
 
   for cmd_name, cmd in pairs(commands) do
-    if cmd_name:match("^Wolfram") then
-      table.insert(wolfram_commands, { name = cmd.description or cmd_name, cmd = cmd_name })
+    if cmd_name:match("^Tungsten") then
+      table.insert(tungsten_commands, { name = cmd.description or cmd_name, cmd = cmd_name })
     end
   end
 
-  return wolfram_commands
+  return tungsten_commands
 end
 
--- Custom Telescope picker for Wolfram commands
-function M.open_wolfram_picker()
-  local wolfram_commands = get_wolfram_commands()
+-- Custom Telescope picker for Tungsten commands
+function M.open_tungsten_picker()
+  local tungsten_commands = get_tungsten_commands()
 
-  if #wolfram_commands == 0 then
-    vim.notify("No Wolfram commands found.", vim.log.levels.WARN)
+  if #tungsten_commands == 0 then
+    vim.notify("No Tungsten commands found.", vim.log.levels.WARN)
     return
   end
 
   pickers.new({}, {
-    prompt_title = "Wolfram Commands",
+    prompt_title = "Tungsten Commands",
     finder = finders.new_table {
-      results = wolfram_commands,
+      results = tungsten_commands,
       entry_maker = function(entry)
         return {
           value = entry.cmd,

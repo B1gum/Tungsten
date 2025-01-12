@@ -1,7 +1,7 @@
 -- Handles plot generation.
 
-local utils = require("wolfram.utils")
-local async = require("wolfram.async")
+local utils = require("tungsten.utils")
+local async = require("tungsten.async")
 
 local M = {}
 
@@ -364,7 +364,7 @@ function M.insert_plot_from_selection()
   -- Parse style options if curlySpec was found
   local styleOpts = { hasLegend = false, directives = {} }
   if curlySpec then
-    styleOpts = require("wolfram.plot").parse_plot_options(curlySpec, #exprList)
+    styleOpts = require("tungsten.plot").parse_plot_options(curlySpec, #exprList)
   end
 
   -- Generate plot filename

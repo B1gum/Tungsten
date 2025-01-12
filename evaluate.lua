@@ -1,7 +1,7 @@
 -- Manages evaluation commands.
 
-local utils = require("wolfram.utils")
-local async = require("wolfram.async")
+local utils = require("tungsten.utils")
+local async = require("tungsten.async")
 
 local M = {}
 
@@ -41,11 +41,11 @@ end
 
 -- Create user commands for exact or numeric evaluation
 function M.setup_commands()
-  vim.api.nvim_create_user_command("WolframAutoEval", function()
+  vim.api.nvim_create_user_command("TungstenAutoEval", function()
     M.append_equals_and_result_async(false)
   end, { range = true })
 
-  vim.api.nvim_create_user_command("WolframAutoEvalNumeric", function()
+  vim.api.nvim_create_user_command("TungstenAutoEvalNumeric", function()
     M.append_equals_and_result_async(true)
   end, { range = true })
 end

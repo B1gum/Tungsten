@@ -3,8 +3,8 @@
 -- Manages single-equation and system-of-equations solves.
 --------------------------------------------------------------------------------
 
-local utils = require("wolfram.utils")
-local async = require("wolfram.async")
+local utils = require("tungsten.utils")
+local async = require("tungsten.async")
 
 local M = {}
 
@@ -186,14 +186,14 @@ end
 -- 3) Setup user commands
 --------------------------------------------------------------------------------
 function M.setup_commands()
-  vim.api.nvim_create_user_command("WolframSolve", function()
+  vim.api.nvim_create_user_command("TungstenSolve", function()
     M.append_solution_async()
   end, {
     range = true,
     desc = "Solve the selected equation for a specified variable. Usage: equation, variable"
   })
 
-  vim.api.nvim_create_user_command("WolframSolveSystem", function()
+  vim.api.nvim_create_user_command("TungstenSolveSystem", function()
     M.append_system_solution_async()
   end, {
     range = true,

@@ -1,6 +1,6 @@
 -- Handles asynchronous interactions with WolframScript.
 
-local utils = require("wolfram.utils")
+local utils = require("tungsten.utils")
 
 local M = {}
 

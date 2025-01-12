@@ -1,7 +1,7 @@
 -- Handles Taylor-series functionality.
 
-local utils = require("wolfram.utils")
-local async = require("wolfram.async")
+local utils = require("tungsten.utils")
+local async = require("tungsten.async")
 
 local M = {}
 
@@ -97,7 +97,7 @@ end
 -- Setup user command
 --------------------------------------------------------------------------------
 function M.setup_commands()
-  vim.api.nvim_create_user_command("WolframTaylor", function()
+  vim.api.nvim_create_user_command("TungstenTaylor", function()
     M.insert_taylor_series()
   end, {
     range = true,
