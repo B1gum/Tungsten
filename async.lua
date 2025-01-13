@@ -1,116 +1,133 @@
--- Handles asynchronous interactions with WolframScript.
+--------------------------------------------------------------------------------
+-- async.lua
+-- Handles asynchronous integration with WolframScript
+--------------------------------------------------------------------------------
 
+-- 1) setup
+--------------------------------------------------------------------------------
 local utils = require("tungsten.utils")
 
 local M = {}
 
--- Helper function to parse Wolfram output
-local function parse_result(raw_result)
-  -- Implement parsing logic if needed. For now, return raw_result
-  return raw_result
-end
-
-local function fix_sqrt_tex(str)
-  -- Replace "\text{Sqrt}" with "\sqrt"
-  -- Optionally change parentheses to braces if you want strictly "\sqrt{(x+1)^2}" etc.
+local function fix_sqrt_tex(str)  -- Helper-function that replaces \text{Sqrt} with \sqrt to conform with LaTex-syntax
   local out = str:gsub("\\text%{Sqrt%}", "\\sqrt")
-  -- Possibly also do parentheses => braces if you prefer:
-  -- out = out:gsub("%(", "{"):gsub("%)", "}")
   return out
 end
 
--- Run WolframScript asynchronously
-local function run_wolframscript_async(cmd, callback)
-  utils.debug_print("run_wolframscript_async cmd => " .. table.concat(cmd, " "))
 
-  local job_id = vim.fn.jobstart(cmd, {
-    stdout_buffered = true,
+
+
+-- 2) Define function that runs WolframScript asynchronously
+--------------------------------------------------------------------------------
+local function run_wolframscript_async(cmd, callback)
+  utils.debug_print("run_wolframscript_async cmd => " .. table.concat(cmd, " "))  -- (Optionally) print the WolframScript being passed to the engine
+
+  local job_id = vim.fn.jobstart(cmd, {               -- Initializes an asynchronous job to run thd cmd
+    stdout_buffered = true,                           -- Buffers the output such that all output is collected before being passed to callback
     on_stdout = function(_, data, _)
-      if not data then
-        callback(nil, "No data from WolframScript")
+      if not data then                                -- If no data is present, then
+        callback(nil, "No data from WolframScript")   -- Return an error
         return
       end
       local result = table.concat(data, "\n")
-      result = result:gsub("[%z\1-\31]", "")
-      result = fix_sqrt_tex(result)
-      utils.debug_print("on_stdout => " .. result)
-      callback(result, nil)
+      result = result:gsub("[%z\1-\31]", "")          -- Remove control-characters and non-printable characters from the output
+      result = fix_sqrt_tex(result)                   -- Call the fix_sqrt_tex-function
+      utils.debug_print("on_stdout => " .. result)    -- (Optionally) prints the cleaned and formatted result
+      callback(result, nil)                           -- Returns the callback with the result and "nil" for the error
     end,
     on_stderr = function(_, errdata, _)
-      if errdata and #errdata > 0 then
-        utils.debug_print("on_stderr => " .. table.concat(errdata, " "))
-        callback(nil, table.concat(errdata, " "))
+      if errdata and #errdata > 0 then                -- If there is any error data, then
+        utils.debug_print("on_stderr => " .. table.concat(errdata, " "))  -- Print the error data
+        callback(nil, table.concat(errdata, " "))     -- Returns the callback with the error data and "nil" for the result
       end
     end,
     on_exit = function(_, exit_code, _)
-      utils.debug_print("on_exit => code = " .. exit_code)
-      if exit_code ~= 0 then
-        callback(nil, "WolframScript exited with code " .. exit_code)
+      utils.debug_print("on_exit => code = " .. exit_code)  -- (Optionally) prints the exit-code
+      if exit_code ~= 0 then                                -- If exit-code is not 0 (indicating failure), then
+        callback(nil, "WolframScript exited with code " .. exit_code)   -- Returns the callback wirh the exit code and "nil" for the result
       end
     end
   })
 
-  if job_id <= 0 then
-    callback(nil, "Failed to start wolframscript job.")
+  if job_id <= 0 then                                     -- If job failed to start, then
+    callback(nil, "Failed to start wolframscript job.")   -- Returns the callback with the error message and "nil" for the result
   else
-    utils.debug_print("Started job_id => " .. job_id)
+    utils.debug_print("Started job_id => " .. job_id)     -- Else (Optionally) print the job_id
   end
 end
 
-M.run_wolframscript_async = run_wolframscript_async
+M.run_wolframscript_async = run_wolframscript_async       -- Attach run_wolframscript_async to M
 
 
 
--- Asynchronous evaluation
+
+-- 3) Asynchronous evaluation
+--------------------------------------------------------------------------------
 function M.run_evaluation_async(equation, numeric, callback)
-  local expr = string.format('ToExpression["%s"]', equation)
-  local wrapped = numeric and string.format("ToString[N[%s], TeXForm]", expr)
+  local expr = string.format('ToExpression["%s"]', equation)  -- Converts the LaTex-formattex expression into WolframScript using ToExpression
+  local wrapped = numeric and string.format("ToString[N[%s], TeXForm]", expr) -- Sets if evaluation is numeric or symbolic
                         or string.format("ToString[%s, TeXForm]", expr)
 
-  local cmd = { "wolframscript", "-code", wrapped, "-format", "OutputForm" }
-  run_wolframscript_async(cmd, callback)
+  local cmd = { "wolframscript", "-code", wrapped, "-format", "OutputForm" }  -- Formats the command
+  run_wolframscript_async(cmd, callback)  -- Runs the command
 end
 
--- Asynchronous simplification
+
+
+
+-- 4) Asynchronous simplification
+--------------------------------------------------------------------------------
 function M.run_simplify_async(equation, numeric, callback)
-  local expr = string.format('ToExpression["%s"]', equation)
-  local simplifyWrapper = numeric and string.format("ToString[N[FullSimplify[%s]], TeXForm]", expr)
+  local expr = string.format('ToExpression["%s"]', equation)  -- Converts the LaTex-formattex expression into WolframScript using ToExpression
+  local simplifyWrapper = numeric and string.format("ToString[N[FullSimplify[%s]], TeXForm]", expr) -- Sets if simplification is numeric or symbolic
                                      or string.format("ToString[FullSimplify[%s], TeXForm]", expr)
 
-  local cmd = { "wolframscript", "-code", simplifyWrapper, "-format", "OutputForm" }
-  run_wolframscript_async(cmd, callback)
+  local cmd = { "wolframscript", "-code", simplifyWrapper, "-format", "OutputForm" }  -- Formats the command
+  run_wolframscript_async(cmd, callback)  -- Runs the command
 end
 
--- Asynchronous solving
+
+
+
+-- 5) Asynchronous solving
+--------------------------------------------------------------------------------
 function M.run_solve_async(equation, variable, callback)
-  local solveCommand = string.format('NSolve[%s, %s]', equation, variable)
-  local wrapped = string.format("ToString[%s, TeXForm]", solveCommand)
+  local solveCommand = string.format('NSolve[%s, %s]', equation, variable)    -- Formats the solve-command
+  local wrapped = string.format("ToString[%s, TeXForm]", solveCommand)        -- Converts result into LaTex
 
-  local cmd = { "wolframscript", "-code", wrapped, "-format", "OutputForm" }
-  run_wolframscript_async(cmd, callback)
+  local cmd = { "wolframscript", "-code", wrapped, "-format", "OutputForm" }  -- Sets up command
+  run_wolframscript_async(cmd, callback)  -- Runs the command
 end
 
--- Asynchronous system solving
+
+
+
+-- 6) Asynchronous system solving
+--------------------------------------------------------------------------------
 function M.run_solve_system_async(equations, variables, callback)
-  local eqsStr = "{ " .. table.concat(equations, ", ") .. " }"
-  local varsStr = "{ " .. table.concat(variables, ", ") .. " }"
-  local solveCommand = string.format('NSolve[%s, %s]', eqsStr, varsStr)
-  local wrapped = string.format("ToString[%s, TeXForm]", solveCommand)
+  local eqsStr = "{ " .. table.concat(equations, ", ") .. " }"                -- Formats the equations
+  local varsStr = "{ " .. table.concat(variables, ", ") .. " }"               -- Formats the variables
+  local solveCommand = string.format('NSolve[%s, %s]', eqsStr, varsStr)       -- Formats the command
+  local wrapped = string.format("ToString[%s, TeXForm]", solveCommand)        -- Convert result into LaTex
 
-  local cmd = { "wolframscript", "-code", wrapped, "-format", "OutputForm" }
-  run_wolframscript_async(cmd, callback)
+  local cmd = { "wolframscript", "-code", wrapped, "-format", "OutputForm" }  -- Sets up command
+  run_wolframscript_async(cmd, callback)  -- Runs the command
 end
 
--- Asynchronous plotting
+
+
+
+-- 7) Asynchronous plotting
+--------------------------------------------------------------------------------
 function M.run_plot_async(wolfram_code, plotfile, callback)
   local code = string.format([[
-Export["%s", %s]
-]], plotfile, wolfram_code)
+  Export["%s", %s]
+]], plotfile, wolfram_code)                                                   -- Sets up code for exporting the created plot as a .pdf
 
-  local cmd = { "wolframscript", "-code", code }
-  utils.debug_print("run_plot_async cmd => " .. table.concat(cmd, " "))
+  local cmd = { "wolframscript", "-code", code }                              -- Sets up the WolframScript-command
+  utils.debug_print("run_plot_async cmd => " .. table.concat(cmd, " "))       -- (Optionally) prints the command to be passed to the engine
 
-  local job_id = vim.fn.jobstart(cmd, {
+  local job_id = vim.fn.jobstart(cmd, {                                       -- Initiate asynchronous job with same logic as the general implementation
     stdout_buffered = true,
     on_stdout = function(_, data, _)
       if data and #data > 0 then

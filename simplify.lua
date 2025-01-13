@@ -1,46 +1,58 @@
--- Manages simplification commands.
+----------------------------------------------------------------------------------
+-- simplify.lua
+-- Manages simplification commands
+---------------------------------------------------------------------------------
 
+-- 1) Setup
+---------------------------------------------------------------------------------
 local utils = require("tungsten.utils")
 local async = require("tungsten.async")
 
 local M = {}
 
--- Append equals and simplify asynchronously
+
+
+
+-- 2) Append equals and simplify asynchronously
+---------------------------------------------------------------------------------
 function M.append_equals_and_simplify_async(numeric)
-  local start_row, start_col = vim.fn.line("'<"), vim.fn.col("'<")
-  local end_row, end_col     = vim.fn.line("'>"), vim.fn.col("'>")
-  local lines                = vim.fn.getline(start_row, end_row)
+  local start_row, start_col = vim.fn.line("'<"), vim.fn.col("'<")  -- Extracts start of visual selection
+  local end_row, end_col     = vim.fn.line("'>"), vim.fn.col("'>")  -- Extracts end of visual selection
+  local lines                = vim.fn.getline(start_row, end_row)   -- lines is the rows from the start of the selection till the end
 
-  -- Adjust the first and last lines based on column selection
-  lines[1]    = lines[1]:sub(start_col)
-  lines[#lines] = lines[#lines]:sub(1, end_col)
-  local selection = table.concat(lines, "\n")
+  lines[1]    = lines[1]:sub(start_col)                             -- Trim whitespace before selection
+  lines[#lines] = lines[#lines]:sub(1, end_col)                     -- Trim whitespace after selection
+  local selection = table.concat(lines, "\n")                       -- Concatenate the selection into a single string with rows seperated by \n
 
-  utils.debug_print("Original selection for simplify => " .. selection)
-  local preprocessed = utils.preprocess_equation(selection)
+  utils.debug_print("Original selection for simplify => " .. selection)             -- (Optionally) print the original selection for the simplification
+  local preprocessed = utils.preprocess_equation(selection)                         -- Preprocess the equation with preprocess_equation
 
-  async.run_simplify_async(preprocessed, numeric, function(raw_result, err)
-    if err then
-      vim.api.nvim_err_writeln("Error: " .. err)
+  async.run_simplify_async(preprocessed, numeric, function(raw_result, err)         -- Run the simplify-command asynchronously
+    if err then                                                                     -- If an error occurs, then
+      vim.api.nvim_err_writeln("Error: " .. err)                                    -- print the error to the error-log
       return
     end
-    if not raw_result or raw_result:find("$Failed") then
-      vim.api.nvim_err_writeln("Error: Unable to simplify equation.")
+    if not raw_result or raw_result:find("$Failed") then                            -- If no result is found, then
+      vim.api.nvim_err_writeln("Error: Unable to simplify equation.")               -- print an error to the error-log
       return
     end
 
-    local parsed_result = numeric and raw_result or utils.parse_result(raw_result)
-    local updated       = selection .. " = " .. parsed_result
+    local parsed_result = numeric and raw_result or utils.parse_result(raw_result)  -- Parse the result with parse_result if the symbolic version of the command is chosen
+    local updated       = selection .. " = " .. parsed_result                       -- Save the line to be pasted to the buffer
 
-    utils.debug_print("Final updated line => " .. updated)
-    vim.fn.setline(start_row, updated)
-    for i = start_row + 1, end_row do
-      vim.fn.setline(i, "")
+    utils.debug_print("Final updated line => " .. updated)                          -- (Optionally) print the final processed line
+    vim.fn.setline(start_row, updated)                                              -- Print the updated line to the buffer
+    for i = start_row + 1, end_row do                                               -- For all following rows in the selection
+      vim.fn.setline(i, "")                                                         -- replace rows with empty strings
     end
   end)
 end
 
--- Create user commands for simplify
+
+
+
+-- 3) Create user commands for simplify
+---------------------------------------------------------------------------------
 function M.setup_commands()
   vim.api.nvim_create_user_command("TungstenAutoSimplify", function()
     M.append_equals_and_simplify_async(false)

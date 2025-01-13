@@ -1,4 +1,7 @@
--- The main entry point that initializes the plugin and sets up commands.
+---------------------------------------------------------------------------------
+-- init.lua
+-- The main entry point that initializes the plugin and sets up commands
+--------------------------------------------------------------------------------- 
 
 local evaluate = require("tungsten.evaluate")
 local simplify = require("tungsten.simplify")

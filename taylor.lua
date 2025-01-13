@@ -1,77 +1,84 @@
+--------------------------------------------------------------------------------
+-- taylor.lua
 -- Handles Taylor-series functionality.
+--------------------------------------------------------------------------------
 
+-- 1) Serup
+--------------------------------------------------------------------------------
 local utils = require("tungsten.utils")
 local async = require("tungsten.async")
 
 local M = {}
 
---------------------------------------------------------------------------------
--- Helper: extract_taylor_spec
---------------------------------------------------------------------------------
--- This function extracts (exprPart, taylorSpec) from the selection, where
--- taylorSpec is something like "x, 0, 5" = variable, expansion point, order.
---------------------------------------------------------------------------------
-local function extract_taylor_spec(mainExpr)
-  -- taylorSpec is found between the last [ and ] in the string
-  local last_open = mainExpr:match(".*()%[")
-  local last_close = mainExpr:match("()%]")
 
-  if last_open and last_close and last_close > last_open then
-    local exprPart   = mainExpr:sub(1, last_open - 1):match("^%s*(.-)%s*$")
-    local taylorSpec = mainExpr:sub(last_open + 1, last_close - 1):match("^%s*(.-)%s*$")
-    return exprPart, taylorSpec
+local function extract_taylor_spec(mainExpr)  -- Helper function that splits the mainExpr into a exprPart and a taylorSpec
+  local last_open = mainExpr:match(".*()%[")  -- Extracts the last [
+  local last_close = mainExpr:match("()%]")   -- Extracts the last ]
+
+  if last_open and last_close and last_close > last_open then   -- If a last_open and last_close has been found whilst [ was before ], then
+    local exprPart   = mainExpr:sub(1, last_open - 1):match("^%s*(.-)%s*$")               -- Set the expression part to be everything before the last [
+    local taylorSpec = mainExpr:sub(last_open + 1, last_close - 1):match("^%s*(.-)%s*$")  -- Set taylorSpec to be everything inside the last []
+    return exprPart, taylorSpec   -- Return the exprPart and the taylorSpec
   else
-    return mainExpr, nil
+    return mainExpr, nil  -- If the checks for [] fails then just return the mainExpr
   end
 end
 
---------------------------------------------------------------------------------
--- insert_taylor_series
---------------------------------------------------------------------------------
--- 1) Grabs the selected text in visual mode
--- 2) Extracts the expression and [var, expansionPt, order]
--- 3) Preprocesses the expression (LaTeX => Wolfram)
--- 4) Builds the Wolfram command: Series[f(x), {x, x0, n}]
--- 5) Asynchronously executes
--- 6) Inserts result below the selection
+
+
+
+-- 2) Insert Taylor-series function
 --------------------------------------------------------------------------------
 function M.insert_taylor_series()
-  local start_row, start_col = vim.fn.line("'<"), vim.fn.col("'<")
-  local end_row, end_col     = vim.fn.line("'>"), vim.fn.col("'>")
-  local lines                = vim.fn.getline(start_row, end_row)
 
-  lines[1]       = lines[1]:sub(start_col)
-  lines[#lines]  = lines[#lines]:sub(1, end_col)
-  local selection = table.concat(lines, "\n")
+  -- a) Extract visual selection
+  ------------------------------------------------------------------------------
+  local start_row, start_col = vim.fn.line("'<"), vim.fn.col("'<")  -- Extracts the start of the visual selection
+  local end_row, end_col     = vim.fn.line("'>"), vim.fn.col("'>")  -- Extracts the end of the visual selection
+  local lines                = vim.fn.getline(start_row, end_row)   -- lines is all rows in the visual selection
 
-  utils.debug_print("Taylor selection => " .. selection)
+  lines[1]       = lines[1]:sub(start_col)        -- Trim whitespace before the selection
+  lines[#lines]  = lines[#lines]:sub(1, end_col)  -- Trim whitespace after the selection
+  local selection = table.concat(lines, "\n")     -- Concatenate the selection into a single string with rows seperated by \n
 
-  -- Extract expression and taylor spec
-  local exprPart, taylorSpec = extract_taylor_spec(selection)
-  if not taylorSpec then
-    vim.api.nvim_err_writeln("No [variable, expansion_point, order] found. Syntax: expr [var, point, order]")
+  utils.debug_print("Taylor selection => " .. selection)  -- (Optionally) print the selection for the Taylor-series command
+
+
+  -- b) Extract expression and taylor spec
+  ------------------------------------------------------------------------------
+  local exprPart, taylorSpec = extract_taylor_spec(selection)   -- Call the extract_taylor_spec-function
+  if not taylorSpec then  -- If no taylorSpec is found, then
+    vim.api.nvim_err_writeln("No [variable, expansion_point, order] found. Syntax: expr [var, point, order]") -- Print an error advising the user of syntax
     return
   end
 
-  -- Preprocess the expression
-  local preprocessed_expr = utils.preprocess_equation(exprPart)
 
-  -- Split taylorSpec by commas
-  local parts = utils.split_by_comma(taylorSpec)
-  if #parts < 3 then
-    vim.api.nvim_err_writeln("Taylor spec must have (var, expansion_point, order). Example: x, 0, 5")
+  -- c) Preprocess the expression
+  ------------------------------------------------------------------------------
+  local preprocessed_expr = utils.preprocess_equation(exprPart) -- Call the Preprocess_equation-function
+
+
+  -- d) Split taylorSpec by commas (variable, point of expansion, order)
+  ------------------------------------------------------------------------------
+  local parts = utils.split_by_comma(taylorSpec)  -- Call split_by_comma to split the specification at commas
+  if #parts < 3 then  -- If less than 3 specifications are found, then
+    vim.api.nvim_err_writeln("Taylor spec must have (var, expansion_point, order). Example: x, 0, 5")   -- Print an error to the log
     return
   end
 
-  local var         = parts[1]:match("^%s*(.-)%s*$")
-  local expansionPt = parts[2]:match("^%s*(.-)%s*$")
-  local order       = parts[3]:match("^%s*(.-)%s*$")
+  local var         = parts[1]:match("^%s*(.-)%s*$")  -- Set the first entry in parts as the variable whilst trimming whitespace
+  local expansionPt = parts[2]:match("^%s*(.-)%s*$")  -- Set the second entry in parts as the expansion point whilst trimming whitespace
+  local order       = parts[3]:match("^%s*(.-)%s*$")  -- Set the third entry in parts as the order of expansion whilst trimmming whitespace
 
-  -- Build Wolfram Series code:
+
+  -- e) Build Wolfram Series code:
+  ------------------------------------------------------------------------------
   local wolfram_code = string.format("ToString[Series[%s, {%s, %s, %s}], TeXForm]",
                                      preprocessed_expr, var, expansionPt, order)
 
-  -- Now run asynchronously
+
+  -- f) Run asynchronously
+  ------------------------------------------------------------------------------
   async.run_wolframscript_async(
     { "wolframscript", "-code", wolfram_code, "-format", "OutputForm" },
     function(result, err)
@@ -84,17 +91,19 @@ function M.insert_taylor_series()
         return
       end
 
-      local updated = selection .. " = " .. result
-      vim.fn.setline(start_row, updated)
-      for i = start_row + 1, end_row do
-        vim.fn.setline(i, "")
+      local updated = selection .. " = " .. result  -- Stores the updated line to be inserted
+      vim.fn.setline(start_row, updated)            -- Inserts the updated line into the buffer
+      for i = start_row + 1, end_row do             -- Loops through all subsequent rows in the selection
+        vim.fn.setline(i, "")                       -- Sets rows as empty strings
       end
     end
   )
 end
 
---------------------------------------------------------------------------------
--- Setup user command
+
+
+
+-- 3) Setup user commandd
 --------------------------------------------------------------------------------
 function M.setup_commands()
   vim.api.nvim_create_user_command("TungstenTaylor", function()

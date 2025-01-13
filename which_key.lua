@@ -1,4 +1,7 @@
+--------------------------------------------------------------------------------
+-- which_key.lua
 -- Sets up Which-Key mappings for the plugin.
+--------------------------------------------------------------------------------
 
 local wk = require("which-key")
 
@@ -22,7 +25,6 @@ wk.add({
   { "<leader>t?0", group = "solve" },
   { "<leader>t?00", ":<C-u>TungstenSolveTest<CR>", desc = "Run TungstenSolve tests" },
   { "<leader>t?0e", ":<C-u>TungstenSolveSystemTest<CR>", desc = "Run TungstenSolveSystem tests" },
-  { "<leader>t?p", ":<C-u>TungstenPlotTest<CR>", desc = "Run TungstenPlot tests" },
   { "<leader>t?t", ":<C-u>TungstenTaylorTest<CR>", desc = "Run TungstenTaylor tests" },
   { "<leader>t??", "<C-u>TungstenAllTests<CR>", desc = "Run all tests"},
 })
