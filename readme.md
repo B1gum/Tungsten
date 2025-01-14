@@ -104,59 +104,56 @@ We are committed to continuously enhancing **Tungsten** to provide a comprehensi
 1. **Expanding Documentation and Providing Tutorials**
     - We are constantly striving towards providing better documentation and in the near future thorough tutorials for each command will be published.
 
-2. **Bugfixes**
-    - **Plot Functionality:** The plotting-functionality is currently experiencing a bug that means that no plot is generated when running the command.
-
 
 ### Q1 2025
 
-3. **Solutions of PDEs and ODEs**
+2. **Solutions of PDEs and ODEs**
     - Implement handling of numeric and symbolic solving of Partial Differential Equations (PDEs) and Ordinary Differential Equations (ODEs).
 
-4. **Root-finding**
+3. **Root-finding**
     - Implement root-finding algorithms such as Newton's method and the secant method for root finding of complicated functions.
 
-5. **Plot-customization**
+4. **Plot-customization**
     - **Axis Titles and Grid Settings:** Allow users to add and customize axis titles, labels, and grid lines.
     - **Adding points to plots:** Enable the addition of specific data points to existing plots for better visualization
 
-6. **Unit Support and Conversion**
+5. **Unit Support and Conversion**
     - **Parsing units:** Automatically parse strings formatted with `\qty{value}{unit}`
     - **Minimal Unit Processing:** Handle basic unit conversions and calculations.
     - **Calculation:** Perform calculations involving units.
     - **Output with Units:** Display results with units in `\qty{value}{unit}`.
     - **Unit Conversion:** Convert from one unit to another both in `\qty{value}{unit}`-syntax.
 
-7. **Factorization**
+6. **Factorization**
     - Enable polynomial and algebraic expression factorization within the editor.
 
-8. **Matrix Operations**
+7. **Matrix Operations**
     - **Addition & Subtraction:** Perform basic matrix addition and subtraction.
     - **Multiplication:** Support matrix multiplication.
     - **Inverse:** Calculate matrix inverses.
     - **Eigenvalues:** Compute eigenvalues and eigenvectors.
     - **Matrix Decomposition:** Provide various matrix decomposition techniques.
 
-9. **Vector Calculus**
+8. **Vector Calculus**
     - Incorporate operations such as gradient, divergence, and curl for vector fields.
 
 
 ### Q2 2025
 
-10. **Fourier and Laplace Transforms**
+9. **Fourier and Laplace Transforms**
    - Add functionalities to compute Fourier and Laplace transforms for complex signal processing tasks.
 
-11. **Partial Fraction Decomposition**
+10. **Partial Fraction Decomposition**
     - Implement methods to decompose rational functions into partial fractions.
 
-12. **Tensor Algebra**
+11. **Tensor Algebra**
     - Support tensor operations for advanced mathematical modeling.
 
-13. **Data Import and Export**
+12. **Data Import and Export**
     - **Data Analysis Toolbox:** Integrate tools for data analysis directly within Neovim.
     - **Formats Supported:** Enable import and export of `.JSON` and `.CSV` files for data manipulation.
 
-14. **Custom Options**
+13. **Custom Options**
     - **Custom Functions:** Allow users to define and use custom mathematical functions.
     - **Custom Replacements:** Enable custom string replacements for tailored workflows.
     - **Custom Syntax:** Support user-defined syntax for enhanced flexibility.
