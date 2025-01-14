@@ -53,9 +53,9 @@ To suggest a new feature, please [open an issue](https://github.com/B1gum/Tungst
    
 3. **Create a New Branch:**
 
-  ```bash
-  git checkout -b feature/your-feature-name
-  ```
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
 
 4. **Make Your Changes:**
    Implement your feature or bug fix. Ensure that your code adheres to the project's coding standards.
@@ -65,38 +65,39 @@ To suggest a new feature, please [open an issue](https://github.com/B1gum/Tungst
 
 6. **Commit Your Changes:**
 
-  ```bash
-  git add .
-  git commit -m "Add feature: your-feature-name"
-  ```
+   ```bash
+   git add .
+   git commit -m "Add feature: your-feature-name"
+   ```
 
 7. **Push to Your Fork:**
 
-  ```bash
-  git push origin feature/your-feature-name
-  ```
+   ```bash
+   git push origin feature/your-feature-name
+   ```
 
 8. **Submit a Pull Request:**
   Navigate to the original repository on GitHub and click "Compare & pull request." Provide a clear description of your changes and reference any related issues.
 
 
 ## Code Standards
-– **Consistency:** Follow the existing coding style and conventions used in the project.
-– **Clarity:** Write clear and understandable code with meaningful variable and function names.
-– **Documentation:** Document your code where necessary, including comments and docstrings.
+
+- **Consistency:** Follow the existing coding style and conventions used in the project.
+- **Clarity:** Write clear and understandable code with meaningful variable and function names.
+- **Documentation:** Document your code where necessary, including comments and docstrings.
 
 
 ## Style Guides
 Refer to the following style guides to maintain consistency across the project:
-– **Lua Style Guide:** https://github.com/freakboy3741/lua-style-guide
-– **Markdown Style Guide:** https://www.markdownguide.org/basic-syntax/
+- **Lua Style Guide:** https://github.com/freakboy3741/lua-style-guide
+- **Markdown Style Guide:** https://www.markdownguide.org/basic-syntax/
 
 
 ## Pull Request Process
 1. **Ensure the PR Follows the Guidelines:**
-  – The PR title should be descriptive.
-  – The PR description should explain the changes and their purpose.
-  – Reference any related issues using `Closes #issue-number` or `Fixes #issue-number`.
+  - The PR title should be descriptive.
+  - The PR description should explain the changes and their purpose.
+  - Reference any related issues using `Closes #issue-number` or `Fixes #issue-number`.
 
 2. **Run All Tests:**
    Ensure that all tests pass and that your changes do not introduce new issues.
@@ -109,6 +110,6 @@ Refer to the following style guides to maintain consistency across the project:
 
 
 ## Additional Notes
-– **Stay Updated:** Keep your forked repository up to date with the main repository to avoid merge conflicts.
-– **Ask Questions:** If you're unsure about anything, feel free to [open an issue](https://github.com/B1gum/Tungsten/issues) or [reach out to the maintainers](https://github.com/B1gum.)
-– **Respect the Community:** Follow the [Code of Conduct](https://github.com/B1gum/Tungsten/blob/main/CODE_OF_CONDUCT.md) to ensure a positive and respectful environment for all contributors.
+- **Stay Updated:** Keep your forked repository up to date with the main repository to avoid merge conflicts.
+- **Ask Questions:** If you're unsure about anything, feel free to [open an issue](https://github.com/B1gum/Tungsten/issues) or [reach out to the maintainers](https://github.com/B1gum.)
+- **Respect the Community:** Follow the [Code of Conduct](https://github.com/B1gum/Tungsten/blob/main/CODE_OF_CONDUCT.md) to ensure a positive and respectful environment for all contributors.
