@@ -88,12 +88,14 @@ To suggest a new feature, please [open an issue](https://github.com/B1gum/Tungst
 
 
 ## Style Guides
+
 Refer to the following style guides to maintain consistency across the project:
 - **Lua Style Guide:** https://github.com/freakboy3741/lua-style-guide
 - **Markdown Style Guide:** https://www.markdownguide.org/basic-syntax/
 
 
 ## Pull Request Process
+
 1. **Ensure the PR Follows the Guidelines:**
   - The PR title should be descriptive.
   - The PR description should explain the changes and their purpose.
@@ -110,6 +112,7 @@ Refer to the following style guides to maintain consistency across the project:
 
 
 ## Additional Notes
+
 - **Stay Updated:** Keep your forked repository up to date with the main repository to avoid merge conflicts.
 - **Ask Questions:** If you're unsure about anything, feel free to [open an issue](https://github.com/B1gum/Tungsten/issues) or [reach out to the maintainers](https://github.com/B1gum.)
 - **Respect the Community:** Follow the [Code of Conduct](https://github.com/B1gum/Tungsten/blob/main/CODE_OF_CONDUCT.md) to ensure a positive and respectful environment for all contributors.
