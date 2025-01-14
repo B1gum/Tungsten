@@ -120,14 +120,12 @@ end
 -- 7) Asynchronous plotting
 --------------------------------------------------------------------------------
 function M.run_plot_async(wolfram_code, plotfile, callback)
-  local code = string.format([[
-  Export["%s", %s]
-]], plotfile, wolfram_code)                                                   -- Sets up code for exporting the created plot as a .pdf
+  local code = string.format('Export["%s", %s]', plotfile, wolfram_code)    -- Sets up code for exporting the created plot as a .pdf
 
-  local cmd = { "wolframscript", "-code", code }                              -- Sets up the WolframScript-command
-  utils.debug_print("run_plot_async cmd => " .. table.concat(cmd, " "))       -- (Optionally) prints the command to be passed to the engine
+  local cmd = { "wolframscript", "-code", code}                             -- Sets up the WolframScript-command
+  utils.debug_print("run_plot_async cmd => " .. table.concat(cmd, " "))     -- (Optionally) prints the command to be passed to the engine
 
-  local job_id = vim.fn.jobstart(cmd, {                                       -- Initiate asynchronous job with same logic as the general implementation
+  local job_id = vim.fn.jobstart(cmd, {                                     -- Initiate asynchronous job with same logic as the general implementation
     stdout_buffered = true,
     on_stdout = function(_, data, _)
       if data and #data > 0 then

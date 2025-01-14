@@ -178,8 +178,26 @@ local function generate_plot_command(expr, plotfile, xlb, xub, ylb, yub, zlb, zu
 
   local plotCommand = ""
 
+  -- a) Determine the variable range specification
+  -----------------------------------------------------------------------------
+  local varRange = ""
+  if xlb and xub then                                                               -- If an x-range has been given, then
+    varRange = string.format("{x, %s, %s}", xlb, xub)                               -- Store that range
+  else
+    varRangeX = "{x, -10, 10}"                                                      -- Else, sets a default x-range of -10 to 10
+    utils.debug_print("No x-rangeSpec found, using default range: " .. varRange)    -- (Optionally) print that no x-range was found and a default was chosen
+  end
 
-  -- a) 2D-plots
+  if plot_type == "3D" then                                                         -- If plot is 3D
+    if ylb and yub then                                                             -- If a y-range has been given, then
+      varRangeY = string.format("{y, %s, %s}", ylb, yub)                            -- Store the y-range
+    else
+      varRangeY = "{y, -10, 10}"                                                    -- Else, sets a default y-range of -10 to 10
+      utils.debug_print("No y-rangeSpec found, using default range: " .. varRangeY) -- (Optionally) print that no y-range was found and a default was chosen
+    end
+  end
+
+  -- b) 2D-plots
   -----------------------------------------------------------------------------
   if plot_type == "2D" then   -- Checks if the plot should be a 2D-plot
 
@@ -188,10 +206,8 @@ local function generate_plot_command(expr, plotfile, xlb, xub, ylb, yub, zlb, zu
     local plotRange = ""
     if ylb and yub then                                                                   -- If y-ranges have been specified, then
       plotRange = string.format("PlotRange -> {{%s, %s}, {%s, %s}}", xlb, xub, ylb, yub)  -- Set PlotRange to the given ranges
-    elseif xlb and xub then                                                               -- Elseif only x-ranges have been given, then
+    else                                                                                  -- Else 
       plotRange = string.format("PlotRange -> {{%s, %s}, Automatic}", xlb, xub)           -- Set PlotRange to the given range for the x-coordinate and "Automatic" for the y-coordinate
-    else                                                                                  -- Else
-      plotRange = string.format("PlotRange -> {Automatic, Automatic}")                    -- Set PlotRange for both the x- and y-axis to "Automatic"
     end
 
     -- 2. Handle PlotLegends
@@ -215,13 +231,11 @@ local function generate_plot_command(expr, plotfile, xlb, xub, ylb, yub, zlb, zu
 
     -- 4. Construct the Plot command
     ---------------------------------------------------------------------------
-    plotCommand = string.format("Plot[%s, {x, %s, %s}, %s, %s%s]",  -- Makes the plot-command by concatenating the different strings and appending plotLegends if it exists
-      expr, xlb, xub, plotStyle, plotRange,
-      (plotLegends ~= "" and (", " .. plotLegends) or "")
-    )
+    plotCommand = string.format("Plot[%s, %s, %s, %s%s]", expr, varRangeX , plotStyle, plotRange,     -- Construct the plot-command
+        (plotLegends ~= "" and (", " .. plotLegends) or ""))
 
 
-  -- b) 3D-plots
+  -- c) 3D-plots
   -----------------------------------------------------------------------------
   elseif plot_type == "3D" then   -- Checks if plot_type is 3D
 
@@ -232,10 +246,8 @@ local function generate_plot_command(expr, plotfile, xlb, xub, ylb, yub, zlb, zu
       plotRange = string.format("PlotRange -> {{%s, %s}, {%s, %s}, {%s, %s}}", xlb, xub, ylb, yub, zlb, zub)  -- set PlotRange to the given ranges.
     elseif xlb and xub and ylb and yub then                                                                   -- If only x-range and y-range have been given, then
       plotRange = string.format("PlotRange -> {{%s, %s}, {%s, %s}, Automatic}", xlb, xub, ylb, yub)           -- set PlotRange to the given ranges for the x- and y-coordinates and automatic for z.
-    elseif xlb and xub then                                                                                   -- If only x-range has been given, then
+    else                                                                                                      -- Else
       plotRange = string.format("PlotRange -> {{%s, %s}, Automatic, Automatic}", xlb, xub)                    -- Set PlotRange to the given range for the x-coordinate and automatic for y and z.
-    else
-      plotRange = string.format("PlotRange -> {Automatic, Automatic, Automatic}")                             -- Else set PlotRange to automatic for all of the x-, y- and z-coordinates.
     end
 
     -- 2. Handle PlotLegends
@@ -259,13 +271,15 @@ local function generate_plot_command(expr, plotfile, xlb, xub, ylb, yub, zlb, zu
 
     -- 4. Construct the Plot3D command
     ---------------------------------------------------------------------------
-    plotCommand = string.format("Plot3D[%s, {x, %s, %s}, {y, %s, %s}, %s, %s%s]",   -- Constructs plot-command by concatenating strings the same way as for the 2D-functionality
-      expr, xlb, xub, ylb, yub, plotStyle, plotRange,
+    plotCommand = string.format("Plot3D[%s, %s, %s, %s, %s%s]",   -- Constructs plot-command by concatenating strings the same way as for the 2D-functionality
+      expr, varRangeX, varRangeY, plotStyle, plotRange,
       (plotLegends ~= "" and (", " .. plotLegends) or "")
     )
   else
     error("Unknown plot type: " .. plot_type)   -- Prints an error if the plot_type is neither 2D or 3D
   end
+
+  utils.debug_print("Generated Plot Command: " .. plotCommand)    -- (Optionally print the generated plot-command
 
   return plotCommand    -- Returns the plotCommand
 end
@@ -316,7 +330,7 @@ function M.insert_plot_from_selection()
   -- c) Parse rangeSpec
   -------------------------------------------------------------------------------
   if exprPart and rangeSpec then                    -- If both an expression and a range has been given, then
-    local ranges = utils.split(exprPart, ";")       -- Split the given range by semi-colons
+    local ranges = utils.split(rangeSpec, ";")      -- Split the given range by semi-colons
     if #ranges == 0 then                            -- If no range has been given, then do nothing as the default plotRange is automatic
       -- 2D plot with automatic range
 
@@ -404,7 +418,7 @@ function M.insert_plot_from_selection()
   if plot_type == "3D" then               -- If plot_type is 2D, them
     if exprPart:match("y[%[%(%]]") then
       if not rangeSpec then
-        xlb, xub, ylb, yub, zlb, zub = nil, nil, nil, nil, nil, nil   -- If no rangeSpec is provided set all ranges to "nil" (defaults to automatic ranges)
+        xlb, xub, ylb, yub, zlb, zub = -10, -10, nil, nil, nil, nil   -- If no rangeSpec is provided set all ranges to "nil" (defaults to automatic ranges)
       else
         -- Ranges have already been parsed above, so the following is a minor check
         local ranges = utils.split(rangeSpec, ";")    -- Split ranges at ;
@@ -465,7 +479,7 @@ end
 -- 6) Create user command for plot
 ---------------------------------------------------------------------------------
 function M.setup_commands()
-  vim.api.nvim_create_user_command("WolframPlot", function()
+  vim.api.nvim_create_user_command("TungstenPlot", function()
     M.insert_plot_from_selection()
   end, { range = true })
 end
