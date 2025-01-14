@@ -90,16 +90,16 @@ To suggest a new feature, please [open an issue](https://github.com/B1gum/Tungst
 ## Style Guides
 
 Refer to the following style guides to maintain consistency across the project:
-- **Lua Style Guide:** https://github.com/freakboy3741/lua-style-guide
-- **Markdown Style Guide:** https://www.markdownguide.org/basic-syntax/
+  - **Lua Style Guide:** https://github.com/freakboy3741/lua-style-guide
+  - **Markdown Style Guide:** https://www.markdownguide.org/basic-syntax/
 
 
 ## Pull Request Process
 
 1. **Ensure the PR Follows the Guidelines:**
-  - The PR title should be descriptive.
-  - The PR description should explain the changes and their purpose.
-  - Reference any related issues using `Closes #issue-number` or `Fixes #issue-number`.
+    - The PR title should be descriptive.
+    - The PR description should explain the changes and their purpose.
+    - Reference any related issues using `Closes #issue-number` or `Fixes #issue-number`.
 
 2. **Run All Tests:**
    Ensure that all tests pass and that your changes do not introduce new issues.
