@@ -113,6 +113,6 @@ Refer to the following style guides to maintain consistency across the project:
 
 ## Additional Notes
 
-- **Stay Updated:** Keep your forked repository up to date with the main repository to avoid merge conflicts.
-- **Ask Questions:** If you're unsure about anything, feel free to [open an issue](https://github.com/B1gum/Tungsten/issues) or [reach out to the maintainers](https://github.com/B1gum.)
-- **Respect the Community:** Follow the [Code of Conduct](https://github.com/B1gum/Tungsten/blob/main/CODE_OF_CONDUCT.md) to ensure a positive and respectful environment for all contributors.
+  - **Stay Updated:** Keep your forked repository up to date with the main repository to avoid merge conflicts.
+  - **Ask Questions:** If you're unsure about anything, feel free to [open an issue](https://github.com/B1gum/Tungsten/issues) or [reach out to the maintainers](https://github.com/B1gum.)
+  - **Respect the Community:** Follow the [Code of Conduct](https://github.com/B1gum/Tungsten/blob/main/CODE_OF_CONDUCT.md) to ensure a positive and respectful environment for all contributors.
