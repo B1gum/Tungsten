@@ -356,6 +356,14 @@ function M.preprocess_equation(equation)
     end
   )
 
+  -- Handle indefinite integrals: \int <EXPR> \, \mathrm{d}<VAR> => Integrate[<EXPR>, <VAR>]
+  equation = equation:gsub("\\int%s*(.-)%s*\\,?%s*\\mathrm%{d%}([a-zA-Z])",
+    function(expr, var)
+      debug_print(string.format("Replacing indefinite integral: Integrate[%s, %s]", expr, var))  -- (Optionally) print the replacement
+      return string.format("Integrate[%s, %s]", expr, var)
+    end)
+  debug_print("After indefinite integrals => " .. equation)  -- (Optionally) print the equation after indefinite integrals have been replaced
+
 
   -- f) Replace \mathrm{d}x => dx
   ------------------------------------------------------------------------------
