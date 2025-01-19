@@ -6,6 +6,7 @@
 -- 1) setup
 --------------------------------------------------------------------------------
 local io_utils = require("tungsten.utils.io_utils").debug_print
+local cache = require("tungsten.cache")
 
 local M = {}
 
@@ -15,13 +16,30 @@ local function fix_sqrt_tex(str)  -- Helper-function that replaces \text{Sqrt} w
 end
 
 
+-- Hash function for building a unique key
+local function build_key(cmd_args)
+  -- If your `cmd_args` is something like { "wolframscript", "-code", "ToString[...]"} just flatten it into a single string:
+  local joined = table.concat(cmd_args, "|")
+  return vim.fn.sha256(joined)
+end
 
 
 -- 2) Define function that runs WolframScript asynchronously
 --------------------------------------------------------------------------------
 local function run_wolframscript_async(cmd, callback)
-  io_utils("run_wolframscript_async cmd => " .. table.concat(cmd, " "))  -- (Optionally) print the WolframScript being passed to the engine
+  -- cmd is an array like { "wolframscript", "-code", "some Wolfram code" }
+  local cache_key = build_key(cmd)
+  
+  -- 1) Check the cache first
+  local cached_result = cache.get(cache_key)
+  if cached_result then
+    io_utils("Cache HIT => returning cached result")
+    callback(cached_result, nil) -- Return immediately
+    return
+  end
 
+  io_utils("Cache MISS => launching wolframscript job, cmd => " .. table.concat(cmd, " "))
+  
   local job_id = vim.fn.jobstart(cmd, {               -- Initializes an asynchronous job to run thd cmd
     stdout_buffered = true,                           -- Buffers the output such that all output is collected before being passed to callback
     on_stdout = function(_, data, _)
