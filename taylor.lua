@@ -5,7 +5,9 @@
 
 -- 1) Serup
 --------------------------------------------------------------------------------
-local utils = require("tungsten.utils")
+local io_utils = require("tungsten.utils.io_utils").debug_print
+local parser = require("tungsten.utils.parser")
+local string_utils = require("tungsten.utils.string_utils")
 local async = require("tungsten.async")
 
 local M = {}
@@ -41,7 +43,7 @@ function M.insert_taylor_series()
   lines[#lines]  = lines[#lines]:sub(1, end_col)  -- Trim whitespace after the selection
   local selection = table.concat(lines, "\n")     -- Concatenate the selection into a single string with rows seperated by \n
 
-  utils.debug_print("Taylor selection => " .. selection)  -- (Optionally) print the selection for the Taylor-series command
+  io_utils("Taylor selection => " .. selection)  -- (Optionally) print the selection for the Taylor-series command
 
 
   -- b) Extract expression and taylor spec
@@ -55,12 +57,12 @@ function M.insert_taylor_series()
 
   -- c) Preprocess the expression
   ------------------------------------------------------------------------------
-  local preprocessed_expr = utils.preprocess_equation(exprPart) -- Call the Preprocess_equation-function
+  local preprocessed_expr = parser.preprocess_equation(exprPart) -- Call the Preprocess_equation-function
 
 
   -- d) Split taylorSpec by commas (variable, point of expansion, order)
   ------------------------------------------------------------------------------
-  local parts = utils.split_by_comma(taylorSpec)  -- Call split_by_comma to split the specification at commas
+  local parts = string_utils.split_by_comma(taylorSpec)  -- Call split_by_comma to split the specification at commas
   if #parts < 3 then  -- If less than 3 specifications are found, then
     vim.api.nvim_err_writeln("Taylor spec must have (var, expansion_point, order). Example: x, 0, 5")   -- Print an error to the log
     return

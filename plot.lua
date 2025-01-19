@@ -5,7 +5,10 @@
 
 -- 1) Setup
 ---------------------------------------------------------------------------------
-local utils = require("tungsten.utils")
+local extractors = require("tungsten.utils.extractors")
+local io_utils = require("tungsten.utils.io_utils")
+local parser = require("tungsten.utils.parser")
+local string_utils = require("tungsten.utils.string_utils")
 local async = require("tungsten.async")
 
 local M = {}
@@ -185,7 +188,7 @@ local function generate_plot_command(expr, plotfile, xlb, xub, ylb, yub, zlb, zu
     varRange = string.format("{x, %s, %s}", xlb, xub)                               -- Store that range
   else
     varRangeX = "{x, -10, 10}"                                                      -- Else, sets a default x-range of -10 to 10
-    utils.debug_print("No x-rangeSpec found, using default range: " .. varRange)    -- (Optionally) print that no x-range was found and a default was chosen
+    io_utils.debug_print("No x-rangeSpec found, using default range: " .. varRange)    -- (Optionally) print that no x-range was found and a default was chosen
   end
 
   if plot_type == "3D" then                                                         -- If plot is 3D
@@ -193,7 +196,7 @@ local function generate_plot_command(expr, plotfile, xlb, xub, ylb, yub, zlb, zu
       varRangeY = string.format("{y, %s, %s}", ylb, yub)                            -- Store the y-range
     else
       varRangeY = "{y, -10, 10}"                                                    -- Else, sets a default y-range of -10 to 10
-      utils.debug_print("No y-rangeSpec found, using default range: " .. varRangeY) -- (Optionally) print that no y-range was found and a default was chosen
+      io_utils.debug_print("No y-rangeSpec found, using default range: " .. varRangeY) -- (Optionally) print that no y-range was found and a default was chosen
     end
   end
 
@@ -279,7 +282,7 @@ local function generate_plot_command(expr, plotfile, xlb, xub, ylb, yub, zlb, zu
     error("Unknown plot type: " .. plot_type)   -- Prints an error if the plot_type is neither 2D or 3D
   end
 
-  utils.debug_print("Generated Plot Command: " .. plotCommand)    -- (Optionally print the generated plot-command
+  io_utils.debug_print("Generated Plot Command: " .. plotCommand)    -- (Optionally print the generated plot-command
 
   return plotCommand    -- Returns the plotCommand
 end
@@ -290,7 +293,7 @@ end
 -- 5) Insert plot from selection 
 ---------------------------------------------------------------------------------
 function M.insert_plot_from_selection()
-  utils.debug_print("insert_plot_from_selection START")   -- Logs the start of insert_plot_from_selection for Debugging purposes
+  io_utils.debug_print("insert_plot_from_selection START")   -- Logs the start of insert_plot_from_selection for Debugging purposes
 
 
   -- a) Capturing the visual selection range
@@ -306,23 +309,23 @@ function M.insert_plot_from_selection()
 
   selection = selection:gsub("\194\160", " ")           -- Normalize the selection by replacing non-breaking whitespace-characters with normal space
 
-  utils.debug_print("Plot selection => " .. selection)  -- (Optionally) prints the normalized plot selection
+  io_utils.debug_print("Plot selection => " .. selection)  -- (Optionally) prints the normalized plot selection
 
 
   -- b) Parse the selection
   -------------------------------------------------------------------------------
   -- Extract the CurlySpec (style-spec)
-  local mainExpr, curlySpec = utils.extract_main_and_curly(selection)   -- Seperates the main-expression to be plotted from the style specification ( enclosed within {} )
+  local mainExpr, curlySpec = extractors.extract_main_and_curly(selection)   -- Seperates the main-expression to be plotted from the style specification ( enclosed within {} )
   if not mainExpr then                                                  -- Fallback: If no mainExpr is found bu extract_main_and_curly, them
     mainExpr = selection                                                -- set the entire selection as the mainExpr
   end
-  utils.debug_print("MainExpr => " .. (mainExpr or "nil"))              -- (Optionally) prints the MainExpr (Expression to be plotted)
-  utils.debug_print("CurlySpec => " .. (curlySpec or "nil"))            -- (Optionally) prints the CurlySpec (Style-spec)
+  io_utils.debug_print("MainExpr => " .. (mainExpr or "nil"))              -- (Optionally) prints the MainExpr (Expression to be plotted)
+  io_utils.debug_print("CurlySpec => " .. (curlySpec or "nil"))            -- (Optionally) prints the CurlySpec (Style-spec)
 
   -- Extract the exprPart (expression to be plotted) and rangeSpec (range to plot within) from mainExpr
   local exprPart, rangeSpec = utils.extract_expr_and_range(mainExpr)    -- Seperated the exprPart from the rangeSpec
-  utils.debug_print("ExprPart => " .. (exprPart or "nil"))              -- (Optionally) prints the expression to be plotted
-  utils.debug_print("RangeSpec => " .. (rangeSpec or "nil"))            -- (Optionally) prints the range to plot within
+  io_utils.debug_print("ExprPart => " .. (exprPart or "nil"))              -- (Optionally) prints the expression to be plotted
+  io_utils.debug_print("RangeSpec => " .. (rangeSpec or "nil"))            -- (Optionally) prints the range to plot within
 
   local xlb, xub, ylb, yub, zlb, zub = nil, nil, nil, nil, nil, nil     -- Sets range-variables to nil for automatic range-handling if no range is given
   local plot_type = "2D"                                                -- Default to 2D
@@ -330,13 +333,13 @@ function M.insert_plot_from_selection()
   -- c) Parse rangeSpec
   -------------------------------------------------------------------------------
   if exprPart and rangeSpec then                    -- If both an expression and a range has been given, then
-    local ranges = utils.split(rangeSpec, ";")      -- Split the given range by semi-colons
+    local ranges = string_utils.split(rangeSpec, ";")      -- Split the given range by semi-colons
     if #ranges == 0 then                            -- If no range has been given, then do nothing as the default plotRange is automatic
       -- 2D plot with automatic range
 
     elseif #ranges == 1 then                        -- If only one range has been given, then
       -- 2D plot with only x-range
-      local x_range = utils.split(ranges[1], ",")   -- Split set the range at a comma
+      local x_range = string_utils.split(ranges[1], ",")   -- Split set the range at a comma
       if #x_range ~=2 then                          -- If the amount of values given for x_range is not exactly 2, then
         vim.api.nvim_err_writeln("Invalid range values for 2D plot. Use [x_min, x_max].")   -- Write an error to the log
         return
@@ -344,12 +347,12 @@ function M.insert_plot_from_selection()
       xlb, xub = x_range[1]:match("^%s*(.-)%s*$"), x_range[2]:match("^%s*(.-)%s*$")   -- Set the lower bound (xlb) to the first value in the list and vice versa
       -- ylb, yub remain nil (Automatic)
       plot_type = "2D"
-      utils.debug_print("Detected 1 range: 2D plot with y-range=Automatic")           -- (Optionally) print the detected amount of ranges
+      io_utils.debug_print("Detected 1 range: 2D plot with y-range=Automatic")           -- (Optionally) print the detected amount of ranges
 
     elseif #ranges == 2 then                        -- If two ranges have been given
       -- 2D plot with x and y ranges
-      local x_range = utils.split(ranges[1], ",")   -- Split the x_range at a comma
-      local y_range = utils.split(ranges[2], ",")   -- Split the y_range at a comma
+      local x_range = string_utils.split(ranges[1], ",")   -- Split the x_range at a comma
+      local y_range = string_utils.split(ranges[2], ",")   -- Split the y_range at a comma
       if #x_range ~= 2 or #y_range ~=2 then         -- If there is not exactly two entries in both x_range and y_range, then
         vim.api.nvim_err_writeln("Invalid range values for 2D plot. Use [x_min, x_max; y_min, y_max].")   -- Write an error to the log
         return
@@ -357,13 +360,13 @@ function M.insert_plot_from_selection()
       xlb, xub = x_range[1]:match("^%s*(.-)%s*$"), x_range[2]:match("^%s*(.-)%s*$")   -- Set the lower bound (xlb) to the first value in the x_range-list and vice versa
       ylb, yub = y_range[1]:match("^%s*(.-)%s*$"), y_range[2]:match("^%s*(.-)%s*$")   -- Set the lower bound (ylb) to the first value in the y_range-list and vice versa
       plot_type = "2D"
-      utils.debug_print("Detected 2 ranges: 2D plot with specified y-range")          -- (Optionally) print the detected amount of ranges
+      io_utils.debug_print("Detected 2 ranges: 2D plot with specified y-range")          -- (Optionally) print the detected amount of ranges
 
     elseif #ranges ==3 then                                   -- If three ranges have been given
       -- 3D plot with x, y, z ranges
-      local x_range = utils.split(ranges[1], ",")             -- Split the x_range at a comma
-      local y_range = utils.split(ranges[2], ",")             -- Split the y_range at a comma
-      local z_range = utils.split(ranges[3], ",")             -- Split the z_range at a comma
+      local x_range = string_utils.split(ranges[1], ",")             -- Split the x_range at a comma
+      local y_range = string_utils.split(ranges[2], ",")             -- Split the y_range at a comma
+      local z_range = string_utils.split(ranges[3], ",")             -- Split the z_range at a comma
       if #x_range ~=2 or #y_range ~=2 or #z_range ~=2 then    -- If there is not exatcly two entries in both the x_range, y_range and z_range, then
         vim.api.nvim_err_writeln("Invalid range values for 3D plot. Use [x_min, x_max; y_min, y_max; z_min, z_max].")   -- Write an error to the log
         return
@@ -372,7 +375,7 @@ function M.insert_plot_from_selection()
       ylb, yub = y_range[1]:match("^%s*(.-)%s*$"), y_range[2]:match("^%s*(.-)%s*$")   -- Set the lower bound (ylb) to the first value in the y_range-list and vice versa
       zlb, zub = z_range[1]:match("^%s*(.-)%s*$"), z_range[2]:match("^%s*(.-)%s*$")   -- Set the lower bound (zlb) to the first value in the z_range-list and vice versa
       plot_type = "3D"
-      utils.debug_print("Detected 3 ranges: 3D plot with specified z-range")          -- (Optionally) print the detected amount of ranges
+      io_utils.debug_print("Detected 3 ranges: 3D plot with specified z-range")          -- (Optionally) print the detected amount of ranges
 
     else    -- If an unhandled amount of ranges have been given, then write an error to the log
       vim.api.nvim_err_writeln("Invalid number of range specifications. Use [x_min, x_max], [x_min, x_max; y_min, y_max], or [x_min, x_max; y_min, y_max; z_min, z_max].")
@@ -380,24 +383,24 @@ function M.insert_plot_from_selection()
     end
   else
     exprPart = mainExpr   -- If no rangeSpec is found the entire MainExpr is set to the exprPart
-    utils.debug_print("No rangeSpec found, ExprPart set to MainExpr")   -- (Optionally) print that no rangeSpec was found
+    io_utils.debug_print("No rangeSpec found, ExprPart set to MainExpr")   -- (Optionally) print that no rangeSpec was found
   end
 
 
   -- d) Split and preprocess the expressions
   -------------------------------------------------------------------------------
   -- Split expressions
-  local exprList = utils.split_expressions(exprPart)                      -- Split expressions using split_expressions
-  utils.debug_print("ExprList => " .. table.concat(exprList, ", "))       -- (Optinally) print the split-expressions
+  local exprList = string_utils.split_expressions(exprPart)                      -- Split expressions using split_expressions
+  io_utils.debug_print("ExprList => " .. table.concat(exprList, ", "))       -- (Optinally) print the split-expressions
 
   -- Preprocess each expression
   for i, expr in ipairs(exprList) do                                      -- Loop through all expressions
-    utils.debug_print("Preprocessing exprList[" .. i .. "] => " .. expr)  -- (Optionally) print the expressions to be preprocessed
-    exprList[i] = utils.preprocess_equation(expr)                         -- Preprocess all equations with preprocess_equation
+    io_utils.debug_print("Preprocessing exprList[" .. i .. "] => " .. expr)  -- (Optionally) print the expressions to be preprocessed
+    exprList[i] = parser.utils.preprocess_equation(expr)                         -- Preprocess all equations with preprocess_equation
   end
 
-  local finalExpr = utils.build_multi_expr(exprList)                      -- Combine expressions using build_multi_expr
-  utils.debug_print("Final preprocessed expressions => " .. finalExpr)    -- (Optionally) print the final preprocessed expressions
+  local finalExpr = string_utils.build_multi_expr(exprList)                      -- Combine expressions using build_multi_expr
+  io_utils.debug_print("Final preprocessed expressions => " .. finalExpr)    -- (Optionally) print the final preprocessed expressions
 
 
   -- e) Determine plot type based on expressions (if not already determined)
@@ -406,7 +409,7 @@ function M.insert_plot_from_selection()
     for _, expr in ipairs(exprList) do  -- Loop through all expressions
       if expr:find("y[%[%(%]]") then    -- If any expression contains a "y", then
         plot_type = "3D"                -- Set plot_type to 3D
-        utils.debug_print("Inferred plot type as 3D based on expression dependencies")  -- (Optionally)  print that a 3D-plot was inferred
+        io_utils.debug_print("Inferred plot type as 3D based on expression dependencies")  -- (Optionally)  print that a 3D-plot was inferred
         break
       end
     end
@@ -421,7 +424,7 @@ function M.insert_plot_from_selection()
         xlb, xub, ylb, yub, zlb, zub = -10, -10, nil, nil, nil, nil   -- If no rangeSpec is provided set all ranges to "nil" (defaults to automatic ranges)
       else
         -- Ranges have already been parsed above, so the following is a minor check
-        local ranges = utils.split(rangeSpec, ";")    -- Split ranges at ;
+        local ranges = io_utils.split(rangeSpec, ";")    -- Split ranges at ;
 
         if #ranges ==1 then       -- [x_min, x_max], y and z set to Automatic
           ylb, yub, zlb, zub = nil, nil, nil, nil     -- Ensure rangeSpecs not given are set to "nil" (automatic)
@@ -453,13 +456,13 @@ function M.insert_plot_from_selection()
 
   -- i) Generate plot filename
   -------------------------------------------------------------------------------
-  local plotfile = utils.get_plot_filename()  -- get a filename using get_plot_filename
+  local plotfile = io_utils.get_plot_filename()  -- get a filename using get_plot_filename
 
 
   -- j) Generate the Wolfram plot command
   -------------------------------------------------------------------------------
   local plotCommand = generate_plot_command(finalExpr, plotfile, xlb, xub, ylb, yub, zlb, zub, styleOpts, labelList, plot_type)   -- Generate the plot-command
-  utils.debug_print("Wolfram Plot Command => " .. plotCommand)    -- (optionally) prints the command used for plotting
+  io_utils.debug_print("Wolfram Plot Command => " .. plotCommand)    -- (optionally) prints the command used for plotting
 
   async.run_plot_async(plotCommand, plotfile, function(err)       -- use run_plot_async to run the plotCommand asynchronously
     if err then                                                   -- If an error is found, then
@@ -468,7 +471,7 @@ function M.insert_plot_from_selection()
     end
 
     local include_line = "\\includegraphics[width=0.5\\textwidth]{" .. plotfile .. "}"  -- Save the \includegraphics-text
-    utils.debug_print("Inserting => " .. include_line)                                  -- (Optionally) prints the \includegraphics-text
+    io_utils.debug_print("Inserting => " .. include_line)                                  -- (Optionally) prints the \includegraphics-text
     vim.fn.append(end_row, include_line)                                                -- Print the includegraphis-text to the buffer
   end)
 end

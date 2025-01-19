@@ -5,7 +5,8 @@
 
 -- 1) Setup
 --------------------------------------------------------------------------------
-local utils = require("tungsten.utils")
+local io_utils = require("tungsten.utils.io_utils").debug_print
+local parser = require("tungsten.utils.parser")
 local async = require("tungsten.async")
 
 local M = {}
@@ -23,8 +24,8 @@ function M.append_equals_and_result_async(numeric)
   lines[#lines] = lines[#lines]:sub(1, end_col) -- Trim the last line to remove whitespace after selection
   local selection = table.concat(lines, "\n") -- Joins adjusted lines together into a single string seperated by newline characters
 
-  utils.debug_print("Original selection => " .. selection) -- (Optionally) prints the original selection 
-  local preprocessed = utils.preprocess_equation(selection) -- Preprocess the selected equation with utils.preprocess_equation
+  io_utils("Original selection => " .. selection) -- (Optionally) prints the original selection 
+  local preprocessed = parser.preprocess_equation(selection) -- Preprocess the selected equation with parser.preprocess_equation
 
   async.run_evaluation_async(preprocessed, numeric, function(raw_result, err) -- Call the async.run_evaluation_async to actually run the command in the wolfram engine
     if err then -- If an error occured during evaluation then
@@ -36,10 +37,10 @@ function M.append_equals_and_result_async(numeric)
       return -- Exit the callback
     end
 
-    local parsed_result = numeric and raw_result or utils.parse_result(raw_result) -- If numeric is true pass raw_result, else pass raw_result to parse_result
+    local parsed_result = numeric and raw_result or parser.parse_result(raw_result) -- If numeric is true pass raw_result, else pass raw_result to parse_result
     local updated       = selection .. " = " .. parsed_result -- Concatenates the original selection with an = and the parsed_result
 
-    utils.debug_print("Final updated line => " .. updated) -- (Optionally) print the final updated line
+    io_utils("Final updated line => " .. updated) -- (Optionally) print the final updated line
     vim.fn.setline(start_row, updated) -- Replaces the original selection with the updated line that includes the parsed result
     for i = start_row + 1, end_row do -- Loops through all subsequent lines in the selection
       vim.fn.setline(i, "") -- Set lines to an empty string

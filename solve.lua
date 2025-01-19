@@ -5,7 +5,11 @@
 
 -- 1) Setup
 --------------------------------------------------------------------------------
-local utils = require("tungsten.utils")
+local extractors = require("tungsten.utils.extractors")
+local io_utils = require("tungsten.utils.io_utils").debug_print
+local parser = require("tungsten.utils.parser")
+local string_utils = require("tungsten.utils.string_utils")
+local validation = require("tungsten.utils.validation")
 local async = require("tungsten.async")
 
 local M = {}
@@ -26,28 +30,28 @@ function M.append_solution_async()
   lines[#lines]  = lines[#lines]:sub(1, end_col)                    -- Trim whitespace after visual selection
   local selection = table.concat(lines, "\n")                       -- Concatenates the selection into a single string with rows seperated by \n
 
-  utils.debug_print("Original selection for solve => " .. selection)  -- (Optionally) prints the original selection for the solve-command
+  io_utils("Original selection for solve => " .. selection)  -- (Optionally) prints the original selection for the solve-command
 
 
   -- b) Extract equation and variable (e.g., "2x + 4 = 10, x")
   ------------------------------------------------------------------------------
-  local equation, variable, err = utils.extract_equation_and_variable(selection)  -- Extract equation and variable with utility-function
+  local equation, variable, err = extractors.extract_equation_and_variable(selection)  -- Extract equation and variable with utility-function
   if err then                                   -- If an error occus, then
     vim.api.nvim_err_writeln("Error: " .. err)  -- Print an error message to the error-log
     return
   end
 
-  utils.debug_print("Equation => " .. equation) -- (Optionally) prints the extracted equation
-  utils.debug_print("Variable => " .. variable) -- (Optionally) prints the extracted variable
+  io_utils("Equation => " .. equation) -- (Optionally) prints the extracted equation
+  io_utils("Variable => " .. variable) -- (Optionally) prints the extracted variable
 
 
   -- c) Preprocess from LaTeX => Wolfram
   ------------------------------------------------------------------------------
-  local preprocessed_eq = utils.preprocess_equation(equation)       -- Proprocess the equation with preprocess_equation
-  utils.debug_print("Preprocessed Equation => " .. preprocessed_eq) -- (Optionally) print the preprocessed equation
+  local preprocessed_eq = parser.preprocess_equation(equation)       -- Proprocess the equation with preprocess_equation
+  io_utils("Preprocessed Equation => " .. preprocessed_eq) -- (Optionally) print the preprocessed equation
 
   preprocessed_eq = preprocessed_eq:gsub("([^=])=([^=])", "%1==%2") -- Substitute = for == to align with WolframScript-syntax
-  utils.debug_print("Final solve equation => " .. preprocessed_eq)  -- (Optionally) print the final preprocessed equation
+  io_utils("Final solve equation => " .. preprocessed_eq)  -- (Optionally) print the final preprocessed equation
 
 
   -- d) Run solve asynchronously
@@ -89,7 +93,7 @@ function M.append_solution_async()
     end
 
     local solution_str = table.concat(solutions, ", ")      -- Formats the solutions into a string
-    utils.debug_print("Final solution => " .. solution_str) -- (Optionally) prints the final solution-string
+    io_utils("Final solution => " .. solution_str) -- (Optionally) prints the final solution-string
 
     -- h) Insert the solution below the selected lines
     ----------------------------------------------------------------------------
@@ -114,12 +118,12 @@ function M.append_system_solution_async()
   lines[#lines]  = lines[#lines]:sub(1, end_col)                    -- Trim whitespace after visual selection
   local selection = table.concat(lines, "\n")                       -- Concatenates the selection into a single string with rows seperated by \n
 
-  utils.debug_print("Original selection for sysem solve => " .. selection)  -- (Optionally) prints the original selection for the solve-command
+  io_utils("Original selection for sysem solve => " .. selection)  -- (Optionally) prints the original selection for the solve-command
 
 
   -- b) Split selection into individual equations
   ------------------------------------------------------------------------------
-  local equations = utils.split_equations(selection)    -- Split the system of equations with split_equations
+  local equations = string_utils.split_equations(selection)    -- Split the system of equations with split_equations
   if #equations < 2 then                                -- If less than two equations are selected, then
     vim.api.nvim_err_writeln("Error: Please select at least two equations for a system.") -- Print an error
     return
@@ -130,15 +134,15 @@ function M.append_system_solution_async()
   ------------------------------------------------------------------------------
   local preprocessed_equations = {}
   for i, eq in ipairs(equations) do                                     -- For each equation
-    utils.debug_print("Preprocessing equations[" .. i .. "] => " .. eq) -- (Optionally) print the equations to be processed in a list
-    preprocessed_equations[i] = utils.preprocess_equation(eq)           -- Call the preprocess_equation function on each equation
+    io_utils("Preprocessing equations[" .. i .. "] => " .. eq) -- (Optionally) print the equations to be processed in a list
+    preprocessed_equations[i] = parser.preprocess_equation(eq)           -- Call the preprocess_equation function on each equation
   end
 
 
   -- d) Check for balanced brackets
   ------------------------------------------------------------------------------
   for i, eq in ipairs(preprocessed_equations) do                                -- For each equation
-    if not utils.is_balanced(eq) then                                           -- If is_balanced-check fails, then
+    if not validation.is_balanced(eq) then                                           -- If is_balanced-check fails, then
       vim.api.nvim_err_writeln("Error: Unbalanced brackets in equation " .. i)  -- Print an error to the log
       return
     end
@@ -155,14 +159,14 @@ function M.append_system_solution_async()
 
   -- f) Extract variables from the preprocessed eqs
   ------------------------------------------------------------------------------
-  local variables = utils.extract_variables(preprocessed_equations)                   -- Extract the variables using extract_variables
+  local variables = extractors.extract_variables(preprocessed_equations)                   -- Extract the variables using extract_variables
   if #variables == 0 then                                                             -- If no variables are found, then
     vim.api.nvim_err_writeln("Error: No variables found in the selected equations.")  -- Print an error to the log
     return
   end
 
-  utils.debug_print("Preprocessed Equations for Solve => " .. table.concat(solve_equations, ", "))  -- (Optionally) print the preprocessed equations
-  utils.debug_print("Variables => " .. table.concat(variables, ", "))                               -- (Optionally) print the variables to solve for
+  io_utils("Preprocessed Equations for Solve => " .. table.concat(solve_equations, ", "))  -- (Optionally) print the preprocessed equations
+  io_utils("Variables => " .. table.concat(variables, ", "))                               -- (Optionally) print the variables to solve for
 
 
   -- g) Solve system of equations asynchronously
@@ -209,7 +213,7 @@ function M.append_system_solution_async()
     end
 
     local solution_str = table.concat(solutions, "\n")
-    utils.debug_print("Final solution => " .. solution_str)
+    io_utils("Final solution => " .. solution_str)
 
 
     -- k) Insert the solution below the selected lines (same as for "single equation"-solve)

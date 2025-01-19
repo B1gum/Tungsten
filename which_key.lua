@@ -26,6 +26,7 @@ wk.add({
   { "<leader>t?00", ":<C-u>TungstenSolveTest<CR>", desc = "Run TungstenSolve tests" },
   { "<leader>t?0e", ":<C-u>TungstenSolveSystemTest<CR>", desc = "Run TungstenSolveSystem tests" },
   { "<leader>t?t", ":<C-u>TungstenTaylorTest<CR>", desc = "Run TungstenTaylor tests" },
+  { "<leader>t?u", ":<C-u>TungstenUnitTests<CR>", desc = "Run replacement-unit tests"},
   { "<leader>t??", "<C-u>TungstenAllTests<CR>", desc = "Run all tests"},
 })
 

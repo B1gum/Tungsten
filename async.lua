@@ -5,7 +5,7 @@
 
 -- 1) setup
 --------------------------------------------------------------------------------
-local utils = require("tungsten.utils")
+local io_utils = require("tungsten.utils.io_utils").debug_print
 
 local M = {}
 
@@ -20,7 +20,7 @@ end
 -- 2) Define function that runs WolframScript asynchronously
 --------------------------------------------------------------------------------
 local function run_wolframscript_async(cmd, callback)
-  utils.debug_print("run_wolframscript_async cmd => " .. table.concat(cmd, " "))  -- (Optionally) print the WolframScript being passed to the engine
+  io_utils("run_wolframscript_async cmd => " .. table.concat(cmd, " "))  -- (Optionally) print the WolframScript being passed to the engine
 
   local job_id = vim.fn.jobstart(cmd, {               -- Initializes an asynchronous job to run thd cmd
     stdout_buffered = true,                           -- Buffers the output such that all output is collected before being passed to callback
@@ -32,17 +32,17 @@ local function run_wolframscript_async(cmd, callback)
       local result = table.concat(data, "\n")
       result = result:gsub("[%z\1-\31]", "")          -- Remove control-characters and non-printable characters from the output
       result = fix_sqrt_tex(result)                   -- Call the fix_sqrt_tex-function
-      utils.debug_print("on_stdout => " .. result)    -- (Optionally) prints the cleaned and formatted result
+      io_utils("on_stdout => " .. result)    -- (Optionally) prints the cleaned and formatted result
       callback(result, nil)                           -- Returns the callback with the result and "nil" for the error
     end,
     on_stderr = function(_, errdata, _)
       if errdata and #errdata > 0 then                -- If there is any error data, then
-        utils.debug_print("on_stderr => " .. table.concat(errdata, " "))  -- Print the error data
+        io_utils("on_stderr => " .. table.concat(errdata, " "))  -- Print the error data
         callback(nil, table.concat(errdata, " "))     -- Returns the callback with the error data and "nil" for the result
       end
     end,
     on_exit = function(_, exit_code, _)
-      utils.debug_print("on_exit => code = " .. exit_code)  -- (Optionally) prints the exit-code
+      io_utils("on_exit => code = " .. exit_code)  -- (Optionally) prints the exit-code
       if exit_code ~= 0 then                                -- If exit-code is not 0 (indicating failure), then
         callback(nil, "WolframScript exited with code " .. exit_code)   -- Returns the callback wirh the exit code and "nil" for the result
       end
@@ -52,7 +52,7 @@ local function run_wolframscript_async(cmd, callback)
   if job_id <= 0 then                                     -- If job failed to start, then
     callback(nil, "Failed to start wolframscript job.")   -- Returns the callback with the error message and "nil" for the result
   else
-    utils.debug_print("Started job_id => " .. job_id)     -- Else (Optionally) print the job_id
+    io_utils("Started job_id => " .. job_id)     -- Else (Optionally) print the job_id
   end
 end
 
@@ -123,22 +123,22 @@ function M.run_plot_async(wolfram_code, plotfile, callback)
   local code = string.format('Export["%s", %s]', plotfile, wolfram_code)    -- Sets up code for exporting the created plot as a .pdf
 
   local cmd = { "wolframscript", "-code", code}                             -- Sets up the WolframScript-command
-  utils.debug_print("run_plot_async cmd => " .. table.concat(cmd, " "))     -- (Optionally) prints the command to be passed to the engine
+  io_utils("run_plot_async cmd => " .. table.concat(cmd, " "))     -- (Optionally) prints the command to be passed to the engine
 
   local job_id = vim.fn.jobstart(cmd, {                                     -- Initiate asynchronous job with same logic as the general implementation
     stdout_buffered = true,
     on_stdout = function(_, data, _)
       if data and #data > 0 then
-        utils.debug_print("on_stdout => " .. table.concat(data, " "))
+        io_utils("on_stdout => " .. table.concat(data, " "))
       end
     end,
     on_stderr = function(_, errdata, _)
       if errdata and #errdata > 0 then
-        utils.debug_print("on_stderr => " .. table.concat(errdata, " "))
+        io_utils("on_stderr => " .. table.concat(errdata, " "))
       end
     end,
     on_exit = function(_, exit_code, _)
-      utils.debug_print("run_plot_async on_exit => code = " .. exit_code)
+      io_utils("run_plot_async on_exit => code = " .. exit_code)
       if exit_code == 0 then
         callback(nil)
       else
@@ -150,7 +150,7 @@ function M.run_plot_async(wolfram_code, plotfile, callback)
   if job_id <= 0 then
     callback("Failed to start wolframscript plot job.")
   else
-    utils.debug_print("Started plot job_id => " .. job_id)
+    io_utils("Started plot job_id => " .. job_id)
   end
 end
 

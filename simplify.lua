@@ -5,7 +5,8 @@
 
 -- 1) Setup
 ---------------------------------------------------------------------------------
-local utils = require("tungsten.utils")
+local io_utils = require("tungsten.utils.io_utils").debug_print
+local parser = require("tungsten.utils.parser")
 local async = require("tungsten.async")
 
 local M = {}
@@ -24,8 +25,8 @@ function M.append_equals_and_simplify_async(numeric)
   lines[#lines] = lines[#lines]:sub(1, end_col)                     -- Trim whitespace after selection
   local selection = table.concat(lines, "\n")                       -- Concatenate the selection into a single string with rows seperated by \n
 
-  utils.debug_print("Original selection for simplify => " .. selection)             -- (Optionally) print the original selection for the simplification
-  local preprocessed = utils.preprocess_equation(selection)                         -- Preprocess the equation with preprocess_equation
+  io_utils("Original selection for simplify => " .. selection)             -- (Optionally) print the original selection for the simplification
+  local preprocessed = parser.preprocess_equation(selection)                         -- Preprocess the equation with preprocess_equation
 
   async.run_simplify_async(preprocessed, numeric, function(raw_result, err)         -- Run the simplify-command asynchronously
     if err then                                                                     -- If an error occurs, then
@@ -37,10 +38,10 @@ function M.append_equals_and_simplify_async(numeric)
       return
     end
 
-    local parsed_result = numeric and raw_result or utils.parse_result(raw_result)  -- Parse the result with parse_result if the symbolic version of the command is chosen
+    local parsed_result = numeric and raw_result or parser.parse_result(raw_result)  -- Parse the result with parse_result if the symbolic version of the command is chosen
     local updated       = selection .. " = " .. parsed_result                       -- Save the line to be pasted to the buffer
 
-    utils.debug_print("Final updated line => " .. updated)                          -- (Optionally) print the final processed line
+    io_utils("Final updated line => " .. updated)                          -- (Optionally) print the final processed line
     vim.fn.setline(start_row, updated)                                              -- Print the updated line to the buffer
     for i = start_row + 1, end_row do                                               -- For all following rows in the selection
       vim.fn.setline(i, "")                                                         -- replace rows with empty strings
