@@ -14,7 +14,7 @@ wk.add({
   { "<leader>ten", ":<C-u>TungstenAutoEvalNumeric<CR>", desc = "evaluate numerically" },
   { "<leader>teS", ":<C-u>TungstenAutoSimplifyNumeric<CR>", desc = "simplify numerically" },
   { "<leader>tes", ":<C-u>TungstenAutoSimplify<CR>", desc = "simplify expression" },
-  { "<leader>tm", function() require('tungsten_telescope').open_tungsten_picker() end , desc = "open tungsten command palette" },
+  { "<leader>tm", function() require("tungsten.telescope").open_tungsten_picker() end , desc = "open tungsten command palette" },
   { "<leader>ts", group = "solve" },
   { "<leader>ts0", ":<C-u>TungstenSolve<CR>", desc = "solve for variable (expression, variable)" },
   { "<leader>tss", ":<C-u>TungstenSolveSystem<CR>", desc = "solve system of equations (expression, expression, ...)" },

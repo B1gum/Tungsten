@@ -343,7 +343,7 @@ function M.preprocess_equation(eq)
   eq = limits(eq)
   io_utils("After Limit replacement => " .. eq)
 
-  escape_backslashes(eq)
+  eq = escape_backslashes(eq)
   io_utils("After escaping backslashes and quotes => " .. eq)
 
   io_utils("Final preprocessed equation => " .. eq)

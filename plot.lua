@@ -323,7 +323,7 @@ function M.insert_plot_from_selection()
   io_utils.debug_print("CurlySpec => " .. (curlySpec or "nil"))            -- (Optionally) prints the CurlySpec (Style-spec)
 
   -- Extract the exprPart (expression to be plotted) and rangeSpec (range to plot within) from mainExpr
-  local exprPart, rangeSpec = utils.extract_expr_and_range(mainExpr)    -- Seperated the exprPart from the rangeSpec
+  local exprPart, rangeSpec = extractors.extract_expr_and_range(mainExpr)    -- Seperated the exprPart from the rangeSpec
   io_utils.debug_print("ExprPart => " .. (exprPart or "nil"))              -- (Optionally) prints the expression to be plotted
   io_utils.debug_print("RangeSpec => " .. (rangeSpec or "nil"))            -- (Optionally) prints the range to plot within
 
