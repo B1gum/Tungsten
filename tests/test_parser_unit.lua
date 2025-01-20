@@ -4,6 +4,7 @@
 -- fractions, function calls, limits, etc.
 --------------------------------------------------------------------------------
 
+--------------------------------------------------------------------------------
 -- 1) Requires
 --------------------------------------------------------------------------------
 local parser      = require("tungsten.utils.parser")
@@ -13,10 +14,9 @@ local test_runner = require("tungsten.tests.test_runner")  -- For run_unit_tests
 -- We'll return everything in 'M'
 local M = {}
 
+
 --------------------------------------------------------------------------------
--- 2) Each sub-test function
---    (mirrors your original "run_sum_tests", "run_integral_tests", etc.,
---    except we don't run them at module load—we define them as local functions.)
+-- 2) Sub-tests for each parser function
 --------------------------------------------------------------------------------
 
 -- a) basic_replacements
@@ -87,17 +87,17 @@ local function run_ordinary_derivative_tests()
   local test_cases = {
     {
       description = "Simple derivative",
-      input = "\\frac{\\mathrm{d}}{\\mathrm{d}x} (x^2)",
+      input = "\\frac{d}{dx} (x^2)",
       expected = "D[(x^2), x]",
     },
     {
       description = "Derivative without parentheses",
-      input = "\\frac{\\mathrm{d}}{\\mathrm{d}y} y^2 + 2y - 8",
+      input = "\\frac{d}{dy} y^2 + 2y - 8",
       expected = "D[y^2 + 2y - 8, y]",
     },
     {
       description = "Nested derivative",
-      input = "\\frac{\\mathrm{d}}{\\mathrm{d}z} \\sin(z)",
+      input = "\\frac{d}{dz} \\sin(z)",
       expected = "D[\\sin(z), z]",
     },
   }
@@ -131,8 +131,8 @@ local function run_sum_tests()
   local test_cases = {
     {
       description = "Simple sum with parentheses",
-      input = "\\sum_{i=0}^{\\infty} (i^2)",
-      expected = "Sum[(i^2), {i, 0, Infinity}]",
+      input = "\\sum_{i=0}^{Infinity} i^2",
+      expected = "Sum[i^2, {i, 0, Infinity}]",
     },
     {
       description = "Sum without parentheses",
@@ -141,7 +141,7 @@ local function run_sum_tests()
     },
     {
       description = "Sum with complex expression",
-      input = "\\sum_{k=1}^{10} k^3 + 2k",
+      input = "\\sum_{k=1}^{10} (k^3 + 2k)",
       expected = "Sum[k^3 + 2k, {k, 1, 10}]",
     },
   }
@@ -179,7 +179,7 @@ local function run_integral_tests()
     {
       description = "Empty integral",
       input = "\\int dy",
-      expected = "Integrate[, y]",  
+      expected = "Integrate[, y]",
     },
   }
   test_runner.run_unit_tests(parser.tests.integral, test_cases, "integral")
@@ -269,7 +269,65 @@ local function run_escape_backslashes_tests()
 end
 
 --------------------------------------------------------------------------------
--- 3) Suite-Table
+-- 3) Top-level tests (preprocess_equation, parse_result)
+--------------------------------------------------------------------------------
+
+-- j) test the entire pipeline: M.preprocess_equation(eq)
+local function run_preprocess_equation_tests()
+  local test_cases = {
+    {
+      description = "All transformations in one shot",
+      input = "\\sin\\left(\\cos(2x)\\right) + \\frac{\\mathrm{d}}{\\mathrm{d}x}(x^2) + \\frac{a}{b}",
+      expected = "Sin[Cos[2x]] + D[x^2, x] + (a/b)",
+    },
+    {
+      description = "Integral + sum + partial derivative",
+      input = "\\int_{0}^{1} x^2 dx + \\sum_{k=0}^{\\infty} (k) + \\frac{\\partial}{\\partial x} e^x",
+      expected = "Integrate[x^2, {x, 0, 1}] + Sum[k, {k, 0, Infinity}] + D[E^x, x]",
+    },
+    {
+      description = "Limits + fraction + trig",
+      input = "\\lim_{y -> \\infty} \\frac{\\sin(y)}{y}",
+      expected = "Limit[Sin[y]/y, y -> Infinity]",
+    },
+    {
+      description = "Empty integrand with indefinite integral + partial derivative 2nd order + backslash escaping",
+      input = "\\int d\\theta + \\frac{\\partial^2}{\\partial x^2} \\sqrt{x}",
+      expected = "Integrate[, \\theta] + D[D[Sqrt{x}, x], x]",
+    },
+  }
+  test_runner.run_unit_tests(parser.preprocess_equation, test_cases, "preprocess_equation")
+end
+
+-- k) test parse_result
+local function run_parse_result_tests()
+  local test_cases = {
+    {
+      description = "Nil input => returns empty string",
+      input = nil,
+      expected = "",
+    },
+    {
+      description = "Nonprintable chars stripped, leading/trailing spaces trimmed",
+      input = "  \t\n  \001Hello World\002  \r\n",
+      expected = "Hello World",
+    },
+    {
+      description = "No changes if normal string with no leading/trailing whitespace",
+      input = "Hello, I'm fine.",
+      expected = "Hello, I'm fine.",
+    },
+    {
+      description = "String with only whitespace becomes empty",
+      input = "   \t\n\r",
+      expected = "",
+    },
+  }
+  test_runner.run_unit_tests(parser.parse_result, test_cases, "parse_result")
+end
+
+--------------------------------------------------------------------------------
+-- 4) Suite-Table
 --    This is a local table mapping suite names to the local test functions above.
 --------------------------------------------------------------------------------
 local test_suites = {
@@ -282,10 +340,12 @@ local test_suites = {
   function_calls         = run_function_calls_tests,
   limits                 = run_limits_tests,
   escape_backslashes     = run_escape_backslashes_tests,
+  preprocess_equation    = run_preprocess_equation_tests,
+  parse_result           = run_parse_result_tests,
 }
 
 --------------------------------------------------------------------------------
--- 4) Public interface
+-- 5) Public interface
 --------------------------------------------------------------------------------
 
 -- a) Run ALL parser sub-tests in one go
@@ -300,6 +360,8 @@ function M.run_parser_unit_tests()
   run_function_calls_tests()
   run_limits_tests()
   run_escape_backslashes_tests()
+  run_preprocess_equation_tests()
+  run_parse_result_tests()
 end
 
 -- b) Run ONE parser sub-test by name

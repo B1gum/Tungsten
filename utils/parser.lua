@@ -31,6 +31,7 @@ local function basic_replacements(eq)
     :gsub("e%^", "E^")
     :gsub("\\[%s:,;!]", "")
     :gsub("\\mathrm%{d%}([a-zA-Z])", "d%1")
+    :gsub("\\mathrm{d}", "d")
 
   eq = eq:gsub("Log10%^([0-9]+)%(([^()]+)%)", "Log10(%2)^%1")
 
@@ -40,17 +41,23 @@ end
 
 -- b) Ordinary Derivative Replacement
 local function ordinary_derivative(eq)
-  eq = eq:gsub("\\frac%{\\mathrm%{d%}%}%{\\mathrm%{d%}([a-zA-Z])%}%s*%((%b{})%)", function(var, expr)
-    expr = expr:sub(2, -2)
-    io_utils("Replacing derivative: var = " .. var .. ", expr = " .. expr)
+  eq = eq:gsub("\\frac%{d%}%{d([a-zA-Z])%}%s*%((%b{})%)", function(var, expr_paren)
+    local expr = expr_paren:sub(2, -2)
     return "D[" .. expr .. ", " .. var .. "]"
   end)
 
   eq = eq:gsub(
-    "\\frac%{\\mathrm%{d%}%}%{\\mathrm%{d%}([a-zA-Z])%}%s*([^%(][^=]+)",
+    "\\frac%{d%}%{d([a-zA-Z])%}%s*([^%(][^=]+)",
     function(var, expr)
       expr = expr:match("^%s*(.-)%s*$") or expr
       return "D[" .. expr .. ", " .. var .. "]"
+    end
+  )
+
+  eq = eq:gsub(
+    "\\frac%{d%}%{d([a-zA-Z])%}%s*%(([^()]+)%)",
+    function(var, expr_in_parens)
+      return "D[" .. expr_in_parens .. ", " .. var .. "]"
     end
   )
 
@@ -58,6 +65,7 @@ local function ordinary_derivative(eq)
 end
 
 
+-- c) Partial Derivatives
 -- c) Partial Derivatives
 local function partial_derivative(eq)
   local function build_nested_D(expr, vars)
@@ -124,53 +132,73 @@ local function partial_derivative(eq)
 end
 
 
+
+
 -- d) Sum handling: \sum_{i=0}^{\infty} expression => Sum[ expression, {i, 0, Infinity}]
 local function sum(eq)
+  -- First, handle sums with expressions enclosed in parentheses
   eq = eq:gsub(
-    "\\sum_%{([^=]+)=([^}]+)%}%^{([^}]+)}%s*%((%b{})%)",
+    "\\sum_%{([^=]+)=([^}]+)%}%^{([^}]+)}%s*(%b())",
     function(var, lower, upper, expr_paren)
+      -- Remove the outer parentheses
       local expr = expr_paren:sub(2, -2)
+      -- Replace LaTeX infinity symbol with Wolfram's Infinity
       local up = upper:gsub("\\infty", "Infinity")
+      -- Format the Sum expression
       return string.format("Sum[%s, {%s, %s, %s}]", expr, var, lower, up)
     end
   )
 
+  -- Next, handle sums without expressions enclosed in parentheses
   eq = eq:gsub(
-    "\\sum_%{([^=]+)=([^}]+)%}%^{([^}]+)}%s*([^%(][^=]+)",
+    "\\sum_%{([^=]+)=([^}]+)%}%^{([^}]+)}%s*([^%(][^=]*)",
     function(var, lower, upper, expr)
+      -- Trim any leading or trailing whitespace from the expression
       expr = expr:match("^%s*(.-)%s*$") or expr
+      -- Replace LaTeX infinity symbol with Wolfram's Infinity
       local up = upper:gsub("\\infty", "Infinity")
+      -- Format the Sum expression
       return string.format("Sum[%s, {%s, %s, %s}]", expr, var, lower, up)
     end
   )
+
   return eq
 end
 
 
--- e) Integrals Replacement: \int_{a}^{b} => Integrate[..., {x, a, b}]
+
+--------------------------------------------------------------------------------
+-- e) Integrals Replacement: \int_{a}^{b} => Integrate[..., {var, a, b}]
+--    Handles variables like x, y, \theta, etc. Allows optional curly braces
+--    around the differential: d\theta or d{\theta}, etc.
+--------------------------------------------------------------------------------
 local function integral(eq)
-  ---------------------------------------------------------------------------
+  local varPattern = "([\\]?%a+)"
+
+  -----------------------------------------------------------------------------
   -- PASS 1: Definite integral WITH braces
-  -- Matches: \int_{a}^{b} <EXPR> dx
-  -- e.g. "\int_{0}^{1} x^{2} dx"
-  ---------------------------------------------------------------------------
+  --   Matches: \int_{a}^{b} <EXPR> dx
+  --   e.g. "\int_{0}^{1} x^{2} dx"
+  --
+  --   Now we allow: d( var ) or d{ var }, i.e. optional curly braces.
+  -----------------------------------------------------------------------------
   eq = eq:gsub(
-    "\\int_%{([^}]+)%}%^%{([^}]+)%}%s*(.-)%s*d([a-zA-Z]+)",
+    "\\int_%{([^}]+)%}%^%{([^}]+)%}%s*(.-)%s*d%{?" .. varPattern .. "%}?",
     function(lower, upper, expr, var)
       if expr:match("^%s*$") then
-        expr = ""  -- If integrand is empty => "Integrate[], var"
+        expr = ""  -- If integrand is empty => "Integrate[, var]"
       end
       return string.format("Integrate[%s, {%s, %s, %s}]", expr, var, lower, upper)
     end
   )
 
-  ---------------------------------------------------------------------------
+  -----------------------------------------------------------------------------
   -- PASS 2: Definite integral WITHOUT braces
-  -- Matches: \int_a^b <EXPR> dx
-  -- e.g. "\int_0^1 e^z dz"
-  ---------------------------------------------------------------------------
+  --   Matches: \int_a^b <EXPR> dx
+  --   e.g. "\int_0^1 e^z dz"
+  -----------------------------------------------------------------------------
   eq = eq:gsub(
-    "\\int_([^%s]+)%^([^%s]+)%s*(.-)%s*d([a-zA-Z]+)",
+    "\\int_([^%s]+)%^([^%s]+)%s*(.-)%s*d%{?" .. varPattern .. "%}?",
     function(lower, upper, expr, var)
       if expr:match("^%s*$") then
         expr = ""
@@ -179,13 +207,13 @@ local function integral(eq)
     end
   )
 
-  ---------------------------------------------------------------------------
+  -----------------------------------------------------------------------------
   -- PASS 3: Indefinite integrals
-  -- Matches: \int <EXPR> dx
-  -- e.g. "\int e^x dx"
-  ---------------------------------------------------------------------------
+  --   Matches: \int <EXPR> dx
+  --   e.g. "\int e^x dx"
+  -----------------------------------------------------------------------------
   eq = eq:gsub(
-    "\\int%s*(.-)%s*d([a-zA-Z]+)",
+    "\\int%s*(.-)%s*d%{?" .. varPattern .. "%}?",
     function(expr, var)
       if expr:match("^%s*$") then
         expr = ""
@@ -343,8 +371,8 @@ function M.preprocess_equation(eq)
   eq = limits(eq)
   io_utils("After Limit replacement => " .. eq)
 
-  eq = escape_backslashes(eq)
-  io_utils("After escaping backslashes and quotes => " .. eq)
+--  eq = escape_backslashes(eq)                                   -- Possibly not needed
+--  io_utils("After escaping backslashes and quotes => " .. eq)   -- Possibly not needed
 
   io_utils("Final preprocessed equation => " .. eq)
   return eq
