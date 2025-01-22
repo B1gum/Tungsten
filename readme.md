@@ -14,6 +14,7 @@
   - [Using packer.nvim](#using-packernvim)
   - [Using lazy.nvim](#using-lazynvim)
   - [Using vim-plug](#using-vim-plug)
+  - [Setting up the Wolfram engine](#setting-up-the-wolfram-engine)
 - [Usage](#usage)
   - [Example: Solving an Equation](#example-solving-an-equation)
 - [Roadmap](#roadmap)
