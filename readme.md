@@ -69,12 +69,39 @@ Plug 'B1gum/Tungsten'
 Then run `:PlugInstall` within Neovim.
 
 
+### Setting Up the Wolfram Engine
+**Tungsten** integrates Wolfram functionalities, which requires the Wolfram Engine and WolframScript to be installed and properly configured on your computer. The steps below outline the steps to set up the necessary components.
+
+  1. **Download and Install the Wolfram Engine**
+  
+  The Wolfram Engine is available for free for developers, students, and for non-commercial use. Follow these steps to download and install it:
+
+  a. **Download the Wolfram Engine**
+
+  1. Visit the [Wolfram Engine page](https://www.wolfram.com/engine/).
+  2. Click on *Start Download*
+  3. Follow the installation-guide
+
+  b. **Download WolframScript**
+
+  1. WolframScript available for download [here](https://www.wolfram.com/wolframscript/).
+  2. Click **Download** and follow the installation guide
+
+  c. **Get and Activate Your Free Wolfram License**
+
+  1. If you have just followed step **a. Download the Wolfra Engine** you should be able to click a box saying **Get Your License** (or just [click here](https://account.wolfram.com/access/wolfram-engine/free)) to be taken to a site where you can obtain your free Wolfram License
+  2. Agree to Wolfram's Terms-and-services and click **Get License** (you have to have a Wolfram-account for this to be possible)
+  3. To activate your license you have to open up the Wolfram-engine on your device and log in once. After this your license is activated and you are ready to use **Tungsten**
+
+As the plugin is still in rather early development please do not hesitate to [open an issue](https://github.com/B1gum/Tungsten/issues) or [Contact B1gum](https://github.com/B1gum).
+
+
 ## Usage
 
 After installation, **Tungsten** provides several commands to enhance your mathematical computations within Neovim:
 
 - `:TungstenAutoEval` – Evaluate expression symbolically.
-– `:TungstenAutoEvalNumeric` – Evaluate expression numerically
+– `:TungstenAutoEvalNumeric` – Evaluate expression numerically
 – `:TungstenSolve` – Solve for variable in a single equation.
 - `:TungstenSolveSystem` – Solve systems of equations.
 - `:TungstenRoot` – Find roots of equations.
