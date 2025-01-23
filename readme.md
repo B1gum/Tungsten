@@ -9,12 +9,12 @@
 
 ## Table of Contents
 
-- [Features](#features)
 - [Installation](#installation)
   - [Using packer.nvim](#using-packernvim)
   - [Using lazy.nvim](#using-lazynvim)
   - [Using vim-plug](#using-vim-plug)
   - [Setting up the Wolfram engine](#setting-up-the-wolfram-engine)
+- [Features](#features)
 - [Usage](#usage)
   - [Example: Solving an Equation](#example-solving-an-equation)
 - [Roadmap](#roadmap)
@@ -25,14 +25,6 @@
 - [License](#license)
 - [Contact](#contact)
 
-
-## Features
-
-- **Equation Solving:** Solve single equations, systems of equations, PDEs, and ODEs.
-- **Plotting:** Generate 2D and 3D plots with extensive customization options.
-- **Calculus Operations:** Perform differentiation (including partial derivatives), integration, and summations.
-- **Simplifying Expressions:** Easily handle simplification of expressions written in LaTeX syntax
-- **Imaginary Units:** Support for complex numbers and imaginary units.
 
 ## Installation
 
@@ -95,6 +87,15 @@ Then run `:PlugInstall` within Neovim.
   3. To activate your license you have to open up the Wolfram-engine on your device and log in once. After this your license is activated and you are ready to use **Tungsten**
 
 As the plugin is still in rather early development please do not hesitate to [open an issue](https://github.com/B1gum/Tungsten/issues) or [Contact B1gum](https://github.com/B1gum).
+
+
+## Features
+
+- **Equation Solving:** Solve single equations, systems of equations, PDEs, and ODEs.
+- **Plotting:** Generate 2D and 3D plots with extensive customization options.
+- **Calculus Operations:** Perform differentiation (including partial derivatives), integration, and summations.
+- **Simplifying Expressions:** Easily handle simplification of expressions written in LaTeX syntax
+- **Imaginary Units:** Support for complex numbers and imaginary units.
 
 
 ## Usage
