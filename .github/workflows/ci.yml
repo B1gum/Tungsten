@@ -14,5 +14,56 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v3
 
-    - name: Display macOS Version
-      run: sw_vers
+    - name: Set Up Lua
+      uses: lua/setup-lua@v1
+      with:
+        lua-version: '5.4'  # Specify the Lua version compatible with your plugin
+
+    - name: Install NeoVim
+      uses: lazycommunity/setup-neovim@v1
+      with:
+        neovim-version: 'stable'  # You can specify a particular version if needed
+
+    - name: Prepare Log Directory
+      run: mkdir -p logs
+
+    - name: Create Temporary init_ci.lua
+      run: |
+        cat <<EOF > init_ci.lua
+        -- Minimal NeoVim configuration for CI
+
+        -- Disable loading of user-specific configurations
+        vim.o.nocompatible = true
+        vim.cmd('filetype plugin indent on')
+
+        -- Set runtime path to include tungsten
+        vim.cmd('set runtimepath+=' .. vim.fn.stdpath('data') .. '/site/pack/packer/start/tungsten')
+
+        -- Initialize plugin manager and load plugins
+        -- Example for packer.nvim:
+        vim.cmd('packadd packer.nvim')
+
+        require('packer').startup(function()
+          use 'wbthomason/packer.nvim' 
+          use 'b1gum/tungsten'
+        end)
+
+        -- Additional minimal configurations if necessary
+        EOF
+
+    - name: Run Tungsten Test Suite
+      env:
+        CI: true  # Set an environment variable to indicate CI environment
+      run: |
+        nvim --headless \
+             -u init_ci.lua \  # Use the temporary init file
+             -c ':TungstenTestSuite all' \
+             -c 'qa!'  # Quit NeoVim after running tests
+
+    - name: Upload Test Logs
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-logs
+        path: logs/test_logs.txt
+
