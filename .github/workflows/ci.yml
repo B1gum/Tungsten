@@ -32,7 +32,16 @@ jobs:
           brew update
           brew install neovim lua
 
-      # 5. Create a Minimal init.lua for CI with Lazy.nvim Bootstrap
+      # 5. Cache Neovim Plugins (Optional but Recommended)
+      - name: Cache Neovim Plugins
+        uses: actions/cache@v3
+        with:
+          path: ~/.local/share/nvim/lazy
+          key: ${{ runner.os }}-nvim-lazy-${{ hashFiles('**/init.lua') }}
+          restore-keys: |
+            ${{ runner.os }}-nvim-lazy-
+
+      # 6. Create Minimal init.lua for CI with Lazy.nvim Bootstrap
       - name: Create Minimal init.lua for CI
         run: |
           mkdir -p ~/.config/nvim
@@ -50,24 +59,30 @@ jobs:
             })
           end
           vim.opt.rtp:prepend(lazypath)
-
+          
+          -- Verify if Lazy.nvim was cloned correctly
+          if not pcall(require, 'lazy') then
+            vim.api.nvim_err_writeln("Failed to load Lazy.nvim")
+            return
+          end
+          
           require('lazy').setup({
             { 'b1gum/tungsten' },
             -- Add other plugins here if necessary
           })
-
+          
           -- Optional: Auto-install plugins on first run
           vim.cmd('autocmd User LazyVimDone ++once lua require("lazy").install()')
           EOF
 
-      # 6. Install Plugin Dependencies via Lazy.nvim
+      # 7. Install Plugin Dependencies via Lazy.nvim
       - name: Install Plugin Dependencies
         run: |
           nvim --headless +Lazy\ install +qa
         env:
           XDG_DATA_HOME: ~/.local/share
 
-      # 7. Verify Plugin Installation
+      # 8. Verify Plugin Installation
       - name: Verify Plugin Installation
         run: |
           if [ ! -d ~/.local/share/nvim/lazy/tungsten ]; then
@@ -76,24 +91,32 @@ jobs:
           fi
           echo "Tungsten plugin installed successfully."
 
-      # 8. List Installed Plugins (Debugging Step)
+      # 9. List Installed Plugins (Debugging Step)
       - name: List Installed Plugins
         run: |
+          echo "Listing installed plugins in ~/.local/share/nvim/lazy/"
           ls -la ~/.local/share/nvim/lazy/
 
-      # 9. Check Available Neovim Commands (Debugging Step)
-      - name: Check Available Neovim Commands
+      # 10. Check Lazy.nvim Lua Module (Debugging Step)
+      - name: Check Lazy.nvim Lua Module
         run: |
-          nvim --headless -c "command" -c "qa!"
+          echo "Checking Lazy.nvim Lua module:"
+          ls -la ~/.local/share/nvim/lazy/lazy.nvim/lua/lazy/
+          if [ -f ~/.local/share/nvim/lazy/lazy.nvim/lua/lazy/init.lua ]; then
+            echo "Lazy.nvim Lua module found."
+          else
+            echo "Lazy.nvim Lua module not found."
+            exit 1
+          fi
 
-      # 10. Run Tungsten Test Suite
+      # 11. Run Tungsten Test Suite
       - name: Run Tungsten Test Suite
         run: |
           nvim --headless -c "TungstenTestSuite all" -c "qa!"
         env:
           XDG_CONFIG_HOME: ~/.config  # Ensure Neovim can find its config
 
-      # 11. Upload Test Logs
+      # 12. Upload Test Logs
       - name: Upload Test Logs
         if: always()  # Ensure this step runs even if previous steps fail
         uses: actions/upload-artifact@v3
@@ -101,7 +124,7 @@ jobs:
           name: test-logs
           path: logs/test_logs.txt
 
-      # 12. Display Test Logs (Optional)
+      # 13. Display Test Logs (Optional)
       - name: Display Test Logs
         if: always()
         run: |
