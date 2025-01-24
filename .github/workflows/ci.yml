@@ -14,20 +14,15 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v3
 
-    - name: Install Homebrew
-      # Homebrew is pre-installed on macOS runners, but ensuring it's up to date
-      run: brew update
-
-    - name: Install Lua
-      run: brew install lua@5.4
+    - name: Set Up Lua
+      uses: lua/setup-lua@v1
+      with:
+        lua-version: '5.4'  # Specify the Lua version compatible with your plugin
 
     - name: Install NeoVim
-      run: brew install neovim
-
-    - name: Install Packer.nvim
-      run: |
-        git clone --depth 1 https://github.com/wbthomason/packer.nvim \
-          ~/.local/share/nvim/site/pack/packer/start/packer.nvim
+      uses: lazycommunity/setup-neovim@v1
+      with:
+        neovim-version: 'stable'  # You can specify a particular version if needed
 
     - name: Prepare Log Directory
       run: mkdir -p logs
@@ -41,25 +36,19 @@ jobs:
         vim.o.nocompatible = true
         vim.cmd('filetype plugin indent on')
 
-        -- Set runtime path to include packer.nvim and tungsten
-        vim.cmd('set runtimepath+=' .. vim.fn.stdpath('data') .. '/site/pack/packer/start/packer.nvim')
+        -- Set runtime path to include tungsten
         vim.cmd('set runtimepath+=' .. vim.fn.stdpath('data') .. '/site/pack/packer/start/tungsten')
 
-        -- Initialize packer.nvim and install plugins
+        -- Initialize plugin manager and load plugins
+        -- Example for packer.nvim:
+        vim.cmd('packadd packer.nvim')
+
         require('packer').startup(function()
-          use 'wbthomason/packer.nvim'  -- Packer can manage itself
-          use 'b1gum/tungsten'          -- Your Tungsten plugin
-          -- Add any other plugins required for testing
+          use 'wbthomason/packer.nvim' 
+          use 'b1gum/tungsten'
         end)
 
-        -- Wait for packer to install plugins
-        vim.cmd('autocmd User PackerComplete quitall')
-
-        -- Optional: Disable swap files for CI
-        vim.o.swapfile = false
-
-        -- Optional: Set minimal UI settings
-        vim.o.termguicolors = false
+        -- Additional minimal configurations if necessary
         EOF
 
     - name: Run Tungsten Test Suite
@@ -67,8 +56,7 @@ jobs:
         CI: true  # Set an environment variable to indicate CI environment
       run: |
         nvim --headless \
-             -u init_ci.lua \
-             -c ':PackerSync' \
+             -u init_ci.lua \  # Use the temporary init file
              -c ':TungstenTestSuite all' \
              -c 'qa!'  # Quit NeoVim after running tests
 
