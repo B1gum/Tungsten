@@ -52,7 +52,13 @@ jobs:
           echo "📦 Listing installed plugins in ~/.local/share/nvim/site/pack/plugins/start/:"
           ls -la ~/.local/share/nvim/site/pack/plugins/start/
 
-      # 7. Run Tungsten Test Suite
+      # 7. Simulate Opening a .tex File to Load the Plugin
+      - name: Simulate Opening a .tex File
+        run: |
+          echo "% Dummy TeX file to trigger plugin loading" > dummy.tex
+          nvim --headless dummy.tex -c "qa!"
+
+      # 8. Run Tungsten Test Suite
       - name: Run Tungsten Test Suite
         run: |
           # Ensure logs directory exists
@@ -62,7 +68,7 @@ jobs:
         env:
           XDG_CONFIG_HOME: ~/.config  # Ensure Neovim uses the correct config
 
-      # 8. Upload Test Logs
+      # 9. Upload Test Logs
       - name: Upload Test Logs
         if: always()  # Ensure this step runs even if previous steps fail
         uses: actions/upload-artifact@v3
@@ -70,7 +76,7 @@ jobs:
           name: test-logs
           path: logs/test_logs.txt
 
-      # 9. Display Test Logs (Optional)
+      # 10. Display Test Logs (Optional)
       - name: Display Test Logs
         if: always()
         run: |
