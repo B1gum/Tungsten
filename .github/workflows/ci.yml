@@ -18,20 +18,19 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # 2. Set up Homebrew (use the correct repository and version)
-      - name: Install Homebrew
-        uses: Homebrew/install@v3
+      # 2. Display macOS Version (Optional)
+      - name: Display macOS Version
+        run: sw_vers
 
-      # 3. Update Homebrew and Install Neovim
-      - name: Update Homebrew and Install Neovim
+     # 3. Verify Homebrew Installation (Optional)
+      - name: Verify Homebrew Installation
+        run: brew --version
+
+      # 4. Update Homebrew and Install Dependencies
+      - name: Update Homebrew and Install Neovim and Lua
         run: |
           brew update
-          brew install neovim
-        # No need to set up any environment variables here
-
-      # 4. Install Lua (if needed)
-      - name: Install Lua
-        run: brew install lua
+          brew install neovim lua
 
       # 5. Install Lazy.nvim
       - name: Install Lazy.nvim
@@ -71,4 +70,3 @@ jobs:
           else
             echo "No test logs found."
           fi
-
