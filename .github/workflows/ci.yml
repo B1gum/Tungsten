@@ -18,19 +18,26 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # 2. Set up Homebrew (if not already available)
-      - name: Set up Homebrew
-        uses: Homebrew/actions/setup@v4
+      # 2. Set up Homebrew (use the correct repository and version)
+      - name: Install Homebrew
+        uses: Homebrew/install@v3
+        with:
+          # Optional: specify a Homebrew version or additional install options
+          # For most cases, the defaults are sufficient
+          # e.g., args: "--cask"
 
-      # 3. Install Neovim
-      - name: Install Neovim
-        run: brew install neovim
+      # 3. Update Homebrew and Install Neovim
+      - name: Update Homebrew and Install Neovim
+        run: |
+          brew update
+          brew install neovim
+        # No need to set up any environment variables here
 
       # 4. Install Lua (if needed)
       - name: Install Lua
         run: brew install lua
 
-      # 5. Clone and set up Lazy.nvim
+      # 5. Install Lazy.nvim
       - name: Install Lazy.nvim
         run: |
           git clone https://github.com/folke/lazy.nvim.git ~/.local/share/nvim/site/pack/lazy/start/lazy.nvim
@@ -42,7 +49,7 @@ jobs:
         env:
           XDG_DATA_HOME: ~/.local/share
 
-      # 7. Run Tests
+      # 7. Run Tungsten Test Suite
       - name: Run Tungsten Test Suite
         run: |
           nvim --headless -c "TungstenTestSuite all" -c "qa!"
