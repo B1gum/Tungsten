@@ -58,7 +58,7 @@ jobs:
           # Ensure logs directory exists
           mkdir -p logs
           # Run Neovim headlessly and execute the test suite
-          nvim --headless -c "TungstenTestSuite all" -c "qa!"
+          nvim --headless -c "TungstenUnitTests" -c "qa!"
         env:
           XDG_CONFIG_HOME: ~/.config  # Ensure Neovim uses the correct config
 
