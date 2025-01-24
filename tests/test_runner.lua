@@ -22,12 +22,23 @@ function M.run_test_case(function_under_test, input, expected_output, test_name)
   end
 end
 
+
 -- Run multiple test cases for a specific function
 function M.run_unit_tests(func_table, test_cases, function_name)
   test_utils.log_header("Unit Tests for " .. function_name)
   for _, test in ipairs(test_cases) do
     M.run_test_case(func_table, test.input, test.expected, test.description)
   end
+end
+
+
+-- Run all tests and finalize
+function M.run_all_tests()
+  -- Example: Assuming you have multiple test files
+  require("tungsten.tests.test_parser_unit").run_parser_unit_tests()
+
+  -- Finalize tests
+  test_utils.finalize_tests()
 end
 
 return M
