@@ -22,7 +22,7 @@ jobs:
       - name: Display macOS Version
         run: sw_vers
 
-     # 3. Verify Homebrew Installation (Optional)
+      # 3. Verify Homebrew Installation (Optional)
       - name: Verify Homebrew Installation
         run: brew --version
 
@@ -37,21 +37,48 @@ jobs:
         run: |
           git clone https://github.com/folke/lazy.nvim.git ~/.local/share/nvim/site/pack/lazy/start/lazy.nvim
 
-      # 6. Install Plugin Dependencies via Lazy.nvim
+      # 6. Create a Minimal init.lua for CI
+      - name: Create Minimal init.lua for CI
+        run: |
+          mkdir -p ~/.config/nvim
+          cat <<EOF > ~/.config/nvim/init.lua
+          -- Minimal init.lua for CI
+          vim.o.packpath = vim.fn.stdpath('data') .. '/site'
+          vim.cmd('set runtimepath+=~/.local/share/nvim/site/pack/lazy/start/lazy.nvim')
+
+          require('lazy').setup({
+            -- Specify your plugin here
+            { 'b1gum/tungsten' },
+          })
+
+          -- Ensure plugins are installed
+          vim.cmd('autocmd User LazyVimDone ++once lua require("lazy").install()')
+          EOF
+
+      # 7. Install Plugin Dependencies via Lazy.nvim
       - name: Install Plugin Dependencies
         run: |
-          nvim --headless -c "Lazy install" -c "qa!"
+          nvim --headless +Lazy\ install +qa
         env:
           XDG_DATA_HOME: ~/.local/share
 
-      # 7. Run Tungsten Test Suite
+      # 8. Verify Plugin Installation (Optional)
+      - name: Verify Plugin Installation
+        run: |
+          if [ ! -d ~/.local/share/nvim/site/pack/lazy/start/tungsten ]; then
+            echo "Tungsten plugin not installed correctly."
+            exit 1
+          fi
+          echo "Tungsten plugin installed successfully."
+
+      # 9. Run Tungsten Test Suite
       - name: Run Tungsten Test Suite
         run: |
           nvim --headless -c "TungstenTestSuite all" -c "qa!"
         env:
           XDG_CONFIG_HOME: ~/.config  # Ensure Neovim can find its config
 
-      # 8. Upload Test Logs
+      # 10. Upload Test Logs
       - name: Upload Test Logs
         if: always()  # Ensure this step runs even if previous steps fail
         uses: actions/upload-artifact@v3
@@ -59,7 +86,7 @@ jobs:
           name: test-logs
           path: logs/test_logs.txt
 
-      # 9. Display Test Logs (Optional)
+      # 11. Display Test Logs (Optional)
       - name: Display Test Logs
         if: always()
         run: |
@@ -70,3 +97,4 @@ jobs:
           else
             echo "No test logs found."
           fi
+
