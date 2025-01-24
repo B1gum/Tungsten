@@ -40,7 +40,7 @@ jobs:
       # 6. Install Plugin Dependencies via Lazy.nvim
       - name: Install Plugin Dependencies
         run: |
-          nvim --headless +LazyInstall +qa
+          nvim --headless -c "Lazy install" -c "qa!"
         env:
           XDG_DATA_HOME: ~/.local/share
 
