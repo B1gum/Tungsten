@@ -21,10 +21,6 @@ jobs:
       # 2. Set up Homebrew (use the correct repository and version)
       - name: Install Homebrew
         uses: Homebrew/install@v3
-        with:
-          # Optional: specify a Homebrew version or additional install options
-          # For most cases, the defaults are sufficient
-          # e.g., args: "--cask"
 
       # 3. Update Homebrew and Install Neovim
       - name: Update Homebrew and Install Neovim
