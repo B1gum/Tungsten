@@ -10,72 +10,62 @@ jobs:
   build:
     runs-on: macos-latest
 
+    env:
+      CI: true  # Set CI environment variable for Lua scripts
+
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v3
+      # 1. Checkout the repository
+      - name: Checkout Repository
+        uses: actions/checkout@v3
 
-    - name: Install Homebrew
-      # Homebrew is pre-installed on macOS runners, but ensuring it's up to date
-      run: brew update
+      # 2. Set up Homebrew (if not already available)
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup@v4
 
-    - name: Install Lua
-      run: brew install lua@5.4
+      # 3. Install Neovim
+      - name: Install Neovim
+        run: brew install neovim
 
-    - name: Install NeoVim
-      run: brew install neovim
+      # 4. Install Lua (if needed)
+      - name: Install Lua
+        run: brew install lua
 
-    - name: Install Packer.nvim
-      run: |
-        git clone --depth 1 https://github.com/wbthomason/packer.nvim \
-          ~/.local/share/nvim/site/pack/packer/start/packer.nvim
+      # 5. Clone and set up Lazy.nvim
+      - name: Install Lazy.nvim
+        run: |
+          git clone https://github.com/folke/lazy.nvim.git ~/.local/share/nvim/site/pack/lazy/start/lazy.nvim
 
-    - name: Prepare Log Directory
-      run: mkdir -p logs
+      # 6. Install Plugin Dependencies via Lazy.nvim
+      - name: Install Plugin Dependencies
+        run: |
+          nvim --headless +LazyInstall +qa
+        env:
+          XDG_DATA_HOME: ~/.local/share
 
-    - name: Create Temporary init_ci.lua
-      run: |
-        cat <<EOF > init_ci.lua
-        -- Minimal NeoVim configuration for CI
+      # 7. Run Tests
+      - name: Run Tungsten Test Suite
+        run: |
+          nvim --headless -c "TungstenTestSuite all" -c "qa!"
+        env:
+          XDG_CONFIG_HOME: ~/.config  # Ensure Neovim can find its config
 
-        -- Disable loading of user-specific configurations
-        vim.o.nocompatible = true
-        vim.cmd('filetype plugin indent on')
+      # 8. Upload Test Logs
+      - name: Upload Test Logs
+        if: always()  # Ensure this step runs even if previous steps fail
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-logs
+          path: logs/test_logs.txt
 
-        -- Set runtime path to include packer.nvim and tungsten
-        vim.cmd('set runtimepath+=' .. vim.fn.stdpath('data') .. '/site/pack/packer/start/packer.nvim')
-        vim.cmd('set runtimepath+=' .. vim.fn.stdpath('data') .. '/site/pack/packer/start/tungsten')
-
-        -- Initialize packer.nvim and install plugins
-        require('packer').startup(function()
-          use 'wbthomason/packer.nvim'  -- Packer can manage itself
-          use 'b1gum/tungsten'          -- Your Tungsten plugin
-          -- Add any other plugins required for testing
-        end)
-
-        -- Wait for packer to install plugins
-        vim.cmd('autocmd User PackerComplete quitall')
-
-        -- Optional: Disable swap files for CI
-        vim.o.swapfile = false
-
-        -- Optional: Set minimal UI settings
-        vim.o.termguicolors = false
-        EOF
-
-    - name: Run Tungsten Test Suite
-      env:
-        CI: true  # Set an environment variable to indicate CI environment
-      run: |
-        nvim --headless \
-             -u init_ci.lua \
-             -c ':PackerSync' \
-             -c ':TungstenTestSuite all' \
-             -c 'qa!'  # Quit NeoVim after running tests
-
-    - name: Upload Test Logs
-      if: failure()
-      uses: actions/upload-artifact@v3
-      with:
-        name: test-logs
-        path: logs/test_logs.txt
+      # 9. Display Test Logs (Optional)
+      - name: Display Test Logs
+        if: always()
+        run: |
+          if [ -f logs/test_logs.txt ]; then
+            echo "=== Test Logs ==="
+            cat logs/test_logs.txt
+            echo "================="
+          else
+            echo "No test logs found."
+          fi
 
