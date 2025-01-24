@@ -24,20 +24,13 @@ jobs:
           brew update
           brew install neovim lua
 
-      # 3. Set up Minimal Neovim Configuration
-      - name: Set up Neovim Configuration
-        run: |
-          mkdir -p ~/.config/nvim
-          echo "-- Minimal init.lua for CI" > ~/.config/nvim/init.lua
-          echo "-- Add any necessary Neovim configurations here" >> ~/.config/nvim/init.lua
-
-      # 4. Install Tungsten Plugin by Symlinking into Neovim's Plugin Directory
+      # 3. Install Tungsten Plugin by Symlinking into Neovim's Plugin Directory
       - name: Install Tungsten Plugin
         run: |
           mkdir -p ~/.local/share/nvim/site/pack/plugins/start
           ln -s $GITHUB_WORKSPACE ~/.local/share/nvim/site/pack/plugins/start/tungsten
 
-      # 5. Verify Tungsten Plugin Symlink
+      # 4. Verify Tungsten Plugin Symlink
       - name: Verify Tungsten Plugin Installation
         run: |
           if [ ! -L ~/.local/share/nvim/site/pack/plugins/start/tungsten ]; then
@@ -46,13 +39,43 @@ jobs:
           fi
           echo "✅ Tungsten plugin symlink exists."
 
+      # 5. Set up Minimal Neovim Configuration with Deferred Plugin Loading
+      - name: Set up Neovim Configuration
+        run: |
+          mkdir -p ~/.config/nvim
+          cat <<EOF > ~/.config/nvim/init.lua
+          -- Minimal init.lua for CI with deferred plugin loading
+
+          -- Deferred plugin setup to ensure 'start' plugins are loaded
+          vim.api.nvim_create_autocmd("VimEnter", {
+            callback = function()
+              local status, tungsten = pcall(require, 'tungsten')
+              if not status then
+                vim.api.nvim_err_writeln("Failed to load Tungsten plugin: " .. tungsten)
+                return
+              end
+
+              -- Initialize the Tungsten plugin
+              tungsten.setup({
+                -- Plugin-specific configurations if any
+              })
+            end
+          })
+          EOF
+
       # 6. List Installed Plugins (Debugging Step)
       - name: List Installed Plugins
         run: |
           echo "📦 Listing installed plugins in ~/.local/share/nvim/site/pack/plugins/start/:"
           ls -la ~/.local/share/nvim/site/pack/plugins/start/
 
-      # 7. Run Tungsten Test Suite by Opening a Dummy .tex File and Executing Tests
+      # 7. List Available Neovim Commands (Debugging Step)
+      - name: List Neovim Commands
+        run: |
+          echo "📝 Listing Neovim commands:"
+          nvim --headless -c "commands" -c "qa!"
+      
+      # 8. Run Tungsten Test Suite by Opening a Dummy .tex File and Executing Tests
       - name: Run Tungsten Test Suite
         run: |
           # Ensure logs directory exists
@@ -61,15 +84,12 @@ jobs:
           # Create a dummy .tex file to trigger plugin loading
           echo "% Dummy TeX file to trigger plugin loading" > dummy.tex
           
-          # Run Neovim headlessly:
-          # - Open dummy.tex to load the plugin
-          # - Execute the test suite command
-          # - Quit Neovim
+          # Run Neovim headlessly and execute the test suite
           nvim --headless dummy.tex -c "TungstenTestSuite all" -c "qa!"
         env:
           XDG_CONFIG_HOME: ~/.config  # Ensure Neovim uses the correct config
 
-      # 8. Upload Test Logs
+      # 9. Upload Test Logs
       - name: Upload Test Logs
         if: always()  # Ensure this step runs even if previous steps fail
         uses: actions/upload-artifact@v3
@@ -77,7 +97,7 @@ jobs:
           name: test-logs
           path: logs/test_logs.txt
 
-      # 9. Display Test Logs (Optional)
+      # 10. Display Test Logs (Optional)
       - name: Display Test Logs
         if: always()
         run: |
