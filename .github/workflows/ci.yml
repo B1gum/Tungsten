@@ -26,59 +26,74 @@ jobs:
       - name: Verify Homebrew Installation
         run: brew --version
 
-      # 4. Update Homebrew and Install Dependencies
+      # 4. Update Homebrew and Install Neovim and Lua
       - name: Update Homebrew and Install Neovim and Lua
         run: |
           brew update
           brew install neovim lua
 
-      # 5. Install Lazy.nvim
-      - name: Install Lazy.nvim
-        run: |
-          git clone https://github.com/folke/lazy.nvim.git ~/.local/share/nvim/site/pack/lazy/start/lazy.nvim
-
-      # 6. Create a Minimal init.lua for CI
+      # 5. Create a Minimal init.lua for CI with Lazy.nvim Bootstrap
       - name: Create Minimal init.lua for CI
         run: |
           mkdir -p ~/.config/nvim
           cat <<EOF > ~/.config/nvim/init.lua
-          -- Minimal init.lua for CI
-          vim.o.packpath = vim.fn.stdpath('data') .. '/site'
-          vim.cmd('set runtimepath+=~/.local/share/nvim/site/pack/lazy/start/lazy.nvim')
+          -- Minimal init.lua for CI with Lazy.nvim bootstrap
+          local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+          if not vim.loop.fs_stat(lazypath) then
+            vim.fn.system({
+              "git",
+              "clone",
+              "--filter=blob:none",
+              "https://github.com/folke/lazy.nvim.git",
+              "--branch=stable", -- latest stable release
+              lazypath,
+            })
+          end
+          vim.opt.rtp:prepend(lazypath)
 
           require('lazy').setup({
-            -- Specify your plugin here
             { 'b1gum/tungsten' },
+            -- Add other plugins here if necessary
           })
 
-          -- Ensure plugins are installed
+          -- Optional: Auto-install plugins on first run
           vim.cmd('autocmd User LazyVimDone ++once lua require("lazy").install()')
           EOF
 
-      # 7. Install Plugin Dependencies via Lazy.nvim
+      # 6. Install Plugin Dependencies via Lazy.nvim
       - name: Install Plugin Dependencies
         run: |
           nvim --headless +Lazy\ install +qa
         env:
           XDG_DATA_HOME: ~/.local/share
 
-      # 8. Verify Plugin Installation (Optional)
+      # 7. Verify Plugin Installation
       - name: Verify Plugin Installation
         run: |
-          if [ ! -d ~/.local/share/nvim/site/pack/lazy/start/tungsten ]; then
+          if [ ! -d ~/.local/share/nvim/lazy/tungsten ]; then
             echo "Tungsten plugin not installed correctly."
             exit 1
           fi
           echo "Tungsten plugin installed successfully."
 
-      # 9. Run Tungsten Test Suite
+      # 8. List Installed Plugins (Debugging Step)
+      - name: List Installed Plugins
+        run: |
+          ls -la ~/.local/share/nvim/lazy/
+
+      # 9. Check Available Neovim Commands (Debugging Step)
+      - name: Check Available Neovim Commands
+        run: |
+          nvim --headless -c "command" -c "qa!"
+
+      # 10. Run Tungsten Test Suite
       - name: Run Tungsten Test Suite
         run: |
           nvim --headless -c "TungstenTestSuite all" -c "qa!"
         env:
           XDG_CONFIG_HOME: ~/.config  # Ensure Neovim can find its config
 
-      # 10. Upload Test Logs
+      # 11. Upload Test Logs
       - name: Upload Test Logs
         if: always()  # Ensure this step runs even if previous steps fail
         uses: actions/upload-artifact@v3
@@ -86,7 +101,7 @@ jobs:
           name: test-logs
           path: logs/test_logs.txt
 
-      # 11. Display Test Logs (Optional)
+      # 12. Display Test Logs (Optional)
       - name: Display Test Logs
         if: always()
         run: |
