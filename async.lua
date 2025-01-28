@@ -29,7 +29,7 @@ end
 local function run_wolframscript_async(cmd, callback)
   -- cmd is an array like { "wolframscript", "-code", "some Wolfram code" }
   local cache_key = build_key(cmd)
-  
+
   -- 1) Check the cache first
   local cached_result = cache.get(cache_key)
   if cached_result then
@@ -39,7 +39,7 @@ local function run_wolframscript_async(cmd, callback)
   end
 
   io_utils("Cache MISS => launching wolframscript job, cmd => " .. table.concat(cmd, " "))
-  
+
   local job_id = vim.fn.jobstart(cmd, {               -- Initializes an asynchronous job to run thd cmd
     stdout_buffered = true,                           -- Buffers the output such that all output is collected before being passed to callback
     on_stdout = function(_, data, _)
