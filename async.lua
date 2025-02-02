@@ -18,7 +18,7 @@ end
 
 -- Hash function for building a unique key
 local function build_key(cmd_args)
-  -- If your `cmd_args` is something like { "wolframscript", "-code", "ToString[...]"} just flatten it into a single string:
+  -- If `cmd_args` is something like { "wolframscript", "-code", "ToString[...]"} flatten it into a single string:
   local joined = table.concat(cmd_args, "|")
   return vim.fn.sha256(joined)
 end
@@ -40,7 +40,7 @@ local function run_wolframscript_async(cmd, callback)
 
   io_utils("Cache MISS => launching wolframscript job, cmd => " .. table.concat(cmd, " "))
 
-  local job_id = vim.fn.jobstart(cmd, {               -- Initializes an asynchronous job to run thd cmd
+  local job_id = vim.fn.jobstart(cmd, {               -- Initializes an asynchronous job to run the cmd
     stdout_buffered = true,                           -- Buffers the output such that all output is collected before being passed to callback
     on_stdout = function(_, data, _)
       if not data then                                -- If no data is present, then
@@ -50,7 +50,7 @@ local function run_wolframscript_async(cmd, callback)
       local result = table.concat(data, "\n")
       result = result:gsub("[%z\1-\31]", "")          -- Remove control-characters and non-printable characters from the output
       result = fix_sqrt_tex(result)                   -- Call the fix_sqrt_tex-function
-      io_utils("on_stdout => " .. result)    -- (Optionally) prints the cleaned and formatted result
+      io_utils("on_stdout => " .. result)             -- (Optionally) prints the cleaned and formatted result
       callback(result, nil)                           -- Returns the callback with the result and "nil" for the error
     end,
     on_stderr = function(_, errdata, _)
@@ -60,9 +60,9 @@ local function run_wolframscript_async(cmd, callback)
       end
     end,
     on_exit = function(_, exit_code, _)
-      io_utils("on_exit => code = " .. exit_code)  -- (Optionally) prints the exit-code
-      if exit_code ~= 0 then                                -- If exit-code is not 0 (indicating failure), then
-        callback(nil, "WolframScript exited with code " .. exit_code)   -- Returns the callback wirh the exit code and "nil" for the result
+      io_utils("on_exit => code = " .. exit_code)     -- (Optionally) prints the exit-code
+      if exit_code ~= 0 then                          -- If exit-code is not 0 (indicating failure), then
+        callback(nil, "WolframScript exited with code " .. exit_code)   -- Returns the callback with the exit code and "nil" for the result
       end
     end
   })
