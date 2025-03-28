@@ -72,4 +72,3 @@ function M.open_tungsten_picker()   -- Function that opens the custem telescope 
 end
 
 return M
-
