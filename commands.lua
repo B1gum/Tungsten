@@ -2,10 +2,10 @@
 -- Module for defining commands
 ------------------------------------------
 
-local parser    = require("tungsten.parser.LPeg_parser")
+local parser    = require("tungsten.parser.LPeg_parser.grammar")
 local evaluator = require("tungsten.evaluate_async")
-local selection = require("tungsten.selection")
-local insert    = require("tungsten.insert_result")
+local selection = require("tungsten.utils.selection")
+local insert    = require("tungsten.utils.insert_result")
 local config    = require("tungsten.config")
 
 local function tungsten_eval_command(opts)
@@ -42,15 +42,15 @@ vim.api.nvim_create_user_command("TungstenEval", tungsten_eval_command, {
   desc = "Evaluate visually selected LaTeX math and insert result inline",
 })
 
-local function tungsten_parser_test_command(opts)
+local function tungsten_parser_test_core_command(opts)
   -- Get the absolute directory of this commands.lua file.
   local info = debug.getinfo(1, "S")
   local plugin_dir = info.source:sub(2):match("(.*/)")  -- removes the "@" at the beginning
-  local test_file = plugin_dir .. "test/parser.lua"
+  local test_file = plugin_dir .. "test/parser/test_core.lua"
   vim.cmd("luafile " .. test_file)
 end
 
-vim.api.nvim_create_user_command("TungstenParserTest", tungsten_parser_test_command, {
+vim.api.nvim_create_user_command("TungstenParserTestCore", tungsten_parser_test_core_command, {
   desc = "Run LPeg parser tests from the test file",
 })
 
@@ -58,6 +58,6 @@ vim.api.nvim_create_user_command("TungstenParserTest", tungsten_parser_test_comm
 
 return {
   tungsten_eval_command = tungsten_eval_command,
-  tungsten_parser_test_command = tungsten_parser_test_command,
+  tungsten_parser_test_core_command = tungsten_parser_test_core_command,
 }
 

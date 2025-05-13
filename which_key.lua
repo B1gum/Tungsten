@@ -31,6 +31,6 @@ wk.add({
   },
   {
     "<leader>t?p",
-    ":<C-u>TungstenParserTest<CR>",
+    ":<C-u>TungstenParserTestCore<CR>",
   },
 })

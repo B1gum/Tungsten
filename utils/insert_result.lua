@@ -12,13 +12,13 @@ function M.insert_result(result_text)
   local start_col = vim.fn.col("'<")
   local end_row   = vim.fn.line("'>")
   local end_col   = vim.fn.col("'>")
-  
+
   -- Get the lines that are part of the visual selection.
   local lines = vim.fn.getline(start_row, end_row)
   if #lines == 0 then
     return
   end
-  
+
   if #lines == 1 then
     -- Single-line selection: extract only the selected text.
     local selection = lines[1]:sub(start_col, end_col)
