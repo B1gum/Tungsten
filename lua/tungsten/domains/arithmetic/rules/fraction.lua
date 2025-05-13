@@ -1,10 +1,10 @@
 local lpeg = require "lpeg"
 local P       = lpeg.P
 local V       = lpeg.V
-local space   = require("tungsten.parser.tokens").space
-local lbrace  = require("tungsten.parser.tokens").lbrace
-local rbrace  = require("tungsten.parser.tokens").rbrace
-local node    = require("tungsten.parser.ast").node
+local space   = require("tungsten.core.tokenizer").space
+local lbrace  = require("tungsten.core.tokenizer").lbrace
+local rbrace  = require("tungsten.core.tokenizer").rbrace
+local node    = require("tungsten.core.ast").node
 
 local Fraction = P("\\frac") * space
   * lbrace * space * V("Expression") * space * rbrace
