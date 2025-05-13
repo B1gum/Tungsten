@@ -1,0 +1,22 @@
+local actions      = require('telescope.actions')
+local action_state = require('telescope.actions.state')
+
+local M = {}
+
+---Custom attach_mappings for Tungsten pickers
+function M.attach(prompt_bufnr, _)
+  actions.select_default:replace(function()
+    actions.close(prompt_bufnr)
+    local entry = action_state.get_selected_entry()
+
+    if entry and entry.value then
+      vim.cmd(entry.value)            -- execute :Tungsten… command
+    else
+      vim.notify("No command selected", vim.log.levels.WARN)
+    end
+  end)
+  return true
+end
+
+return M
+
