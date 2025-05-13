@@ -1,11 +1,12 @@
 local lpeg = require "lpeg"
 local P       = lpeg.P
 local V       = lpeg.V
-local space   = require("tungsten.core.tokenizer").space
-local lbrack  = require("tungsten.core.tokenizer").lbrack
-local rbrack  = require("tungsten.core.tokenizer").rbrack
-local lbrace  = require("tungsten.core.tokenizer").lbrace
-local rbrace  = require("tungsten.core.tokenizer").rbrace
+local tk      = require("tungsten.core.tokenizer")
+local space   = tk.space
+local lbrack  = tk.lbrack
+local rbrack  = tk.rbrack
+local lbrace  = tk.lbrace
+local rbrace  = tk.rbrace
 local node    = require("tungsten.core.ast").node
 
 local Sqrt = P("\\sqrt")

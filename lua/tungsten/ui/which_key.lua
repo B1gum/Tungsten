@@ -13,7 +13,7 @@ wk.add({
   {
     "<leader>tm",
     function()
-      require("tungsten.telescope").open_tungsten_picker()
+      require("tungsten.ui").open()
     end,
     desc = "open tungsten command palette",
   },

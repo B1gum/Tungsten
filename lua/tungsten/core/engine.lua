@@ -27,19 +27,6 @@ function M.evaluate_async(ast, numeric, callback)
   -- Start the job asynchronously.
   vim.fn.jobstart({ wolfram_path, "-code", code }, {
     stdout_buffered = true,
-    on_stdout = function(_, data, _)
-      -- Join the data table into a string and trim trailing whitespace.
-      local output = table.concat(data, "\n"):gsub("%s+$", "")
-      if callback then
-        callback(output)
-      end
-    end,
-    on_stderr = function(_, data, _)
-      local err = table.concat(data, "\n"):gsub("%s+$", "")
-      if err ~= "" then                     -- ← only notify if real content
-        vim.notify("WolframScript error: " .. err, vim.log.levels.ERROR)
-      end
-    end,
   })
 end
 

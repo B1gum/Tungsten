@@ -5,8 +5,9 @@ local V    = lpeg.V
 local tokens     = require "tungsten.core.tokenizer"
 local Fraction   = require "tungsten.domains.arithmetic.rules.fraction"
 local Sqrt       = require "tungsten.domains.arithmetic.rules.sqrt"
-local SupSub     = require "tungsten.domains.arithmetic.rules.supersub".SupSub
-local Unary      = require "tungsten.domains.arithmetic.rules.supersub".Unary
+local SS         = require "tungsten.domains.arithmetic.rules.supersub"
+local SupSub     = SS.SupSub
+local Unary      = SS.Unary
 local MulDiv     = require "tungsten.domains.arithmetic.rules.muldiv"
 local AddSub     = require "tungsten.domains.arithmetic.rules.addsub"
 

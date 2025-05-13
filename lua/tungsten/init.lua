@@ -7,7 +7,7 @@ local M = {}
 function M.setup()
   require("tungsten.core.commands")
   require("tungsten.ui.which_key")
-  require("tungsten.ui.telescope")
+  require("tungsten.ui")
   require("tungsten.core")
 end
 

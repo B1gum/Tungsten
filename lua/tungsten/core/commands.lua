@@ -38,23 +38,6 @@ vim.api.nvim_create_user_command(
   { range = true, desc = "Evaluate selected LaTeX and insert the result" }
 )
 
--------------------------------------------------------------------------------
--- :TungstenParserTestCore  – run the LPeg parser test‑suite shipped in /test
--------------------------------------------------------------------------------
-local function tungsten_parser_test_core_command()
-  -- absolute path to   …/test/parser/test_core.lua
-  local info       = debug.getinfo(1, "S")
-  local plugin_dir = info.source:sub(2):match("(.*/)")     -- strip the leading '@'
-  vim.cmd("luafile " .. plugin_dir .. "test/parser/test_core.lua")
-end
-
-vim.api.nvim_create_user_command(
-  "TungstenParserTestCore",
-  tungsten_parser_test_core_command,
-  { desc = "Run LPeg parser tests" }
-)
-
 return {
   tungsten_eval_command          = tungsten_eval_command,
-  tungsten_parser_test_core_command = tungsten_parser_test_core_command,
 }
