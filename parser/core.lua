@@ -1,6 +1,6 @@
 local lpeg    = require "lpeg"
-local grammar = require "parser.grammar"
-local space   = require("parser.tokens").space
+local grammar = require "tungsten.parser.grammar"
+local space   = require("tungsten.parser.tokens").space
 
 local core = {}
 

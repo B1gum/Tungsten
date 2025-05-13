@@ -1,5 +1,5 @@
 -- public API
-local core = require "parser.core"
+local core = require "tungsten.parser.core"
 return {
   parse = core.parse,
 }
