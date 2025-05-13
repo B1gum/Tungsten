@@ -1,8 +1,7 @@
-
-local parser    = require("tungsten.parser")
-local evaluator = require("tungsten.evaluate_async")
-local selection = require("tungsten.utils.selection")
-local insert    = require("tungsten.utils.insert_result")
+local parser    = require("tungsten.core.parser")
+local evaluator = require("tungsten.core.engine")
+local selection = require("tungsten.util.selection")
+local insert    = require("tungsten.util.insert_result")
 local config    = require("tungsten.config")
 
 -------------------------------------------------------------------------------
@@ -30,7 +29,6 @@ local function tungsten_eval_command(_)
       return
     end
     insert.insert_result(result)
-    vim.notify("Tungsten: done.", vim.log.levels.INFO)
   end)
 end
 
@@ -41,7 +39,7 @@ vim.api.nvim_create_user_command(
 )
 
 -------------------------------------------------------------------------------
--- :Tungste[<73;81;36M[<73;81;36MnParserTestCore  – run the LPeg parser test‑suite shipped in /test
+-- :TungstenParserTestCore  – run the LPeg parser test‑suite shipped in /test
 -------------------------------------------------------------------------------
 local function tungsten_parser_test_core_command()
   -- absolute path to   …/test/parser/test_core.lua

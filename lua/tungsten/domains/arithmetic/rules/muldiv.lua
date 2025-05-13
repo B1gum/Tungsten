@@ -1,9 +1,9 @@
 local lpeg = require "lpeg"
 local Cf,C,S = lpeg.Cf, lpeg.C, lpeg.S
 local P       = lpeg.P
-local space   = require("tungsten.parser.tokens").space
-local Unary   = require("tungsten.parser.rules.supersub").Unary
-local make_bin = require("tungsten.parser.ast").make_bin
+local space   = require("tungsten.core.tokenizer").space
+local Unary   = require("tungsten.domains.arithmetic.rules.supersub").Unary
+local make_bin = require("tungsten.core.ast").make_bin
 
 -- explicit * / or \cdot
 local MulOpCap = (P("\\cdot") / function() return "*" end) + C(S("*/"))

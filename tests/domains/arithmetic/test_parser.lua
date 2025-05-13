@@ -1,5 +1,7 @@
--- test/parser/test_core.lua
-local core   = require 'parser'
+package.path = "./lua/?.lua;./lua/?/init.lua;" .. package.path
+
+local core   = require 'tungsten.core.parser'
+
 
 -- simple serializer for error‐messages
 local function serialize(x)
@@ -459,4 +461,3 @@ end
 
 print(("\nRESULT: %d passed, %d failed\n"):format(passed, failed))
 os.exit(failed > 0 and 1 or 0)
-

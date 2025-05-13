@@ -5,9 +5,10 @@
 local M = {}
 
 function M.setup()
-  require("tungsten.commands")
-  require("tungsten.which_key")
-  require("tungsten.telescope")
+  require("tungsten.core.commands")
+  require("tungsten.ui.which_key")
+  require("tungsten.ui.telescope")
+  require("tungsten.core")
 end
 
 return M
