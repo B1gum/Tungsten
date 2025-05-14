@@ -58,9 +58,9 @@ function M.evaluate_async(ast, numeric, callback)
   if use_cache then
     if state.cache[expr_key] then
       -- Notifying that result is from cache
-      logger.notify("Tungsten: Result from cache.", logger.log.levels.INFO, { title = "Tungsten" })
+      logger.notify("Tungsten: Result from cache.", logger.levels.INFO, { title = "Tungsten" }) -- Corrected
       if config.debug then
-        logger.notify("Tungsten Debug: Cache hit for key: " .. expr_key, logger.log.levels.INFO, { title = "Tungsten Debug" })
+        logger.notify("Tungsten Debug: Cache hit for key: " .. expr_key, logger.levels.INFO, { title = "Tungsten Debug" }) -- Corrected
       end
       callback(state.cache[expr_key], nil)
       return
@@ -123,7 +123,7 @@ function M.evaluate_async(ast, numeric, callback)
         if final_stderr ~= "" and config.debug then
           logger.notify("Tungsten (Job " .. job_id .. " stderr): " .. final_stderr, logger.levels.WARN, { title = "Tungsten Debug" })
         end
-        if use_cache then -- Check config before storing
+        if use_cache then
           state.cache[expr_key] = final_stdout
           if config.debug then
             logger.notify("Tungsten: Result for key '" .. expr_key .. "' stored in cache.", logger.levels.INFO, { title = "Tungsten Debug" })
@@ -131,6 +131,7 @@ function M.evaluate_async(ast, numeric, callback)
         end
         callback(final_stdout, nil)
       else
+
         local err_msg = ("WolframScript (Job %s) exited with code %d"):format(tostring(job_id or "N/A"), exit_code)
         if final_stderr ~= "" then
           err_msg = err_msg .. "\nStderr: " .. final_stderr

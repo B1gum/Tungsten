@@ -7,6 +7,8 @@ local config = {
   numeric_mode = false,
   debug = false,
   cache_enabled = true,
+  domains = { "arithmetic" },
 }
+
 
 return config
