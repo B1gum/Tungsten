@@ -7,7 +7,7 @@ local evaluator = require("tungsten.core.engine")
 local selection = require("tungsten.util.selection")
 local insert    = require("tungsten.util.insert_result")
 local config    = require("tungsten.config")
-local logger    = require("rungsten.util.logger")
+local logger    = require("tungsten.util.logger")
 
 -------------------------------------------------------------------------------
 -- :TungstenEval  – evaluate visually‑selected LaTeX math and insert the result

@@ -12,10 +12,13 @@ local DEFAULT_LOG_LEVEL = {
 --- Safely sends a notification or prints to console.
 -- @param message string The message to log/notify.
 -- @param level any The log level (e.g., vim.log.levels.ERROR or a number).
--- @param title string (optional) The title for the notification.
-function M.notify(message, level, title)
+-- @param opts table (optional) Options for vim.notify, can include a 'title' field (e.g., { title = "My Title" }).
+function M.notify(message, level, opts)
+  opts = opts or {} -- Ensure opts is a table
+  local title_str = opts.title -- Extract title string if present
+
   if vim and vim.notify and vim.log and vim.log.levels then
-    local opts = title and { title = title } or {}
+    -- Pass the opts table directly to vim.notify
     vim.notify(message, level, opts)
   else
     -- Fallback for plain Lua environments (like your test scripts)
@@ -28,8 +31,9 @@ function M.notify(message, level, title)
         break
       end
     end
-    -- If title is passed, prepend it.
-    local prefix = title and ("[" .. title .. "] ") or ""
+
+    -- If title_str is available, prepend it.
+    local prefix = title_str and ("[" .. title_str .. "] ") or ""
     print(("%s[%s] %s"):format(prefix, level_name, message))
   end
 end

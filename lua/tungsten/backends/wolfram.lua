@@ -3,73 +3,83 @@
 ---------------------------------------------------------------------
 
 local render = require("tungsten.core.render")
+local config = require("tungsten.config")
+local logger = require("tungsten.util.logger") -- Ensure logger is available and used
 
 ----------------------------------------------------------------
--- precedence table so we know when to parenthesise
-local prec = { ["+"] = 1, ["-"] = 1, ["*"] = 2, ["/"] = 2, ["^"] = 3 }
-
-----------------------------------------------------------------
--- helpers
-local function bin_with_parens(n, recur)  -- Handles parenthesis
-  local op = n.operator
-  local function par(child)
-    if child.type == "binary" and prec[child.operator] < prec[op] then
-      return "(" .. recur(child) .. ")"
-    else
-      return recur(child)
-    end
-  end
-  return par(n.left) .. op .. par(n.right)
-end
-
-----------------------------------------------------------------
--- handlers:  node.type → function(node, recur)
+-- Aggregated handlers table
 local H = {}
 
-H["number"]   = function(n) return tostring(n.value) end
-H["variable"] = function(n) return n.name end
-H["greek"]    = function(n) return n.name end
+-- Retrieve the list of domains to load
+-- Defaults to {"arithmetic"} if not specified in config.lua
+local domains_to_load = (config.domains and #config.domains > 0) and config.domains or { "arithmetic" }
 
-H["binary"]   = bin_with_parens  -- Parenthesise if needed
-
-H["fraction"] = function(n, r)   -- Always puts fracs in parenthesises to avoid abiguity
-  return ("(%s)/(%s)"):format(r(n.numerator), r(n.denominator))
+if config.debug then
+  logger.notify("Wolfram Backend: Loading Wolfram handlers for domains: " .. table.concat(domains_to_load, ", "), logger.levels.INFO, { title = "Tungsten Backend" })
 end
 
-H["sqrt"] = function(n, r)       -- Normal Sqrt[x] for \sqrt{x} and Surd[x, n] for \sqrt[n]{x} 
-  if n.index then
-    return ("Surd[%s,%s]"):format(r(n.radicand), r(n.index))
+for _, domain_name in ipairs(domains_to_load) do
+  local handler_module_path = "tungsten.domains." .. domain_name .. ".wolfram_handlers"
+  -- Use pcall to safely attempt to require the module
+  local ok, domain_module = pcall(require, handler_module_path)
+
+  if ok and domain_module and domain_module.handlers then
+    if config.debug then
+      logger.notify("Wolfram Backend: Successfully loaded handlers from " .. handler_module_path, logger.levels.DEBUG, { title = "Tungsten Debug" })
+    end
+    for node_type, handler_func in pairs(domain_module.handlers) do
+      if H[node_type] then
+        -- Log a warning if a handler is being overridden
+        logger.notify(
+          ("Wolfram Backend: Handler for node type '%s' from domain '%s' is overriding an existing handler."):format(node_type, domain_name),
+          logger.levels.WARN,
+          { title = "Tungsten Backend Warning" }
+        )
+      end
+      H[node_type] = handler_func
+    end
   else
-    return ("Sqrt[%s]"):format(r(n.radicand))
+    -- Log a warning if handlers for a domain could not be loaded
+    local error_msg = ok and "but it did not return a .handlers table." or (tostring(domain_module)) -- domain_module contains error if not ok
+    logger.notify(
+      ("Wolfram Backend: Could not load Wolfram handlers for domain '%s'. Module '%s' load failed %s"):format(domain_name, handler_module_path, error_msg),
+      logger.levels.WARN,
+      { title = "Tungsten Backend Warning" }
+    )
   end
 end
 
-H["superscript"] = function(n, r)
-  local base, exp = r(n.base), r(n.exponent)
-  if n.base.type == "variable" or n.base.type == "number" then
-    return base .. "^" .. exp
-  else
-    return ("Power[%s,%s]"):format(base, exp)   -- Avoids x_1^2 situations, which the WolframEngine cannot always parse correctly
-  end
-end
-
-H["subscript"] = function(n, r)
-  return ("Subscript[%s,%s]"):format(r(n.base), r(n.subscript))
-end
-
-H["unary"] = function(n, r)
-  return n.operator .. r(n.value)
+if next(H) == nil then -- Check if the H table is empty after attempting to load all domain handlers
+  logger.notify(
+    "Wolfram Backend: No Wolfram handlers were loaded. AST to string conversion will likely fail or produce incorrect results.",
+    logger.levels.ERROR,
+    { title = "Tungsten Backend Error" }
+  )
 end
 
 ----------------------------------------------------------------
--- public API
+-- Public API
 local M = {}
 
----@param ast table
----@return string
+--- Converts an Abstract Syntax Tree (AST) to a Wolfram Language string.
+---@param ast table The AST to convert.
+---@return string The Wolfram Language string representation of the AST.
 function M.to_string(ast)
-  return render.render(ast, H)  -- Use core/render.lua function for actually rendering the total string
+  if not ast then
+    logger.notify("Wolfram Backend: to_string called with a nil AST.", logger.levels.ERROR, { title = "Tungsten Backend Error" })
+    return "Error: AST is nil"
+  end
+  if next(H) == nil then
+     logger.notify("Wolfram Backend: No Wolfram handlers loaded when to_string was called.", logger.levels.ERROR, { title = "Tungsten Backend Error" })
+    return "Error: No Wolfram handlers loaded for AST conversion."
+  end
+  -- Use the core rendering function with the aggregated handlers
+  local ok, result_string = pcall(render.render, ast, H)
+  if not ok then
+    logger.notify("Wolfram Backend: Error during AST rendering: " .. tostring(result_string), logger.levels.ERROR, { title = "Tungsten Backend Error" })
+    return "Error: AST rendering failed" -- Or handle error more gracefully
+  end
+  return result_string
 end
 
 return M
-
