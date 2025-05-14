@@ -1,5 +1,6 @@
--- tungsten/backends/wolfram.lua
--- AST ➜ Wolfram Language string, now built on core.render (pure).
+-- backends/wolfram.lua
+-- Handles all interaction with the WolframEngine.
+---------------------------------------------------------------------
 
 local render = require("tungsten.core.render")
 
@@ -9,7 +10,7 @@ local prec = { ["+"] = 1, ["-"] = 1, ["*"] = 2, ["/"] = 2, ["^"] = 3 }
 
 ----------------------------------------------------------------
 -- helpers
-local function bin_with_parens(n, recur)
+local function bin_with_parens(n, recur)  -- Handles parenthesis
   local op = n.operator
   local function par(child)
     if child.type == "binary" and prec[child.operator] < prec[op] then
@@ -29,13 +30,13 @@ H["number"]   = function(n) return tostring(n.value) end
 H["variable"] = function(n) return n.name end
 H["greek"]    = function(n) return n.name end
 
-H["binary"]   = bin_with_parens
+H["binary"]   = bin_with_parens  -- Parenthesise if needed
 
-H["fraction"] = function(n, r)
-  return ("%s/(%s)"):format(r(n.numerator), r(n.denominator))
+H["fraction"] = function(n, r)   -- Always puts fracs in parenthesises to avoid abiguity
+  return ("(%s)/(%s)"):format(r(n.numerator), r(n.denominator))
 end
 
-H["sqrt"] = function(n, r)
+H["sqrt"] = function(n, r)       -- Normal Sqrt[x] for \sqrt{x} and Surd[x, n] for \sqrt[n]{x} 
   if n.index then
     return ("Surd[%s,%s]"):format(r(n.radicand), r(n.index))
   else
@@ -48,7 +49,7 @@ H["superscript"] = function(n, r)
   if n.base.type == "variable" or n.base.type == "number" then
     return base .. "^" .. exp
   else
-    return ("Power[%s,%s]"):format(base, exp)
+    return ("Power[%s,%s]"):format(base, exp)   -- Avoids x_1^2 situations, which the WolframEngine cannot always parse correctly
   end
 end
 
@@ -67,7 +68,7 @@ local M = {}
 ---@param ast table
 ---@return string
 function M.to_string(ast)
-  return render.render(ast, H)
+  return render.render(ast, H)  -- Use core/render.lua function for actually rendering the total string
 end
 
 return M

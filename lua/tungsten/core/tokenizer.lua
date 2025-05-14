@@ -1,3 +1,6 @@
+-- core/tokenizer.lua
+-- Defines fundamental tokens for parser
+------------------------------------------
 local lpeg = require "lpeg"
 local P,R,S = lpeg.P, lpeg.R, lpeg.S
 local C = lpeg.C

@@ -1,7 +1,7 @@
--- tungsten/core/render.lua  ✱ PURE, side‑effect‑free ✱
--- Turns a Tungsten AST into a string using a handlers table.
--- Accepts nodes shaped either as { type = "…" }  or  { tag = "…" }.
-
+-- tungsten/core/render.lua  
+-- Traverses an AST and converts it into a string representation
+-- using table of handlers
+--------------------------------------------------------------------
 local M = {}
 
 ---@alias RenderHandler fun(node:table, render:fun(child:table):string):string
@@ -13,7 +13,7 @@ local function _walk(node, handlers)
     return tostring(node)
   end
 
-  local tag = node.type or node.tag        -- support both field names
+  local tag = node.type
   if not tag then
     error("render.walk: node missing tag/type field")
   end

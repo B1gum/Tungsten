@@ -1,4 +1,4 @@
--- insert_result.lua
+-- util/insert_result.lua
 -- Module to insert an =-sign and the result after computation is complete
 -----------------------------------------------------------------------------
 

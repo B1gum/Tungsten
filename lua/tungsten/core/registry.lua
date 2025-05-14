@@ -1,3 +1,6 @@
+-- core/registry.lua
+-- central registry for domains, rules, and commands
+-------------------------------------------------------
 local M = { domains = {}, rules = {}, commands = {} }
 
 function M.register_domain(name, mod)

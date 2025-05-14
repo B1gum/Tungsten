@@ -1,3 +1,7 @@
+-- core/ast.lua
+-- Utility functions for creating AST nodes
+----------------------------------------------
+
 local function node(t, fields)
   fields.type = t
   return fields

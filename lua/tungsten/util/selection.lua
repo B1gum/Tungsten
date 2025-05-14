@@ -1,4 +1,4 @@
--- selection.lua
+-- util/selection.lua
 -- Module to retrieve the visually selected text-input
 -------------------------------------------------------------------------------------------
 

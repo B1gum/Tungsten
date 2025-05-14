@@ -1,6 +1,9 @@
+-- core/parser.lua
+-- Parses input strings based on grammar into an AST
+-----------------------------------------------------
 local lpeg     = require "lpeg"
 local grammar  = require "tungsten.domains.arithmetic.grammar"
-local space    = require("tungsten.core.tokenizer").space  -- moved file
+local space    = require("tungsten.core.tokenizer").space
 
 local M = {}
 

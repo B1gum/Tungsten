@@ -1,3 +1,7 @@
+-- core/comands.lua
+-- Defines core user-facing Neovim commands
+-------------------------------------------------------------------------------
+
 local parser    = require("tungsten.core.parser")
 local evaluator = require("tungsten.core.engine")
 local selection = require("tungsten.util.selection")
@@ -23,12 +27,16 @@ local function tungsten_eval_command(_)
   local ast = ast_or_err
 
   -- evaluate asynchronously
-  evaluator.evaluate_async(ast, config.numeric_mode, function(result)
-    if not result or result == "" then
-      vim.notify("Tungsten: evaluation failed.", vim.log.levels.ERROR)
+  evaluator.evaluate_async(ast, config.numeric_mode, function(output, err)
+    if err then
       return
     end
-    insert.insert_result(result)
+
+    if not output or output == "" then
+      vim.notify("Tungsten: evaluation returned empty result.", vim.log.levels.WARN)
+      return
+    end
+    insert.insert_result(output)
   end)
 end
 

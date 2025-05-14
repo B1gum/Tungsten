@@ -1,5 +1,5 @@
 -- config.lua
--- Handles user-set configuration such as path to WoflramEngine
+-- Defines default user configurations
 ----------------------------------------------------------------------------------
 
 local config = {
