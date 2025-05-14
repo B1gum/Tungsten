@@ -74,7 +74,7 @@ function M.evaluate_async(ast, numeric, callback)
       if config.debug then
         notify_msg = ("Tungsten: Evaluation already in progress for key: '%s' (Job ID: %s)"):format(expr_key, tostring(job_id_running))
       end
-      logger.notify(notify_msg, logger.log.levels.INFO, { title = "Tungsten" })
+      logger.notify(notify_msg, logger.levels.INFO, { title = "Tungsten" })
       -- Do not proceed to start a new job. The first job will eventually populate the cache (if enabled)
       -- and its callback will be triggered. Subsequent identical calls that hit this check
       -- effectively wait for the first one to complete and then benefit from the cache on their next attempt.
