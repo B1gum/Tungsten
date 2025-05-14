@@ -7,6 +7,7 @@ local evaluator = require("tungsten.core.engine")
 local selection = require("tungsten.util.selection")
 local insert    = require("tungsten.util.insert_result")
 local config    = require("tungsten.config")
+local logger    = require("rungsten.util.logger")
 
 -------------------------------------------------------------------------------
 -- :TungstenEval  – evaluate visually‑selected LaTeX math and insert the result
@@ -14,14 +15,14 @@ local config    = require("tungsten.config")
 local function tungsten_eval_command(_)
   local text = selection.get_visual_selection()
   if text == "" or text == nil then
-    vim.notify("Tungsten: No text selected.", vim.log.levels.ERROR)
+    logger.notify("Tungsten: No text selected.", logger.levels.ERROR)
     return
   end
 
   -- parse → AST
   local ok, ast_or_err = pcall(parser.parse, text)
   if not ok or not ast_or_err then
-    vim.notify("Tungsten: parse error – " .. tostring(ast_or_err), vim.log.levels.ERROR)
+    logger.notify("Tungsten: parse error – " .. tostring(ast_or_err), logger.levels.ERROR)
     return
   end
   local ast = ast_or_err

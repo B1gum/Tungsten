@@ -1,5 +1,6 @@
 local actions      = require('telescope.actions')
 local action_state = require('telescope.actions.state')
+local logger       = require "tungsten.util.logger"
 
 local M = {}
 
@@ -12,7 +13,7 @@ function M.attach(prompt_bufnr, _)
     if entry and entry.value then
       vim.cmd(entry.value)            -- execute :Tungsten… command
     else
-      vim.notify("No command selected", vim.log.levels.WARN)
+      logger.notify("No command selected", logger.log.levels.WARN)
     end
   end)
   return true

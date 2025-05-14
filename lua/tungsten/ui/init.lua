@@ -4,6 +4,7 @@ local sorters = require('telescope.sorters')
 
 local picker   = require('tungsten.ui.picker')
 local mappings = require('tungsten.ui.mappings')
+local logger   = require('tungsten.util.logger')
 
 local M = {}
 
@@ -14,7 +15,7 @@ function M.open(opts)
 
   local commands = picker.list()
   if vim.tbl_isempty(commands) then
-    vim.notify("No Tungsten commands found.", vim.log.levels.WARN)
+    logger.notify("No Tungsten commands found.", logger.log.levels.WARN)
     return
   end
 

@@ -7,6 +7,7 @@ local cg = require("tungsten.backends.wolfram")
 local toWolfram = cg.to_string
 local config = require("tungsten.config") -- User configurations
 local state = require("tungsten.state")   -- Plugin's runtime state
+local logger = require "tungsten.util.logger"
 
 local M = {} -- Module table to hold functions
 
@@ -42,7 +43,7 @@ function M.evaluate_async(ast, numeric, callback)
   local pcall_ok, pcall_result = pcall(toWolfram, ast)
   if not pcall_ok then
     local err_msg = "Error converting AST to Wolfram code: " .. tostring(pcall_result)
-    vim.notify("Tungsten: " .. err_msg, vim.log.levels.ERROR, { title = "Tungsten Error" })
+    logger.notify("Tungsten: " .. err_msg, logger.levels.ERROR, { title = "Tungsten Error" })
     callback(nil, err_msg)
     return
   end
@@ -57,9 +58,9 @@ function M.evaluate_async(ast, numeric, callback)
   if use_cache then
     if state.cache[expr_key] then
       -- Notifying that result is from cache
-      vim.notify("Tungsten: Result from cache.", vim.log.levels.INFO, { title = "Tungsten" })
+      logger.notify("Tungsten: Result from cache.", logger.log.levels.INFO, { title = "Tungsten" })
       if config.debug then
-        vim.notify("Tungsten Debug: Cache hit for key: " .. expr_key, vim.log.levels.INFO, { title = "Tungsten Debug" })
+        logger.notify("Tungsten Debug: Cache hit for key: " .. expr_key, logger.log.levels.INFO, { title = "Tungsten Debug" })
       end
       callback(state.cache[expr_key], nil)
       return
@@ -73,7 +74,7 @@ function M.evaluate_async(ast, numeric, callback)
       if config.debug then
         notify_msg = ("Tungsten: Evaluation already in progress for key: '%s' (Job ID: %s)"):format(expr_key, tostring(job_id_running))
       end
-      vim.notify(notify_msg, vim.log.levels.INFO, { title = "Tungsten" })
+      logger.notify(notify_msg, logger.log.levels.INFO, { title = "Tungsten" })
       -- Do not proceed to start a new job. The first job will eventually populate the cache (if enabled)
       -- and its callback will be triggered. Subsequent identical calls that hit this check
       -- effectively wait for the first one to complete and then benefit from the cache on their next attempt.
@@ -114,18 +115,18 @@ function M.evaluate_async(ast, numeric, callback)
       if job_id and state.active_jobs[job_id] then
         state.active_jobs[job_id] = nil
         if config.debug then
-          vim.notify("Tungsten: Job " .. job_id .. " finished and removed from active jobs.", vim.log.levels.INFO, { title = "Tungsten Debug" })
+          logger.notify("Tungsten: Job " .. job_id .. " finished and removed from active jobs.", logger.levels.INFO, { title = "Tungsten Debug" })
         end
       end
 
       if exit_code == 0 then
         if final_stderr ~= "" and config.debug then
-          vim.notify("Tungsten (Job " .. job_id .. " stderr): " .. final_stderr, vim.log.levels.WARN, { title = "Tungsten Debug" })
+          logger.notify("Tungsten (Job " .. job_id .. " stderr): " .. final_stderr, logger.levels.WARN, { title = "Tungsten Debug" })
         end
         if use_cache then -- Check config before storing
           state.cache[expr_key] = final_stdout
           if config.debug then
-            vim.notify("Tungsten: Result for key '" .. expr_key .. "' stored in cache.", vim.log.levels.INFO, { title = "Tungsten Debug" })
+            logger.notify("Tungsten: Result for key '" .. expr_key .. "' stored in cache.", logger.levels.INFO, { title = "Tungsten Debug" })
           end
         end
         callback(final_stdout, nil)
@@ -136,7 +137,7 @@ function M.evaluate_async(ast, numeric, callback)
         elseif final_stdout ~= "" then
           err_msg = err_msg .. "\nStdout (potentially error): " .. final_stdout
         end
-        vim.notify("Tungsten: " .. err_msg, vim.log.levels.ERROR, { title = "Tungsten Error" })
+        logger.notify("Tungsten: " .. err_msg, logger.levels.ERROR, { title = "Tungsten Error" })
         callback(nil, err_msg)
       end
     end,
@@ -153,7 +154,7 @@ function M.evaluate_async(ast, numeric, callback)
     else
       err_msg = err_msg .. " (Reason: jobstart returned " .. tostring(job_id) .. ")"
     end
-    vim.notify("Tungsten: " .. err_msg, vim.log.levels.ERROR, { title = "Tungsten Error" })
+    logger.notify("Tungsten: " .. err_msg, logger.levels.ERROR, { title = "Tungsten Error" })
     callback(nil, err_msg)
   else
     state.active_jobs[job_id] = {
@@ -163,7 +164,7 @@ function M.evaluate_async(ast, numeric, callback)
       start_time = vim.loop.now(),
     }
     if config.debug then
-      vim.notify(("Tungsten: Started WolframScript job %d for key '%s' with code: %s"):format(job_id, expr_key, code_to_execute), vim.log.levels.INFO, { title = "Tungsten Debug" })
+      logger.notify(("Tungsten: Started WolframScript job %d for key '%s' with code: %s"):format(job_id, expr_key, code_to_execute), logger.levels.INFO, { title = "Tungsten Debug" })
     end
   end
 end
@@ -173,7 +174,7 @@ function M.run_async(input, numeric, callback)
   local ok, ast = pcall(parse, input)
   if not ok or ast == nil then
     local err_msg = "Parse error: " .. tostring(ast or "nil AST")
-    vim.notify("Tungsten: " .. err_msg, vim.log.levels.ERROR, { title = "Tungsten Error" })
+    logger.notify("Tungsten: " .. err_msg, logger.levels.ERROR, { title = "Tungsten Error" })
     callback(nil, err_msg)
     return
   end
@@ -184,12 +185,12 @@ M.parse = parse
 
 function M.clear_cache()
   state.cache = {}
-  vim.notify("Tungsten: Cache cleared.", vim.log.levels.INFO, { title = "Tungsten" })
+  logger.notify("Tungsten: Cache cleared.", logger.levels.INFO, { title = "Tungsten" })
 end
 
 function M.view_active_jobs()
   if vim.tbl_isempty(state.active_jobs) then
-    vim.notify("Tungsten: No active jobs.", vim.log.levels.INFO, { title = "Tungsten" })
+    logger.notify("Tungsten: No active jobs.", logger.levels.INFO, { title = "Tungsten" })
     return
   end
   local report = { "Active Tungsten Jobs:" }
@@ -204,7 +205,7 @@ function M.view_active_jobs()
   -- For multiline notifications, it's better to print or use a floating window.
   -- vim.notify might truncate or not display newlines well.
   -- For simplicity here, we still use vim.notify.
-  vim.notify(table.concat(report, "\n"), vim.log.levels.INFO, { title = "Tungsten Active Jobs" })
+  logger.notify(table.concat(report, "\n"), logger.levels.INFO, { title = "Tungsten Active Jobs" })
 end
 
 function M.get_cache_size()
@@ -212,7 +213,7 @@ function M.get_cache_size()
     for _ in pairs(state.cache) do
         count = count + 1
     end
-    vim.notify("Tungsten: Cache size: " .. count .. " entries.", vim.log.levels.INFO, { title = "Tungsten" })
+    logger.notify("Tungsten: Cache size: " .. count .. " entries.", logger.levels.INFO, { title = "Tungsten" })
     return count
 end
 
