@@ -13,7 +13,7 @@ local config    = require("tungsten.config")
 -------------------------------------------------------------------------------
 local function tungsten_eval_command(_)
   local text = selection.get_visual_selection()
-  if text == "" then
+  if text == "" or text == nil then
     vim.notify("Tungsten: No text selected.", vim.log.levels.ERROR)
     return
   end
@@ -26,19 +26,17 @@ local function tungsten_eval_command(_)
   end
   local ast = ast_or_err
 
-  -- evaluate asynchronously
-  evaluator.evaluate_async(ast, config.numeric_mode, function(output, err)
-    if err then
-      return
-    end
+  local use_numeric_mode = config.numeric_mode
 
-    if not output or output == "" then
-      vim.notify("Tungsten: evaluation returned empty result.", vim.log.levels.WARN)
+  -- evaluate asynchronously
+  evaluator.evaluate_async(ast, use_numeric_mode, function(result)
+    if result == nil or result == "" then
       return
     end
-    insert.insert_result(output)
+    insert.insert_result(result)
   end)
 end
+
 
 vim.api.nvim_create_user_command(
   "TungstenEval",
@@ -46,6 +44,25 @@ vim.api.nvim_create_user_command(
   { range = true, desc = "Evaluate selected LaTeX and insert the result" }
 )
 
+-- Example command to clear the cache
+vim.api.nvim_create_user_command(
+  "TungstenClearCache",
+  function()
+    evaluator.clear_cache()
+  end,
+  { desc = "Clear the Tungsten evaluation cache" }
+)
+
+-- Example command to view active jobs
+vim.api.nvim_create_user_command(
+  "TungstenViewActiveJobs",
+  function()
+    evaluator.view_active_jobs()
+  end,
+  { desc = "View active Tungsten evaluation jobs" }
+)
+
+
 return {
-  tungsten_eval_command          = tungsten_eval_command,
+  tungsten_eval_command = tungsten_eval_command,
 }

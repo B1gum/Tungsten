@@ -6,6 +6,7 @@ local config = {
   wolfram_path = "wolframscript",
   numeric_mode = false,
   debug = false,
+  cache_enabled = true,
 }
 
 return config
