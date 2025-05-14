@@ -1,8 +1,16 @@
--- 1. make the project’s `lua/` directory visible to the plain Lua interpreter
 package.path = "./lua/?.lua;./lua/?/init.lua;" .. package.path
 
--- 2. load Tungsten’s parser and code‑generator
-local parser   = require "tungsten.core.parser"
+-- Ensure Tungsten core and its domains are initialized before parser is used in tests
+if not _G.__TUNGSTEN_CORE_INITIALIZED_FOR_TESTS then
+  print("Test Environment: Initializing Tungsten core...")
+  require("tungsten.core") -- This should trigger the loading of domains
+                           -- and execution of their init_grammar()
+  _G.__TUNGSTEN_CORE_INITIALIZED_FOR_TESTS = true
+  print("Test Environment: Tungsten core initialization complete.")
+end
+
+-- Now require the parser (or other modules you need for the test)
+local parser   = require("tungsten.core.parser")
 local codegen  = require "tungsten.backends.wolfram"
 
 -- 3. helper: strip all insignificant whitespace before comparison
@@ -17,7 +25,7 @@ local tests = {
   -- 2. simple power
   { input = "a^2",                  expected = "a^2"},
   -- 3. fraction
-  { input = "\\frac{1}{x+1}",       expected = "1/(x+1)"},
+  { input = "\\frac{1+1}{x+1}",       expected = "(1+1)/(x+1)"},
   -- 4. chained add / mul
   { input = "(a+b)\\cdot c",        expected = "(a+b)*c"},
   -- 5. square‑root

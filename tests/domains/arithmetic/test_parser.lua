@@ -1,6 +1,16 @@
 package.path = "./lua/?.lua;./lua/?/init.lua;" .. package.path
 
-local core   = require 'tungsten.core.parser'
+-- Ensure Tungsten core and its domains are initialized before parser is used in tests
+if not _G.__TUNGSTEN_CORE_INITIALIZED_FOR_TESTS then
+  print("Test Environment: Initializing Tungsten core...")
+  require("tungsten.core") -- This should trigger the loading of domains
+                           -- and execution of their init_grammar()
+  _G.__TUNGSTEN_CORE_INITIALIZED_FOR_TESTS = true
+  print("Test Environment: Tungsten core initialization complete.")
+end
+
+-- Now require the parser (or other modules you need for the test)
+local core = require("tungsten.core.parser")
 
 
 -- simple serializer for error‐messages
