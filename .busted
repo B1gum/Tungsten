@@ -1,0 +1,14 @@
+-- .busted
+
+return {
+  source = {
+    "tests/unit/**/*_spec.lua",
+    "tests/integration/**/*_spec.lua",
+    "tests/e2e/**/*_spec.lua"
+  },
+  options = {
+    output = "utfTerminal",
+    verbose = true,
+    coverage = true,
+  },
+}

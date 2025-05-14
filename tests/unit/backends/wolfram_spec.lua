@@ -10,4 +10,3 @@ describe("backends.wolfram.to_string", function()
     assert.are.equal("3+4", to_string(n))
   end)
 end)
-

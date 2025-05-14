@@ -13,4 +13,3 @@ describe("core.ast.make_bin", function()
     assert.are.same(right,    n.right)
   end)
 end)
-
