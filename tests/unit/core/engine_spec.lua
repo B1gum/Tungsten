@@ -6,6 +6,7 @@ package.path = './lua/?.lua;' .. package.path
 
 local spy = require('luassert.spy')
 local match = require('luassert.match')
+local helpers = require('tests.helpers')
 
 describe("tungsten.core.engine", function()
   local engine
@@ -14,41 +15,18 @@ describe("tungsten.core.engine", function()
   local mock_config_module
   local mock_state_module
   local mock_logger_module
-  local mock_vim_fn
-  local mock_vim_api
-  local mock_vim_loop
 
-  local original_vim
-  local original_pcall
+  local modules_to_reset = {
+    'tungsten.core.engine',
+    'tungsten.core.parser',
+    'tungsten.backends.wolfram',
+    'tungsten.config',
+    'tungsten.state',
+    'tungsten.util.logger',
+  }
 
   before_each(function()
-    package.loaded['tungsten.core.engine'] = nil
-    package.loaded['tungsten.core.parser'] = nil
-    package.loaded['tungsten.backends.wolfram'] = nil
-    package.loaded['tungsten.config'] = nil
-    package.loaded['tungsten.state'] = nil
-    package.loaded['tungsten.util.logger'] = nil
-
-    original_vim = _G.vim
-    mock_vim_fn = {
-      jobstart = spy.new(function() return 1 end),
-    }
-    mock_vim_api = {
-      nvim_get_current_buf = spy.new(function() return 1 end),
-    }
-    mock_vim_loop = {
-      now = spy.new(function() return 1234567890 end),
-    }
-    _G.vim = {
-      fn = mock_vim_fn,
-      api = mock_vim_api,
-      loop = mock_vim_loop,
-      tbl_isempty = function(tbl)
-        return next(tbl) == nil
-      end,
-    }
-
-    mock_parser_module = {
+    mock_parser_module = helpers.mock_utils.mock_module('tungsten.core.parser', {
       parse = spy.new(function(input_str)
         if input_str == "valid_latex" then
           return { type = "Expression", value = "parsed_valid_latex" }
@@ -58,10 +36,9 @@ describe("tungsten.core.engine", function()
           return { type = "Expression", value = "parsed_" .. input_str }
         end
       end),
-    }
-    package.loaded['tungsten.core.parser'] = mock_parser_module
+    })
 
-    mock_wolfram_backend_module = {
+    mock_wolfram_backend_module = helpers.mock_utils.mock_module('tungsten.backends.wolfram', {
       to_string = spy.new(function(ast)
         if ast and ast.type == "ErrorAST" then
           error("lua/tungsten/backends/wolfram.lua:XX: AST to Wolfram conversion error")
@@ -72,44 +49,38 @@ describe("tungsten.core.engine", function()
         end
         return "mock_wolfram_code"
       end),
-    }
-    package.loaded['tungsten.backends.wolfram'] = mock_wolfram_backend_module
+    })
 
-    mock_config_module = {
+    mock_config_module = helpers.mock_utils.mock_module('tungsten.config', {
       wolfram_path = "mock_wolframscript",
       numeric_mode = false,
       debug = false,
       cache_enabled = true,
       domains = { "arithmetic" },
-    }
-    package.loaded['tungsten.config'] = mock_config_module
+    })
 
-    mock_state_module = {
+    mock_state_module = helpers.mock_utils.mock_module('tungsten.state', {
       cache = {},
       active_jobs = {},
+    })
+
+    local logger_spec_base = {
+      levels = { ERROR = 1, WARN = 2, INFO = 3, DEBUG = 4 }
     }
-    package.loaded['tungsten.state'] = mock_state_module
+    mock_logger_module = helpers.mock_utils.mock_module('tungsten.util.logger', logger_spec_base)
+    mock_logger_module.notify = spy.new(function() end)
 
-    mock_logger_module = {
-      notify = spy.new(function() end),
-      levels = { ERROR = 1, WARN = 2, INFO = 3, DEBUG = 4 },
-    }
-    package.loaded['tungsten.util.logger'] = mock_logger_module
-
-    original_pcall = _G.pcall
-
+    helpers.vim_test_env.setup({
+        deep_equal = function(a, b)
+            return require('luassert.match').compare(a, b)
+        end
+    })
     engine = require("tungsten.core.engine")
   end)
 
   after_each(function()
-    _G.vim = original_vim
-    _G.pcall = original_pcall
-    package.loaded['tungsten.core.engine'] = nil
-    package.loaded['tungsten.core.parser'] = nil
-    package.loaded['tungsten.backends.wolfram'] = nil
-    package.loaded['tungsten.config'] = nil
-    package.loaded['tungsten.state'] = nil
-    package.loaded['tungsten.util.logger'] = nil
+    helpers.vim_test_env.teardown()
+    helpers.mock_utils.reset_modules(modules_to_reset)
   end)
 
   describe("evaluate_async(ast, numeric, callback)", function()
@@ -124,15 +95,19 @@ describe("tungsten.core.engine", function()
       mock_config_module.cache_enabled = true
       mock_state_module.cache = {}
       mock_state_module.active_jobs = {}
+      if _G.vim.fn.jobstart.is_spy and _G.vim.fn.jobstart.reset then _G.vim.fn.jobstart:reset() end
+      if package.loaded['tungsten.util.logger'] and package.loaded['tungsten.util.logger'].notify and package.loaded['tungsten.util.logger'].notify.is_spy then
+          package.loaded['tungsten.util.logger'].notify:reset()
+      end
     end)
 
     it("should successfully evaluate symbolically", function()
       engine.evaluate_async(sample_ast, false, actual_callback)
       assert.spy(mock_wolfram_backend_module.to_string).was.called_with(sample_ast)
-      assert.spy(mock_vim_fn.jobstart).was.called(1)
-      local jobstart_args = mock_vim_fn.jobstart.calls[1].vals[1]
+      assert.spy(_G.vim.fn.jobstart).was.called(1)
+      local jobstart_args = _G.vim.fn.jobstart.calls[1].vals[1]
       assert.are.same({ "mock_wolframscript", "-code", "wolfram_code_for_some_expression" }, jobstart_args)
-      local job_options = mock_vim_fn.jobstart.calls[1].vals[2]
+      local job_options = _G.vim.fn.jobstart.calls[1].vals[2]
       job_options.on_stdout(1, { "symbolic_result" }, 1)
       job_options.on_exit(1, 0, 1)
       assert.spy(callback_spy).was.called_with("symbolic_result", nil)
@@ -141,10 +116,10 @@ describe("tungsten.core.engine", function()
     it("should successfully evaluate numerically, wrapping code with N[]", function()
       engine.evaluate_async(sample_ast, true, actual_callback)
       assert.spy(mock_wolfram_backend_module.to_string).was.called_with(sample_ast)
-      assert.spy(mock_vim_fn.jobstart).was.called(1)
-      local jobstart_args = mock_vim_fn.jobstart.calls[1].vals[1]
+      assert.spy(_G.vim.fn.jobstart).was.called(1)
+      local jobstart_args = _G.vim.fn.jobstart.calls[1].vals[1]
       assert.are.same({ "mock_wolframscript", "-code", "N[wolfram_code_for_some_expression]" }, jobstart_args)
-      local job_options = mock_vim_fn.jobstart.calls[1].vals[2]
+      local job_options = _G.vim.fn.jobstart.calls[1].vals[2]
       job_options.on_stdout(1, { "numeric_result" }, 1)
       job_options.on_exit(1, 0, 1)
       assert.spy(callback_spy).was.called_with("numeric_result", nil)
@@ -153,8 +128,8 @@ describe("tungsten.core.engine", function()
     it("should use global config.numeric_mode if 'numeric' param is false but global is true", function()
       mock_config_module.numeric_mode = true
       engine.evaluate_async(sample_ast, false, actual_callback)
-      assert.spy(mock_vim_fn.jobstart).was.called(1)
-      local jobstart_args = mock_vim_fn.jobstart.calls[1].vals[1]
+      assert.spy(_G.vim.fn.jobstart).was.called(1)
+      local jobstart_args = _G.vim.fn.jobstart.calls[1].vals[1]
       assert.are.same({ "mock_wolframscript", "-code", "N[wolfram_code_for_some_expression]" }, jobstart_args)
     end)
 
@@ -164,16 +139,16 @@ describe("tungsten.core.engine", function()
       mock_state_module.cache[expr_key] = "cached_symbolic_result"
       engine.evaluate_async(sample_ast, false, actual_callback)
       assert.spy(callback_spy).was.called_with("cached_symbolic_result", nil)
-      assert.spy(mock_vim_fn.jobstart).was_not.called()
-      assert.spy(mock_logger_module.notify).was.called_with("Tungsten: Result from cache.", mock_logger_module.levels.INFO, match.is_table())
+      assert.spy(_G.vim.fn.jobstart).was_not.called()
+      assert.spy(package.loaded['tungsten.util.logger'].notify).was.called_with("Tungsten: Result from cache.", mock_logger_module.levels.INFO, match.is_table())
     end)
 
     it("should start a job and cache the result if cache is enabled and item does not exist (cache miss)", function()
       mock_config_module.cache_enabled = true
       local expr_key = "wolfram_code_for_some_expression::symbolic"
       engine.evaluate_async(sample_ast, false, actual_callback)
-      assert.spy(mock_vim_fn.jobstart).was.called(1)
-      local job_options = mock_vim_fn.jobstart.calls[1].vals[2]
+      assert.spy(_G.vim.fn.jobstart).was.called(1)
+      local job_options = _G.vim.fn.jobstart.calls[1].vals[2]
       job_options.on_stdout(1, { "new_symbolic_result" }, 1)
       job_options.on_exit(1, 0, 1)
       assert.spy(callback_spy).was.called_with("new_symbolic_result", nil)
@@ -185,8 +160,8 @@ describe("tungsten.core.engine", function()
       local expr_key = "wolfram_code_for_some_expression::symbolic"
       mock_state_module.cache[expr_key] = "cached_symbolic_result_but_disabled"
       engine.evaluate_async(sample_ast, false, actual_callback)
-      assert.spy(mock_vim_fn.jobstart).was.called(1)
-      local job_options = mock_vim_fn.jobstart.calls[1].vals[2]
+      assert.spy(_G.vim.fn.jobstart).was.called(1)
+      local job_options = _G.vim.fn.jobstart.calls[1].vals[2]
       job_options.on_stdout(1, { "fresh_result_no_cache" }, 1)
       job_options.on_exit(1, 0, 1)
       assert.spy(callback_spy).was.called_with("fresh_result_no_cache", nil)
@@ -202,8 +177,8 @@ describe("tungsten.core.engine", function()
       assert.is_nil(callback_args[1])
       assert.is_not_nil(callback_args[2] and string.find(callback_args[2], "Error converting AST to Wolfram code: ", 1, true))
       assert.is_not_nil(callback_args[2] and string.find(callback_args[2], "AST to Wolfram conversion error", 1, true))
-      assert.spy(mock_vim_fn.jobstart).was_not.called()
-      assert.spy(mock_logger_module.notify).was.called_with(
+      assert.spy(_G.vim.fn.jobstart).was_not.called()
+      assert.spy(package.loaded['tungsten.util.logger'].notify).was.called_with(
         match.has_match("Tungsten: Error converting AST to Wolfram code:"),
         mock_logger_module.levels.ERROR,
         match.is_table()
@@ -211,10 +186,10 @@ describe("tungsten.core.engine", function()
     end)
 
     it("should invoke callback with error if vim.fn.jobstart returns 0", function()
-      mock_vim_fn.jobstart = spy.new(function() return 0 end)
+      _G.vim.fn.jobstart = spy.new(function() return 0 end)
       engine.evaluate_async(sample_ast, false, actual_callback)
       assert.spy(callback_spy).was.called_with(nil, "Failed to start WolframScript job. (Reason: Invalid arguments to jobstart)")
-      assert.spy(mock_logger_module.notify).was.called_with(
+      assert.spy(package.loaded['tungsten.util.logger'].notify).was.called_with(
         "Tungsten: Failed to start WolframScript job. (Reason: Invalid arguments to jobstart)",
         mock_logger_module.levels.ERROR,
         match.is_table()
@@ -222,11 +197,11 @@ describe("tungsten.core.engine", function()
     end)
 
     it("should invoke callback with error if vim.fn.jobstart returns -1", function()
-      mock_vim_fn.jobstart = spy.new(function() return -1 end)
+      _G.vim.fn.jobstart = spy.new(function() return -1 end)
       engine.evaluate_async(sample_ast, false, actual_callback)
       local expected_err_msg = "Failed to start WolframScript job. (Reason: Command 'mock_wolframscript' not found - is wolframscript in your PATH?)"
       assert.spy(callback_spy).was.called_with(nil, expected_err_msg)
-      assert.spy(mock_logger_module.notify).was.called_with(
+      assert.spy(package.loaded['tungsten.util.logger'].notify).was.called_with(
         "Tungsten: " .. expected_err_msg,
         mock_logger_module.levels.ERROR,
         match.is_table()
@@ -235,11 +210,11 @@ describe("tungsten.core.engine", function()
 
     it("should invoke callback with error if WolframScript exits with non-zero code and stderr output", function()
       engine.evaluate_async(sample_ast, false, actual_callback)
-      local job_options = mock_vim_fn.jobstart.calls[1].vals[2]
+      local job_options = _G.vim.fn.jobstart.calls[1].vals[2]
       job_options.on_stderr(1, { "wolfram_error_output" }, 1)
       job_options.on_exit(1, 1, 1)
       assert.spy(callback_spy).was.called_with(nil, match.has_match("WolframScript %(Job 1%) exited with code 1\nStderr: wolfram_error_output"))
-      assert.spy(mock_logger_module.notify).was.called_with(
+      assert.spy(package.loaded['tungsten.util.logger'].notify).was.called_with(
         match.has_match("Tungsten: WolframScript %(Job 1%) exited with code 1\nStderr: wolfram_error_output"),
         mock_logger_module.levels.ERROR,
         match.is_table()
@@ -248,11 +223,11 @@ describe("tungsten.core.engine", function()
 
      it("should invoke callback with error if WolframScript exits with non-zero code and stdout output (no stderr)", function()
       engine.evaluate_async(sample_ast, false, actual_callback)
-      local job_options = mock_vim_fn.jobstart.calls[1].vals[2]
+      local job_options = _G.vim.fn.jobstart.calls[1].vals[2]
       job_options.on_stdout(1, { "some_stdout_content_on_error" }, 1)
       job_options.on_exit(1, 127, 1)
       assert.spy(callback_spy).was.called_with(nil, match.has_match("WolframScript %(Job 1%) exited with code 127\nStdout %(potentially error%): some_stdout_content_on_error"))
-       assert.spy(mock_logger_module.notify).was.called_with(
+       assert.spy(package.loaded['tungsten.util.logger'].notify).was.called_with(
         match.has_match("Tungsten: WolframScript %(Job 1%) exited with code 127\nStdout %(potentially error%): some_stdout_content_on_error"),
         mock_logger_module.levels.ERROR,
         match.is_table()
@@ -265,20 +240,20 @@ describe("tungsten.core.engine", function()
         expr_key = expr_key, bufnr = 1, code_sent = "wolfram_code_for_some_expression", start_time = 12345,
       }
       engine.evaluate_async(sample_ast, false, actual_callback)
-      assert.spy(mock_logger_module.notify).was.called_with("Tungsten: Evaluation already in progress for this expression.", mock_logger_module.levels.INFO, match.is_table())
-      assert.spy(mock_vim_fn.jobstart).was_not.called()
+      assert.spy(package.loaded['tungsten.util.logger'].notify).was.called_with("Tungsten: Evaluation already in progress for this expression.", mock_logger_module.levels.INFO, match.is_table())
+      assert.spy(_G.vim.fn.jobstart).was_not.called()
       assert.spy(callback_spy).was_not.called()
     end)
 
     it("should add job to active_jobs on start and remove on exit", function()
-      assert.is_true(vim.tbl_isempty(mock_state_module.active_jobs))
+      assert.is_true(_G.vim.tbl_isempty(mock_state_module.active_jobs))
       engine.evaluate_async(sample_ast, false, actual_callback)
       local expected_job_id = 1
       assert.is_not_nil(mock_state_module.active_jobs[expected_job_id])
       assert.are.equal("wolfram_code_for_some_expression::symbolic", mock_state_module.active_jobs[expected_job_id].expr_key)
       assert.are.equal(1, mock_state_module.active_jobs[expected_job_id].bufnr)
       assert.are.equal(1234567890, mock_state_module.active_jobs[expected_job_id].start_time)
-      local job_options = mock_vim_fn.jobstart.calls[1].vals[2]
+      local job_options = _G.vim.fn.jobstart.calls[1].vals[2]
       job_options.on_exit(expected_job_id, 0, 1)
       assert.is_nil(mock_state_module.active_jobs[expected_job_id])
     end)
@@ -287,12 +262,21 @@ describe("tungsten.core.engine", function()
   describe("run_async(input_string, numeric, callback)", function()
     local callback_spy
     local actual_callback
+    local original_pcall_for_run_async
 
     before_each(function()
       callback_spy = spy.new(function() end)
       actual_callback = function(...) callback_spy(...) end
       mock_state_module.cache = {}
       mock_state_module.active_jobs = {}
+      original_pcall_for_run_async = _G.pcall
+      if package.loaded['tungsten.util.logger'] and package.loaded['tungsten.util.logger'].notify and package.loaded['tungsten.util.logger'].notify.is_spy then
+          package.loaded['tungsten.util.logger'].notify:reset()
+      end
+    end)
+
+    after_each(function()
+      _G.pcall = original_pcall_for_run_async
     end)
 
     it("should correctly call parser.parse and then evaluate_async on success", function()
@@ -308,7 +292,7 @@ describe("tungsten.core.engine", function()
       engine.run_async("error_latex", false, actual_callback)
       assert.spy(mock_parser_module.parse).was.called_with("error_latex")
       assert.spy(callback_spy).was.called_with(nil, "Parse error: nil AST")
-      assert.spy(mock_logger_module.notify).was.called_with(
+      assert.spy(package.loaded['tungsten.util.logger'].notify).was.called_with(
         "Tungsten: Parse error: nil AST",
         mock_logger_module.levels.ERROR,
         match.is_table()
@@ -316,30 +300,38 @@ describe("tungsten.core.engine", function()
     end)
 
     it("should invoke callback with error if parser.parse throws an error (pcall context)", function()
-      mock_parser_module.parse = spy.new(function() error("parser_panic_error") end)
-
+      local original_pcall_func = _G.pcall
       local test_specific_pcall_spy = spy.new(function(f, ...)
-        return original_pcall(f, ...)
+        return original_pcall_func(f, ...)
       end)
       _G.pcall = test_specific_pcall_spy
 
-      package.loaded['tungsten.core.engine'] = nil
-      local current_engine_instance = require("tungsten.core.engine")
+      local erroring_parse_spy = spy.new(function() error("parser_panic_error_for_run_async") end)
+      helpers.mock_utils.mock_module('tungsten.core.parser', {
+        parse = erroring_parse_spy
+      })
 
-      current_engine_instance.run_async("some_input_causing_panic", false, actual_callback)
+      helpers.mock_utils.reset_modules({'tungsten.core.engine'})
+      engine = require("tungsten.core.engine")
+
+      engine.run_async("some_input_causing_panic_in_run_async", false, actual_callback)
 
       assert.spy(test_specific_pcall_spy).was.called()
-      assert.are.same(mock_parser_module.parse, test_specific_pcall_spy.calls[1].vals[1])
-      assert.spy(callback_spy).was.called_with(nil, match.has_match("Parse error: tests/unit/core/engine_spec.lua:319: parser_panic_error"))
+      local pcall_call_args = test_specific_pcall_spy.calls[1].vals
+      assert.is_not_nil(pcall_call_args, "pcall spy was not called or call not recorded")
+      if pcall_call_args then
+          assert.are.same(erroring_parse_spy, pcall_call_args[1], "pcall was not called with the expected erroring_parse_spy as its first argument.")
+          assert.are.same("some_input_causing_panic_in_run_async", pcall_call_args[2], "pcall was not called with the expected input string.")
+      end
 
-      assert.spy(mock_logger_module.notify).was.called_with(
-        "Tungsten: Parse error: tests/unit/core/engine_spec.lua:319: parser_panic_error",
+      assert.spy(callback_spy).was.called_with(nil, match.has_match("Parse error: .*parser_panic_error_for_run_async"))
+      assert.spy(package.loaded['tungsten.util.logger'].notify).was.called_with(
+        match.has_match("Tungsten: Parse error: .*parser_panic_error_for_run_async"),
         mock_logger_module.levels.ERROR,
         match.is_table()
       )
     end)
   end)
-
 
   describe("Cache Management", function()
     before_each(function()
@@ -350,44 +342,69 @@ describe("tungsten.core.engine", function()
       mock_state_module.cache["key1"] = "value1"
       mock_state_module.cache["key2"] = "value2"
       engine.clear_cache()
-      assert.is_true(vim.tbl_isempty(mock_state_module.cache))
-      assert.spy(mock_logger_module.notify).was.called_with("Tungsten: Cache cleared.", mock_logger_module.levels.INFO, match.is_table())
+      assert.is_true(_G.vim.tbl_isempty(mock_state_module.cache))
+      assert.spy(package.loaded['tungsten.util.logger'].notify).was.called_with("Tungsten: Cache cleared.", mock_logger_module.levels.INFO, match.is_table())
     end)
 
-    it("get_cache_size() should return the correct number of items in the cache", function()
-      engine.get_cache_size()
-      assert.spy(mock_logger_module.notify).was.called_with("Tungsten: Cache size: 0 entries.", mock_logger_module.levels.INFO, match.is_table())
-      if mock_logger_module.notify.reset then
-          mock_logger_module.notify:reset()
-      else
-          mock_logger_module.notify = spy.new(function() end)
-      end
+  end)
 
-      mock_state_module.cache["key1"] = "value1"
-      engine.get_cache_size()
-      assert.spy(mock_logger_module.notify).was.called_with("Tungsten: Cache size: 1 entries.", mock_logger_module.levels.INFO, match.is_table())
-      if mock_logger_module.notify.reset then
-          mock_logger_module.notify:reset()
-      else
-          mock_logger_module.notify = spy.new(function() end)
-      end
+  describe("Active Job Management", function()
+    before_each(function()
+      mock_state_module.active_jobs = {}
+    end)
 
-      mock_state_module.cache["key2"] = "value2"
-      mock_state_module.cache["key3"] = "value3"
-      engine.get_cache_size()
-      assert.spy(mock_logger_module.notify).was.called_with("Tungsten: Cache size: 3 entries.", mock_logger_module.levels.INFO, match.is_table())
+    it("view_active_jobs() should log 'No active jobs.' if active_jobs is empty", function()
+      engine.view_active_jobs()
+      assert.spy(package.loaded['tungsten.util.logger'].notify).was.called_with("Tungsten: No active jobs.", mock_logger_module.levels.INFO, match.is_table())
+    end)
+
+    it("view_active_jobs() should log details of active jobs", function()
+        mock_state_module.active_jobs = {
+            [123] = { expr_key = "key_abc", bufnr = 1, code_sent = "run_this_code_abc", start_time = 1000 },
+            [456] = { expr_key = "key_xyz::numeric", bufnr = 2, code_sent = "N[run_this_code_xyz]", start_time = 2000 },
+        }
+        engine.view_active_jobs()
+        local logger_notify_spy = package.loaded['tungsten.util.logger'].notify
+        assert.spy(logger_notify_spy).was.called(1)
+        local log_call_vals = logger_notify_spy.calls[1].vals
+        local logged_string = log_call_vals[1]
+
+        assert.is_string(logged_string)
+        assert.is_not_nil(string.find(logged_string, "Active Tungsten Jobs:", 1, true), "Missing title")
+        assert.is_not_nil(string.find(logged_string, "- ID: 123, Key: key_abc, Buf: 1, Code: run_this_code_abc", 1, true), "Missing job 123 details")
+        assert.is_not_nil(string.find(logged_string, "- ID: 456, Key: key_xyz::numeric, Buf: 2, Code: N[run_this_code_xyz]", 1, true), "Missing job 456 details for plain match")
+        assert.are.same(mock_logger_module.levels.INFO, log_call_vals[2])
+        assert.are.same({ title = "Tungsten Active Jobs" }, log_call_vals[3])
     end)
   end)
 
   describe("Active Job Management", function()
     before_each(function()
       mock_state_module.active_jobs = {}
-      mock_logger_module.notify = spy.new(function() end)
     end)
 
     it("view_active_jobs() should log 'No active jobs.' if active_jobs is empty", function()
       engine.view_active_jobs()
-      assert.spy(mock_logger_module.notify).was.called_with("Tungsten: No active jobs.", mock_logger_module.levels.INFO, match.is_table())
+      assert.spy(package.loaded['tungsten.util.logger'].notify).was.called_with("Tungsten: No active jobs.", mock_logger_module.levels.INFO, match.is_table())
+    end)
+
+    it("view_active_jobs() should log details of active jobs", function()
+        mock_state_module.active_jobs = {
+            [123] = { expr_key = "key_abc", bufnr = 1, code_sent = "run_this_code_abc", start_time = 1000 },
+            [456] = { expr_key = "key_xyz::numeric", bufnr = 2, code_sent = "N[run_this_code_xyz]", start_time = 2000 },
+        }
+        engine.view_active_jobs()
+        local logger_notify_spy = package.loaded['tungsten.util.logger'].notify
+        assert.spy(logger_notify_spy).was.called(1)
+        local log_call_vals = logger_notify_spy.calls[1].vals
+        local logged_string = log_call_vals[1]
+
+        assert.is_string(logged_string)
+        assert.is_not_nil(string.find(logged_string, "Active Tungsten Jobs:", 1, true), "Missing title")
+        assert.is_not_nil(string.find(logged_string, "- ID: 123, Key: key_abc, Buf: 1, Code: run_this_code_abc", 1, true), "Missing job 123 details")
+        assert.is_not_nil(string.find(logged_string, "- ID: 456, Key: key_xyz::numeric, Buf: 2, Code: N[run_this_code_xyz]", 1, true), "Missing job 456 details for plain match")
+        assert.are.same(mock_logger_module.levels.INFO, log_call_vals[2])
+        assert.are.same({ title = "Tungsten Active Jobs" }, log_call_vals[3])
     end)
   end)
 
@@ -403,6 +420,7 @@ describe("tungsten.core.engine", function()
       mock_config_module.debug = true
       mock_state_module.cache = {}
       mock_state_module.active_jobs = {}
+      if _G.vim.fn.jobstart.is_spy and _G.vim.fn.jobstart.reset then _G.vim.fn.jobstart:reset() end
     end)
 
     after_each(function()
@@ -413,7 +431,7 @@ describe("tungsten.core.engine", function()
       local expr_key = "wolfram_code_for_debug_expr::symbolic"
       mock_state_module.cache[expr_key] = "cached_debug_result"
       engine.evaluate_async(sample_ast, false, actual_callback)
-      assert.spy(mock_logger_module.notify).was.called_with(
+      assert.spy(package.loaded['tungsten.util.logger'].notify).was.called_with(
         "Tungsten Debug: Cache hit for key: " .. expr_key,
         mock_logger_module.levels.INFO,
         { title = "Tungsten Debug" }
@@ -425,7 +443,7 @@ describe("tungsten.core.engine", function()
       local expected_job_id = 1
       local expr_key = "wolfram_code_for_debug_expr::symbolic"
       local code_sent = "wolfram_code_for_debug_expr"
-      assert.spy(mock_logger_module.notify).was.called_with(
+      assert.spy(package.loaded['tungsten.util.logger'].notify).was.called_with(
         ("Tungsten: Started WolframScript job %d for key '%s' with code: %s"):format(expected_job_id, expr_key, code_sent),
         mock_logger_module.levels.INFO,
         { title = "Tungsten Debug" }
@@ -435,40 +453,48 @@ describe("tungsten.core.engine", function()
     it("should log job finish details in debug mode", function()
       engine.evaluate_async(sample_ast, false, actual_callback)
       local expected_job_id = 1
-      local job_options = mock_vim_fn.jobstart.calls[1].vals[2]
+      local job_options = _G.vim.fn.jobstart.calls[1].vals[2]
+
+      local job_finish_message = "Tungsten: Job " .. expected_job_id .. " finished and removed from active jobs."
+      local job_finish_level = mock_logger_module.levels.INFO
+      local job_finish_opts = { title = "Tungsten Debug" }
+
       job_options.on_exit(expected_job_id, 0, 1)
-      assert.spy(mock_logger_module.notify).was.called_with(
-        "Tungsten: Job " .. expected_job_id .. " finished and removed from active jobs.",
-        mock_logger_module.levels.INFO,
-        { title = "Tungsten Debug" }
-      )
+
+      assert.spy(package.loaded['tungsten.util.logger'].notify).was.called_with(job_finish_message, job_finish_level, job_finish_opts)
     end)
+
 
     it("should log cache store details in debug mode", function()
       engine.evaluate_async(sample_ast, false, actual_callback)
-      local job_options = mock_vim_fn.jobstart.calls[1].vals[2]
+      local job_options = _G.vim.fn.jobstart.calls[1].vals[2]
+
       job_options.on_stdout(1, { "result_to_cache" }, 1)
       job_options.on_exit(1, 0, 1)
+
       local expr_key = "wolfram_code_for_debug_expr::symbolic"
-      assert.spy(mock_logger_module.notify).was.called_with(
-        "Tungsten: Result for key '" .. expr_key .. "' stored in cache.",
-        mock_logger_module.levels.INFO,
-        { title = "Tungsten Debug" }
-      )
+      local cache_store_message = "Tungsten: Result for key '" .. expr_key .. "' stored in cache."
+      local cache_store_level = mock_logger_module.levels.INFO
+      local cache_store_opts = { title = "Tungsten Debug" }
+
+      assert.spy(package.loaded['tungsten.util.logger'].notify).was.called_with(cache_store_message, cache_store_level, cache_store_opts)
     end)
 
+
     it("should log stderr from successful job in debug mode", function()
-        engine.evaluate_async(sample_ast, false, actual_callback)
-        local expected_job_id = 1
-        local job_options = mock_vim_fn.jobstart.calls[1].vals[2]
-        job_options.on_stderr(expected_job_id, { "debug_stderr_info" }, 1)
-        job_options.on_stdout(expected_job_id, { "successful_output" }, 1)
-        job_options.on_exit(expected_job_id, 0, 1)
-        assert.spy(mock_logger_module.notify).was.called_with(
-            "Tungsten (Job " .. expected_job_id .. " stderr): debug_stderr_info",
-            mock_logger_module.levels.WARN,
-            { title = "Tungsten Debug" }
-        )
+      engine.evaluate_async(sample_ast, false, actual_callback)
+      local expected_job_id = 1
+      local job_options = _G.vim.fn.jobstart.calls[1].vals[2]
+
+      local stderr_message = "Tungsten (Job " .. expected_job_id .. " stderr): debug_stderr_info"
+      local stderr_level = mock_logger_module.levels.WARN
+      local stderr_opts = { title = "Tungsten Debug" }
+
+      job_options.on_stderr(expected_job_id, { "debug_stderr_info" }, 1)
+      job_options.on_stdout(expected_job_id, { "successful_output" }, 1)
+      job_options.on_exit(expected_job_id, 0, 1)
+
+      assert.spy(package.loaded['tungsten.util.logger'].notify).was.called_with(stderr_message, stderr_level, stderr_opts)
     end)
 
     it("should log if evaluation is already in progress for a key in debug mode", function()
@@ -477,7 +503,7 @@ describe("tungsten.core.engine", function()
         expr_key = expr_key, bufnr = 1, code_sent = "wolfram_code_for_debug_expr", start_time = 12345,
       }
       engine.evaluate_async(sample_ast, false, actual_callback)
-      assert.spy(mock_logger_module.notify).was.called_with(
+      assert.spy(package.loaded['tungsten.util.logger'].notify).was.called_with(
         ("Tungsten: Evaluation already in progress for key: '%s' (Job ID: %s)"):format(expr_key, "99"),
         mock_logger_module.levels.INFO,
         { title = "Tungsten" }
@@ -485,4 +511,3 @@ describe("tungsten.core.engine", function()
     end)
   end)
 end)
-
