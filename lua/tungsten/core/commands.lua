@@ -9,9 +9,6 @@ local insert    = require("tungsten.util.insert_result")
 local config    = require("tungsten.config")
 local logger    = require("tungsten.util.logger")
 
--------------------------------------------------------------------------------
--- :TungstenEval  – evaluate visually‑selected LaTeX math and insert the result
--------------------------------------------------------------------------------
 local function tungsten_eval_command(_)
   local text = selection.get_visual_selection()
   if text == "" or text == nil then
@@ -19,7 +16,6 @@ local function tungsten_eval_command(_)
     return
   end
 
-  -- parse → AST
   local ok, ast_or_err = pcall(parser.parse, text)
   if not ok or not ast_or_err then
     logger.notify("Tungsten: parse error – " .. tostring(ast_or_err), logger.levels.ERROR)
@@ -29,7 +25,6 @@ local function tungsten_eval_command(_)
 
   local use_numeric_mode = config.numeric_mode
 
-  -- evaluate asynchronously
   evaluator.evaluate_async(ast, use_numeric_mode, function(result)
     if result == nil or result == "" then
       return
@@ -45,7 +40,6 @@ vim.api.nvim_create_user_command(
   { range = true, desc = "Evaluate selected LaTeX and insert the result" }
 )
 
--- Example command to clear the cache
 vim.api.nvim_create_user_command(
   "TungstenClearCache",
   function()
@@ -54,7 +48,6 @@ vim.api.nvim_create_user_command(
   { desc = "Clear the Tungsten evaluation cache" }
 )
 
--- Example command to view active jobs
 vim.api.nvim_create_user_command(
   "TungstenViewActiveJobs",
   function()

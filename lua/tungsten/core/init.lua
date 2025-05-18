@@ -5,7 +5,7 @@ M.registry = require("tungsten.core.registry")
 local cfg = require("tungsten.config")
 local logger = require "tungsten.util.logger"
 
-local domains_to_load = cfg.domains or { "arithmetic" } -- Add other default domains if any
+local domains_to_load = cfg.domains or { "arithmetic" }
 
 if cfg.debug then
   logger.notify("Core: Initializing domains...", logger.levels.DEBUG, { title = "Tungsten Debug" })
@@ -13,7 +13,6 @@ end
 
 local loaded_domain_modules = {}
 
--- 1. Load domain modules and register their metadata
 for _, domain_name in ipairs(domains_to_load) do
   if cfg.debug then
     logger.notify("Core: Attempting to load domain module - " .. domain_name, logger.levels.DEBUG, { title = "Tungsten Debug" })
@@ -39,7 +38,7 @@ for _, domain_name in ipairs(domains_to_load) do
         )
       else
         M.registry.register_domain_metadata(metadata.name, metadata)
-        loaded_domain_modules[metadata.name] = domain_mod_or_err -- Store the loaded module
+        loaded_domain_modules[metadata.name] = domain_mod_or_err
         if cfg.debug then
             logger.notify("Core: Successfully loaded and registered metadata for domain - " .. metadata.name, logger.levels.DEBUG, { title = "Tungsten Debug" })
         end
@@ -48,8 +47,6 @@ for _, domain_name in ipairs(domains_to_load) do
   end
 end
 
--- 2. Initialize grammar for loaded domains
--- (Optionally, you could sort domains by dependencies here if you implement that feature)
 for domain_name, domain_mod in pairs(loaded_domain_modules) do
   if type(domain_mod.init_grammar) == "function" then
     if cfg.debug then
@@ -71,7 +68,6 @@ for domain_name, domain_mod in pairs(loaded_domain_modules) do
   end
 end
 
--- The grammar itself will be compiled on-demand by the parser via M.registry.get_combined_grammar()
 
 if cfg.debug then
   logger.notify("Core: Domain loading and grammar registration phase complete.", logger.levels.DEBUG, { title = "Tungsten Debug" })

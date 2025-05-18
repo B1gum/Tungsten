@@ -4,12 +4,8 @@
 --------------------------------------------------------------------
 local M = {}
 
----@alias RenderHandler fun(node:table, render:fun(child:table):string):string
----@class RenderHandlers : table<string, RenderHandler>
-
--- internal tail‑recursive walker ---------------------------------
 local function _walk(node, handlers)
-  if type(node) ~= "table" then            -- numeric leaf, plain string …
+  if type(node) ~= "table" then
     return tostring(node)
   end
 
@@ -23,15 +19,11 @@ local function _walk(node, handlers)
     error('render.walk: no handler for tag "' .. tostring(tag) .. '"')
   end
 
-  return h(node, function(child)           -- expose recurser to handlers
+  return h(node, function(child)
     return _walk(child, handlers)
   end)
 end
 
----Render an AST with the given handlers.
----@param ast table
----@param handlers RenderHandlers
----@return string
 function M.render(ast, handlers)
   assert(type(handlers) == "table", "render.render: handlers must be a table")
   return _walk(ast, handlers)

@@ -5,10 +5,8 @@ local space   = require("tungsten.core.tokenizer").space
 local Unary   = require("tungsten.domains.arithmetic.rules.supersub").Unary
 local make_bin = require("tungsten.core.ast").make_bin
 
--- explicit * / or \cdot
 local MulOpCap = (P("\\cdot") / function() return "*" end) + C(S("*/"))
 
--- “implicit” multiplication: space not before +/-
 local ImplicitMul = space * -S("+-") * Unary
   / function(rhs) return "*", rhs end
 

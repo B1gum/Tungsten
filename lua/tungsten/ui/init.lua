@@ -8,8 +8,6 @@ local logger   = require('tungsten.util.logger')
 
 local M = {}
 
----Opens a Telescope list of all :Tungsten* commands.
----@param opts table|nil  -- forwarded to `pickers.new`
 function M.open(opts)
   opts = opts or {}
 
@@ -25,9 +23,9 @@ function M.open(opts)
       results = commands,
       entry_maker = function(e)
         return {
-          value   = e.value,    -- executed by mappings.attach
-          display = e.display,  -- what the user sees
-          ordinal = e.ordinal,  -- used for fuzzy filtering
+          value   = e.value,
+          display = e.display,
+          ordinal = e.ordinal,
         }
       end,
     },

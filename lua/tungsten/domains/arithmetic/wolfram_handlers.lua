@@ -2,7 +2,6 @@ local M = {}
 
 local prec = { ["+"] = 1, ["-"] = 1, ["*"] = 2, ["/"] = 2, ["^"] = 3 }
 
--- Helper function for parenthesizing binary operations
 local function bin_with_parens(node, recur_render)
   local op = node.operator
   local function par(child_node)
@@ -18,7 +17,7 @@ end
 M.handlers = {
   number = function(node) return tostring(node.value) end,
   variable = function(node) return node.name end,
-  greek = function(node) return node.name end, -- Assuming Greek letters are fundamental enough for arithmetic
+  greek = function(node) return node.name end,
   binary = bin_with_parens,
   fraction = function(node, recur_render)
     return ("(%s)/(%s)"):format(recur_render(node.numerator), recur_render(node.denominator))
@@ -36,7 +35,6 @@ M.handlers = {
     if node.base.type == "variable" or node.base.type == "number" then
       return base_str .. "^" .. exp_str
     else
-      -- Use Power for complex bases to avoid ambiguity in WolframEngine
       return ("Power[%s,%s]"):format(base_str, exp_str)
     end
   end,

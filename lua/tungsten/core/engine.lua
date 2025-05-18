@@ -5,17 +5,15 @@
 local parse = require("tungsten.core.parser").parse
 local cg = require("tungsten.backends.wolfram")
 local toWolfram = cg.to_string
-local config = require("tungsten.config") -- User configurations
-local state = require("tungsten.state")   -- Plugin's runtime state
+local config = require("tungsten.config")
+local state = require("tungsten.state")
 local logger = require "tungsten.util.logger"
 
-local M = {} -- Module table to hold functions
+local M = {}
 
--- Generates a cache key from an AST and numeric mode.
 local function get_cache_key(ast_or_code_string, numeric)
   local code_str
   if type(ast_or_code_string) == "table" then
-    -- If it's an AST, convert to Wolfram code string
     local ok, result = pcall(toWolfram, ast_or_code_string)
     if not ok then
       return "error::ast_conversion_failed"
@@ -31,11 +29,6 @@ local function get_cache_key(ast_or_code_string, numeric)
 end
 
 
---- Asynchronously evaluates a math expression represented by an AST.
--- @param ast The abstract syntax tree produced by the LPeg parser.
--- @param numeric (boolean) If true, the expression is evaluated in numeric mode.
--- @param callback A function that receives the evaluated output (string) as its first argument,
---                 and an error message (string) as its second argument if an error occurred.
 function M.evaluate_async(ast, numeric, callback)
   assert(type(callback) == "function", "evaluate_async expects a callback function")
 
@@ -51,23 +44,19 @@ function M.evaluate_async(ast, numeric, callback)
 
   local expr_key = get_cache_key(initial_wolfram_code, numeric)
 
-  -- 1. Check cache first (if enabled by config)
-  -- If config.cache_enabled is nil (not set by user), we default to true.
   local use_cache = (config.cache_enabled == nil) or (config.cache_enabled == true)
 
   if use_cache then
     if state.cache[expr_key] then
-      -- Notifying that result is from cache
-      logger.notify("Tungsten: Result from cache.", logger.levels.INFO, { title = "Tungsten" }) -- Corrected
+      logger.notify("Tungsten: Result from cache.", logger.levels.INFO, { title = "Tungsten" })
       if config.debug then
-        logger.notify("Tungsten Debug: Cache hit for key: " .. expr_key, logger.levels.INFO, { title = "Tungsten Debug" }) -- Corrected
+        logger.notify("Tungsten Debug: Cache hit for key: " .. expr_key, logger.levels.INFO, { title = "Tungsten Debug" })
       end
       callback(state.cache[expr_key], nil)
       return
     end
   end
 
-  -- 2. Check active jobs
   for job_id_running, job_info in pairs(state.active_jobs) do
     if job_info.expr_key == expr_key then
       local notify_msg = "Tungsten: Evaluation already in progress for this expression."
@@ -75,10 +64,6 @@ function M.evaluate_async(ast, numeric, callback)
         notify_msg = ("Tungsten: Evaluation already in progress for key: '%s' (Job ID: %s)"):format(expr_key, tostring(job_id_running))
       end
       logger.notify(notify_msg, logger.levels.INFO, { title = "Tungsten" })
-      -- Do not proceed to start a new job. The first job will eventually populate the cache (if enabled)
-      -- and its callback will be triggered. Subsequent identical calls that hit this check
-      -- effectively wait for the first one to complete and then benefit from the cache on their next attempt.
-      -- To make this more sophisticated, you could queue callbacks for the same expr_key.
       return
     end
   end
@@ -146,7 +131,7 @@ function M.evaluate_async(ast, numeric, callback)
 
   job_id = vim.fn.jobstart({ wolfram_path, "-code", code_to_execute }, job_options)
 
-  if not job_id or job_id <= 0 then -- job_id can be 0 or negative for errors
+  if not job_id or job_id <= 0 then
     local err_msg = "Failed to start WolframScript job."
     if job_id == 0 then
       err_msg = err_msg .. " (Reason: Invalid arguments to jobstart)"
@@ -203,9 +188,6 @@ function M.view_active_jobs()
       info.code_sent:sub(1, 50) .. (info.code_sent:len() > 50 and "..." or "")
     ))
   end
-  -- For multiline notifications, it's better to print or use a floating window.
-  -- vim.notify might truncate or not display newlines well.
-  -- For simplicity here, we still use vim.notify.
   logger.notify(table.concat(report, "\n"), logger.levels.INFO, { title = "Tungsten Active Jobs" })
 end
 

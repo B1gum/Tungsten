@@ -1,7 +1,6 @@
 local lpeg = require "lpeg"
 local V    = lpeg.V
 
--- import the pieces
 local tokens     = require "tungsten.core.tokenizer"
 local Fraction   = require "tungsten.domains.arithmetic.rules.fraction"
 local Sqrt       = require "tungsten.domains.arithmetic.rules.sqrt"

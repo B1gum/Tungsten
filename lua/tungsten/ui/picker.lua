@@ -8,14 +8,14 @@ function M.list()
   for name, meta in pairs(cmds) do
     if name:find("^Tungsten") then
       items[#items + 1] = {
-        value   = name,                          -- the actual :Command
-        display = meta.description or name,      -- what user sees
-        ordinal = meta.description or name,      -- what Telescope filters
+        value   = name,
+        display = meta.description or name,
+        ordinal = meta.description or name,
       }
     end
   end
 
-  table.sort(items, function(a, b)  -- deterministic order
+  table.sort(items, function(a, b)
     return a.display:lower() < b.display:lower()
   end)
 

@@ -4,7 +4,6 @@ local P,C,Cf,S,V = lpeg.P, lpeg.C, lpeg.Cf, lpeg.S, lpeg.V
 local space  = require("tungsten.core.tokenizer").space
 local node   = require("tungsten.core.ast").node
 
--- postfix factories
 local Postfix = (P("^") * space * V("AtomBase")) / function(exp)
     return function(base)
       return node("superscript", { base = base, exponent = exp })
@@ -16,13 +15,11 @@ local Postfix = (P("^") * space * V("AtomBase")) / function(exp)
     end
   end
 
--- apply them
 local SupSub = Cf(
   V("AtomBase") * (space * Postfix)^0,
   function(acc, fn) return fn(acc) end
 )
 
--- unary ±
 local Unary = ( C(S("+-")) * space * V("SupSub") ) / function(op, expr)
     return node("unary", { operator = op, value = expr })
   end
