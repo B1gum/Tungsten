@@ -35,7 +35,7 @@ end
 
 
 vim.api.nvim_create_user_command(
-  "TungstenEval",
+  "TungstenEvaluate",
   tungsten_eval_command,
   { range = true, desc = "Evaluate selected LaTeX and insert the result" }
 )

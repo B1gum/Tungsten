@@ -23,7 +23,7 @@ wk.add({
   },
   {
     "<leader>tee",
-    ":<C-u>TungstenEval<CR>",
+    ":<C-u>TungstenEvaluate<CR>",
   },
   {
     "<leader>t?",
