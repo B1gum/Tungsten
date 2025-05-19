@@ -15,8 +15,6 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
       if child_node.type == "variable" then return child_node.name end
       if child_node.type == "greek" then return child_node.name end
       if child_node.type == "binary" then
-        -- Simplified mock for binary children within other handlers,
-        -- assumes no complex precedence needed for children *of* fraction, sqrt etc.
         return mock_recur_render(child_node.left) .. child_node.operator .. mock_recur_render(child_node.right)
       end
       return "mock_rendered(" .. child_node.type .. ")"
@@ -64,19 +62,17 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
     end)
 
     it("should handle other greek letters", function()
-      local node = { type = "greek", name = "Omega" } -- Assuming input is already Omega
+      local node = { type = "greek", name = "Omega" }
       assert.are.equal("Omega", handlers.greek(node, mock_recur_render))
     end)
   end)
 
   describe("binary handler (bin_with_parens)", function()
-    local prec = wolfram_handlers.precedence -- Access precedence from the module
+    local prec = wolfram_handlers.precedence
     local function recur_render_for_binary(node)
       if node.type == "number" then return tostring(node.value) end
       if node.type == "variable" then return node.name end
       if node.type == "binary" then
-        -- For testing binary handler, this recur_render needs to call the binary handler itself
-        -- to correctly test parenthesization based on child operator precedence.
         return handlers.binary(node, recur_render_for_binary)
       end
       return "mock_child_for_binary_test("..node.type..")"
@@ -102,7 +98,6 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
       assert.are.equal("a/b", handlers.binary(node, recur_render_for_binary))
     end)
 
-    -- Parenthesization tests
     it("a * (b + c) should be rendered as a*(b+c)", function()
       local node = {
         type = "binary", operator = "*",
@@ -163,9 +158,6 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         left = { type = "variable", name = "a" },
         right = { type = "binary", operator = "+", left = { type = "variable", name = "b" }, right = { type = "variable", name = "c" } }
       }
-      -- The current bin_with_parens logic (child_prec < parent_prec) would produce 'a-b+c'.
-      -- This test asserts the mathematically correct 'a-(b+c)' for Wolfram Language.
-      -- This test will likely fail with the current implementation and highlights a need for more nuanced parenthesization.
       assert.are.equal("a-(b+c)", handlers.binary(node, recur_render_for_binary))
     end)
 
@@ -175,9 +167,6 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         left = { type = "variable", name = "a" },
         right = { type = "binary", operator = "-", left = { type = "variable", name = "b" }, right = { type = "variable", name = "c" } }
       }
-      -- The current bin_with_parens logic (child_prec < parent_prec) would produce 'a-b-c'.
-      -- This test asserts the mathematically correct 'a-(b-c)' for Wolfram Language.
-      -- This test is expected to fail with the current implementation and correctly identifies this behavior.
       assert.are.equal("a-(b-c)", handlers.binary(node, recur_render_for_binary))
     end)
 
@@ -187,10 +176,6 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         left = { type = "variable", name = "a" },
         right = { type = "binary", operator = "*", left = { type = "variable", name = "b" }, right = { type = "variable", name = "c" } }
       }
-      -- Current logic: child_prec (2) is not less than parent_prec (2), so no parens. Produces 'a/b*c'.
-      -- This is ' (a/b) * c '.
-      -- For 'a/(b*c)', Wolfram would need 'a/(b*c)'.
-      -- This test asserts the desired behavior.
       assert.are.equal("a/(b*c)", handlers.binary(node, recur_render_for_binary))
     end)
 
@@ -200,7 +185,6 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         left = { type = "binary", operator = "*", left = { type = "variable", name = "a" }, right = { type = "variable", name = "b" } },
         right = { type = "variable", name = "c" }
       }
-      -- Current logic: child_prec (2) is not less than parent_prec (2), so no parens. Produces 'a*b/c'. This is correct.
       assert.are.equal("a*b/c", handlers.binary(node, recur_render_for_binary))
     end)
 
@@ -211,7 +195,6 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         left = { type = "variable", name = "a" },
         right = { type = "binary", operator = "+", left = { type = "variable", name = "b" }, right = { type = "variable", name = "c" } }
       }
-      -- Child '+' (prec 1) < parent '^' (prec 3) is true. Parens added. Correct.
       assert.are.equal("a^(b+c)", handlers.binary(node, recur_render_for_binary))
     end)
 
@@ -221,7 +204,6 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         left = { type = "binary", operator = "+", left = { type = "variable", name = "a" }, right = { type = "variable", name = "b" } },
         right = { type = "variable", name = "c" }
       }
-      -- Child '+' (prec 1) < parent '^' (prec 3) is true. Parens added. Correct.
       assert.are.equal("(a+b)^c", handlers.binary(node, recur_render_for_binary))
     end)
   end)
@@ -302,7 +284,6 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         base = { type = "binary", operator = "+", left = {type="variable", name="a"}, right={type="variable", name="b"}},
         exponent = { type = "number", value = 3 }
       }
-      -- Mock recur_render for binary will produce "a+b"
       assert.are.equal("Power[a+b,3]", handlers.superscript(node, mock_recur_render))
     end)
 

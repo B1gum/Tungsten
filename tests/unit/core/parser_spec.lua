@@ -16,7 +16,7 @@ describe("tungsten.core.parser.parse with combined grammar", function()
   describe("basic arithmetic operations", function()
     it("should parse addition: 1 + 2", function()
       local input = "1 + 2"
-      local expected_ast = ast_utils.make_bin("+",
+      local expected_ast = ast_utils.create_binary_operation_node("+",
         { type = "number", value = 1 },
         { type = "number", value = 2 }
       )
@@ -25,7 +25,7 @@ describe("tungsten.core.parser.parse with combined grammar", function()
 
     it("should parse subtraction: 2 - 1", function()
       local input = "2 - 1"
-      local expected_ast = ast_utils.make_bin("-",
+      local expected_ast = ast_utils.create_binary_operation_node("-",
         { type = "number", value = 2 },
         { type = "number", value = 1 }
       )
@@ -34,7 +34,7 @@ describe("tungsten.core.parser.parse with combined grammar", function()
 
     it("should parse multiplication with *: 3 * 4 (verifying * operator)", function()
       local input = "3 * 4"
-      local expected_ast = ast_utils.make_bin("*",
+      local expected_ast = ast_utils.create_binary_operation_node("*",
         { type = "number", value = 3 },
         { type = "number", value = 4 }
       )
@@ -43,7 +43,7 @@ describe("tungsten.core.parser.parse with combined grammar", function()
 
     it("should parse multiplication with \\cdot: 3 \\cdot 4", function()
       local input = "3 \\cdot 4"
-      local expected_ast = ast_utils.make_bin("*",
+      local expected_ast = ast_utils.create_binary_operation_node("*",
         { type = "number", value = 3 },
         { type = "number", value = 4 }
       )
@@ -52,7 +52,7 @@ describe("tungsten.core.parser.parse with combined grammar", function()
 
     it("should parse division: 5 / 6", function()
       local input = "5 / 6"
-      local expected_ast = ast_utils.make_bin("/",
+      local expected_ast = ast_utils.create_binary_operation_node("/",
         { type = "number", value = 5 },
         { type = "number", value = 6 }
       )
@@ -63,9 +63,9 @@ describe("tungsten.core.parser.parse with combined grammar", function()
   describe("order of operations", function()
     it("should parse 1 + 2 \\cdot 3 correctly (multiplication before addition)", function()
       local input = "1 + 2 \\cdot 3"
-      local expected_ast = ast_utils.make_bin("+",
+      local expected_ast = ast_utils.create_binary_operation_node("+",
         { type = "number", value = 1 },
-        ast_utils.make_bin("*",
+        ast_utils.create_binary_operation_node("*",
           { type = "number", value = 2 },
           { type = "number", value = 3 }
         )
@@ -75,8 +75,8 @@ describe("tungsten.core.parser.parse with combined grammar", function()
 
     it("should parse 1 \\cdot 2 + 3 correctly (multiplication before addition)", function()
       local input = "1 \\cdot 2 + 3"
-      local expected_ast = ast_utils.make_bin("+",
-        ast_utils.make_bin("*",
+      local expected_ast = ast_utils.create_binary_operation_node("+",
+        ast_utils.create_binary_operation_node("*",
           { type = "number", value = 1 },
           { type = "number", value = 2 }
         ),
@@ -89,8 +89,8 @@ describe("tungsten.core.parser.parse with combined grammar", function()
   describe("parenthesized expressions", function()
     it("should parse (1 + 2) \\cdot 3 correctly", function()
       local input = "(1 + 2) \\cdot 3"
-      local expected_ast = ast_utils.make_bin("*",
-        ast_utils.make_bin("+",
+      local expected_ast = ast_utils.create_binary_operation_node("*",
+        ast_utils.create_binary_operation_node("+",
           { type = "number", value = 1 },
           { type = "number", value = 2 }
         ),
@@ -101,9 +101,9 @@ describe("tungsten.core.parser.parse with combined grammar", function()
 
     it("should parse 1 \\cdot (2 + 3) correctly", function()
         local input = "1 \\cdot (2 + 3)"
-        local expected_ast = ast_utils.make_bin("*",
+        local expected_ast = ast_utils.create_binary_operation_node("*",
             { type = "number", value = 1 },
-            ast_utils.make_bin("+",
+            ast_utils.create_binary_operation_node("+",
                 { type = "number", value = 2 },
                 { type = "number", value = 3 }
             )
@@ -125,11 +125,11 @@ describe("tungsten.core.parser.parse with combined grammar", function()
     it("should parse \\frac{1+x}{y-2}", function()
       local input = "\\frac{1+x}{y-2}"
       local expected_ast = ast_utils.node("fraction", {
-        numerator = ast_utils.make_bin("+",
+        numerator = ast_utils.create_binary_operation_node("+",
           { type = "number", value = 1 },
           { type = "variable", name = "x" }
         ),
-        denominator = ast_utils.make_bin("-",
+        denominator = ast_utils.create_binary_operation_node("-",
           { type = "variable", name = "y" },
           { type = "number", value = 2 }
         )
@@ -159,7 +159,7 @@ describe("tungsten.core.parser.parse with combined grammar", function()
     it("should parse \\sqrt{x^2+y^2}", function()
         local input = "\\sqrt{x^2+y^2}"
         local expected_ast = ast_utils.node("sqrt", {
-            radicand = ast_utils.make_bin("+",
+            radicand = ast_utils.create_binary_operation_node("+",
                 ast_utils.node("superscript", {
                     base = { type = "variable", name = "x"},
                     exponent = { type = "number", value = 2}
@@ -209,7 +209,7 @@ describe("tungsten.core.parser.parse with combined grammar", function()
         local input = "x^{a+b}"
         local expected_ast = ast_utils.node("superscript", {
             base = { type = "variable", name = "x" },
-            exponent = ast_utils.make_bin("+",
+            exponent = ast_utils.create_binary_operation_node("+",
                 {type = "variable", name = "a"},
                 {type = "variable", name = "b"}
             )
@@ -241,7 +241,7 @@ describe("tungsten.core.parser.parse with combined grammar", function()
         local input = "-(1+2)"
         local expected_ast = ast_utils.node("unary", {
             operator = "-",
-            value = ast_utils.make_bin("+",
+            value = ast_utils.create_binary_operation_node("+",
                 {type = "number", value = 1},
                 {type = "number", value = 2}
             )
@@ -271,7 +271,7 @@ describe("tungsten.core.parser.parse with combined grammar", function()
 
     it("should parse \\beta + \\gamma", function()
         local input = "\\beta + \\gamma"
-        local expected_ast = ast_utils.make_bin("+",
+        local expected_ast = ast_utils.create_binary_operation_node("+",
             {type="greek", name="beta"},
             {type="greek", name="gamma"}
         )
@@ -282,7 +282,7 @@ describe("tungsten.core.parser.parse with combined grammar", function()
   describe("implicit multiplication", function()
     it("should parse 2x as 2 \\cdot x (implicitly)", function()
       local input = "2x"
-      local expected_ast = ast_utils.make_bin("*",
+      local expected_ast = ast_utils.create_binary_operation_node("*",
         { type = "number", value = 2 },
         { type = "variable", name = "x" }
       )
@@ -290,7 +290,7 @@ describe("tungsten.core.parser.parse with combined grammar", function()
     end)
     it("should parse x y as x \\cdot y (implicitly)", function()
       local input = "x y"
-      local expected_ast = ast_utils.make_bin("*",
+      local expected_ast = ast_utils.create_binary_operation_node("*",
         { type = "variable", name = "x" },
         { type = "variable", name = "y" }
       )
@@ -298,8 +298,8 @@ describe("tungsten.core.parser.parse with combined grammar", function()
     end)
     it("should parse (1+2)x as (1+2) \\cdot x (implicitly)", function()
         local input = "(1+2)x"
-        local expected_ast = ast_utils.make_bin("*",
-            ast_utils.make_bin("+",
+        local expected_ast = ast_utils.create_binary_operation_node("*",
+            ast_utils.create_binary_operation_node("+",
                 { type = "number", value = 1 },
                 { type = "number", value = 2 }
             ),
@@ -309,7 +309,7 @@ describe("tungsten.core.parser.parse with combined grammar", function()
     end)
     it("should parse 2\\alpha as 2 \\cdot \\alpha (implicitly)", function()
         local input = "2\\alpha"
-        local expected_ast = ast_utils.make_bin("*",
+        local expected_ast = ast_utils.create_binary_operation_node("*",
             { type = "number", value = 2 },
             { type = "greek", name = "alpha" }
         )
@@ -367,13 +367,13 @@ describe("tungsten.core.parser.parse with combined grammar", function()
 
     it("should parse expression with mixed brackets: [(1+2)\\cdot{3-4}]/5", function()
         local input = "[(1+2)\\cdot{3-4}]/5"
-        local expected_ast = ast_utils.make_bin("/",
-            ast_utils.make_bin("*",
-                ast_utils.make_bin("+",
+        local expected_ast = ast_utils.create_binary_operation_node("/",
+            ast_utils.create_binary_operation_node("*",
+                ast_utils.create_binary_operation_node("+",
                     { type = "number", value = 1 },
                     { type = "number", value = 2 }
                 ),
-                ast_utils.make_bin("-",
+                ast_utils.create_binary_operation_node("-",
                     { type = "number", value = 3 },
                     { type = "number", value = 4 }
                 )

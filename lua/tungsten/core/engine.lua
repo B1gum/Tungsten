@@ -20,7 +20,6 @@ local function get_cache_key(ast_or_code_string, numeric)
     end
     code_str = result
   elseif type(ast_or_code_string) == "string" then
-    -- If it's already a code string
     code_str = ast_or_code_string
   else
     return "error::invalid_cache_key_input"

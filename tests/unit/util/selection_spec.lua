@@ -2,16 +2,14 @@
 -- Unit tests for the selection utility module.
 ---------------------------------------------------------------------
 
--- Ensure package path allows requiring project modules
 package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
 local spy = require('luassert.spy')
-local mock_utils = require('tests.helpers.mock_utils') -- Assuming you have mock_utils
+local mock_utils = require('tests.helpers.mock_utils')
 
 describe("tungsten.util.selection", function()
   local selection_module
 
-  -- Store original Neovim API functions to restore them after tests
   local original_vim_fn_getpos
   local original_vim_api_nvim_buf_get_lines
 
@@ -20,7 +18,6 @@ describe("tungsten.util.selection", function()
   }
 
   before_each(function()
-    -- Mock Neovim's global vim table and its relevant functions
     _G.vim = _G.vim or {}
     _G.vim.fn = _G.vim.fn or {}
     _G.vim.api = _G.vim.api or {}
@@ -28,27 +25,23 @@ describe("tungsten.util.selection", function()
     original_vim_fn_getpos = _G.vim.fn.getpos
     original_vim_api_nvim_buf_get_lines = _G.vim.api.nvim_buf_get_lines
 
-    -- Default mock implementations (can be overridden in specific tests)
     _G.vim.fn.getpos = spy.new(function(marker)
-      if marker == "'<" then return { 0, 1, 1, 0 } end -- {bufnr, lnum, col, off}
+      if marker == "'<" then return { 0, 1, 1, 0 } end
       if marker == "'>" then return { 0, 1, 1, 0 } end
-      return { 0, 0, 0, 0 } -- Should not happen in normal flow
+      return { 0, 0, 0, 0 }
     end)
     _G.vim.api.nvim_buf_get_lines = spy.new(function(bufnr, start_line, end_line, strict_indexing)
-      return {} -- Default to returning no lines
+      return {}
     end)
 
-    -- Reset the specific module we are testing to ensure a clean state
     mock_utils.reset_modules(modules_to_reset)
     selection_module = require("tungsten.util.selection")
   end)
 
   after_each(function()
-    -- Restore original Neovim API functions
     _G.vim.fn.getpos = original_vim_fn_getpos
     _G.vim.api.nvim_buf_get_lines = original_vim_api_nvim_buf_get_lines
 
-    -- Clean up any global mocks if necessary, though spies handle this mostly
     mock_utils.reset_modules(modules_to_reset)
   end)
 
@@ -56,10 +49,8 @@ describe("tungsten.util.selection", function()
     describe("Single-Line Selections", function()
       it("should return the correct substring for a middle selection", function()
         _G.vim.fn.getpos = spy.new(function(marker)
-          -- For "Hello World!"
-          -- To get "World": 'W' is col 7, 'd' is col 11
-          if marker == "'<" then return { 0, 1, 7, 0 } end -- Line 1, Col 7
-          if marker == "'>" then return { 0, 1, 11, 0 } end -- Line 1, Col 11
+          if marker == "'<" then return { 0, 1, 7, 0 } end
+          if marker == "'>" then return { 0, 1, 11, 0 } end
         end)
         _G.vim.api.nvim_buf_get_lines = spy.new(function()
           return { "Hello World!" }
@@ -69,8 +60,8 @@ describe("tungsten.util.selection", function()
 
       it("should return the correct substring for a selection at the start of the line", function()
         _G.vim.fn.getpos = spy.new(function(marker)
-          if marker == "'<" then return { 0, 1, 1, 0 } end -- Line 1, Col 1
-          if marker == "'>" then return { 0, 1, 5, 0 } end -- Line 1, Col 5
+          if marker == "'<" then return { 0, 1, 1, 0 } end
+          if marker == "'>" then return { 0, 1, 5, 0 } end
         end)
         _G.vim.api.nvim_buf_get_lines = spy.new(function()
           return { "Hello World!" }
@@ -80,8 +71,8 @@ describe("tungsten.util.selection", function()
 
       it("should return the correct substring for a selection at the end of the line", function()
         _G.vim.fn.getpos = spy.new(function(marker)
-          if marker == "'<" then return { 0, 1, 7, 0 } end -- Line 1, Col 7 ("World!")
-          if marker == "'>" then return { 0, 1, 12, 0 } end -- Line 1, Col 12 (end of "Hello World!")
+          if marker == "'<" then return { 0, 1, 7, 0 } end
+          if marker == "'>" then return { 0, 1, 12, 0 } end
         end)
         _G.vim.api.nvim_buf_get_lines = spy.new(function()
           return { "Hello World!" }
@@ -92,7 +83,7 @@ describe("tungsten.util.selection", function()
       it("should return the full line if the entire single line is selected", function()
         _G.vim.fn.getpos = spy.new(function(marker)
           if marker == "'<" then return { 0, 1, 1, 0 } end
-          if marker == "'>" then return { 0, 1, 12, 0 } end -- Length of "Hello World!" is 12
+          if marker == "'>" then return { 0, 1, 12, 0 } end
         end)
         _G.vim.api.nvim_buf_get_lines = spy.new(function()
           return { "Hello World!" }
@@ -104,13 +95,12 @@ describe("tungsten.util.selection", function()
     describe("Multi-Line Selections", function()
       it("should return correctly concatenated string for a basic multi-line selection", function()
         _G.vim.fn.getpos = spy.new(function(marker)
-          if marker == "'<" then return { 0, 1, 7, 0 } end -- Start: Line 1, Col 7 ("World!")
-          if marker == "'>" then return { 0, 2, 5, 0 } end -- End: Line 2, Col 5 ("There") from "Hi There Friend"
+          if marker == "'<" then return { 0, 1, 7, 0 } end
+          if marker == "'>" then return { 0, 2, 5, 0 } end
         end)
         _G.vim.api.nvim_buf_get_lines = spy.new(function(b, start_idx, end_idx_api)
-          -- nvim_buf_get_lines uses 0-indexed start_line and exclusive end_line
-          assert.are.equal(0, start_idx) -- (1 - 1)
-          assert.are.equal(2, end_idx_api) -- (end_line)
+          assert.are.equal(0, start_idx)
+          assert.are.equal(2, end_idx_api)
           return { "Hello World!", "Hi There Friend" }
         end)
         assert.are.equal("World!\nHi Th", selection_module.get_visual_selection())
@@ -118,8 +108,8 @@ describe("tungsten.util.selection", function()
 
       it("should correctly trim the first line from start_col", function()
         _G.vim.fn.getpos = spy.new(function(marker)
-          if marker == "'<" then return { 0, 1, 3, 0 } end -- "llo" from "Hello"
-          if marker == "'>" then return { 0, 2, 7, 0 } end -- "Second " from "Second Line!" (length 12, col 7 is space)
+          if marker == "'<" then return { 0, 1, 3, 0 } end --
+          if marker == "'>" then return { 0, 2, 7, 0 } end --
         end)
         _G.vim.api.nvim_buf_get_lines = spy.new(function()
           return { "Hello", "Second Line!" }
@@ -129,8 +119,8 @@ describe("tungsten.util.selection", function()
 
       it("should correctly trim the last line up to end_col", function()
         _G.vim.fn.getpos = spy.new(function(marker)
-          if marker == "'<" then return { 0, 1, 1, 0 } end -- "First Line"
-          if marker == "'>" then return { 0, 2, 4, 0 } end -- "Seco" from "Second"
+          if marker == "'<" then return { 0, 1, 1, 0 } end
+          if marker == "'>" then return { 0, 2, 4, 0 } end
         end)
         _G.vim.api.nvim_buf_get_lines = spy.new(function()
           return { "First Line", "Second" }
@@ -141,7 +131,7 @@ describe("tungsten.util.selection", function()
       it("should handle full line selections across multiple lines", function()
         _G.vim.fn.getpos = spy.new(function(marker)
           if marker == "'<" then return { 0, 1, 1, 0 } end
-          if marker == "'>" then return { 0, 2, 7, 0 } end -- Assuming "Line 2!" is 7 chars
+          if marker == "'>" then return { 0, 2, 7, 0 } end
         end)
         _G.vim.api.nvim_buf_get_lines = spy.new(function()
           return { "Line 1", "Line 2!" }
@@ -151,8 +141,8 @@ describe("tungsten.util.selection", function()
 
       it("should include an empty line if it's part of the multi-line selection", function()
         _G.vim.fn.getpos = spy.new(function(marker)
-          if marker == "'<" then return { 0, 1, 1, 0 } end -- "Start"
-          if marker == "'>" then return { 0, 3, 4, 0 } end -- "End " from "End Line"
+          if marker == "'<" then return { 0, 1, 1, 0 } end
+          if marker == "'>" then return { 0, 3, 4, 0 } end
         end)
         _G.vim.api.nvim_buf_get_lines = spy.new(function()
           return { "Start", "", "End Line" }
@@ -176,7 +166,7 @@ describe("tungsten.util.selection", function()
       it("should return an empty string if a single empty line is selected", function()
         _G.vim.fn.getpos = spy.new(function(marker)
           if marker == "'<" then return { 0, 1, 1, 0 } end
-          if marker == "'>" then return { 0, 1, 0, 0 } end -- Visual selection of empty line often gives end_col 0
+          if marker == "'>" then return { 0, 1, 0, 0 } end
         end)
         _G.vim.api.nvim_buf_get_lines = spy.new(function()
           return { "" }
@@ -185,14 +175,11 @@ describe("tungsten.util.selection", function()
 
         _G.vim.fn.getpos = spy.new(function(marker)
           if marker == "'<" then return { 0, 1, 1, 0 } end
-          if marker == "'>" then return { 0, 1, 1, 0 } end -- Or end_col 1 if cursor stays on line
+          if marker == "'>" then return { 0, 1, 1, 0 } end
         end)
          _G.vim.api.nvim_buf_get_lines = spy.new(function()
           return { "" }
         end)
-        -- string.sub("", 1, 1) might be an issue if the line is truly empty.
-        -- However, Neovim typically gives col 1 for start and end of an empty line if it's selected.
-        -- string.sub("", 1, 1) is "", string.sub("", 1, 0) is ""
         assert.are.equal("", selection_module.get_visual_selection())
       end)
 
