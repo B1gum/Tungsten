@@ -134,7 +134,7 @@ function M.get_combined_grammar()
     logger.notify("Registry: Main expression rule 'AddSub' not found. Attempting to find a fallback. This may lead to parsing issues.", logger.levels.WARN, { title = "Tungsten Registry" })
     local top_rule_candidate = nil
     for rule_name, _ in pairs(grammar_def) do
-        if rule_name ~= "Expression" and rule_name ~= "AtomBase" and type(grammar_def[rule_name]) == "table" then
+        if type(rule_name) == "string" and rule_name ~= "Expression" and rule_name ~= "AtomBase" and type(grammar_def[rule_name]) == "table" then
             top_rule_candidate = rule_name
             break
         end
@@ -154,7 +154,9 @@ function M.get_combined_grammar()
 
   if config.debug then
     local keys = {}
-    for k, _ in pairs(grammar_def) do table.insert(keys, k) end
+    for k, _ in pairs(grammar_def) do
+      table.insert(keys, tostring(k))
+    end
     table.sort(keys)
     local key_list_str = table.concat(keys, ", ")
     logger.notify("Registry: Final grammar definition keys: " .. key_list_str, logger.levels.DEBUG, { title = "Tungsten Debug" })
