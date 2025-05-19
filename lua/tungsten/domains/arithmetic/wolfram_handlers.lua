@@ -2,22 +2,73 @@ local M = {}
 
 local prec = { ["+"] = 1, ["-"] = 1, ["*"] = 2, ["/"] = 2, ["^"] = 3 }
 
+local assoc = {
+  ["+"] = "L",
+  ["-"] = "L",
+  ["*"] = "L",
+  ["/"] = "L",
+  ["^"] = "R"
+}
+
 local function bin_with_parens(node, recur_render)
-  local op = node.operator
-  local function par(child_node)
-    if child_node.type == "binary" and prec[child_node.operator] and prec[op] and prec[child_node.operator] < prec[op] then
-      return "(" .. recur_render(child_node) .. ")"
-    else
-      return recur_render(child_node)
+  local parent_op = node.operator
+  local parent_prec_val = prec[parent_op]
+  local parent_assoc_val = assoc[parent_op]
+
+  local function child_needs_parentheses(child_node, is_left_child_of_parent)
+    if child_node.type ~= "binary" then
+      return false
     end
+
+    local child_op = child_node.operator
+    local child_prec_val = prec[child_op]
+
+    if not parent_prec_val or not child_prec_val then
+      return true
+    end
+
+    if child_prec_val < parent_prec_val then
+      return true
+    end
+
+    if child_prec_val > parent_prec_val then
+      return false
+    end
+
+    if child_prec_val == parent_prec_val then
+      if is_left_child_of_parent then
+        return parent_assoc_val == "R"
+      else
+        return parent_assoc_val == "L"
+      end
+    end
+
+    return false
   end
-  return par(node.left) .. op .. par(node.right)
+
+  local rendered_left = recur_render(node.left)
+  if child_needs_parentheses(node.left, true) then
+    rendered_left = "(" .. rendered_left .. ")"
+  end
+
+  local rendered_right = recur_render(node.right)
+  if child_needs_parentheses(node.right, false) then
+    rendered_right = "(" .. rendered_right .. ")"
+  end
+
+  return rendered_left .. parent_op .. rendered_right
 end
 
 M.handlers = {
-  number = function(node) return tostring(node.value) end,
-  variable = function(node) return node.name end,
-  greek = function(node) return node.name end,
+  number = function(node)
+    return tostring(node.value)
+  end,
+  variable = function(node)
+    return node.name
+  end,
+  greek = function(node)
+    return node.name
+  end,
   binary = bin_with_parens,
   fraction = function(node, recur_render)
     return ("(%s)/(%s)"):format(recur_render(node.numerator), recur_render(node.denominator))
@@ -32,7 +83,7 @@ M.handlers = {
   superscript = function(node, recur_render)
     local base_str = recur_render(node.base)
     local exp_str = recur_render(node.exponent)
-    if node.base.type == "variable" or node.base.type == "number" then
+    if node.base.type == "variable" or node.base.type == "number" or node.base.type == "greek" then
       return base_str .. "^" .. exp_str
     else
       return ("Power[%s,%s]"):format(base_str, exp_str)
@@ -42,10 +93,14 @@ M.handlers = {
     return ("Subscript[%s,%s]"):format(recur_render(node.base), recur_render(node.subscript))
   end,
   unary = function(node, recur_render)
-    return node.operator .. recur_render(node.value)
+    local value_str = recur_render(node.value)
+    if node.value.type == "binary" and (node.value.operator == "+" or node.value.operator == "-") then
+         return node.operator .. "(" .. value_str .. ")"
+    end
+    return node.operator .. value_str
   end,
 }
 
- M.precedence = prec
+M.precedence = prec
 
 return M
