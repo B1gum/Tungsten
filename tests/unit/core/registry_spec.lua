@@ -10,7 +10,6 @@ local helpers = require('tests.helpers')
 local mock_utils = helpers.mock_utils
 local vim_test_env = helpers.vim_test_env
 
--- Helper to create mock LPEG patterns
 local mock_pattern_mt = {}
 local function create_mock_pattern(name)
   assert(type(name) == "string", "Mock pattern name must be a string for debugging: " .. tostring(name))
@@ -411,10 +410,9 @@ describe("tungsten.core.registry", function()
     it("should return nil and log error if lpeg.P fails on final grammar definition", function()
       registry.register_grammar_contribution("core", 0, "Number", create_mock_pattern("num_pattern"), "AtomBaseItem")
       local original_P_spy = mock_lpeg_actual_module.P
-      -- Line 420 in original file, now line 421
       mock_lpeg_actual_module.P = spy.new(function(gdef)
         if type(gdef) == "table" and gdef[1] == "Expression" then
-          error("mock LPeg compilation error") -- Line 423: This is where the error string originates for the test
+          error("mock LPeg compilation error")
         else
             return create_mock_pattern("P_other_call_in_fail_test(" .. tostring(gdef) .. ")")
         end
@@ -422,7 +420,7 @@ describe("tungsten.core.registry", function()
 
       local grammar = registry.get_combined_grammar()
       assert.is_nil(grammar)
-      mock_lpeg_actual_module.P = original_P_spy -- Line 434
+      mock_lpeg_actual_module.P = original_P_spy
     end)
 
     it("State Management: ensure get_combined_grammar is relatively stateless for multiple calls", function()
