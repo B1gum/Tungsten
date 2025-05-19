@@ -1,3 +1,5 @@
 *.log
 *.todo
 /logs/
+*.DS_Store
+*__MACOSX

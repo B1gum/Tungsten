@@ -33,7 +33,7 @@ function M.insert_result(result_text)
     local selection = table.concat(lines, "\n")
     local updated = selection .. " = " .. result_text
     -- Split the updated text back into lines.
-    local new_lines = vim.split(updated, "\n")
+    local new_lines = vim.fn.split(updated, "\n")
     vim.api.nvim_buf_set_lines(0, start_row - 1, end_row, false, new_lines)
   end
 end
