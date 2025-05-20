@@ -6,7 +6,7 @@ local P, V, Cg, Ct = lpeg.P, lpeg.V, lpeg.Cg, lpeg.Ct
 
 local tk = require("tungsten.core.tokenizer")
 local space = tk.space
-local node = require("tungsten.core.ast").node
+local ast = require("tungsten.core.ast")
 
 local d_operator_match = P("\\mathrm{d}") + P("d")
 
@@ -49,20 +49,20 @@ local following_expression_segment = space * expression_to_diff_capture
 
 local ordinary_derivative_higher_order_rule =
   Ct(higher_order_derivative_frac_structure * following_expression_segment) / function(captures)
-    return node("ordinary_derivative", {
-      expression = captures.expression,
-      variable = captures.variable,
-      order = captures.order
-    })
-  end
+    return ast.create_ordinary_derivative_node(
+      captures.expression,
+      captures.variable,
+      captures.order
+    )
+end
 
 local ordinary_derivative_first_order_rule =
   Ct(first_order_derivative_frac_structure * following_expression_segment) / function(captures)
-    return node("ordinary_derivative", {
-      expression = captures.expression,
-      variable = captures.variable,
-      order = { type = "number", value = 1 }
-    })
+    return ast.create_ordinary_derivative_node(
+      captures.expression,
+      captures.variable,
+      nil
+    )
   end
 
 local OrdinaryDerivative = ordinary_derivative_higher_order_rule + ordinary_derivative_first_order_rule

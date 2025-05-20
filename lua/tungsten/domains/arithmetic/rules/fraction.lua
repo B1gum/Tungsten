@@ -5,13 +5,13 @@ local tk      = require("tungsten.core.tokenizer")
 local space   = tk.space
 local lbrace  = tk.lbrace
 local rbrace  = tk.rbrace
-local node    = require("tungsten.core.ast").node
+local ast     = require("tungsten.core.ast")
 
 local Fraction = P("\\frac") * space
   * lbrace * space * V("Expression") * space * rbrace
   * lbrace * space * V("Expression") * space * rbrace
   / function(num, den)
-      return node("fraction", { numerator = num, denominator = den })
-    end
+      return ast.create_fraction_node(num, den)
+end
 
 return Fraction

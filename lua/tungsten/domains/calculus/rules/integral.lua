@@ -5,8 +5,8 @@ local lpeg = require "lpeg"
 local P, V, Cg, Ct = lpeg.P, lpeg.V, lpeg.Cg, lpeg.Ct
 
 local tk = require("tungsten.core.tokenizer")
-local space = tk.space -- Reminder: tk.space is S(" \t\n\r")^0
-local node = require("tungsten.core.ast").node
+local space = tk.space
+local ast = require("tungsten.core.ast")
 
 local integral_keyword = P("\\int")
 
@@ -40,10 +40,10 @@ local indefinite_integral_structure =
 
 local IndefiniteIntegralRule =
   Ct(indefinite_integral_structure) / function(captures)
-    return node("indefinite_integral", {
-      integrand = captures.integrand,
-      variable = captures.variable_of_integration_val
-    })
+    return ast.create_indefinite_integral_node(
+      captures.integrand,
+      captures.variable_of_integration_val
+    )
   end
 
 local definite_integral_structure =
@@ -56,12 +56,12 @@ local definite_integral_structure =
 
 local DefiniteIntegralRule =
   Ct(definite_integral_structure) / function(captures)
-    return node("definite_integral", {
-      integrand = captures.integrand,
-      variable = captures.variable_of_integration_val,
-      lower_bound = captures.lower_bound,
-      upper_bound = captures.upper_bound
-    })
+    return ast.create_definite_integral_node(
+      captures.integrand,
+      captures.variable_of_integration_val,
+      captures.lower_bound,
+      captures.upper_bound
+    )
   end
 
 local IntegralRule = DefiniteIntegralRule + IndefiniteIntegralRule

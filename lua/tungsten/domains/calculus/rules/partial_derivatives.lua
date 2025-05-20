@@ -6,7 +6,7 @@ local P, V, Cg, Ct = lpeg.P, lpeg.V, lpeg.Cg, lpeg.Ct
 
 local tk = require("tungsten.core.tokenizer")
 local space = tk.space
-local node = require("tungsten.core.ast").node
+local ast = require("tungsten.core.ast")
 
 local partial_op_symbol = P("\\partial")
 
@@ -42,11 +42,11 @@ local single_denominator_differentiation_term =
     partial_op_symbol * space * Cg(tk.variable, "variable_name") *
     space * denominator_variable_exponent_optional
   ) / function(term_captures)
-    return node("differentiation_term", {
-      variable = term_captures.variable_name,
-      order = term_captures.term_order or { type = "number", value = 1 }
-    })
-  end
+    return ast.create_differentiation_term_node(
+      term_captures.variable_name,
+      term_captures.term_order
+    )
+end
 
 local denominator_differentiation_terms_list =
   Cg(Ct(
@@ -63,11 +63,11 @@ local partial_derivative_frac_first_order =
 
 local PartialDerivativeRule_FirstOrder =
   Ct(partial_derivative_frac_first_order * main_expression_segment) / function(captures)
-    return node("partial_derivative", {
-      expression = captures.expression,
-      overall_order = { type = "number", value = 1 },
-      variables = captures.variables_list
-    })
+    return ast.create_partial_derivative_node(
+      captures.expression,
+      nil,
+    captures.variables_list
+    )
   end
 
 local partial_derivative_frac_higher_order =
@@ -78,11 +78,11 @@ local partial_derivative_frac_higher_order =
 
 local PartialDerivativeRule_HigherOrder =
   Ct(partial_derivative_frac_higher_order * main_expression_segment) / function(captures)
-    return node("partial_derivative", {
-      expression = captures.expression,
-      overall_order = captures.overall_order_val,
-      variables = captures.variables_list
-    })
+    return ast.create_partial_derivative_node(
+      captures.expression,
+      captures.overall_order_val,
+      captures.variables_list
+    )
   end
 
 local PartialDerivativeRule = PartialDerivativeRule_HigherOrder + PartialDerivativeRule_FirstOrder
