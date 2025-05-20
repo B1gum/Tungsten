@@ -6,7 +6,7 @@ local P, V, Cg, Ct = lpeg.P, lpeg.V, lpeg.Cg, lpeg.Ct
 
 local tk = require("tungsten.core.tokenizer")
 local space = tk.space
-local node = require("tungsten.core.ast").node
+local ast = require("tungsten.core.ast")
 
 local sum_keyword = P("\\sum")
 
@@ -52,12 +52,7 @@ local SumRule =
     full_superscript_pattern *
     main_body_expression_segment
   ) / function(captures)
-    return node("summation", {
-      index_variable = captures.index_variable,
-      start_expression = captures.start_expression,
-      end_expression = captures.end_expression,
-      body_expression = captures.body_expression
-    })
+    return ast.create_summation_node(captures.index_variable, captures.start_expression, captures.end_expression, captures.body_expression)
   end
 
 return SumRule

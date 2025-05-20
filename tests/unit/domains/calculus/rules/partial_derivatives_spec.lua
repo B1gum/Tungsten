@@ -48,10 +48,25 @@ describe("Calculus Partial Derivative Rule: tungsten.domains.calculus.rules.part
         fields = fields or {}
         fields.type = type
         return fields
+      end,
+
+      create_differentiation_term_node = function(variable_node, order_node)
+        return {
+          type = "differentiation_term",
+          variable = variable_node,
+          order = order_node or { type = "number", value = 1 }
+        }
+      end,
+      create_partial_derivative_node = function(expression, overall_order, variables_list)
+        return {
+          type = "partial_derivative",
+          expression = expression,
+          overall_order = overall_order or { type = "number", value = #variables_list },
+          variables = variables_list
+        }
       end
     }
     package.loaded["tungsten.core.ast"] = mock_ast_module
-
     PartialDerivativeRule = require("tungsten.domains.calculus.rules.partial_derivatives")
 
     test_grammar_table_definition = {

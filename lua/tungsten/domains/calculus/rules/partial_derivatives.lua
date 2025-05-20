@@ -65,7 +65,7 @@ local PartialDerivativeRule_FirstOrder =
   Ct(partial_derivative_frac_first_order * main_expression_segment) / function(captures)
     return ast.create_partial_derivative_node(
       captures.expression,
-      nil,
+      { type = "number", value = 1 },
     captures.variables_list
     )
   end

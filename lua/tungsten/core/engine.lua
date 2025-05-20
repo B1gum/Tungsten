@@ -27,7 +27,6 @@ local function get_cache_key(ast_or_code_string, numeric)
   return code_str .. (numeric and "::numeric" or "::symbolic")
 end
 
-
 function M.evaluate_async(ast, numeric, callback)
   assert(type(callback) == "function", "evaluate_async expects a callback function")
 
@@ -42,7 +41,6 @@ function M.evaluate_async(ast, numeric, callback)
   initial_wolfram_code = pcall_result
 
   local expr_key = get_cache_key(initial_wolfram_code, numeric)
-
   local use_cache = (config.cache_enabled == nil) or (config.cache_enabled == true)
 
   if use_cache then
@@ -73,59 +71,62 @@ function M.evaluate_async(ast, numeric, callback)
   end
 
   local wolfram_path = config.wolfram_path or "wolframscript"
-  local current_bufnr = vim.api.nvim_get_current_buf()
-
   local stdout_chunks = {}
   local stderr_chunks = {}
   local job_id
 
+  local function handle_stdout(_, data, _)
+    if data then
+      for _, chunk in ipairs(data) do table.insert(stdout_chunks, chunk) end
+    end
+  end
+
+  local function handle_stderr(_, data, _)
+    if data then
+      for _, chunk in ipairs(data) do table.insert(stderr_chunks, chunk) end
+    end
+  end
+
+  local function handle_exit(_, exit_code, _)
+    local final_stdout = table.concat(stdout_chunks, "\n"):gsub("^%s*(.-)%s*$", "%1")
+    local final_stderr = table.concat(stderr_chunks, "\n"):gsub("^%s*(.-)%s*$", "%1")
+
+    if job_id and state.active_jobs[job_id] then
+      state.active_jobs[job_id] = nil
+      if config.debug then
+        logger.notify("Tungsten: Job " .. job_id .. " finished and removed from active jobs.", logger.levels.INFO, { title = "Tungsten Debug" })
+      end
+    end
+
+    if exit_code == 0 then
+      if final_stderr ~= "" and config.debug then
+        logger.notify("Tungsten (Job " .. job_id .. " stderr): " .. final_stderr, logger.levels.WARN, { title = "Tungsten Debug" })
+      end
+      if use_cache then
+        state.cache[expr_key] = final_stdout
+        if config.debug then
+          logger.notify("Tungsten: Result for key '" .. expr_key .. "' stored in cache.", logger.levels.INFO, { title = "Tungsten Debug" })
+        end
+      end
+      callback(final_stdout, nil)
+    else
+      local err_msg = ("WolframScript (Job %s) exited with code %d"):format(tostring(job_id or "N/A"), exit_code)
+      if final_stderr ~= "" then
+        err_msg = err_msg .. "\nStderr: " .. final_stderr
+      elseif final_stdout ~= "" then
+        err_msg = err_msg .. "\nStdout (potentially error): " .. final_stdout
+      end
+      logger.notify("Tungsten: " .. err_msg, logger.levels.ERROR, { title = "Tungsten Error" })
+      callback(nil, err_msg)
+    end
+  end
+
   local job_options = {
     stdout_buffered = true,
     stderr_buffered = true,
-    on_stdout = function(_, data, _)
-      if data then
-        for _, chunk in ipairs(data) do table.insert(stdout_chunks, chunk) end
-      end
-    end,
-    on_stderr = function(_, data, _)
-      if data then
-        for _, chunk in ipairs(data) do table.insert(stderr_chunks, chunk) end
-      end
-    end,
-    on_exit = function(_, exit_code, _)
-      local final_stdout = table.concat(stdout_chunks, "\n"):gsub("^%s*(.-)%s*$", "%1")
-      local final_stderr = table.concat(stderr_chunks, "\n"):gsub("^%s*(.-)%s*$", "%1")
-
-      if job_id and state.active_jobs[job_id] then
-        state.active_jobs[job_id] = nil
-        if config.debug then
-          logger.notify("Tungsten: Job " .. job_id .. " finished and removed from active jobs.", logger.levels.INFO, { title = "Tungsten Debug" })
-        end
-      end
-
-      if exit_code == 0 then
-        if final_stderr ~= "" and config.debug then
-          logger.notify("Tungsten (Job " .. job_id .. " stderr): " .. final_stderr, logger.levels.WARN, { title = "Tungsten Debug" })
-        end
-        if use_cache then
-          state.cache[expr_key] = final_stdout
-          if config.debug then
-            logger.notify("Tungsten: Result for key '" .. expr_key .. "' stored in cache.", logger.levels.INFO, { title = "Tungsten Debug" })
-          end
-        end
-        callback(final_stdout, nil)
-      else
-
-        local err_msg = ("WolframScript (Job %s) exited with code %d"):format(tostring(job_id or "N/A"), exit_code)
-        if final_stderr ~= "" then
-          err_msg = err_msg .. "\nStderr: " .. final_stderr
-        elseif final_stdout ~= "" then
-          err_msg = err_msg .. "\nStdout (potentially error): " .. final_stdout
-        end
-        logger.notify("Tungsten: " .. err_msg, logger.levels.ERROR, { title = "Tungsten Error" })
-        callback(nil, err_msg)
-      end
-    end,
+    on_stdout = handle_stdout,
+    on_stderr = handle_stderr,
+    on_exit = handle_exit,
   }
 
   job_id = vim.fn.jobstart({ wolfram_path, "-code", code_to_execute }, job_options)
@@ -143,7 +144,7 @@ function M.evaluate_async(ast, numeric, callback)
     callback(nil, err_msg)
   else
     state.active_jobs[job_id] = {
-      bufnr = current_bufnr,
+      bufnr = vim.api.nvim_get_current_buf(),
       expr_key = expr_key,
       code_sent = code_to_execute,
       start_time = vim.loop.now(),
@@ -200,4 +201,3 @@ function M.get_cache_size()
 end
 
 return M
-

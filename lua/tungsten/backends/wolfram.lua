@@ -10,6 +10,55 @@ local handlerRegistry = {}
 local renderableHandlers = {}
 local handlers_initialized = false
 
+local function _process_domain_handlers(domain_name, registry)
+    local handler_module_path = "tungsten.domains." .. domain_name .. ".wolfram_handlers"
+    local ok, domain_module = pcall(require, handler_module_path)
+
+    if ok and domain_module and domain_module.handlers then
+        local domain_priority = registry.get_domain_priority(domain_name)
+        if config.debug then
+            logger.notify(("Wolfram Backend: Successfully loaded handlers module from %s for domain %s (Priority: %d)"):format(handler_module_path, domain_name, domain_priority), logger.levels.DEBUG, { title = "Tungsten Debug" })
+        end
+
+        for node_type, handler_func in pairs(domain_module.handlers) do
+            if handlerRegistry[node_type] then
+                local existing_handler_info = handlerRegistry[node_type]
+                if domain_priority > existing_handler_info.domain_priority then
+                    logger.notify(
+                        ("Wolfram Backend: Handler for node type '%s': %s (Prio %d) overrides %s (Prio %d)."):format(
+                            node_type, domain_name, domain_priority,
+                            existing_handler_info.domain_name, existing_handler_info.domain_priority),
+                        logger.levels.DEBUG, { title = "Tungsten Backend" }
+                    )
+                    handlerRegistry[node_type] = { func = handler_func, domain_name = domain_name, domain_priority = domain_priority }
+                elseif domain_priority == existing_handler_info.domain_priority and existing_handler_info.domain_name ~= domain_name then
+                    logger.notify(
+                        ("Wolfram Backend: Handler for node type '%s': CONFLICT - %s and %s have same priority (%d). '%s' takes precedence (due to processing order). Consider adjusting priorities."):format(
+                            node_type, domain_name, existing_handler_info.domain_name, domain_priority, domain_name),
+                        logger.levels.WARN, { title = "Tungsten Backend Warning" }
+                    )
+                    handlerRegistry[node_type] = { func = handler_func, domain_name = domain_name, domain_priority = domain_priority }
+                elseif domain_priority < existing_handler_info.domain_priority then
+                     logger.notify(
+                        ("Wolfram Backend: Handler for node type '%s' from %s (Prio %d) NOT overriding existing from %s (Prio %d)."):format(
+                            node_type, domain_name, domain_priority,
+                            existing_handler_info.domain_name, existing_handler_info.domain_priority),
+                        logger.levels.DEBUG, { title = "Tungsten Backend" }
+                    )
+                end
+            else
+                handlerRegistry[node_type] = { func = handler_func, domain_name = domain_name, domain_priority = domain_priority }
+            end
+        end
+    else
+        local error_msg = ok and ("module '%s' loaded but it did not return a .handlers table."):format(handler_module_path) or ("Failed to load module '%s': %s"):format(handler_module_path, tostring(domain_module))
+        logger.notify(
+            ("Wolfram Backend: Could not load Wolfram handlers for domain '%s'. %s"):format(domain_name, error_msg),
+            logger.levels.WARN, { title = "Tungsten Backend Warning" }
+        )
+    end
+end
+
 local function initialize_handlers()
     if handlers_initialized then
         return
@@ -21,59 +70,14 @@ local function initialize_handlers()
       logger.notify("Wolfram Backend: Lazily initializing handlers...", logger.levels.DEBUG, { title = "Tungsten Backend" })
     end
 
-    local domains_to_process_handlers = (config.domains and #config.domains > 0) and config.domains or { "arithmetic" }
+    local target_domains_for_handlers = (config.domains and #config.domains > 0) and config.domains or { "arithmetic" }
 
     if config.debug then
-        logger.notify("Wolfram Backend: Loading Wolfram handlers for domains: " .. table.concat(domains_to_process_handlers, ", "), logger.levels.INFO, { title = "Tungsten Backend" })
+        logger.notify("Wolfram Backend: Loading Wolfram handlers for domains: " .. table.concat(target_domains_for_handlers, ", "), logger.levels.INFO, { title = "Tungsten Backend" })
     end
 
-    for _, domain_name in ipairs(domains_to_process_handlers) do
-        local handler_module_path = "tungsten.domains." .. domain_name .. ".wolfram_handlers"
-        local ok, domain_module = pcall(require, handler_module_path)
-
-        if ok and domain_module and domain_module.handlers then
-            local domain_priority = registry.get_domain_priority(domain_name)
-            if config.debug then
-                logger.notify(("Wolfram Backend: Successfully loaded handlers module from %s for domain %s (Priority: %d)"):format(handler_module_path, domain_name, domain_priority), logger.levels.DEBUG, { title = "Tungsten Debug" })
-            end
-
-            for node_type, handler_func in pairs(domain_module.handlers) do
-                if handlerRegistry[node_type] then
-                    local existing_handler_info = handlerRegistry[node_type]
-                    if domain_priority > existing_handler_info.domain_priority then
-                        logger.notify(
-                            ("Wolfram Backend: Handler for node type '%s': %s (Prio %d) overrides %s (Prio %d)."):format(
-                                node_type, domain_name, domain_priority,
-                                existing_handler_info.domain_name, existing_handler_info.domain_priority),
-                            logger.levels.DEBUG, { title = "Tungsten Backend" }
-                        )
-                        handlerRegistry[node_type] = { func = handler_func, domain_name = domain_name, domain_priority = domain_priority }
-                    elseif domain_priority == existing_handler_info.domain_priority and existing_handler_info.domain_name ~= domain_name then
-                        logger.notify(
-                            ("Wolfram Backend: Handler for node type '%s': CONFLICT - %s and %s have same priority (%d). '%s' takes precedence (due to processing order). Consider adjusting priorities."):format(
-                                node_type, domain_name, existing_handler_info.domain_name, domain_priority, domain_name),
-                            logger.levels.WARN, { title = "Tungsten Backend Warning" }
-                        )
-                        handlerRegistry[node_type] = { func = handler_func, domain_name = domain_name, domain_priority = domain_priority }
-                    elseif domain_priority < existing_handler_info.domain_priority then
-                         logger.notify(
-                            ("Wolfram Backend: Handler for node type '%s' from %s (Prio %d) NOT overriding existing from %s (Prio %d)."):format(
-                                node_type, domain_name, domain_priority,
-                                existing_handler_info.domain_name, existing_handler_info.domain_priority),
-                            logger.levels.DEBUG, { title = "Tungsten Backend" }
-                        )
-                    end
-                else
-                    handlerRegistry[node_type] = { func = handler_func, domain_name = domain_name, domain_priority = domain_priority }
-                end
-            end
-        else
-            local error_msg = ok and ("module '%s' loaded but it did not return a .handlers table."):format(handler_module_path) or ("Failed to load module '%s': %s"):format(handler_module_path, tostring(domain_module))
-            logger.notify(
-                ("Wolfram Backend: Could not load Wolfram handlers for domain '%s'. %s"):format(domain_name, error_msg),
-                logger.levels.WARN, { title = "Tungsten Backend Warning" }
-            )
-        end
+    for _, domain_name in ipairs(target_domains_for_handlers) do
+        _process_domain_handlers(domain_name, registry)
     end
 
     if next(handlerRegistry) == nil then
@@ -125,3 +129,4 @@ function M.reset_and_reinit_handlers()
 end
 
 return M
+

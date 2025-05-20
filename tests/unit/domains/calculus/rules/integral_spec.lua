@@ -43,11 +43,24 @@ describe("Calculus Integral Rule: tungsten.domains.calculus.rules.integral", fun
     }
     package.loaded["tungsten.core.tokenizer"] = mock_tokenizer_module
 
+
     mock_ast_module = {
-      node = function(type, fields)
-        fields = fields or {}
-        fields.type = type
-        return fields
+      create_indefinite_integral_node = function(integrand, variable)
+        return {
+          type = "indefinite_integral",
+          integrand = integrand,
+          variable = variable
+        }
+      end,
+
+      create_definite_integral_node = function(integrand, variable, lower_bound, upper_bound)
+        return {
+          type = "definite_integral",
+          integrand = integrand,
+          variable = variable,
+          lower_bound = lower_bound,
+          upper_bound = upper_bound
+        }
       end
     }
     package.loaded["tungsten.core.ast"] = mock_ast_module

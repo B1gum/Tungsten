@@ -163,7 +163,7 @@ describe("Arithmetic MulDiv Rule (with Differential Awareness)", function()
 
   describe("Explicit Multiplication", function()
     it("should parse 'x * d y' as (x*d)*y using explicit operator", function()
-      local ast = parse_input("x * d y") -- Assuming MulOpCap handles '*'
+      local ast = parse_input("x * d y")
        assert.are.same({
         type = "binary", operator = "*",
         left = {

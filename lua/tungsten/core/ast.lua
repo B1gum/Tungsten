@@ -11,7 +11,7 @@ local function node(t, fields)
 end
 
 function M.create_binary_operation_node(op, left, right)
-  if op == "\\cdot" then op = "*" end -- Normalize \cdot to *
+  if op == "\\cdot" then op = "*" end
   return node("binary", { operator = op, left = left, right = right })
 end
 

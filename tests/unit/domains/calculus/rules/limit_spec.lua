@@ -48,6 +48,15 @@ describe("Calculus Limit Rule: tungsten.domains.calculus.rules.limit", function(
         fields = fields or {}
         fields.type = type
         return fields
+      end,
+
+      create_limit_node = function(variable, point, expression)
+        return {
+          type = "limit",
+          variable = variable,
+          point = point,
+          expression = expression
+        }
       end
     }
     package.loaded["tungsten.core.ast"] = mock_ast_module

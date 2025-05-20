@@ -48,9 +48,19 @@ describe("Calculus Ordinary Derivative Rule: tungsten.domains.calculus.rules.ord
         fields = fields or {}
         fields.type = type
         return fields
+      end,
+
+      create_ordinary_derivative_node = function(expression, variable, order)
+        return {
+          type = "ordinary_derivative",
+          expression = expression,
+          variable = variable,
+          order = order or { type = "number", value = 1 }
+        }
       end
     }
     package.loaded["tungsten.core.ast"] = mock_ast_module
+
 
     OrdinaryDerivativeRule = require("tungsten.domains.calculus.rules.ordinary_derivatives")
 

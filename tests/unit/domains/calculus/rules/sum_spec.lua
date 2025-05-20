@@ -48,6 +48,16 @@ describe("Calculus Sum Rule: tungsten.domains.calculus.rules.sum", function()
         fields = fields or {}
         fields.type = type
         return fields
+      end,
+
+      create_summation_node = function(index_variable, start_expression, end_expression, body_expression)
+        return {
+          type = "summation",
+          index_variable = index_variable,
+          start_expression = start_expression,
+          end_expression = end_expression,
+          body_expression = body_expression
+        }
       end
     }
     package.loaded["tungsten.core.ast"] = mock_ast_module

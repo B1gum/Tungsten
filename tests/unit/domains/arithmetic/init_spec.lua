@@ -104,7 +104,7 @@ describe("Tungsten Arithmetic Domain: lua/tungsten/domains/arithmetic/init.lua",
     it("should return metadata with the correct 'provides' table", function()
       local metadata = arithmetic_domain.get_metadata()
       assert.is_table(metadata.provides)
-      assert.are.same({ "AtomBaseItem", "SupSub", "Unary", "MulDiv", "AddSub" }, metadata.provides)
+      assert.are.same({ "AtomBaseItem", "SupSub", "Unary", "MulDiv", "AddSub", "SinFunction" }, metadata.provides)
     end)
   end)
 
@@ -218,7 +218,7 @@ describe("Tungsten Arithmetic Domain: lua/tungsten/domains/arithmetic/init.lua",
 
     it("should call registry.register_grammar_contribution the correct number of times", function()
       arithmetic_domain.init_grammar()
-      assert.spy(mock_registry.register_grammar_contribution).was.called(9)
+      assert.spy(mock_registry.register_grammar_contribution).was.called(10)
     end)
 
     describe("Debug Logging", function()

@@ -1,7 +1,7 @@
 -- lua/tungsten/util/logger.lua
 local M = {}
 
-local DEFAULT_LOG_LEVEL = {
+local DEFAULT_LOG_LEVELS = {
   ERROR = 1,
   WARN = 2,
   INFO = 3,
@@ -16,7 +16,7 @@ function M.notify(message, level, opts)
     vim.notify(message, level, opts)
   else
     local level_name = "INFO"
-    local vim_levels = (vim and vim.log and vim.log.levels) or DEFAULT_LOG_LEVEL
+    local vim_levels = (vim and vim.log and vim.log.levels) or DEFAULT_LOG_LEVELS
 
     for name, val in pairs(vim_levels) do
       if val == level then
@@ -30,6 +30,6 @@ function M.notify(message, level, opts)
   end
 end
 
-M.levels = (vim and vim.log and vim.log.levels) or DEFAULT_LOG_LEVEL
+M.levels = (vim and vim.log and vim.log.levels) or DEFAULT_LOG_LEVELS
 
 return M

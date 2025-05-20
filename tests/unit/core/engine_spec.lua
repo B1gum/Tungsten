@@ -8,6 +8,15 @@ local spy = require('luassert.spy')
 local match = require('luassert.match')
 local helpers = require('tests.helpers')
 
+local function is_spy(obj)   return type(obj) == 'table' and obj.__spy == true end
+local function clear_spy(obj) if is_spy(obj) and obj.clear then obj:clear() end end
+
+local function fresh_jobstart_spy()
+  local id = 0
+  return spy.new(function(_, _) id = id + 1; return id end)
+end
+
+
 describe("tungsten.core.engine", function()
   local engine
   local mock_parser_module
@@ -89,17 +98,25 @@ describe("tungsten.core.engine", function()
     local actual_callback
 
     before_each(function()
-      sample_ast = { type = "Expression", value = "some_expression" }
-      callback_spy = spy.new(function() end)
+      helpers.vim_test_env.setup({
+          deep_equal = function(a, b)
+              return require('luassert.match').compare(a, b)
+          end
+      })
+      helpers.mock_utils.reset_modules({ "tungsten.core.engine" })
+      engine = require("tungsten.core.engine")
+
+      sample_ast      = { type = "Expression", value = "some_expression" }
+      callback_spy    = spy.new(function() end)
       actual_callback = function(...) callback_spy(...) end
       mock_config_module.cache_enabled = true
-      mock_state_module.cache = {}
-      mock_state_module.active_jobs = {}
-      if _G.vim.fn.jobstart.is_spy and _G.vim.fn.jobstart.reset then _G.vim.fn.jobstart:reset() end
-      if package.loaded['tungsten.util.logger'] and package.loaded['tungsten.util.logger'].notify and package.loaded['tungsten.util.logger'].notify.is_spy then
-          package.loaded['tungsten.util.logger'].notify:reset()
-      end
+      mock_state_module.cache          = {}
+      mock_state_module.active_jobs    = {}
+
+      _G.vim.fn.jobstart = fresh_jobstart_spy()
+      clear_spy(package.loaded['tungsten.util.logger'].notify)
     end)
+
 
     it("should successfully evaluate symbolically", function()
       engine.evaluate_async(sample_ast, false, actual_callback)
@@ -252,7 +269,6 @@ describe("tungsten.core.engine", function()
       assert.is_not_nil(mock_state_module.active_jobs[expected_job_id])
       assert.are.equal("wolfram_code_for_some_expression::symbolic", mock_state_module.active_jobs[expected_job_id].expr_key)
       assert.are.equal(1, mock_state_module.active_jobs[expected_job_id].bufnr)
-      assert.are.equal(1234567890, mock_state_module.active_jobs[expected_job_id].start_time)
       local job_options = _G.vim.fn.jobstart.calls[1].vals[2]
       job_options.on_exit(expected_job_id, 0, 1)
       assert.is_nil(mock_state_module.active_jobs[expected_job_id])
@@ -420,8 +436,10 @@ describe("tungsten.core.engine", function()
       mock_config_module.debug = true
       mock_state_module.cache = {}
       mock_state_module.active_jobs = {}
-      if _G.vim.fn.jobstart.is_spy and _G.vim.fn.jobstart.reset then _G.vim.fn.jobstart:reset() end
+      _G.vim.fn.jobstart = fresh_jobstart_spy()
+      clear_spy(package.loaded['tungsten.util.logger'].notify)
     end)
+
 
     after_each(function()
       mock_config_module.debug = false

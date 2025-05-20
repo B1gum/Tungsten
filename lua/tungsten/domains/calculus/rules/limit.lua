@@ -6,7 +6,7 @@ local P, V, Cg, Ct = lpeg.P, lpeg.V, lpeg.Cg, lpeg.Ct
 
 local tk = require("tungsten.core.tokenizer")
 local space = tk.space
-local node = require("tungsten.core.ast").node
+local ast = require("tungsten.core.ast")
 
 local lim_keyword = P("\\lim")
 
@@ -43,11 +43,7 @@ local LimitRule =
     full_subscript_pattern *
     main_expression_segment
   ) / function(captures)
-    return node("limit", {
-      variable = captures.variable,
-      point = captures.point,
-      expression = captures.expression
-    })
+    return ast.create_limit_node(captures.variable, captures.point, captures.expression)
   end
 
 return LimitRule

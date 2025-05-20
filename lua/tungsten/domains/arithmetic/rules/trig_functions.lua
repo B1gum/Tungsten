@@ -1,6 +1,8 @@
 local lpeg = require "lpeg"
 local P, V = lpeg.P, lpeg.V
-local space = require("tungsten.core.tokenizer").space
+local tk    = require "tungsten.core.tokenizer"
+local space = (type(tk) == "table" and tk.space)
+           or  require("lpeg").S(" \t\n\r")^0
 local ast = require("tungsten.core.ast")
 
 local M = {}

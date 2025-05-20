@@ -108,8 +108,8 @@ describe("tungsten.util.selection", function()
 
       it("should correctly trim the first line from start_col", function()
         _G.vim.fn.getpos = spy.new(function(marker)
-          if marker == "'<" then return { 0, 1, 3, 0 } end --
-          if marker == "'>" then return { 0, 2, 7, 0 } end --
+          if marker == "'<" then return { 0, 1, 3, 0 } end
+          if marker == "'>" then return { 0, 2, 7, 0 } end
         end)
         _G.vim.api.nvim_buf_get_lines = spy.new(function()
           return { "Hello", "Second Line!" }

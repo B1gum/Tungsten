@@ -31,16 +31,16 @@ function M.get_domain_priority(domain_name)
   return 0
 end
 
-function M.register_grammar_contribution(domain_name, domain_priority, name_for_V_ref, pattern, category)
+function M.register_grammar_contribution(domain_name, domain_priority, rule_name, pattern, category)
   table.insert(M.grammar_contributions, {
     domain_name = domain_name,
     domain_priority = domain_priority,
-    name = name_for_V_ref,
+    name = rule_name,
     pattern = pattern,
-    category = category or name_for_V_ref,
+    category = category or rule_name,
   })
   if config.debug then
-      logger.notify(("Registry: Grammar contribution '%s' (%s) from domain '%s' (priority %d)"):format(name_for_V_ref, category, domain_name, domain_priority), logger.levels.DEBUG, { title = "Tungsten Debug"})
+      logger.notify(("Registry: Grammar contribution '%s' (%s) from domain '%s' (priority %d)"):format(rule_name, category, domain_name, domain_priority), logger.levels.DEBUG, { title = "Tungsten Debug"})
   end
 end
 

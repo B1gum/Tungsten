@@ -71,7 +71,7 @@ describe("Tungsten core commands: :TungstenEvaluate", function()
     })
 
     mock_logger = mock_utils.mock_module('tungsten.util.logger', {
-      notify = function() end, -- Will be spied
+      notify = function() end,
       levels = { ERROR = 1, INFO = 2, DEBUG = 3, WARN = 4 }
     })
 

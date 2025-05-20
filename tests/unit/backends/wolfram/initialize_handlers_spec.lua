@@ -124,7 +124,7 @@ describe("tungsten.backends.wolfram", function()
   end)
 
   after_each(function()
-    _G.require = original_require -- Restore original require
+    _G.require = original_require
   end)
 
   describe("Default Handler Loading (config.domains is nil or empty)", function()
@@ -524,13 +524,13 @@ describe("tungsten.backends.wolfram", function()
 
     it("should log a warning if a domain module is loaded but does not have a .handlers table", function()
       local nohandlers_domain_name = "nohandlers_domain"
-      local another_good_domain_name = "another_good_domain_for_nohandlers_test" -- Use a unique name
+      local another_good_domain_name = "another_good_domain_for_nohandlers_test"
       mock_config.domains = { nohandlers_domain_name, another_good_domain_name }
 
       local handler_module_path_nohandlers = "tungsten.domains." .. nohandlers_domain_name .. ".wolfram_handlers"
       local handler_module_path_good = "tungsten.domains." .. another_good_domain_name .. ".wolfram_handlers"
 
-      mock_domain_handler_definitions[handler_module_path_nohandlers] = { not_handlers = "some_data" } -- No .handlers table
+      mock_domain_handler_definitions[handler_module_path_nohandlers] = { not_handlers = "some_data" }
 
       local good_handler_spy = spy.new(function() return "good_output_nohandlers_test" end)
       mock_domain_handler_definitions[handler_module_path_good] = {
@@ -565,7 +565,6 @@ describe("tungsten.backends.wolfram", function()
       assert.spy(good_handler_spy).was.called(1)
       assert.are.equal("good_output_nohandlers_test", result)
 
-      -- Restore original mock_registry.get_domain_priority
       mock_registry.get_domain_priority = original_get_priority
       package.loaded['tungsten.core.registry'] = mock_registry
     end)

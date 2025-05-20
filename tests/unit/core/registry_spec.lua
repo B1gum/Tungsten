@@ -204,7 +204,7 @@ describe("tungsten.core.registry", function()
     end)
   end)
 
-  describe("M.register_grammar_contribution(domain_name, domain_priority, name_for_V_ref, pattern, category)", function()
+  describe("M.register_grammar_contribution(domain_name, domain_priority, rule_name, pattern, category)", function()
     it("should successfully add a grammar contribution to the internal list", function()
       assert.are.equal(0, #registry.grammar_contributions)
       registry.register_grammar_contribution("domainA", 100, "Rule1", create_mock_pattern("pattern1"), "CategoryA")
@@ -214,23 +214,23 @@ describe("tungsten.core.registry", function()
     it("should store all parameters correctly in the contribution", function()
       local domain_name = "domainB"
       local domain_priority = 50
-      local name_for_V_ref = "Rule2"
+      local rule_name = "Rule2"
       local pattern = create_mock_pattern("pattern2_obj")
       local category = "CategoryB"
-      registry.register_grammar_contribution(domain_name, domain_priority, name_for_V_ref, pattern, category)
+      registry.register_grammar_contribution(domain_name, domain_priority, rule_name, pattern, category)
       local contrib = registry.grammar_contributions[1]
       assert.are.equal(domain_name, contrib.domain_name)
       assert.are.equal(domain_priority, contrib.domain_priority)
-      assert.are.equal(name_for_V_ref, contrib.name)
+      assert.are.equal(rule_name, contrib.name)
       assert.are.same(pattern, contrib.pattern)
       assert.are.equal(category, contrib.category)
     end)
 
-    it("should default category to name_for_V_ref if category is nil", function()
-      local name_for_V_ref = "Rule3"
-      registry.register_grammar_contribution("domainC", 75, name_for_V_ref, create_mock_pattern("pattern3"), nil)
+    it("should default category to rule_name if category is nil", function()
+      local rule_name = "Rule3"
+      registry.register_grammar_contribution("domainC", 75, rule_name, create_mock_pattern("pattern3"), nil)
       local contrib = registry.grammar_contributions[1]
-      assert.are.equal(name_for_V_ref, contrib.category)
+      assert.are.equal(rule_name, contrib.category)
     end)
 
     it("should log registration in debug mode", function()
