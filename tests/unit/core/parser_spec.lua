@@ -383,4 +383,142 @@ describe("tungsten.core.parser.parse with combined grammar", function()
         assert.are.same(expected_ast, parse_input(input))
     end)
   end)
+-- (Inside tungsten/tests/unit/core/parser_spec.lua)
+-- ... existing describe blocks ...
+
+  describe("calculus and arithmetic integration", function()
+    it("should parse derivative of a fraction: \\frac{d}{dx} \\frac{x^2}{x+1}", function()
+      local input = "\\frac{d}{dx} \\frac{x^2}{x+1}"
+      local expected_ast = ast_utils.node("ordinary_derivative", {
+        order = { type = "number", value = 1 },
+        variable = { type = "variable", name = "x" },
+        expression = ast_utils.node("fraction", {
+          numerator = ast_utils.node("superscript", {
+            base = { type = "variable", name = "x" },
+            exponent = { type = "number", value = 2 }
+          }),
+          denominator = ast_utils.create_binary_operation_node("+",
+            { type = "variable", name = "x" },
+            { type = "number", value = 1 }
+          )
+        })
+      })
+      assert.are.same(expected_ast, parse_input(input))
+    end)
+
+    it("should parse integral of an expression with variables and numbers: \\int x^2 + 2x dx", function()
+      local input = "\\int x^2 + 2x dx"
+      -- Assuming implicit multiplication 2x is handled by arithmetic rules
+      local expected_ast = ast_utils.node("indefinite_integral", {
+        integrand = ast_utils.create_binary_operation_node("+",
+          ast_utils.node("superscript", {
+            base = { type = "variable", name = "x" },
+            exponent = { type = "number", value = 2 }
+          }),
+          ast_utils.create_binary_operation_node("*",
+            { type = "number", value = 2 },
+            { type = "variable", name = "x" }
+          )
+        ),
+        variable = { type = "variable", name = "x" }
+      })
+      assert.are.same(expected_ast, parse_input(input))
+    end)
+
+    it("should parse limit of a fraction: \\lim_{x \\to 0} \\frac{\\sin x}{x}", function()
+      -- This assumes \sin x is a recognized token or sub-expression.
+      -- For simplicity, let's assume 'sin' becomes a variable node if not a function call.
+      -- Or, if you have function call parsing: ast_utils.node("function_call", {name="sin", args={{type="variable", name="x"}}})
+      local input = "\\lim_{x \\to 0} \\frac{\\sin x}{x}"
+      local expected_ast = ast_utils.node("limit", {
+        variable = { type = "variable", name = "x" },
+        point = { type = "number", value = 0 },
+        expression = ast_utils.node("fraction", {
+          numerator = ast_utils.node("function_call", { -- Assuming you add function call parsing
+            name_node = { type = "variable", name = "sin" },
+            args = { { type = "variable", name = "x" } } -- Simplified: arg list needs proper parsing
+          }),
+          denominator = { type = "variable", name = "x" }
+        })
+      })
+      -- Note: The actual AST for \sin x depends on your tokenizer and function call parsing rules.
+      -- The example above shows a placeholder for a function call.
+      -- If \sin is treated as a variable: { type = "variable", name = "sin" }
+      -- Potentially, it could be an implicit multiplication: sin * x
+      -- Adjust `expected_ast` based on your actual parsing of `\sin x`.
+      -- For this example, I'll mock a simple `function_call` node structure.
+      -- You'll need to ensure your grammar can produce this.
+      -- If `\sin` is not special, it might parse as variable `sin` implicitly multiplied by `x`.
+      -- Let's assume for now `\sin x` parses to a function call node.
+      -- If `\sin` is just a variable, then it would be `implicit mul(var(sin), var(x))`
+      local parsed_ast = parse_input(input)
+      -- A more robust check due to complexity of function calls:
+      assert.are.equal("limit", parsed_ast.type)
+      assert.are.same({ type = "variable", name = "x" }, parsed_ast.variable)
+      assert.are.same({ type = "number", value = 0 }, parsed_ast.point)
+      assert.are.equal("fraction", parsed_ast.expression.type)
+      -- Further checks for numerator (sin x) and denominator (x) would go here
+      -- This part is highly dependent on how you decide to parse functions like `\sin x`
+    end)
+
+    it("should parse sum with arithmetic in body: \\sum_{i=0}^{N} (i^2 + \\frac{1}{i})", function()
+      local input = "\\sum_{i=0}^{N} (i^2 + \\frac{1}{i})"
+      local expected_ast = ast_utils.node("summation", {
+        index_variable = { type = "variable", name = "i" },
+        start_expression = { type = "number", value = 0 },
+        end_expression = { type = "variable", name = "N" },
+        body_expression = ast_utils.create_binary_operation_node("+",
+          ast_utils.node("superscript", {
+            base = { type = "variable", name = "i" },
+            exponent = { type = "number", value = 2 }
+          }),
+          ast_utils.node("fraction", {
+            numerator = { type = "number", value = 1 },
+            denominator = { type = "variable", name = "i" }
+          })
+        )
+      })
+      assert.are.same(expected_ast, parse_input(input))
+    end)
+
+    it("should parse partial derivative of a product: \\frac{\\partial}{\\partial x} (x^2 y)", function()
+      local input = "\\frac{\\partial}{\\partial x} (x^2 y)"
+      local expected_ast = ast_utils.node("partial_derivative", {
+        overall_order = { type = "number", value = 1 },
+        variables = {
+          ast_utils.node("differentiation_term", {
+            variable = { type = "variable", name = "x" },
+            order = { type = "number", value = 1 }
+          })
+        },
+        expression = ast_utils.create_binary_operation_node("*",
+          ast_utils.node("superscript", {
+            base = { type = "variable", name = "x" },
+            exponent = { type = "number", value = 2 }
+          }),
+          { type = "variable", name = "y" }
+        )
+      })
+      assert.are.same(expected_ast, parse_input(input))
+    end)
+
+    it("should parse arithmetic operation on two calculus terms: \\int x dx + \\lim_{x \\to 0} x^2", function()
+        local input = "\\int x dx + \\lim_{x \\to 0} x^2"
+        local expected_ast = ast_utils.create_binary_operation_node("+",
+            ast_utils.node("indefinite_integral", {
+                integrand = { type = "variable", name = "x" },
+                variable = { type = "variable", name = "x" }
+            }),
+            ast_utils.node("limit", {
+                variable = { type = "variable", name = "x" },
+                point = { type = "number", value = 0 },
+                expression = ast_utils.node("superscript", {
+                    base = { type = "variable", name = "x" },
+                    exponent = { type = "number", value = 2 }
+                })
+            })
+        )
+        assert.are.same(expected_ast, parse_input(input))
+    end)
+  end)
 end)
