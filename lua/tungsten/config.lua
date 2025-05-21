@@ -8,6 +8,7 @@ local config = {
   debug = false,
   cache_enabled = true,
   domains = { "arithmetic", "calculus" },
+  wolfram_timeout_ms = 10000,
 }
 
 

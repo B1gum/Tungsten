@@ -152,6 +152,14 @@ function M.evaluate_async(ast, numeric, callback)
     if config.debug then
       logger.notify(("Tungsten: Started WolframScript job %d for key '%s' with code: %s"):format(job_id, expr_key, code_to_execute), logger.levels.INFO, { title = "Tungsten Debug" })
     end
+
+    local timeout_ms = config.wolfram_timeout_ms or 10000
+    local job_timer = vim.loop.new_timer()
+    job_timer:start(timeout_ms, 0, function()
+      if job_id and state.active_jobs[job_id] then
+        logger.notify(("Tungsten: Wolframscript job %d timed out after %d ms."):format(job_id, timeout_ms), logger.levels.WARN, { title = "Tungsten" })
+      end
+    end)
   end
 end
 
