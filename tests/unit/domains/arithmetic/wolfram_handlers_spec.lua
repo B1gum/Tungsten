@@ -3,22 +3,32 @@
 package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
 local spy = require 'luassert.spy'
+local stub = require 'luassert.stub'
 local wolfram_handlers = require "tungsten.domains.arithmetic.wolfram_handlers"
+local ast = require "tungsten.core.ast"
 
 describe("Tungsten Arithmetic Wolfram Handlers", function()
   local handlers = wolfram_handlers.handlers
   local mock_recur_render
+  local render_node_for_function_call
 
   before_each(function()
     mock_recur_render = spy.new(function(child_node)
       if child_node.type == "number" then return tostring(child_node.value) end
       if child_node.type == "variable" then return child_node.name end
+      if child_node.type == "symbol" then return child_node.name end
       if child_node.type == "greek" then return child_node.name end
       if child_node.type == "binary" then
-        return mock_recur_render(child_node.left) .. child_node.operator .. mock_recur_render(child_node.right)
+        local left_rendered = mock_recur_render(child_node.left)
+        local right_rendered = mock_recur_render(child_node.right)
+        return left_rendered .. child_node.operator .. right_rendered
       end
       return "mock_rendered(" .. child_node.type .. ")"
     end)
+
+    render_node_for_function_call = function(node)
+        return handlers.function_call(node, mock_recur_render)
+    end
   end)
 
   describe("number handler", function()
@@ -345,4 +355,76 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
       assert.are.equal("-mock_rendered(fraction)", handlers.unary(node, mock_recur_render))
     end)
   end)
+
+  describe("function_call handler", function()
+    it("should correctly render sin(x)", function()
+      local var_node_sin_name = ast.create_symbol_node("sin")
+      local var_node_x_arg = ast.create_symbol_node("x")
+      local node = ast.create_function_call_node(
+        var_node_sin_name,
+        { var_node_x_arg }
+      )
+      assert.are.same("Sin[x]", render_node_for_function_call(node))
+    end)
+
+    it("should correctly render cos(theta)", function()
+      local node = ast.create_function_call_node(
+        ast.create_symbol_node("cos"),
+        { ast.create_symbol_node("theta") }
+      )
+      assert.are.same("Cos[theta]", render_node_for_function_call(node))
+    end)
+
+    it("should correctly render log(x)", function()
+      local node = ast.create_function_call_node(
+        ast.create_symbol_node("log"),
+        { ast.create_symbol_node("x") }
+      )
+      assert.are.same("Log[x]", render_node_for_function_call(node))
+    end)
+
+    it("should correctly render ln(y)", function()
+      local node = ast.create_function_call_node(
+        ast.create_symbol_node("ln"),
+        { ast.create_symbol_node("y") }
+      )
+      assert.are.same("Log[y]", render_node_for_function_call(node))
+    end)
+
+    it("should correctly render log10(z)", function()
+      local node = ast.create_function_call_node(
+        ast.create_symbol_node("log10"),
+        { ast.create_symbol_node("z") }
+      )
+      assert.are.same("Log10[z]", render_node_for_function_call(node))
+    end)
+
+    it("should correctly render exp(x+1)", function()
+      local arg_node = ast.create_binary_operation_node(
+          "+",
+          ast.create_symbol_node("x"),
+          { type = "number", value = 1 }
+      )
+      local node = ast.create_function_call_node(
+        ast.create_symbol_node("exp"),
+        { arg_node }
+      )
+      assert.are.same("Exp[x+1]", render_node_for_function_call(node))
+    end)
+
+    it("should use capitalized name for unknown function and log a warning", function()
+      local logger = require("tungsten.util.logger")
+      stub(logger, "notify")
+
+      local node = ast.create_function_call_node(
+        ast.create_symbol_node("myCustomFunc"),
+        { ast.create_symbol_node("a") }
+      )
+      assert.are.same("MyCustomFunc[a]", render_node_for_function_call(node))
+      assert.spy(logger.notify).was.called()
+
+      logger.notify:revert()
+    end)
+  end)
 end)
+

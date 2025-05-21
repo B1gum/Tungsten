@@ -99,6 +99,47 @@ M.handlers = {
     end
     return node.operator .. value_str
   end,
+  function_call = function(node, recur_render)
+    local func_name_map = {
+      sin = "Sin",
+      cos = "Cos",
+      tan = "Tan",
+      arcsin = "ArcSin",
+      arccos = "ArcCos",
+      arctan = "ArcTan",
+      sinh = "Sinh",
+      cosh = "Cosh",
+      tanh = "Tanh",
+      arsinh = "ArcSinh",
+      arcosh = "ArcCosh",
+      artanh = "ArcTanh",
+      log = "Log",
+      ln = "Log",
+      log10 = "Log10",
+      exp = "Exp",
+    }
+    local func_name_str = node.name_node.name
+    local wolfram_func_name = func_name_map[func_name_str:lower()]
+
+    if not wolfram_func_name then
+      local logger = require "tungsten.util.logger"
+      logger.notify(
+        ("Tungsten: No specific wolfram mapping for function '%s'. Using capitalized form '%s'."):format(
+          func_name_str,
+          func_name_str:sub(1,1):upper() .. func_name_str:sub(2)
+        ),
+        logger.levels.WARN
+      )
+      wolfram_func_name = func_name_str:sub(1,1):upper() .. func_name_str:sub(2)
+    end
+    
+    local rendered_args = {}
+    for _, arg_node in ipairs(node.args) do
+      table.insert(rendered_args, recur_render(arg_node))
+    end
+
+  return ("%s[%s]"):format(wolfram_func_name, table.concat(rendered_args, ", "))
+  end
 }
 
 M.precedence = prec
