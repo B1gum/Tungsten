@@ -105,20 +105,27 @@ function M.to_string(ast)
 
     if not ast then
         logger.notify("Wolfram Backend: to_string called with a nil AST.", logger.levels.ERROR, { title = "Tungsten Backend Error" })
-        return "Error: AST is nil"
+        return "Error: AST is nil" -- Or handle as an error object if preferred
     end
     if next(renderableHandlers) == nil then
         logger.notify("Wolfram Backend: No Wolfram handlers available when to_string was called.", logger.levels.ERROR, { title = "Tungsten Backend Error" })
-        return "Error: No Wolfram handlers loaded for AST conversion."
+        return "Error: No Wolfram handlers loaded for AST conversion." -- Or handle as an error object
     end
 
-    local ok, result_string = pcall(render.render, ast, renderableHandlers)
-    if not ok then
-        logger.notify("Wolfram Backend: Error during AST rendering: " .. tostring(result_string), logger.levels.ERROR, { title = "Tungsten Backend Error" })
-        return "Error: AST rendering failed: " .. tostring(result_string)
+    local rendered_result = render.render(ast, renderableHandlers)
+
+    if type(rendered_result) == "table" and rendered_result.error then
+        local error_message = rendered_result.message
+        if rendered_result.node_type then
+             error_message = error_message .. " (Node type: " .. rendered_result.node_type .. ")"
+        end
+        logger.notify("Wolfram Backend: Error during AST rendering: " .. error_message, logger.levels.ERROR, { title = "Tungsten Backend Error" })
+        return "Error: AST rendering failed: " .. error_message
     end
-    return result_string
+
+    return rendered_result
 end
+
 
 function M.reset_and_reinit_handlers()
     logger.notify("Wolfram Backend: Resetting and re-initializing handlers...", logger.levels.INFO, { title = "Tungsten Backend" })
