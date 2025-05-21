@@ -11,7 +11,8 @@ describe("tungsten.util.selection", function()
   local selection_module
 
   local original_vim_fn_getpos
-  local original_vim_api_nvim_buf_get_lines
+  -- Store the original nvim_buf_get_text
+  local original_vim_api_nvim_buf_get_text
 
   local modules_to_reset = {
     'tungsten.util.selection',
@@ -23,14 +24,15 @@ describe("tungsten.util.selection", function()
     _G.vim.api = _G.vim.api or {}
 
     original_vim_fn_getpos = _G.vim.fn.getpos
-    original_vim_api_nvim_buf_get_lines = _G.vim.api.nvim_buf_get_lines
+    original_vim_api_nvim_buf_get_text = _G.vim.api.nvim_buf_get_text
 
     _G.vim.fn.getpos = spy.new(function(marker)
       if marker == "'<" then return { 0, 1, 1, 0 } end
       if marker == "'>" then return { 0, 1, 1, 0 } end
       return { 0, 0, 0, 0 }
     end)
-    _G.vim.api.nvim_buf_get_lines = spy.new(function(bufnr, start_line, end_line, strict_indexing)
+
+    _G.vim.api.nvim_buf_get_text = spy.new(function(bufnr, start_line, start_col, end_line, end_col, opts)
       return {}
     end)
 
@@ -40,7 +42,7 @@ describe("tungsten.util.selection", function()
 
   after_each(function()
     _G.vim.fn.getpos = original_vim_fn_getpos
-    _G.vim.api.nvim_buf_get_lines = original_vim_api_nvim_buf_get_lines
+    _G.vim.api.nvim_buf_get_text = original_vim_api_nvim_buf_get_text
 
     mock_utils.reset_modules(modules_to_reset)
   end)
@@ -52,8 +54,11 @@ describe("tungsten.util.selection", function()
           if marker == "'<" then return { 0, 1, 7, 0 } end
           if marker == "'>" then return { 0, 1, 11, 0 } end
         end)
-        _G.vim.api.nvim_buf_get_lines = spy.new(function()
-          return { "Hello World!" }
+        _G.vim.api.nvim_buf_get_text = spy.new(function(bufnr, s_line, s_col, e_line, e_col, opts)
+          if s_line == 0 and s_col == 6 and e_line == 0 and e_col == 11 then
+             return { "World" }
+          end
+          return {}
         end)
         assert.are.equal("World", selection_module.get_visual_selection())
       end)
@@ -63,19 +68,25 @@ describe("tungsten.util.selection", function()
           if marker == "'<" then return { 0, 1, 1, 0 } end
           if marker == "'>" then return { 0, 1, 5, 0 } end
         end)
-        _G.vim.api.nvim_buf_get_lines = spy.new(function()
-          return { "Hello World!" }
+        _G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
+          if sl == 0 and sc == 0 and el == 0 and ec == 5 then
+            return { "Hello" }
+          end
+          return {}
         end)
         assert.are.equal("Hello", selection_module.get_visual_selection())
       end)
 
       it("should return the correct substring for a selection at the end of the line", function()
-        _G.vim.fn.getpos = spy.new(function(marker)
+         _G.vim.fn.getpos = spy.new(function(marker)
           if marker == "'<" then return { 0, 1, 7, 0 } end
           if marker == "'>" then return { 0, 1, 12, 0 } end
         end)
-        _G.vim.api.nvim_buf_get_lines = spy.new(function()
-          return { "Hello World!" }
+        _G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
+            if sl == 0 and sc == 6 and el == 0 and ec == 12 then
+                 return { "World!" }
+            end
+            return {}
         end)
         assert.are.equal("World!", selection_module.get_visual_selection())
       end)
@@ -85,8 +96,11 @@ describe("tungsten.util.selection", function()
           if marker == "'<" then return { 0, 1, 1, 0 } end
           if marker == "'>" then return { 0, 1, 12, 0 } end
         end)
-        _G.vim.api.nvim_buf_get_lines = spy.new(function()
-          return { "Hello World!" }
+         _G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
+            if sl == 0 and sc == 0 and el == 0 and ec == 12 then
+                return { "Hello World!" }
+            end
+            return {}
         end)
         assert.are.equal("Hello World!", selection_module.get_visual_selection())
       end)
@@ -98,10 +112,11 @@ describe("tungsten.util.selection", function()
           if marker == "'<" then return { 0, 1, 7, 0 } end
           if marker == "'>" then return { 0, 2, 5, 0 } end
         end)
-        _G.vim.api.nvim_buf_get_lines = spy.new(function(b, start_idx, end_idx_api)
-          assert.are.equal(0, start_idx)
-          assert.are.equal(2, end_idx_api)
-          return { "Hello World!", "Hi There Friend" }
+        _G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
+            if sl == 0 and sc == 6 and el == 1 and ec == 5 then
+                return { "World!", "Hi Th" }
+            end
+            return {}
         end)
         assert.are.equal("World!\nHi Th", selection_module.get_visual_selection())
       end)
@@ -111,8 +126,11 @@ describe("tungsten.util.selection", function()
           if marker == "'<" then return { 0, 1, 3, 0 } end
           if marker == "'>" then return { 0, 2, 7, 0 } end
         end)
-        _G.vim.api.nvim_buf_get_lines = spy.new(function()
-          return { "Hello", "Second Line!" }
+        _G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
+            if sl == 0 and sc == 2 and el == 1 and ec == 7 then
+                 return { "llo", "Second " }
+            end
+            return {}
         end)
         assert.are.equal("llo\nSecond ", selection_module.get_visual_selection())
       end)
@@ -122,8 +140,11 @@ describe("tungsten.util.selection", function()
           if marker == "'<" then return { 0, 1, 1, 0 } end
           if marker == "'>" then return { 0, 2, 4, 0 } end
         end)
-        _G.vim.api.nvim_buf_get_lines = spy.new(function()
-          return { "First Line", "Second" }
+         _G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
+            if sl == 0 and sc == 0 and el == 1 and ec == 4 then
+                return { "First Line", "Seco" }
+            end
+            return {}
         end)
         assert.are.equal("First Line\nSeco", selection_module.get_visual_selection())
       end)
@@ -133,8 +154,11 @@ describe("tungsten.util.selection", function()
           if marker == "'<" then return { 0, 1, 1, 0 } end
           if marker == "'>" then return { 0, 2, 7, 0 } end
         end)
-        _G.vim.api.nvim_buf_get_lines = spy.new(function()
-          return { "Line 1", "Line 2!" }
+        _G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
+            if sl == 0 and sc == 0 and el == 1 and ec == 7 then
+                return { "Line 1", "Line 2!" }
+            end
+            return {}
         end)
         assert.are.equal("Line 1\nLine 2!", selection_module.get_visual_selection())
       end)
@@ -144,20 +168,23 @@ describe("tungsten.util.selection", function()
           if marker == "'<" then return { 0, 1, 1, 0 } end
           if marker == "'>" then return { 0, 3, 4, 0 } end
         end)
-        _G.vim.api.nvim_buf_get_lines = spy.new(function()
-          return { "Start", "", "End Line" }
+        _G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
+             if sl == 0 and sc == 0 and el == 2 and ec == 4 then
+                return { "Start", "", "End " }
+             end
+             return {}
         end)
         assert.are.equal("Start\n\nEnd ", selection_module.get_visual_selection())
       end)
     end)
 
     describe("Edge Cases and Empty Selections", function()
-      it("should return an empty string if nvim_buf_get_lines returns an empty table", function()
+      it("should return an empty string if nvim_buf_get_text returns an empty table (e.g. invalid range)", function()
         _G.vim.fn.getpos = spy.new(function(marker)
           if marker == "'<" then return { 0, 1, 1, 0 } end
           if marker == "'>" then return { 0, 1, 5, 0 } end
         end)
-        _G.vim.api.nvim_buf_get_lines = spy.new(function()
+        _G.vim.api.nvim_buf_get_text = spy.new(function()
           return {}
         end)
         assert.are.equal("", selection_module.get_visual_selection())
@@ -166,30 +193,29 @@ describe("tungsten.util.selection", function()
       it("should return an empty string if a single empty line is selected", function()
         _G.vim.fn.getpos = spy.new(function(marker)
           if marker == "'<" then return { 0, 1, 1, 0 } end
-          if marker == "'>" then return { 0, 1, 0, 0 } end
-        end)
-        _G.vim.api.nvim_buf_get_lines = spy.new(function()
-          return { "" }
-        end)
-        assert.are.equal("", selection_module.get_visual_selection())
-
-        _G.vim.fn.getpos = spy.new(function(marker)
-          if marker == "'<" then return { 0, 1, 1, 0 } end
           if marker == "'>" then return { 0, 1, 1, 0 } end
         end)
-         _G.vim.api.nvim_buf_get_lines = spy.new(function()
-          return { "" }
+        _G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
+            if sl == 0 and sc == 0 and el == 0 and ec == 0 then
+                 return { "" }
+            end
+            if sl == 0 and sc == 0 and el == 0 and ec == 1 then
+                 return { "" }
+            end
+            return {}
         end)
         assert.are.equal("", selection_module.get_visual_selection())
       end)
-
-      it("should handle selection starting and ending on the same non-existent column of an empty line", function()
+      
+      it("should handle selection where start_col > end_col (e.g. cursor moved left)", function()
         _G.vim.fn.getpos = spy.new(function(marker)
-            if marker == "'<" then return { 0, 1, 1, 0 } end
-            if marker == "'>" then return { 0, 1, 0, 0 } end
+            if marker == "'<" then return { 0, 1, 5, 0 } end
+            if marker == "'>" then return { 0, 1, 1, 0 } end
         end)
-        _G.vim.api.nvim_buf_get_lines = spy.new(function()
-            return { "" }
+        _G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
+            if sl == 0 and sc == 0 and el == 0 and ec == 0 then return {""} end
+            if sl == 0 and sc == 4 and el == 0 and ec == 0 then return {""} end
+            return {}
         end)
         assert.are.equal("", selection_module.get_visual_selection())
       end)

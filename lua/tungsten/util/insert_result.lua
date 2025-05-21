@@ -3,30 +3,30 @@
 -----------------------------------------------------------------------------
 
 local M = {}
-
 function M.insert_result(result_text)
-  local start_row = vim.fn.line("'<")
-  local start_col = vim.fn.col("'<")
-  local end_row   = vim.fn.line("'>")
-  local end_col   = vim.fn.col("'>")
+  local bufnr = 0
+  local original_selection_text = require("tungsten.util.selection").get_visual_selection()
+  if original_selection_text == "" and result_text == "" then return end
 
-  local lines = vim.fn.getline(start_row, end_row)
-  if #lines == 0 then
-    return
-  end
+  local final_text_to_insert = original_selection_text .. " = " .. result_text
 
-  if #lines == 1 then
-    local selection = lines[1]:sub(start_col, end_col)
-    local updated = selection .. " = " .. result_text
-    vim.fn.setline(start_row, updated)
-  else
-    lines[1] = lines[1]:sub(start_col)
-    lines[#lines] = lines[#lines]:sub(1, end_col)
-    local selection = table.concat(lines, "\n")
-    local updated = selection .. " = " .. result_text
-    local new_lines = vim.fn.split(updated, "\n")
-    vim.api.nvim_buf_set_lines(0, start_row - 1, end_row, false, new_lines)
-  end
+  local start_pos = vim.fn.getpos("'<")
+  local end_pos = vim.fn.getpos("'>")
+  local start_line_api = start_pos[2] - 1
+  local start_col_api = start_pos[3] - 1
+  local original_end_line_api = end_pos[2] - 1
+  local original_end_col_api = end_pos[3]
+
+  local lines_to_insert = vim.fn.split(final_text_to_insert, "\n")
+
+  vim.api.nvim_buf_set_text(
+    bufnr,
+    start_line_api,
+    start_col_api,
+    original_end_line_api,
+    original_end_col_api,
+    lines_to_insert
+  )
 end
-
 return M
+

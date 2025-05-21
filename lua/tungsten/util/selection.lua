@@ -3,29 +3,26 @@
 -------------------------------------------------------------------------------------------
 
 local M = {}
-
 function M.get_visual_selection()
+  local bufnr = 0
   local start_pos = vim.fn.getpos("'<")
-  local end_pos   = vim.fn.getpos("'>")
+  local end_pos = vim.fn.getpos("'>")
 
-  local start_line = start_pos[2]
-  local start_col  = start_pos[3]
-  local end_line   = end_pos[2]
-  local end_col    = end_pos[3]
+  local start_line_api = start_pos[2] - 1
+  local start_col_api = start_pos[3] - 1
+  local end_line_api = end_pos[2] - 1
+  local end_col_api = end_pos[3]
 
-  local lines = vim.api.nvim_buf_get_lines(0, start_line - 1, end_line, false)
-  if #lines == 0 then
-    return ""
-  end
+  if start_line_api < 0 or start_col_api < 0 then return "" end
 
-  if #lines == 1 then
-    return string.sub(lines[1], start_col, end_col)
-  else
-    lines[1] = string.sub(lines[1], start_col)
-    lines[#lines] = string.sub(lines[#lines], 1, end_col)
-    return table.concat(lines, "\n")
-  end
+  local lines_table = vim.api.nvim_buf_get_text(
+    bufnr,
+    start_line_api,
+    start_col_api,
+    end_line_api,
+    end_col_api,
+    {}
+  )
+  return table.concat(lines_table, "\n")
 end
-
 return M
-
