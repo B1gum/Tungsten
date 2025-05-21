@@ -1,5 +1,5 @@
 -- tests/helpers/vim_test_env.lua
-local spy = require('luassert.spy')
+local spy = require 'luassert.spy'
 
 local M = {}
 

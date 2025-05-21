@@ -1,8 +1,8 @@
 -- lua/tungsten/core/init.lua
 local M = {}
 
-M.registry = require("tungsten.core.registry")
-local cfg = require("tungsten.config")
+M.registry = require "tungsten.core.registry"
+local cfg = require "tungsten.config"
 local logger = require "tungsten.util.logger"
 
 local domains_to_load = cfg.domains or { "arithmetic" }

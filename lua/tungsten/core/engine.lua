@@ -2,11 +2,11 @@
 -- Manages the interaction with the Wolfram Engine via wolframscript
 ----------------------------------------------------------------------------------
 
-local parse = require("tungsten.core.parser").parse
-local cg = require("tungsten.backends.wolfram")
+local parse = require "tungsten.core.parser".parse
+local cg = require "tungsten.backends.wolfram"
 local toWolfram = cg.to_string
-local config = require("tungsten.config")
-local state = require("tungsten.state")
+local config = require "tungsten.config"
+local state = require "tungsten.state"
 local logger = require "tungsten.util.logger"
 
 local M = {}

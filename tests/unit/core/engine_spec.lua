@@ -4,9 +4,9 @@
 
 package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
-local spy = require('luassert.spy')
-local match = require('luassert.match')
-local helpers = require('tests.helpers')
+local spy = require 'luassert.spy'
+local match = require 'luassert.match'
+local helpers = require 'tests.helpers'
 
 local function is_spy(obj)   return type(obj) == 'table' and obj.__spy == true end
 local function clear_spy(obj) if is_spy(obj) and obj.clear then obj:clear() end end

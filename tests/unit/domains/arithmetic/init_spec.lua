@@ -4,9 +4,9 @@
 
 package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
-local spy = require('luassert.spy')
-local match = require('luassert.match')
-local helpers = require('tests.helpers')
+local spy = require 'luassert.spy'
+local match = require 'luassert.match'
+local helpers = require 'tests.helpers'
 local mock_utils = helpers.mock_utils
 local vim_test_env = helpers.vim_test_env
 

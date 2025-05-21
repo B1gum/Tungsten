@@ -2,12 +2,12 @@
 -- Defines core user-facing Neovim commands
 -------------------------------------------------------------------------------
 
-local parser    = require("tungsten.core.parser")
-local evaluator = require("tungsten.core.engine")
-local selection = require("tungsten.util.selection")
-local insert    = require("tungsten.util.insert_result")
-local config    = require("tungsten.config")
-local logger    = require("tungsten.util.logger")
+local parser    = require "tungsten.core.parser"
+local evaluator = require "tungsten.core.engine"
+local selection = require "tungsten.util.selection"
+local insert    = require "tungsten.util.insert_result"
+local config    = require "tungsten.config"
+local logger    = require "tungsten.util.logger"
 
 local function tungsten_eval_command(_)
   local text = selection.get_visual_selection()

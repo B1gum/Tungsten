@@ -1,6 +1,6 @@
 local M = {}
-local registry = require("tungsten.core.registry")
-local config = require("tungsten.config")
+local registry = require "tungsten.core.registry"
+local config = require "tungsten.config"
 local logger = require "tungsten.util.logger"
 
 local tokens_mod = require "tungsten.core.tokenizer"

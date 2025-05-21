@@ -5,7 +5,7 @@
 local M = {}
 function M.insert_result(result_text)
   local bufnr = 0
-  local original_selection_text = require("tungsten.util.selection").get_visual_selection()
+  local original_selection_text = require "tungsten.util.selection".get_visual_selection()
   if original_selection_text == "" and result_text == "" then return end
 
   local final_text_to_insert = original_selection_text .. " = " .. result_text

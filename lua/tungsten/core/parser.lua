@@ -4,7 +4,7 @@
 
 local lpeg     = require "lpeg"
 local registry = require "tungsten.core.registry"
-local space    = require("tungsten.core.tokenizer").space
+local space    = require "tungsten.core.tokenizer".space
 local config   = require "tungsten.config"
 local logger = require "tungsten.util.logger"
 

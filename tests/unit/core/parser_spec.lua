@@ -4,9 +4,9 @@
 
 package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
-local parser = require("tungsten.core.parser")
-require("tungsten.core")
-local ast_utils = require("tungsten.core.ast")
+local parser = require "tungsten.core.parser"
+require "tungsten.core"
+local ast_utils = require "tungsten.core.ast"
 
 describe("tungsten.core.parser.parse with combined grammar", function()
   local function parse_input(input_str)

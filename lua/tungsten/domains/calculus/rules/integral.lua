@@ -4,9 +4,9 @@
 local lpeg = require "lpeg"
 local P, V, Cg, Ct = lpeg.P, lpeg.V, lpeg.Cg, lpeg.Ct
 
-local tk = require("tungsten.core.tokenizer")
+local tk = require "tungsten.core.tokenizer"
 local space = tk.space
-local ast = require("tungsten.core.ast")
+local ast = require "tungsten.core.ast"
 
 local integral_keyword = P("\\int")
 

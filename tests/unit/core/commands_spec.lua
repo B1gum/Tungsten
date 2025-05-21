@@ -4,10 +4,10 @@
 
 package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
-local spy = require('luassert.spy')
-local mock_utils = require('tests.helpers.mock_utils')
-local vim_test_env = require('tests.helpers.vim_test_env')
-local match = require('luassert.match')
+local spy = require 'luassert.spy'
+local mock_utils = require 'tests.helpers.mock_utils'
+local vim_test_env = require 'tests.helpers.vim_test_env'
+local match = require 'luassert.match'
 
 describe("Tungsten core commands: :TungstenEvaluate", function()
   local commands

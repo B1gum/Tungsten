@@ -1,10 +1,10 @@
-local pickers = require('telescope.pickers')
-local finders = require('telescope.finders')
-local sorters = require('telescope.sorters')
+local pickers = require 'telescope.pickers'
+local finders = require 'telescope.finders'
+local sorters = require 'telescope.sorters'
 
-local picker   = require('tungsten.ui.picker')
-local mappings = require('tungsten.ui.mappings')
-local logger   = require('tungsten.util.logger')
+local picker   = require 'tungsten.ui.picker'
+local mappings = require 'tungsten.ui.mappings'
+local logger   = require 'tungsten.util.logger'
 
 local M = {}
 

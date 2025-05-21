@@ -2,7 +2,7 @@
 -- Module for which_key integration
 -------------------------------------------------------------------------------------------
 
-local wk = require("which-key")
+local wk = require "which-key"
 
 wk.add({
   mode = { "v" },

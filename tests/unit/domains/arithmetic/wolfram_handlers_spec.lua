@@ -2,8 +2,8 @@
 
 package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
-local spy = require('luassert.spy')
-local wolfram_handlers = require("tungsten.domains.arithmetic.wolfram_handlers")
+local spy = require 'luassert.spy'
+local wolfram_handlers = require "tungsten.domains.arithmetic.wolfram_handlers"
 
 describe("Tungsten Arithmetic Wolfram Handlers", function()
   local handlers = wolfram_handlers.handlers

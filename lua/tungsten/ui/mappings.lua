@@ -1,6 +1,6 @@
-local actions      = require('telescope.actions')
-local action_state = require('telescope.actions.state')
-local logger       = require "tungsten.util.logger"
+local actions      = require 'telescope.actions'
+local action_state = require 'telescope.actions.state'
+local logger       = require 'tungsten.util.logger'
 
 local M = {}
 

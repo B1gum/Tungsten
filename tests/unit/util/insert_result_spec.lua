@@ -4,8 +4,8 @@
 
 package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
-local spy = require('luassert.spy')
-local mock_utils = require('tests.helpers.mock_utils')
+local spy = require 'luassert.spy'
+local mock_utils = require 'tests.helpers.mock_utils'
 
 describe("tungsten.util.insert_result", function()
   local insert_result

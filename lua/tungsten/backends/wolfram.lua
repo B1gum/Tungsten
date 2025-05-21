@@ -1,9 +1,9 @@
 -- backends/wolfram.lua
 -- Handles all interaction with the WolframEngine.
 ---------------------------------------------------------------------
-local render = require("tungsten.core.render")
-local config = require("tungsten.config")
-local logger = require("tungsten.util.logger")
+local render = require "tungsten.core.render"
+local config = require "tungsten.config"
+local logger = require "tungsten.util.logger"
 
 local M = {}
 local handlerRegistry = {}

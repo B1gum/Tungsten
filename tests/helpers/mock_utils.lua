@@ -1,5 +1,5 @@
 -- tests/helpers/mock_utils.lua
-local spy = require('luassert.spy')
+local spy = require 'luassert.spy'
 
 local M = {}
 

@@ -3,12 +3,12 @@ local lpeg = require "lpeg"
 local Cf,C,S = lpeg.Cf, lpeg.C, lpeg.S
 local P       = lpeg.P
 
-local tk = require("tungsten.core.tokenizer")
+local tk = require "tungsten.core.tokenizer"
 local space = tk.space
 local variable_token = tk.variable
 
-local Unary   = require("tungsten.domains.arithmetic.rules.supersub").Unary
-local create_binary_operation_node = require("tungsten.core.ast").create_binary_operation_node
+local Unary   = require "tungsten.domains.arithmetic.rules.supersub".Unary
+local create_binary_operation_node = require "tungsten.core.ast".create_binary_operation_node
 
 local d_char_pattern = P("d")
 local is_potential_differential_start = d_char_pattern * space * variable_token

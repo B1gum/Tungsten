@@ -1,2 +1,2 @@
-require("tungsten").setup()
+require "tungsten".setup()
 

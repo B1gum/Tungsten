@@ -1,8 +1,8 @@
 local lpeg   = require "lpeg"
 local P,C,Cf,S,V = lpeg.P, lpeg.C, lpeg.Cf, lpeg.S, lpeg.V
 
-local space  = require("tungsten.core.tokenizer").space
-local ast    = require("tungsten.core.ast")
+local space  = require "tungsten.core.tokenizer".space
+local ast    = require "tungsten.core.ast"
 
 local Postfix = (P("^") * space * V("AtomBase")) / function(exp)
     return function(base)

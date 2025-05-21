@@ -1,12 +1,12 @@
 -- tests/unit/core/render_spec.lua
 -- Unit tests for the AST rendering logic in lua/tungsten/core/render.lua
 --------------------------------------------------------------------------
-local match = require('luassert.match')
+local match = require 'luassert.match'
 
 package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
-local spy = require('luassert.spy')
-local render_module = require("tungsten.core.render")
+local spy = require 'luassert.spy'
+local render_module = require "tungsten.core.render"
 
 describe("tungsten.core.render", function()
   local render = render_module.render

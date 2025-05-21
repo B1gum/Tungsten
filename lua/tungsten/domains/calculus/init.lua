@@ -2,15 +2,15 @@
 -- Calculus domain for Tungsten plugin
 
 local M = {}
-local config = require("tungsten.config")
-local logger = require("tungsten.util.logger")
-local registry = require("tungsten.core.registry")
+local config = require "tungsten.config"
+local logger = require "tungsten.util.logger"
+local registry = require "tungsten.core.registry"
 
-local LimitRule = require("tungsten.domains.calculus.rules.limit")
-local IntegralRule = require("tungsten.domains.calculus.rules.integral")
-local OrdinaryDerivativeRule = require("tungsten.domains.calculus.rules.ordinary_derivatives")
-local PartialDerivativeRule = require("tungsten.domains.calculus.rules.partial_derivatives")
-local SumRule = require("tungsten.domains.calculus.rules.sum")
+local LimitRule = require "tungsten.domains.calculus.rules.limit"
+local IntegralRule = require "tungsten.domains.calculus.rules.integral"
+local OrdinaryDerivativeRule = require "tungsten.domains.calculus.rules.ordinary_derivatives"
+local PartialDerivativeRule = require "tungsten.domains.calculus.rules.partial_derivatives"
+local SumRule = require "tungsten.domains.calculus.rules.sum"
 
 M.metadata = {
   name = "calculus",

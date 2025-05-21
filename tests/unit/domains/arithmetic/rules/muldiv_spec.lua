@@ -1,7 +1,7 @@
 -- tungsten/tests/unit/domains/arithmetic/rules/muldiv_spec.lua
 package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
-local lpeg = require("lpeg")
+local lpeg = require "lpeg"
 local P, R, S, C, Cf, Ct = lpeg.P, lpeg.R, lpeg.S, lpeg.C, lpeg.Cf, lpeg.Ct
 
 local mock_tk = {
