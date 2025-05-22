@@ -104,7 +104,7 @@ describe("Tungsten Arithmetic Domain: lua/tungsten/domains/arithmetic/init.lua",
     it("should return metadata with the correct 'provides' table", function()
       local metadata = arithmetic_domain.get_metadata()
       assert.is_table(metadata.provides)
-      assert.are.same({ "AtomBaseItem", "SupSub", "Unary", "MulDiv", "AddSub", "SinFunction" }, metadata.provides)
+      assert.are.same({ "AtomBaseItem", "SupSub", "Unary", "MulDiv", "AddSub", "Fraction", "Sqrt", "SinFunction" }, metadata.provides)
     end)
   end)
 

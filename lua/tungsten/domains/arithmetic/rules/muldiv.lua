@@ -1,32 +1,57 @@
--- tungsten/lua/tungsten/domains/arithmetic/rules/muldiv.lua
 local lpeg = require "lpeg"
-local Cf,C,S = lpeg.Cf, lpeg.C, lpeg.S
-local P       = lpeg.P
+local Cf, C, S, P, V = lpeg.Cf, lpeg.C, lpeg.S, lpeg.P, lpeg.V
 
 local tk = require "tungsten.core.tokenizer"
 local space = tk.space
-local variable_token = tk.variable
+local ast = require "tungsten.core.ast"
+local Unary = V("Unary")
 
-local Unary   = require "tungsten.domains.arithmetic.rules.supersub".Unary
-local create_binary_operation_node = require "tungsten.core.ast".create_binary_operation_node
+local is_potential_differential_start = P("d") * space * tk.variable
 
-local d_char_pattern = P("d")
-local is_potential_differential_start = d_char_pattern * space * variable_token
+local function is_vector_like(node)
+  if not (node and node.type) then return false end
+  if node.type == "symbolic_vector" or node.type == "vector" or node.type == "matrix" then
+    return true
+  end
+  if node.type == "unary" and node.value then
+    return is_vector_like(node.value)
+  end
+  return false
+end
 
-local MulOpCap = (P("\\cdot") / function() return "*" end) + C(S("*/"))
+local ExplicitOpCapture = C(P("\\cdot") + P("\\times") + S("*/"))
 
-local ImplicitMul = space * -S("+-") * -is_potential_differential_start * Unary
-  / function(rhs) return "*", rhs end
+local ExplicitOpAndTerm = space * ExplicitOpCapture * space * Unary / function(op_str, term_ast)
+  return { operator_str = op_str, term = term_ast }
+end
+
+local ImplicitMulAndTerm = space * -S("+-*/") * -P("\\cdot") * -P("\\times") * -is_potential_differential_start * Unary / function(term_ast)
+  return { operator_str = "*", term = term_ast, implicit = true }
+end
 
 local MulDiv = Cf(
-  Unary
-  * (
-       space * MulOpCap * space * Unary / function(op, rhs) return op, rhs end
-     + ImplicitMul
-    )^0,
-  function(acc, op_capture, rhs_capture)
-    return create_binary_operation_node(op_capture, acc, rhs_capture)
+  Unary * (ExplicitOpAndTerm + ImplicitMulAndTerm)^0,
+  function(left_acc_ast, op_and_right_term)
+    local op_str = op_and_right_term.operator_str
+    local right_term_ast = op_and_right_term.term
+
+    if op_str == "\\cdot" then
+      if is_vector_like(left_acc_ast) and is_vector_like(right_term_ast) then
+        return ast.create_dot_product_node(left_acc_ast, right_term_ast)
+      else
+        return ast.create_binary_operation_node("*", left_acc_ast, right_term_ast)
+      end
+    elseif op_str == "\\times" then
+      if is_vector_like(left_acc_ast) and is_vector_like(right_term_ast) then
+        return ast.create_cross_product_node(left_acc_ast, right_term_ast)
+      else
+        return ast.create_binary_operation_node("*", left_acc_ast, right_term_ast)
+      end
+    else
+      return ast.create_binary_operation_node(op_str, left_acc_ast, right_term_ast)
+    end
   end
 )
 
 return MulDiv
+

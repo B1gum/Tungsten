@@ -205,4 +205,143 @@ describe("tungsten.core.tokenizer", function()
         end
     end)
   end)
+  
+  describe("Matrix Environment Tokens", function()
+    describe("matrix_env_begin token", function()
+      local env_types = {"pmatrix", "bmatrix", "vmatrix"}
+      for _, env_type in ipairs(env_types) do
+        it("should match '\\begin{" .. env_type .. "}' and produce correct AST node", function()
+          local input = "\\begin{" .. env_type .. "}"
+          local expected_ast = { type = "matrix_env_begin", env_type = env_type }
+          assert.are.same(expected_ast, lpeg.match(tokenizer.matrix_env_begin, input))
+        end)
+      end
+
+      it("should not match invalid or incomplete matrix begin commands", function()
+        assert.is_nil(lpeg.match(tokenizer.matrix_env_begin, "\\begin{matrix}"))
+        assert.is_nil(lpeg.match(tokenizer.matrix_env_begin, "\\begin{pmatrix"))
+        assert.is_nil(lpeg.match(tokenizer.matrix_env_begin, "begin{pmatrix}"))
+        assert.is_nil(lpeg.match(tokenizer.matrix_env_begin, "\\begin pmatrix}"))
+      end)
+
+      it("should only match the token part if followed by other characters", function()
+        local pattern_to_test = tokenizer.matrix_env_begin * lpeg.C(lpeg.P(1)^0)
+        local input = "\\begin{pmatrix}rest"
+        local ast_node, rest_str = lpeg.match(pattern_to_test, input)
+        assert.are.same({type = "matrix_env_begin", env_type = "pmatrix"}, ast_node)
+        assert.are.equal("rest", rest_str)
+      end)
+    end)
+
+    describe("matrix_env_end token", function()
+      local env_types = {"pmatrix", "bmatrix", "vmatrix"}
+      for _, env_type in ipairs(env_types) do
+        it("should match '\\end{" .. env_type .. "}' and produce correct AST node", function()
+          local input = "\\end{" .. env_type .. "}"
+          local expected_ast = { type = "matrix_env_end", env_type = env_type }
+          assert.are.same(expected_ast, lpeg.match(tokenizer.matrix_env_end, input))
+        end)
+      end
+
+      it("should not match invalid or incomplete matrix end commands", function()
+        assert.is_nil(lpeg.match(tokenizer.matrix_env_end, "\\end{matrix}"))
+        assert.is_nil(lpeg.match(tokenizer.matrix_env_end, "\\end{pmatrix"))
+        assert.is_nil(lpeg.match(tokenizer.matrix_env_end, "end{pmatrix}"))
+        assert.is_nil(lpeg.match(tokenizer.matrix_env_end, "\\end pmatrix}"))
+      end)
+    end)
+  end)
+
+  describe("Matrix Element Separator Tokens", function()
+    describe("ampersand token", function()
+      it("should match '&' and produce correct AST node", function()
+        local input = "&"
+        local expected_ast = { type = "ampersand" }
+        assert.are.same(expected_ast, lpeg.match(tokenizer.ampersand, input))
+      end)
+
+      it("should not match other characters", function()
+        assert.is_nil(lpeg.match(tokenizer.ampersand, "a"))
+        assert.is_nil(lpeg.match(tokenizer.ampersand, "\\"))
+      end)
+    end)
+
+    describe("double_backslash token", function()
+      it("should match '\\\\' and produce correct AST node", function()
+        local input = "\\\\"
+        local expected_ast = { type = "double_backslash" }
+        assert.are.same(expected_ast, lpeg.match(tokenizer.double_backslash, input))
+      end)
+
+      it("should not match single backslash or other characters", function()
+        assert.is_nil(lpeg.match(tokenizer.double_backslash, "\\"))
+        assert.is_nil(lpeg.match(tokenizer.double_backslash, "a\\"))
+      end)
+    end)
+  end)
+
+  describe("Specific LaTeX Command Tokens", function()
+    local commands_to_test = {
+      { name = "det", token_name = "det_command", pattern = tokenizer.det_command },
+      { name = "vec", token_name = "vec_command", pattern = tokenizer.vec_command },
+      { name = "mathbf", token_name = "mathbf_command", pattern = tokenizer.mathbf_command },
+      { name = "mathbb", token_name = "mathbb_command", pattern = tokenizer.mathbb_command },
+      { name = "intercal", token_name = "intercal_command", pattern = tokenizer.intercal_command },
+      { name = "mathsf", token_name = "mathsf_command", pattern = tokenizer.mathsf_command },
+      { name = "times", token_name = "times_command", pattern = tokenizer.times_command },
+      { name = "\\|", token_name = "norm_delimiter_cmd", pattern = tokenizer.norm_delimiter_cmd, is_raw_name = true},
+    }
+
+    for _, cmd_info in ipairs(commands_to_test) do
+      local display_name = cmd_info.is_raw_name and cmd_info.name or ("\\" .. cmd_info.name)
+      describe(cmd_info.token_name .. " ('" .. display_name .. "')", function()
+        it("should match '" .. display_name .. "' and produce correct AST node", function()
+          local input = display_name
+          local expected_ast = { type = cmd_info.token_name }
+          assert.are.same(expected_ast, lpeg.match(cmd_info.pattern, input))
+        end)
+
+        it("should not match incomplete or incorrect commands", function()
+          if not cmd_info.is_raw_name then
+            assert.is_nil(lpeg.match(cmd_info.pattern, "\\" .. cmd_info.name:sub(1, -2)))
+            assert.is_nil(lpeg.match(cmd_info.pattern, cmd_info.name))
+            assert.is_nil(lpeg.match(cmd_info.pattern, "\\" .. cmd_info.name .. "extra"))
+          else
+             assert.is_nil(lpeg.match(cmd_info.pattern, cmd_info.name:sub(1, -2)))
+          end
+          assert.is_nil(lpeg.match(cmd_info.pattern, "random"))
+        end)
+
+        it("should only match the token part if followed by other characters", function()
+            local pattern_to_test = cmd_info.pattern * lpeg.C(lpeg.P(1)^0)
+            local input = display_name .. "{arg}"
+            local ast_node, rest_str = lpeg.match(pattern_to_test, input)
+            assert.are.same({type = cmd_info.token_name}, ast_node)
+            assert.are.equal("{arg}", rest_str)
+        end)
+      end)
+    end
+  end)
+
+  describe("double_pipe_norm token", function()
+    it("should match '||' and produce correct AST node", function()
+      local input = "||"
+      local expected_ast = { type = "double_pipe_norm" }
+      assert.are.same(expected_ast, lpeg.match(tokenizer.double_pipe_norm, input))
+    end)
+
+    it("should not match single pipe or other characters", function()
+      assert.is_nil(lpeg.match(tokenizer.double_pipe_norm, "|"))
+      assert.is_nil(lpeg.match(tokenizer.double_pipe_norm, "|a|"))
+      assert.is_nil(lpeg.match(tokenizer.double_pipe_norm, "|||"))
+    end)
+
+     it("should only match the token part if followed by other characters", function()
+        local pattern_to_test = tokenizer.double_pipe_norm * lpeg.C(lpeg.P(1)^0)
+        local input = "||x||"
+        local ast_node, rest_str = lpeg.match(pattern_to_test, input)
+        assert.are.same({type = "double_pipe_norm"}, ast_node)
+        assert.are.equal("x||", rest_str)    end)
+  end)
+
 end)

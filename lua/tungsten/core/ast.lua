@@ -96,4 +96,52 @@ function M.create_summation_node(index_variable, start_expression, end_expressio
   })
 end
 
+function M.create_matrix_node(rows, env_type)
+  return node("matrix", { rows = rows, env_type = env_type })
+end
+
+function M.create_vector_node(elements, orientation)
+  return node("vector", { elements = elements, orientation = orientation or "column" })
+end
+
+function M.create_symbolic_vector_node(name_expression, command)
+  return node("symbolic_vector", { name_expr = name_expression, command = command })
+end
+
+function M.create_determinant_node(expression)
+  return node("determinant", { expression = expression })
+end
+
+function M.create_transpose_node(expression)
+  return node("transpose", { expression = expression })
+end
+
+function M.create_inverse_node(expression)
+  return node("inverse", { expression = expression })
+end
+
+function M.create_dot_product_node(left_vector, right_vector)
+  return node("dot_product", { left = left_vector, right = right_vector })
+end
+
+function M.create_cross_product_node(left_vector, right_vector)
+  return node("cross_product", { left = left_vector, right = right_vector })
+end
+
+function M.create_norm_node(expression, p_value)
+  return node("norm", { expression = expression, p = p_value })
+end
+
+function M.create_matrix_power_node(base_matrix, exponent)
+  return node("matrix_power", { base = base_matrix, exponent = exponent })
+end
+
+function M.create_identity_matrix_node(dimension_expr)
+  return node("identity_matrix", { dimension = dimension_expr })
+end
+
+function M.create_zero_vector_matrix_node(dimensions_spec)
+  return node("zero_vector_matrix", { dimensions = dimensions_spec })
+end
+
 return M

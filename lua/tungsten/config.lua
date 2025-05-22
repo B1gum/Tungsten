@@ -7,7 +7,7 @@ local config = {
   numeric_mode = false,
   debug = false,
   cache_enabled = true,
-  domains = { "arithmetic", "calculus" },
+  domains = { "arithmetic", "calculus", "linear_algebra" },
   wolfram_timeout_ms = 10000,
 }
 
