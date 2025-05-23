@@ -9,6 +9,7 @@ local config = {
   cache_enabled = true,
   domains = { "arithmetic", "calculus", "linear_algebra" },
   wolfram_timeout_ms = 10000,
+  persistent_variable_assignment_operator = ":=",
 }
 
 

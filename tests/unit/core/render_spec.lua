@@ -17,13 +17,13 @@ describe("tungsten.core.render", function()
       node_type_A = spy.new(function(node, walk)
         if node.child then
           local res = walk(node.child)
-          if type(res) == "table" and res.error then return res end -- Propagate error
+          if type(res) == "table" and res.error then return res end 
           return "rendered_A(" .. res .. ")"
         elseif node.children then
           local rendered_children = {}
           for _, child_node in ipairs(node.children) do
             local res_child = walk(child_node)
-            if type(res_child) == "table" and res_child.error then return res_child end -- Propagate error
+            if type(res_child) == "table" and res_child.error then return res_child end
             table.insert(rendered_children, res_child)
           end
           return "rendered_A_multiple(" .. table.concat(rendered_children, ", ") .. ")"
@@ -36,7 +36,7 @@ describe("tungsten.core.render", function()
       end),
       node_type_C = spy.new(function(node, walk)
         local res = walk(node.data)
-        if type(res) == "table" and res.error then return res end -- Propagate error
+        if type(res) == "table" and res.error then return res end
         return "rendered_C{" .. res .. "}"
       end),
       erroring_node = spy.new(function(node, walk)
@@ -44,9 +44,8 @@ describe("tungsten.core.render", function()
       end),
       node_returns_error_obj = spy.new(function(node, walk)
         local child_result = walk(node.child_that_will_error)
-        -- This handler simulates a scenario where a nested walk might return an error object
         if type(child_result) == "table" and child_result.error then
-          return child_result -- Propagate error
+          return child_result
         end
         return "should_not_reach_here"
       end),
@@ -192,7 +191,7 @@ describe("tungsten.core.render", function()
     it("should propagate an error table returned by a child's _walk call (e.g. missing handler for child)", function()
       local ast = {
         type = "node_type_A",
-        child = { type = "unknown_type_child" } -- This will cause a "no handler" error
+        child = { type = "unknown_type_child" }
       }
       local result = render(ast, mock_handlers)
       assert.is_table(result)
@@ -204,7 +203,7 @@ describe("tungsten.core.render", function()
     it("should propagate an error table if a handler for a child node errors", function()
       local ast = {
         type = "node_type_A",
-        child = { type = "erroring_node" } -- This handler will throw an error
+        child = { type = "erroring_node" }
       }
       local result = render(ast, mock_handlers)
       assert.is_table(result)
@@ -230,7 +229,7 @@ describe("tungsten.core.render", function()
         type = "level1",
         child = {
           type = "level2",
-          child = { type = "erroring_node" } -- This will error
+          child = { type = "erroring_node" }
         }
       }
       local result = render(ast, mock_handlers)
@@ -243,7 +242,7 @@ describe("tungsten.core.render", function()
     it("should correctly use the walk function that checks for errors when calling child nodes (handler returns error obj)", function()
         local ast = {
             type = "node_returns_error_obj",
-            child_that_will_error = { type = "unknown_child" } -- This will cause a 'no handler' error
+            child_that_will_error = { type = "unknown_child" }
         }
         local result = render(ast, mock_handlers)
         assert.is_table(result)

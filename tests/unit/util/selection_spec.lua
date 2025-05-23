@@ -11,7 +11,6 @@ describe("tungsten.util.selection", function()
   local selection_module
 
   local original_vim_fn_getpos
-  -- Store the original nvim_buf_get_text
   local original_vim_api_nvim_buf_get_text
 
   local modules_to_reset = {

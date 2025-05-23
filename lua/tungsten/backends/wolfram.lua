@@ -105,11 +105,11 @@ function M.to_string(ast)
 
     if not ast then
         logger.notify("Wolfram Backend: to_string called with a nil AST.", logger.levels.ERROR, { title = "Tungsten Backend Error" })
-        return "Error: AST is nil" -- Or handle as an error object if preferred
+        return "Error: AST is nil"
     end
     if next(renderableHandlers) == nil then
         logger.notify("Wolfram Backend: No Wolfram handlers available when to_string was called.", logger.levels.ERROR, { title = "Tungsten Backend Error" })
-        return "Error: No Wolfram handlers loaded for AST conversion." -- Or handle as an error object
+        return "Error: No Wolfram handlers loaded for AST conversion."
     end
 
     local rendered_result = render.render(ast, renderableHandlers)

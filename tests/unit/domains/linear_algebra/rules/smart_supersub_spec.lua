@@ -184,8 +184,8 @@ describe("Linear Algebra SmartSupSub Rule: tungsten.domains.linear_algebra.rules
         local expected = mock_ast_module.create_inverse_node(base_node("a+b", "matrix"))
         assert.are.same(expected, parse_input(input))
 
-        test_grammar_table_definition.AtomBase = original_atom_base -- Restore
-        compiled_test_grammar = P(test_grammar_table_definition) -- Recompile
+        test_grammar_table_definition.AtomBase = original_atom_base
+        compiled_test_grammar = P(test_grammar_table_definition)
     end)
   end)
 

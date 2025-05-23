@@ -3,9 +3,10 @@
 ----------------------------------------------
 local M = {}
 
-M.ns          = vim.api.nvim_create_namespace 'tungsten'
+M.ns = vim.api.nvim_create_namespace 'tungsten'
 M.active_jobs = {}
-M.cache       = {}
-M.config      = {}
+M.cache = {}
+M.config = {}
+M.persistent_variables = {}
 
 return M
