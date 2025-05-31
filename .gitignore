@@ -3,3 +3,5 @@
 /logs/
 *.DS_Store
 *__MACOSX
+*.shada
+*.shada.tmp.*
