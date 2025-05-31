@@ -8,7 +8,7 @@ local state = require "tungsten.state"
 
 local M = {}
 
-local function substitute_persistent_vars(code_string, variables_map)
+function M.substitute_persistent_vars(code_string, variables_map)
   if not variables_map or vim.tbl_isempty(variables_map) then
     return code_string
   end
@@ -35,7 +35,7 @@ local function substitute_persistent_vars(code_string, variables_map)
       local search_start_index = 1
 
       while true do
-        local s, e = string.find(current_code, pattern_to_find, search_start_index, true) -- plain find
+        local s, e = string.find(current_code, pattern_to_find, search_start_index, true)
 
         if not s then
           table.insert(new_parts, string.sub(current_code, search_start_index))
@@ -88,7 +88,7 @@ function M.evaluate_async(ast, numeric, callback)
   end
   initial_wolfram_code = pcall_result
 
-  local code_with_vars_substituted = substitute_persistent_vars(initial_wolfram_code, state.persistent_variables)
+  local code_with_vars_substituted = M.substitute_persistent_vars(initial_wolfram_code, state.persistent_variables)
   if config.debug then
     if code_with_vars_substituted ~= initial_wolfram_code then
       logger.notify("Tungsten Debug: Code after persistent variable substitution: " .. code_with_vars_substituted, logger.levels.DEBUG, { title = "Tungsten Debug" })
@@ -158,13 +158,13 @@ function M.evaluate_async(ast, numeric, callback)
     if job_id and state.active_jobs[job_id] then
       state.active_jobs[job_id] = nil
       if config.debug then
-        logger.notify("Tungsten: Job " .. job_id .. " finished and removed from active jobs.", logger.levels.INFO, { title = "Tungsten Debug" })
+        logger.notify("Tungsten Debug: Job " .. job_id .. " finished and removed from active jobs.", logger.levels.DEBUG, { title = "Tungsten Debug" })
       end
     end
 
     if exit_code == 0 then
       if final_stderr ~= "" and config.debug then
-        logger.notify("Tungsten (Job " .. job_id .. " stderr): " .. final_stderr, logger.levels.WARN, { title = "Tungsten Debug" })
+        logger.notify("Tungsten Debug (Job " .. job_id .. " stderr): " .. final_stderr, logger.levels.DEBUG, { title = "Tungsten Debug" })
       end
       if use_cache then
         state.cache[expr_key] = final_stdout

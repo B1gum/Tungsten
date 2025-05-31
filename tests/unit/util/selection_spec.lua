@@ -5,7 +5,7 @@
 package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
 local spy = require 'luassert.spy'
-local mock_utils = require 'tests.helpers.mock_utils'
+local vim_test_env = require 'tests.helpers.vim_test_env'
 
 describe("tungsten.util.selection", function()
   local selection_module
@@ -13,9 +13,15 @@ describe("tungsten.util.selection", function()
   local original_vim_fn_getpos
   local original_vim_api_nvim_buf_get_text
 
-  local modules_to_reset = {
+  local modules_to_clear_from_cache = {
     'tungsten.util.selection',
   }
+
+  local function clear_modules_from_cache_func()
+    for _, name in ipairs(modules_to_clear_from_cache) do
+      package.loaded[name] = nil
+    end
+  end
 
   before_each(function()
     _G.vim = _G.vim or {}
@@ -35,15 +41,28 @@ describe("tungsten.util.selection", function()
       return {}
     end)
 
-    mock_utils.reset_modules(modules_to_reset)
+    clear_modules_from_cache_func()
     selection_module = require("tungsten.util.selection")
   end)
 
   after_each(function()
+    if _G.vim.fn.getpos and type(_G.vim.fn.getpos) == "table" and _G.vim.fn.getpos.clear then
+      _G.vim.fn.getpos:clear()
+    end
+    if _G.vim.api.nvim_buf_get_text and type(_G.vim.api.nvim_buf_get_text) == "table" and _G.vim.api.nvim_buf_get_text.clear then
+      _G.vim.api.nvim_buf_get_text:clear()
+    end
+
     _G.vim.fn.getpos = original_vim_fn_getpos
     _G.vim.api.nvim_buf_get_text = original_vim_api_nvim_buf_get_text
 
-    mock_utils.reset_modules(modules_to_reset)
+    clear_modules_from_cache_func()
+
+    if vim_test_env and vim_test_env.teardown then
+      vim_test_env.teardown()
+    elseif vim_test_env and vim_test_env.cleanup then
+      vim_test_env.cleanup()
+    end
   end)
 
   describe("get_visual_selection()", function()
@@ -52,10 +71,11 @@ describe("tungsten.util.selection", function()
         _G.vim.fn.getpos = spy.new(function(marker)
           if marker == "'<" then return { 0, 1, 7, 0 } end
           if marker == "'>" then return { 0, 1, 11, 0 } end
+          return {0,0,0,0}
         end)
         _G.vim.api.nvim_buf_get_text = spy.new(function(bufnr, s_line, s_col, e_line, e_col, opts)
-          if s_line == 0 and s_col == 6 and e_line == 0 and e_col == 11 then
-             return { "World" }
+          if bufnr == 0 and s_line == 0 and s_col == 6 and e_line == 0 and e_col == 11 then
+            return { "World" }
           end
           return {}
         end)
@@ -66,6 +86,7 @@ describe("tungsten.util.selection", function()
         _G.vim.fn.getpos = spy.new(function(marker)
           if marker == "'<" then return { 0, 1, 1, 0 } end
           if marker == "'>" then return { 0, 1, 5, 0 } end
+          return {0,0,0,0}
         end)
         _G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
           if sl == 0 and sc == 0 and el == 0 and ec == 5 then
@@ -80,10 +101,11 @@ describe("tungsten.util.selection", function()
          _G.vim.fn.getpos = spy.new(function(marker)
           if marker == "'<" then return { 0, 1, 7, 0 } end
           if marker == "'>" then return { 0, 1, 12, 0 } end
+          return {0,0,0,0}
         end)
         _G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
             if sl == 0 and sc == 6 and el == 0 and ec == 12 then
-                 return { "World!" }
+                return { "World!" }
             end
             return {}
         end)
@@ -94,6 +116,7 @@ describe("tungsten.util.selection", function()
         _G.vim.fn.getpos = spy.new(function(marker)
           if marker == "'<" then return { 0, 1, 1, 0 } end
           if marker == "'>" then return { 0, 1, 12, 0 } end
+          return {0,0,0,0}
         end)
          _G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
             if sl == 0 and sc == 0 and el == 0 and ec == 12 then
@@ -110,6 +133,7 @@ describe("tungsten.util.selection", function()
         _G.vim.fn.getpos = spy.new(function(marker)
           if marker == "'<" then return { 0, 1, 7, 0 } end
           if marker == "'>" then return { 0, 2, 5, 0 } end
+          return {0,0,0,0}
         end)
         _G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
             if sl == 0 and sc == 6 and el == 1 and ec == 5 then
@@ -124,10 +148,11 @@ describe("tungsten.util.selection", function()
         _G.vim.fn.getpos = spy.new(function(marker)
           if marker == "'<" then return { 0, 1, 3, 0 } end
           if marker == "'>" then return { 0, 2, 7, 0 } end
+          return {0,0,0,0}
         end)
         _G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
             if sl == 0 and sc == 2 and el == 1 and ec == 7 then
-                 return { "llo", "Second " }
+                return { "llo", "Second " }
             end
             return {}
         end)
@@ -138,6 +163,7 @@ describe("tungsten.util.selection", function()
         _G.vim.fn.getpos = spy.new(function(marker)
           if marker == "'<" then return { 0, 1, 1, 0 } end
           if marker == "'>" then return { 0, 2, 4, 0 } end
+          return {0,0,0,0}
         end)
          _G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
             if sl == 0 and sc == 0 and el == 1 and ec == 4 then
@@ -152,6 +178,7 @@ describe("tungsten.util.selection", function()
         _G.vim.fn.getpos = spy.new(function(marker)
           if marker == "'<" then return { 0, 1, 1, 0 } end
           if marker == "'>" then return { 0, 2, 7, 0 } end
+          return {0,0,0,0}
         end)
         _G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
             if sl == 0 and sc == 0 and el == 1 and ec == 7 then
@@ -166,6 +193,7 @@ describe("tungsten.util.selection", function()
         _G.vim.fn.getpos = spy.new(function(marker)
           if marker == "'<" then return { 0, 1, 1, 0 } end
           if marker == "'>" then return { 0, 3, 4, 0 } end
+          return {0,0,0,0}
         end)
         _G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
              if sl == 0 and sc == 0 and el == 2 and ec == 4 then
@@ -182,6 +210,7 @@ describe("tungsten.util.selection", function()
         _G.vim.fn.getpos = spy.new(function(marker)
           if marker == "'<" then return { 0, 1, 1, 0 } end
           if marker == "'>" then return { 0, 1, 5, 0 } end
+          return {0,0,0,0}
         end)
         _G.vim.api.nvim_buf_get_text = spy.new(function()
           return {}
@@ -193,27 +222,24 @@ describe("tungsten.util.selection", function()
         _G.vim.fn.getpos = spy.new(function(marker)
           if marker == "'<" then return { 0, 1, 1, 0 } end
           if marker == "'>" then return { 0, 1, 1, 0 } end
+          return {0,0,0,0}
         end)
         _G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
             if sl == 0 and sc == 0 and el == 0 and ec == 0 then
-                 return { "" }
-            end
-            if sl == 0 and sc == 0 and el == 0 and ec == 1 then
-                 return { "" }
+                return { "" }
             end
             return {}
         end)
         assert.are.equal("", selection_module.get_visual_selection())
       end)
-      
+
       it("should handle selection where start_col > end_col (e.g. cursor moved left)", function()
         _G.vim.fn.getpos = spy.new(function(marker)
             if marker == "'<" then return { 0, 1, 5, 0 } end
             if marker == "'>" then return { 0, 1, 1, 0 } end
+            return {0,0,0,0}
         end)
         _G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
-            if sl == 0 and sc == 0 and el == 0 and ec == 0 then return {""} end
-            if sl == 0 and sc == 4 and el == 0 and ec == 0 then return {""} end
             return {}
         end)
         assert.are.equal("", selection_module.get_visual_selection())

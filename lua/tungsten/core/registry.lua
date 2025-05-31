@@ -1,3 +1,5 @@
+-- tungsten/lua/tungsten/core/registry.lua
+
 local lpeg_lib = require "lpeg"
 local P, V = lpeg_lib.P, lpeg_lib.V
 local tokens_mod = require "tungsten.core.tokenizer"
@@ -48,12 +50,15 @@ function M.register_command(cmd_tbl)
   M.commands[#M.commands+1] = cmd_tbl
 end
 
+
 function M.get_combined_grammar()
   local grammar_def = { "Expression" }
   local rule_providers = {}
 
   table.sort(M.grammar_contributions, function(a, b)
     if a.category ~= b.category then
+      if a.category == "TopLevelRule" and b.category ~= "TopLevelRule" then return true end
+      if b.category == "TopLevelRule" and a.category ~= "TopLevelRule" then return false end
       return a.category < b.category
     end
     if a.domain_priority ~= b.domain_priority then
@@ -69,6 +74,12 @@ function M.get_combined_grammar()
     end
   end
 
+  if #M.grammar_contributions == 0 then
+    logger.notify(
+        "Registry: No grammar contributions at all. 'Expression' will default to AtomBase.",
+        logger.levels.ERROR, { title = "Tungsten Registry Error" }
+    )
+  end
 
   local atom_base_item_patterns = {}
 
@@ -128,28 +139,47 @@ function M.get_combined_grammar()
     grammar_def.AtomBase = P(false)
   end
 
-  if grammar_def.AddSub then
-    grammar_def.Expression = V("AddSub")
-  elseif #M.grammar_contributions > 0 then
-    logger.notify("Registry: Main expression rule 'AddSub' not found. Attempting to find a fallback. This may lead to parsing issues.", logger.levels.WARN, { title = "Tungsten Registry" })
-    local top_rule_candidate = nil
-    for rule_name, _ in pairs(grammar_def) do
-        if type(rule_name) == "string" and rule_name ~= "Expression" and rule_name ~= "AtomBase" and type(grammar_def[rule_name]) == "table" then
-            top_rule_candidate = rule_name
-            break
-        end
-    end
-    if top_rule_candidate then
-        logger.notify("Registry: Using '"..top_rule_candidate.."' as a fallback for 'Expression'.", logger.levels.WARN, { title = "Tungsten Registry" })
-        grammar_def.Expression = V(top_rule_candidate)
-    else
-        logger.notify("Registry: No suitable rule found for 'Expression'. Parser will likely fail.", logger.levels.ERROR, { title = "Tungsten Registry Error" })
-        grammar_def.Expression = V("AtomBase")
-    end
+  local actual_expression_content_pattern
+  local addsub_found = grammar_def.AddSub ~= nil
 
+  if addsub_found then
+    actual_expression_content_pattern = V("AddSub")
+    if config.debug then
+      logger.notify("Registry: ExpressionContent is V('AddSub').", logger.levels.DEBUG, { title = "Tungsten Debug" })
+    end
   else
-    logger.notify("Registry: No grammar contributions at all. 'Expression' will default to AtomBase.", logger.levels.ERROR, { title = "Tungsten Registry Error" })
-    grammar_def.Expression = V("AtomBase")
+    logger.notify("Registry: Main expression rule 'AddSub' not found. Attempting to find a fallback. This may lead to parsing issues.", logger.levels.WARN, { title = "Tungsten Registry" })
+    if grammar_def.MulDiv then
+      actual_expression_content_pattern = V("MulDiv")
+      if config.debug then
+        logger.notify("Registry: ExpressionContent is V('MulDiv') (fallback from AddSub).", logger.levels.DEBUG, { title = "Tungsten Debug" })
+      end
+      logger.notify("Registry: Using 'MulDiv' as a fallback for 'Expression'.", logger.levels.WARN, { title = "Tungsten Registry" })
+    elseif grammar_def.AtomBase and grammar_def.AtomBase ~= P(false) then
+       actual_expression_content_pattern = V("AtomBase")
+       if config.debug then
+          logger.notify("Registry: ExpressionContent is V('AtomBase') (further fallback from AddSub/MulDiv).", logger.levels.DEBUG, { title = "Tungsten Debug" })
+       end
+       logger.notify("Registry: Using 'AtomBase' as a fallback for 'Expression'.", logger.levels.WARN, { title = "Tungsten Registry" })
+       logger.notify("Registry: No suitable rule found for 'Expression'. Parser will likely fail.", logger.levels.ERROR, { title = "Tungsten Registry Error" })
+    else
+      actual_expression_content_pattern = P(false)
+      logger.notify("Registry: CRITICAL - Cannot define 'ExpressionContent' as AddSub, MulDiv, or AtomBase are missing. Defaulting to P(false).", logger.levels.ERROR, { title = "Tungsten Registry Error" })
+      logger.notify("Registry: No suitable rule found for 'Expression'. Parser will likely fail.", logger.levels.ERROR, { title = "Tungsten Registry Error" })
+    end
+  end
+  grammar_def.ExpressionContent = actual_expression_content_pattern
+
+  if grammar_def.EquationRule then
+    grammar_def.Expression = V("EquationRule") + actual_expression_content_pattern
+    if config.debug then
+        logger.notify("Registry: Main 'Expression' rule is V('EquationRule') + resolved ExpressionContent pattern.", logger.levels.DEBUG, {title="Tungsten Debug"})
+    end
+  else
+    grammar_def.Expression = actual_expression_content_pattern
+    if config.debug then
+        logger.notify("Registry: Main 'Expression' rule is resolved ExpressionContent pattern (EquationRule missing).", logger.levels.DEBUG, {title="Tungsten Debug"})
+    end
   end
 
   if config.debug then
@@ -162,9 +192,39 @@ function M.get_combined_grammar()
     logger.notify("Registry: Final grammar definition keys: " .. key_list_str, logger.levels.DEBUG, { title = "Tungsten Debug" })
   end
 
+  if config.debug then
+    if grammar_def.EquationRule then
+      logger.notify("Registry: DEBUG - EquationRule IS PRESENT in grammar_def.", logger.levels.DEBUG, {title="Tungsten Debug"})
+      logger.notify("Registry: DEBUG - Type of grammar_def.EquationRule: " .. type(grammar_def.EquationRule), logger.levels.DEBUG, {title="Tungsten Debug"})
+      if type(grammar_def.EquationRule) == "function" then
+        logger.notify("Registry: DEBUG - grammar_def.EquationRule IS a function. Attempting to call it...", logger.levels.DEBUG, {title="Tungsten Debug"})
+        local p_ok, pattern_or_error = pcall(grammar_def.EquationRule)
+        if p_ok then
+          logger.notify("Registry: DEBUG - EquationRule function call successful. Returned type: " .. type(pattern_or_error), logger.levels.DEBUG, {title="Tungsten Debug"})
+          if type(pattern_or_error) == "table" and getmetatable(pattern_or_error) and getmetatable(pattern_or_error).__name == "pattern" then
+            logger.notify("Registry: DEBUG - EquationRule function returned a valid LPeg pattern.", logger.levels.DEBUG, {title="Tungsten Debug"})
+          else
+            logger.notify("Registry: DEBUG - EquationRule function DID NOT return a recognizable LPeg pattern. Returned: " .. tostring(pattern_or_error), logger.levels.DEBUG, {title="Tungsten Debug"})
+          end
+        else
+          logger.notify("Registry: DEBUG - EquationRule function call FAILED. Error: " .. tostring(pattern_or_error), logger.levels.DEBUG, {title="Tungsten Debug"})
+        end
+      end
+    else
+      logger.notify("Registry: DEBUG - EquationRule IS NIL/MISSING in grammar_def!", logger.levels.DEBUG, {title="Tungsten Debug"})
+    end
+
+    if grammar_def.AddSub then
+      logger.notify("Registry: DEBUG - AddSub IS PRESENT. Type: " .. type(grammar_def.AddSub), logger.levels.DEBUG, {title="Tungsten Debug"})
+    else
+      logger.notify("Registry: DEBUG - AddSub IS NIL/MISSING in grammar_def!", logger.levels.DEBUG, {title="Tungsten Debug"})
+    end
+  end
+
+
   local ok, compiled_grammar_or_err = pcall(lpeg_lib.P, grammar_def)
   if not ok then
-    logger.notify("Registry: Failed to compile combined grammar! Error: " .. tostring(compiled_grammar_or_err), logger.levels.ERROR, { title = "Tungsten Registry Error" })
+    logger.notify("Registry: Error compiling final grammar table: " .. tostring(compiled_grammar_or_err), logger.levels.ERROR, { title = "Tungsten Registry Error" })
     return nil
   end
 

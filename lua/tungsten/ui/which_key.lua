@@ -24,13 +24,16 @@ wk.add({
   {
     "<leader>tee",
     ":<C-u>TungstenEvaluate<CR>",
+    desc = "Evaluate Expression",
   },
   {
-    "<leader>t?",
-    group = "tests",
+    "<leader>td",
+    ":<C-u>TungstenDefinePersistentVariable<CR>",
+    desc = "Define Persistent Variable",
   },
   {
-    "<leader>t?p",
-    ":<C-u>TungstenParserTestCore<CR>",
+    "<leader>ts",
+    ":<C-u>TungstenSolve<CR>",
+    desc = "Define Persistent Variable",
   },
 })

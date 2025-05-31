@@ -31,4 +31,14 @@ function M.create_empty_mock_module(module_name, function_names)
   return mock
 end
 
+function M.mock_table(methods_to_mock)
+  local tbl = {}
+  if methods_to_mock then
+    for _, method_name in ipairs(methods_to_mock) do
+      tbl[method_name] = spy.new(function() end)
+    end
+  end
+  return tbl
+end
+
 return M

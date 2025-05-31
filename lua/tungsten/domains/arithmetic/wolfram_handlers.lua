@@ -35,15 +35,12 @@ local function bin_with_parens(node, recur_render)
       return false
     end
 
-    if child_prec_val == parent_prec_val then
-      if is_left_child_of_parent then
-        return parent_assoc_val == "R"
-      else
-        return parent_assoc_val == "L"
-      end
+    if is_left_child_of_parent then
+      return parent_assoc_val == "R"
+    else
+      return parent_assoc_val == "L"
     end
 
-    return false
   end
 
   local rendered_left = recur_render(node.left)
@@ -56,7 +53,9 @@ local function bin_with_parens(node, recur_render)
     rendered_right = "(" .. rendered_right .. ")"
   end
 
-  return rendered_left .. parent_op .. rendered_right
+  local op_display = node.operator
+
+  return rendered_left .. op_display .. rendered_right
 end
 
 M.handlers = {
@@ -83,7 +82,7 @@ M.handlers = {
   superscript = function(node, recur_render)
     local base_str = recur_render(node.base)
     local exp_str = recur_render(node.exponent)
-    if node.base.type == "variable" or node.base.type == "number" or node.base.type == "greek" then
+    if node.base.type == "variable" or node.base.type == "number" or node.base.type == "greek" or (node.base.type == "function_call" and not string.find(base_str, "%s")) then
       return base_str .. "^" .. exp_str
     else
       return ("Power[%s,%s]"):format(base_str, exp_str)
@@ -94,7 +93,7 @@ M.handlers = {
   end,
   unary = function(node, recur_render)
     local value_str = recur_render(node.value)
-    if node.value.type == "binary" and (node.value.operator == "+" or node.value.operator == "-") then
+    if node.value.type == "binary" then
          return node.operator .. "(" .. value_str .. ")"
     end
     return node.operator .. value_str
@@ -122,23 +121,29 @@ M.handlers = {
     local wolfram_func_name = func_name_map[func_name_str:lower()]
 
     if not wolfram_func_name then
+      wolfram_func_name = func_name_str:sub(1,1):upper() .. func_name_str:sub(2)
       local logger = require "tungsten.util.logger"
       logger.notify(
-        ("Tungsten: No specific wolfram mapping for function '%s'. Using capitalized form '%s'."):format(
+        ("Tungsten Wolfram Handler: No specific mapping for function '%s'. Using capitalized form '%s'."):format(
           func_name_str,
-          func_name_str:sub(1,1):upper() .. func_name_str:sub(2)
+          wolfram_func_name
         ),
         logger.levels.WARN
       )
-      wolfram_func_name = func_name_str:sub(1,1):upper() .. func_name_str:sub(2)
     end
-    
+
     local rendered_args = {}
     for _, arg_node in ipairs(node.args) do
       table.insert(rendered_args, recur_render(arg_node))
     end
 
-  return ("%s[%s]"):format(wolfram_func_name, table.concat(rendered_args, ", "))
+    return ("%s[%s]"):format(wolfram_func_name, table.concat(rendered_args, ", "))
+  end,
+
+  equation = function(node, recur_render)
+    local lhs_str = recur_render(node.lhs)
+    local rhs_str = recur_render(node.rhs)
+    return lhs_str .. " == " .. rhs_str
   end
 }
 

@@ -1,8 +1,9 @@
 -- core/comands.lua
 -- Defines core user-facing Neovim commands
--------------------------------------------------------------------------------
+-----------------------------------------------
 
 local parser    = require "tungsten.core.parser"
+local solver = require "tungsten.core.solver"
 local evaluator = require "tungsten.core.engine"
 local selection = require "tungsten.util.selection"
 local insert_result_util = require "tungsten.util.insert_result"
@@ -145,6 +146,27 @@ local function define_persistent_variable_command(_)
   logger.notify("Tungsten: Defined persistent variable '" .. var_name_str .. "' as '" .. wolfram_definition_str .. "'.", logger.levels.INFO, { title = "Tungsten" })
 end
 
+local function tungsten_solve_command(_)
+  local original_text = selection.get_visual_selection()
+  if original_text == "" or original_text == nil then
+    logger.notify("TungstenSolve: No text selected.", logger.levels.ERROR, { title = "Tungsten Error"})
+    return
+  end
+
+  solver.solve_equation_async(original_text, function(solution, err)
+    if err then
+      logger.notify("TungstenSolve: Error during solving: " .. tostring(err), logger.levels.ERROR, { title = "Tungsten Error"})
+      return
+    end
+
+    if solution == nil or solution == "" then
+      logger.notify("TungstenSolve: No solution found or an issue occurred.", logger.levels.WARN, { title = "Tungsten Warning"})
+      return
+    end
+
+    insert_result_util.insert_result(solution)
+  end)
+end
 
 
 vim.api.nvim_create_user_command(
@@ -175,8 +197,16 @@ vim.api.nvim_create_user_command(
   { desc = "View active Tungsten evaluation jobs" }
 )
 
+vim.api.nvim_create_user_command(
+  "TungstenSolve",
+  tungsten_solve_command,
+  { range = true, desc = "Solve the selected equation for the specified variable (e.g., 'x+y=z; x')" }
+)
+
+
 
 return {
   tungsten_eval_command = tungsten_eval_command,
-  define_persistent_variable_command = define_persistent_variable_command
+  define_persistent_variable_command = define_persistent_variable_command,
+  tungsten_solve_command = tungsten_solve_command
 }

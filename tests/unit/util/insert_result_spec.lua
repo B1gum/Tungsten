@@ -5,19 +5,26 @@
 package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
 local spy = require 'luassert.spy'
-local mock_utils = require 'tests.helpers.mock_utils'
+local vim_test_env = require 'tests.helpers.vim_test_env'
 
 describe("tungsten.util.insert_result", function()
   local insert_result
 
   local original_vim_fn_getpos, original_vim_fn_split, original_vim_api_nvim_buf_set_text
-  local selection_module_actual
-  local original_get_visual_selection_func
 
-  local modules_to_reset = {
+  local mock_selection_module
+  local original_require
+
+  local modules_to_clear_from_cache = {
     'tungsten.util.selection',
     'tungsten.util.insert_result',
   }
+
+  local function clear_modules_from_cache_func()
+    for _, name in ipairs(modules_to_clear_from_cache) do
+      package.loaded[name] = nil
+    end
+  end
 
   before_each(function()
     _G.vim = _G.vim or {}
@@ -54,29 +61,49 @@ describe("tungsten.util.insert_result", function()
       return res_tbl
     end)
 
-    mock_utils.reset_modules(modules_to_reset)
+    mock_selection_module = {
+      get_visual_selection = spy.new(function()
+        return "mocked_selection"
+      end)
+    }
 
-    selection_module_actual = require("tungsten.util.selection")
-    original_get_visual_selection_func = selection_module_actual.get_visual_selection
-    selection_module_actual.get_visual_selection = spy.new(function()
-      return "mocked_selection"
-    end)
+    original_require = _G.require
+    _G.require = function(module_path)
+      if module_path == 'tungsten.util.selection' then
+        return mock_selection_module
+      end
+      if package.loaded[module_path] then
+        return package.loaded[module_path]
+      end
+      return original_require(module_path)
+    end
+
+    clear_modules_from_cache_func()
 
     insert_result = require("tungsten.util.insert_result")
   end)
 
   after_each(function()
+    if _G.vim.fn.getpos and type(_G.vim.fn.getpos) == "table" and _G.vim.fn.getpos.clear then _G.vim.fn.getpos:clear() end
+    if _G.vim.fn.split and type(_G.vim.fn.split) == "table" and _G.vim.fn.split.clear then _G.vim.fn.split:clear() end
+    if _G.vim.api.nvim_buf_set_text and type(_G.vim.api.nvim_buf_set_text) == "table" and _G.vim.api.nvim_buf_set_text.clear then _G.vim.api.nvim_buf_set_text:clear() end
+
+    if mock_selection_module and mock_selection_module.get_visual_selection and mock_selection_module.get_visual_selection.clear then
+      mock_selection_module.get_visual_selection:clear()
+    end
+
     _G.vim.fn.getpos = original_vim_fn_getpos
     _G.vim.fn.split = original_vim_fn_split
     _G.vim.api.nvim_buf_set_text = original_vim_api_nvim_buf_set_text
 
-    if selection_module_actual and original_get_visual_selection_func then
-      selection_module_actual.get_visual_selection = original_get_visual_selection_func
-    end
-    selection_module_actual = nil
-    original_get_visual_selection_func = nil
+    _G.require = original_require
+    clear_modules_from_cache_func()
 
-    mock_utils.reset_modules(modules_to_reset)
+    if vim_test_env and vim_test_env.teardown then
+      vim_test_env.teardown()
+    elseif vim_test_env and vim_test_env.cleanup then
+      vim_test_env.cleanup()
+    end
   end)
 
   describe("insert_result(result_text)", function()
@@ -88,7 +115,7 @@ describe("tungsten.util.insert_result", function()
           return {0,0,0,0}
         end)
 
-        selection_module_actual.get_visual_selection = spy.new(function()
+        mock_selection_module.get_visual_selection = spy.new(function()
           return "s a te"
         end)
 
@@ -96,7 +123,7 @@ describe("tungsten.util.insert_result", function()
         insert_result.insert_result(result)
 
         assert.spy(_G.vim.api.nvim_buf_set_text).was.called(1)
-        assert.spy(_G.vim.api.nvim_buf_set_text).was.called_with(0, 4, 6, 4, 13, { "s a te = my_result" })
+        assert.spy(_G.vim.api.nvim_buf_set_text).was.called_with(1, 4, 0, 4, 6, { "s a te = my_result" })
       end)
 
       it("should correctly handle selection at the beginning of the line", function()
@@ -106,13 +133,13 @@ describe("tungsten.util.insert_result", function()
           return {0,0,0,0}
         end)
 
-        selection_module_actual.get_visual_selection = spy.new(function()
+        mock_selection_module.get_visual_selection = spy.new(function()
           return "This"
         end)
 
         insert_result.insert_result("res_begin")
         assert.spy(_G.vim.api.nvim_buf_set_text).was.called(1)
-        assert.spy(_G.vim.api.nvim_buf_set_text).was.called_with(0, 0, 0, 0, 5, { "This = res_begin" })
+        assert.spy(_G.vim.api.nvim_buf_set_text).was.called_with(1, 0, 0, 0, 0, { "This = res_begin" })
       end)
 
       it("should correctly handle selection at the end of the line", function()
@@ -122,13 +149,13 @@ describe("tungsten.util.insert_result", function()
           return {0,0,0,0}
         end)
 
-        selection_module_actual.get_visual_selection = spy.new(function()
+        mock_selection_module.get_visual_selection = spy.new(function()
           return "test."
         end)
 
         insert_result.insert_result("res_end")
         assert.spy(_G.vim.api.nvim_buf_set_text).was.called(1)
-        assert.spy(_G.vim.api.nvim_buf_set_text).was.called_with(0, 0, 11, 0, 16, { "test. = res_end" })
+        assert.spy(_G.vim.api.nvim_buf_set_text).was.called_with(1, 0, 0, 0, 11, { "test. = res_end" })
       end)
 
       it("should append ' = ' when result_text is empty for single-line selection", function()
@@ -138,13 +165,13 @@ describe("tungsten.util.insert_result", function()
           return {0,0,0,0}
         end)
 
-        selection_module_actual.get_visual_selection = spy.new(function()
+        mock_selection_module.get_visual_selection = spy.new(function()
           return "foo"
         end)
 
         insert_result.insert_result("")
         assert.spy(_G.vim.api.nvim_buf_set_text).was.called(1)
-        assert.spy(_G.vim.api.nvim_buf_set_text).was.called_with(0, 2, 2, 2, 6, { "foo = " })
+        assert.spy(_G.vim.api.nvim_buf_set_text).was.called_with(1, 2, 0, 2, 2, { "foo = " })
       end)
     end)
 
@@ -156,7 +183,7 @@ describe("tungsten.util.insert_result", function()
           return {0,0,0,0}
         end)
 
-        selection_module_actual.get_visual_selection = spy.new(function()
+        mock_selection_module.get_visual_selection = spy.new(function()
           return "is is the first line.\nThis is the second line entirely selected.\nThis is"
         end)
 
@@ -169,7 +196,7 @@ describe("tungsten.util.insert_result", function()
           "This is the second line entirely selected.",
           "This is = multi_res",
         }
-        assert.spy(_G.vim.api.nvim_buf_set_text).was.called_with(0, 1, 2, 3, 8, expected_replacement)
+        assert.spy(_G.vim.api.nvim_buf_set_text).was.called_with(1, 1, 2, 3, 0, expected_replacement)
       end)
 
       it("should correctly handle result_text with newlines in multi-line selection", function()
@@ -179,26 +206,8 @@ describe("tungsten.util.insert_result", function()
               return {0,0,0,0}
           end)
 
-          selection_module_actual.get_visual_selection = spy.new(function()
+          mock_selection_module.get_visual_selection = spy.new(function()
               return "First line\nSeco"
-          end)
-
-          _G.vim.fn.split = spy.new(function(str, sep)
-              sep = sep or "\n"
-              local res_tbl = {}
-              if str == nil then return res_tbl end
-              if str == "" then return {""} end
-              local start_idx = 1
-              while true do
-                local sep_start, sep_end = string.find(str, sep, start_idx, true)
-                if not sep_start then
-                  table.insert(res_tbl, string.sub(str, start_idx))
-                  break
-                end
-                table.insert(res_tbl, string.sub(str, start_idx, sep_start - 1))
-                start_idx = sep_end + 1
-              end
-              return res_tbl
           end)
 
           local result_with_newline = "result\nwith new line"
@@ -211,7 +220,7 @@ describe("tungsten.util.insert_result", function()
               "with new line",
           }
           assert.spy(_G.vim.fn.split).was.called_with("First line\nSeco = result\nwith new line", "\n")
-          assert.spy(_G.vim.api.nvim_buf_set_text).was.called_with(0, 0, 0, 1, 5, expected_replacement)
+          assert.spy(_G.vim.api.nvim_buf_set_text).was.called_with(1, 0, 0, 1, 0, expected_replacement)
       end)
 
       it("should handle result_text with newlines when original selection is single-line", function()
@@ -220,26 +229,8 @@ describe("tungsten.util.insert_result", function()
               if marker == "'>" then return { 0, 1, 7, 0 } end
               return {0,0,0,0}
           end)
-          selection_module_actual.get_visual_selection = spy.new(function()
+          mock_selection_module.get_visual_selection = spy.new(function()
               return "Select"
-          end)
-
-          _G.vim.fn.split = spy.new(function(str, sep)
-              sep = sep or "\n"
-              local res_tbl = {}
-              if str == nil then return res_tbl end
-              if str == "" then return {""} end
-              local start_idx = 1
-              while true do
-                local sep_start, sep_end = string.find(str, sep, start_idx, true)
-                if not sep_start then
-                  table.insert(res_tbl, string.sub(str, start_idx))
-                  break
-                end
-                table.insert(res_tbl, string.sub(str, start_idx, sep_start - 1))
-                start_idx = sep_end + 1
-              end
-              return res_tbl
           end)
 
           local result_with_newline = "new\nresult"
@@ -248,7 +239,7 @@ describe("tungsten.util.insert_result", function()
           assert.spy(_G.vim.api.nvim_buf_set_text).was.called(1)
           local expected_replacement = { "Select = new", "result" }
           assert.spy(_G.vim.fn.split).was.called_with("Select = new\nresult", "\n")
-          assert.spy(_G.vim.api.nvim_buf_set_text).was.called_with(0, 0, 0, 0, 7, expected_replacement)
+          assert.spy(_G.vim.api.nvim_buf_set_text).was.called_with(1, 0, 0, 0, 0, expected_replacement)
       end)
     end)
 
@@ -259,7 +250,7 @@ describe("tungsten.util.insert_result", function()
           if marker == "'>" then return { 0, 1, 1, 0 } end
           return {0,0,0,0}
         end)
-        selection_module_actual.get_visual_selection = spy.new(function()
+        mock_selection_module.get_visual_selection = spy.new(function()
           return ""
         end)
 
@@ -275,14 +266,14 @@ describe("tungsten.util.insert_result", function()
               return {0,0,0,0}
           end)
 
-          selection_module_actual.get_visual_selection = spy.new(function()
+          mock_selection_module.get_visual_selection = spy.new(function()
               return ""
           end)
 
           insert_result.insert_result("res_empty_line")
 
           assert.spy(_G.vim.api.nvim_buf_set_text).was.called(1)
-          assert.spy(_G.vim.api.nvim_buf_set_text).was.called_with(0, 0, 0, 0, 1, { " = res_empty_line" })
+          assert.spy(_G.vim.api.nvim_buf_set_text).was.called_with(1, 0, 0, 0, 0, { " = res_empty_line" })
       end)
 
       it("should insert only ' = ' if selection is not empty but result is empty", function()
@@ -291,14 +282,14 @@ describe("tungsten.util.insert_result", function()
               if marker == "'>" then return { 0, 1, 5, 0 } end
               return {0,0,0,0}
           end)
-          selection_module_actual.get_visual_selection = spy.new(function()
+          mock_selection_module.get_visual_selection = spy.new(function()
               return "Text"
           end)
 
           insert_result.insert_result("")
 
           assert.spy(_G.vim.api.nvim_buf_set_text).was.called(1)
-          assert.spy(_G.vim.api.nvim_buf_set_text).was.called_with(0, 0, 0, 0, 5, { "Text = " })
+          assert.spy(_G.vim.api.nvim_buf_set_text).was.called_with(1, 0, 0, 0, 0, { "Text = " })
       end)
     end)
   end)

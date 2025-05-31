@@ -44,6 +44,10 @@ local double_backslash = P("\\\\") / function()
   return {type = "double_backslash"}
 end
 
+local equals_op = P("=") / function()
+  return { type = "equals_op", value = "=" }
+end
+
 local function create_cmd_token(cmd_name_str, token_type_str)
   return P("\\" .. cmd_name_str) * -letter / function()
     return {type = token_type_str}
@@ -95,6 +99,7 @@ return {
   matrix_env_name_capture = matrix_env_name_capture,
   ampersand = ampersand,
   double_backslash = double_backslash,
+  equals_op = equals_op,
   det_command = det_command,
   vec_command = vec_command,
   mathbf_command = mathbf_command,
