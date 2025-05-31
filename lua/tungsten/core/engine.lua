@@ -2,7 +2,7 @@
 -- Manages the interaction with the Wolfram Engine via wolframscript
 ----------------------------------------------------------------------------------
 
-local cg = require "tungsten.backends.wolfram"
+local wolfram_codegen = require "tungsten.backends.wolfram"
 local config = require "tungsten.config"
 local state = require "tungsten.state"
 
@@ -79,7 +79,7 @@ function M.evaluate_async(ast, numeric, callback)
   local logger = require "tungsten.util.logger"
 
   local initial_wolfram_code
-  local pcall_ok, pcall_result = pcall(cg.to_string, ast)
+  local pcall_ok, pcall_result = pcall(wolfram_codegen.to_string, ast)
   if not pcall_ok then
     local err_msg = "Error converting AST to Wolfram code: " .. tostring(pcall_result)
     logger.notify("Tungsten: " .. err_msg, logger.levels.ERROR, { title = "Tungsten Error" })

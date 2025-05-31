@@ -28,14 +28,14 @@ M.metadata = {
 }
 
 local minimal_equation_debug_pattern = lpeg.P("=") / function()
-  if _G.enable_tungsten_parser_debug then
+  if config.debug then
     print("[DEBUG] MinimalEquationDebugRule's action invoked for input '='.")
   end
   return { type = "debug_minimal_equals_matched" }
 end
 
-local standard_equation_pattern = (V("ExpressionContent") * tokens_mod.space * tokens_mod.equals_op * tokens_mod.space * V("ExpressionContent")) / function(lhs, op, rhs)
-  return { type = "equation", lhs = lhs, rhs = rhs }
+local standard_equation_pattern = (V("ExpressionContent") * tokens_mod.space * tokens_mod.equals_op * tokens_mod.space * V("ExpressionContent")) / function(lhs, _, rhs)
+  return ast_utils.create_binary_operation_node("=", lhs, rhs)
 end
 
 function M.get_metadata()
@@ -63,7 +63,7 @@ function M.init_grammar()
 
 
     local equation_pattern_to_register
-    if _G.enable_tungsten_parser_debug then
+    if config.debug then
         if config.debug then
             logger.notify("Arithmetic Domain: Registering DEBUG EquationRule.", logger.levels.DEBUG, { title = "Tungsten Debug" })
         end
