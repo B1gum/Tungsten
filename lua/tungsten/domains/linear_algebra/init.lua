@@ -12,6 +12,7 @@ local NormRule = require "tungsten.domains.linear_algebra.rules.norm"
 local SmartSS = require "tungsten.domains.linear_algebra.rules.smart_supersub"
 
 require("tungsten.domains.linear_algebra.commands")
+require("tungsten.domains.linear_algebra.wolfram_handlers")
 
 M.metadata = {
   name = "linear_algebra",
@@ -25,6 +26,7 @@ M.metadata = {
     "Norm",
     "SmartSupSub",
     "SmartUnary",
+    "LinearIndependentTest",
   }
 }
 
@@ -40,7 +42,7 @@ function M.init_grammar()
   local domain_name = M.metadata.name
   local domain_priority = M.metadata.priority
 
-  registry.register_grammar_contribution(domain_name, domain_priority, "Matrix", MatrixRule, "AtomBaseItem")
+  registry.register_grammar_contribution(domain_name, domain_priority, "Matrix", MatrixRule, "Matrix")
   registry.register_grammar_contribution(domain_name, domain_priority, "Vector", VectorRule, "AtomBaseItem")
   registry.register_grammar_contribution(domain_name, domain_priority, "Determinant", DeterminantRule, "AtomBaseItem")
   registry.register_grammar_contribution(domain_name, domain_priority, "Norm", NormRule, "AtomBaseItem")

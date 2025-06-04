@@ -148,4 +148,8 @@ function M.create_gauss_eliminate_node(matrix_expression_ast)
   return node("gauss_eliminate", { expression = matrix_expression_ast })
 end
 
+function M.create_linear_independent_test_node(target_ast)
+  return node("linear_independent_test", { target = target_ast })
+end
+
 return M

@@ -83,6 +83,73 @@ M.handlers = {
     local matrix_str = recur_render(node.expression)
     return ("RowReduce[%s]"):format(matrix_str)
   end,
+
+  vector_list = function(node, recur_render)
+    local rendered_vectors = {}
+    for _, vector_node_in_list in ipairs(node.vectors) do
+        if vector_node_in_list.type == "matrix" then
+            local rows_as_vectors = {}
+            for _, row in ipairs(vector_node_in_list.rows) do
+                local rendered_row_elements = {}
+                for _, el in ipairs(row) do
+                    table.insert(rendered_row_elements, recur_render(el))
+                end
+                if #row == 1 then
+                     table.insert(rows_as_vectors, "{" .. table.concat(rendered_row_elements, ", ") .. "}")
+                else
+                    table.insert(rows_as_vectors, "{" .. table.concat(rendered_row_elements, ", ") .. "}")
+                    break
+                end
+            end
+            table.insert(rendered_vectors, recur_render(vector_node_in_list))
+
+        else
+            table.insert(rendered_vectors, recur_render(vector_node_in_list))
+        end
+    end
+    return "{" .. table.concat(rendered_vectors, ", ") .. "}"
+  end,
+
+  linear_independent_test = function(node, recur_render)
+    local target_ast = node.target
+    local rendered_argument_list
+
+    if target_ast.type == "matrix" then
+      rendered_argument_list = recur_render(target_ast)
+    elseif target_ast.type == "vector_list" then
+      local vectors_for_wolfram = {}
+      for _, vec_node in ipairs(target_ast.vectors) do
+
+        if vec_node.type == "matrix" then
+          local elements = {}
+          if #vec_node.rows == 1 then
+            for _, el_node in ipairs(vec_node.rows[1]) do
+              table.insert(elements, recur_render(el_node))
+            end
+            table.insert(vectors_for_wolfram, "{" .. table.concat(elements, ", ") .. "}")
+          elseif #vec_node.rows > 0 and #vec_node.rows[1] and #vec_node.rows[1] == 1 then
+            for _, row_array in ipairs(vec_node.rows) do
+              table.insert(elements, recur_render(row_array[1]))
+            end
+            table.insert(vectors_for_wolfram, "{" .. table.concat(elements, ", ") .. "}")
+          else
+            table.insert(vectors_for_wolfram, recur_render(vec_node))
+          end
+        else
+          table.insert(vectors_for_wolfram, recur_render(vec_node))
+        end
+      end
+      rendered_argument_list = "{" .. table.concat(vectors_for_wolfram, ", ") .. "}"
+    elseif target_ast.type == "vector" or target_ast.type == "symbolic_vector" then
+      rendered_argument_list = "{" .. recur_render(target_ast) .. "}"
+    else
+      logger.warn("Tungsten: linear_independent_test handler received unexpected AST type: " .. target_ast.type)
+      rendered_argument_list = recur_render(target_ast)
+    end
+
+    return ("ResourceFunction[\"LinearlyIndependent\"][%s]"):format(rendered_argument_list)
+  end,
+
 }
 
 return M

@@ -41,4 +41,9 @@ wk.add({
     ":<C-u>TungstenGaussEliminate<CR>",
     desc = "Gauss Eliminate",
   },
+  {
+    "<leader>tl",
+    ":<C-u>TungstenLinearIndependen<CR>",
+    desc = "Linear independence test",
+  },
 })

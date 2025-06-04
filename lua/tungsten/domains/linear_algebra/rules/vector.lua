@@ -1,24 +1,42 @@
 -- lua/tungsten/domains/linear_algebra/rules/vector.lua
--- Defines the lpeg rule for parsing \vec and \mathbf vector notations.
+-- Defines the lpeg rule for parsing \vec, \mathbf vector notations, and lists of vectors.
 ---------------------------------------------------------------------
 
 local lpeg = require "lpeg"
-local P, V, C, S = lpeg.P, lpeg.V, lpeg.C, lpeg.S
+local P, V, C, S, Ct = lpeg.P, lpeg.V, lpeg.C, lpeg.S, lpeg.Ct
 
 local tk = require "tungsten.core.tokenizer"
 local ast = require "tungsten.core.ast"
 local space = tk.space
 
-local VecCommand = P("\\vec") * space * tk.lbrace * space * V("Expression") * space * tk.rbrace /
+local SymbolicVecCommand = P("\\vec") * space * tk.lbrace * space * V("Expression") * space * tk.rbrace /
   function(expr_capture)
     return ast.create_symbolic_vector_node(expr_capture, "vec")
   end
 
-local MathBoldCommand = P("\\mathbf") * space * tk.lbrace * space * V("Expression") * space * tk.rbrace /
+local SymbolicMathBoldCommand = P("\\mathbf") * space * tk.lbrace * space * V("Expression") * space * tk.rbrace /
   function(expr_capture)
     return ast.create_symbolic_vector_node(expr_capture, "mathbf")
   end
 
-local VectorRule = VecCommand + MathBoldCommand
+local SingleSymbolicVectorRule = SymbolicVecCommand + SymbolicMathBoldCommand
 
-return VectorRule
+local ConcreteVectorRule = V("Matrix") / function(matrix_ast)
+  return matrix_ast
+end
+
+
+local VectorListItem = space * (SingleSymbolicVectorRule + ConcreteVectorRule) * space
+local VectorListRule = Ct(VectorListItem * (P(";") * VectorListItem)^0) / function(vector_asts)
+  if #vector_asts == 1 and vector_asts[1].type ~= "matrix" then
+      return vector_asts[1]
+  elseif #vector_asts == 1 and vector_asts[1].type == "matrix" then
+    return vector_asts[1]
+  end
+  return ast.node("vector_list", { vectors = vector_asts })
+end
+
+
+local FinalVectorRule = VectorListRule + SingleSymbolicVectorRule + ConcreteVectorRule
+
+return FinalVectorRule
