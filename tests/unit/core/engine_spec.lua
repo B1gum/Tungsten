@@ -249,7 +249,7 @@ describe("tungsten.core.engine", function()
       assert.spy(main_mock_wolfram_to_string_spy).was.called_with(sample_ast_eval_async)
       assert.spy(mock_jobstart_spy.fn).was.called(1)
       local jobstart_args = mock_jobstart_spy.fn.calls[1].vals[1]
-      assert.are.same({ "mock_wolframscript", "-code", "wolfram_code_for_some_expression_for_eval_async" }, jobstart_args)
+      assert.are.same({ "mock_wolframscript", "-code", "ToString[TeXForm[wolfram_code_for_some_expression_for_eval_async], CharacterEncoding -> \"UTF8\"]" }, jobstart_args)
       local job_id = mock_jobstart_spy.last_returned_id
       assert.is_not_nil(job_id, "Job ID not found for symbolic evaluation")
       local job_options = mock_jobstart_spy.fn.calls[1].vals[2]
@@ -263,7 +263,7 @@ describe("tungsten.core.engine", function()
       assert.spy(main_mock_wolfram_to_string_spy).was.called_with(sample_ast_eval_async)
       assert.spy(mock_jobstart_spy.fn).was.called(1)
       local jobstart_args = mock_jobstart_spy.fn.calls[1].vals[1]
-      assert.are.same({ "mock_wolframscript", "-code", "N[wolfram_code_for_some_expression_for_eval_async]" }, jobstart_args)
+      assert.are.same({ "mock_wolframscript", "-code", "ToString[TeXForm[N[wolfram_code_for_some_expression_for_eval_async]], CharacterEncoding -> \"UTF8\"]" }, jobstart_args)
       local job_id = mock_jobstart_spy.last_returned_id
       assert.is_not_nil(job_id, "Job ID not found for numeric evaluation")
       local job_options = mock_jobstart_spy.fn.calls[1].vals[2]
@@ -277,7 +277,7 @@ describe("tungsten.core.engine", function()
       engine.evaluate_async(sample_ast_eval_async, false, actual_callback)
       assert.spy(mock_jobstart_spy.fn).was.called(1)
       local jobstart_args = mock_jobstart_spy.fn.calls[1].vals[1]
-      assert.are.same({ "mock_wolframscript", "-code", "N[wolfram_code_for_some_expression_for_eval_async]" }, jobstart_args)
+      assert.are.same({ "mock_wolframscript", "-code", "ToString[TeXForm[N[wolfram_code_for_some_expression_for_eval_async]], CharacterEncoding -> \"UTF8\"]" }, jobstart_args)
       mock_config_module.numeric_mode = false
     end)
 
@@ -460,7 +460,7 @@ describe("tungsten.core.engine", function()
       engine.evaluate_async(substitution_test_ast, false, actual_callback)
       assert.spy(mock_jobstart_spy.fn).was.called(1)
       local jobstart_args = mock_jobstart_spy.fn.calls[1].vals[1]
-      assert.are.same({ "mock_wolframscript", "-code", "(10) + y" }, jobstart_args)
+      assert.are.same({ "mock_wolframscript", "-code", "ToString[TeXForm[(10) + y], CharacterEncoding -> \"UTF8\"]" }, jobstart_args)
       local expr_key = engine.get_cache_key("(10) + y", false)
       assert.are.equal("(10) + y::symbolic", expr_key)
     end)
@@ -473,11 +473,11 @@ describe("tungsten.core.engine", function()
         else return "IT_SPY_MULTI_SUB_CONDITION_FAIL" end
       end)
       package.loaded['tungsten.core.engine'] = nil; engine = require("tungsten.core.engine")
-      
+
       engine.evaluate_async(substitution_test_ast, false, actual_callback)
       assert.spy(mock_jobstart_spy.fn).was.called(1)
       local jobstart_args = mock_jobstart_spy.fn.calls[1].vals[1]
-      assert.are.same({ "mock_wolframscript", "-code", "(5) + ((2+2)) * (5)" }, jobstart_args)
+      assert.are.same({ "mock_wolframscript", "-code", "ToString[TeXForm[(5) + ((2+2)) * (5)], CharacterEncoding -> \"UTF8\"]" }, jobstart_args)
     end)
 
     it("should generate different cache keys for different variable definitions", function()
@@ -522,7 +522,7 @@ describe("tungsten.core.engine", function()
       engine.evaluate_async(substitution_test_ast, false, actual_callback)
       assert.spy(mock_jobstart_spy.fn).was.called(1)
       local jobstart_args = mock_jobstart_spy.fn.calls[1].vals[1]
-      assert.are.same({ "mock_wolframscript", "-code", "(1+1) * 2" }, jobstart_args)
+      assert.are.same({ "mock_wolframscript", "-code", "ToString[TeXForm[(1+1) * 2], CharacterEncoding -> \"UTF8\"]" }, jobstart_args)
     end)
 
     it("should not substitute if variable name is part of a larger word/symbol", function()
@@ -536,7 +536,7 @@ describe("tungsten.core.engine", function()
       engine.evaluate_async(substitution_test_ast, false, actual_callback)
       assert.spy(mock_jobstart_spy.fn).was.called(1)
       local jobstart_args = mock_jobstart_spy.fn.calls[1].vals[1]
-      assert.are.same({ "mock_wolframscript", "-code", "eval + (3) + value + valX" }, jobstart_args)
+      assert.are.same({ "mock_wolframscript", "-code", "ToString[TeXForm[eval + (3) + value + valX], CharacterEncoding -> \"UTF8\"]" }, jobstart_args)
     end)
 
     it("should handle substitution when persistent_variables map is empty", function()
@@ -546,11 +546,11 @@ describe("tungsten.core.engine", function()
         else return "IT_SPY_EMPTY_VARS_CONDITION_FAIL" end
       end)
       package.loaded['tungsten.core.engine'] = nil; engine = require("tungsten.core.engine")
-      
+
       engine.evaluate_async(substitution_test_ast, false, actual_callback)
       assert.spy(mock_jobstart_spy.fn).was.called(1)
       local jobstart_args = mock_jobstart_spy.fn.calls[1].vals[1]
-      assert.are.same({ "mock_wolframscript", "-code", "no_vars_here" }, jobstart_args)
+      assert.are.same({ "mock_wolframscript", "-code", "ToString[TeXForm[no_vars_here], CharacterEncoding -> \"UTF8\"]" }, jobstart_args)
     end)
 
     it("should handle substitution when persistent_variables is nil", function()
@@ -564,7 +564,7 @@ describe("tungsten.core.engine", function()
       engine.evaluate_async(substitution_test_ast, false, actual_callback)
       assert.spy(mock_jobstart_spy.fn).was.called(1)
       local jobstart_args = mock_jobstart_spy.fn.calls[1].vals[1]
-      assert.are.same({ "mock_wolframscript", "-code", "nil_vars_map" }, jobstart_args)
+      assert.are.same({ "mock_wolframscript", "-code", "ToString[TeXForm[nil_vars_map], CharacterEncoding -> \"UTF8\"]" }, jobstart_args)
     end)
 
     it("should substitute longer variable names before shorter ones (e.g. 'xx' before 'x')", function()
@@ -579,7 +579,7 @@ describe("tungsten.core.engine", function()
         engine.evaluate_async(substitution_test_ast, false, actual_callback)
         assert.spy(mock_jobstart_spy.fn).was.called(1)
         local jobstart_args = mock_jobstart_spy.fn.calls[1].vals[1]
-        assert.are.same({ "mock_wolframscript", "-code", "(100) + (1)" }, jobstart_args)
+        assert.are.same({ "mock_wolframscript", "-code", "ToString[TeXForm[(100) + (1)], CharacterEncoding -> \"UTF8\"]" }, jobstart_args)
     end)
 
     it("should log substituted code if debug mode is on", function()
@@ -942,9 +942,9 @@ describe("tungsten.core.engine", function()
       local job_id = mock_jobstart_spy.last_returned_id
       assert.is_not_nil(job_id, "Job ID not found for debug log job start")
       local expr_key = "wolfram_code_for_debug_expr_val_for_logging::symbolic"
-      local code_sent = "wolfram_code_for_debug_expr_val_for_logging"
+      local code_sent = "ToString[TeXForm[wolfram_code_for_debug_expr_val_for_logging], CharacterEncoding -> \"UTF8\"]"
       assert.spy(mock_logger_notify_spy).was.called_with(
-        ("Tungsten: Started WolframScript job %d for key '%s' with code: %s"):format(job_id, expr_key, code_sent), 
+        ("Tungsten: Started WolframScript job %d for key '%s' with code: %s"):format(job_id, expr_key, code_sent),
         mock_logger_module.levels.INFO, 
         { title = "Tungsten Debug" }
       )

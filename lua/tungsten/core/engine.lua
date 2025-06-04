@@ -127,6 +127,8 @@ function M.evaluate_async(ast, numeric, callback)
     code_to_execute = "N[" .. code_to_execute .. "]"
   end
 
+  code_to_execute = "ToString[TeXForm[" .. code_to_execute .. "], CharacterEncoding -> \"UTF8\"]"
+
   local wolfram_path = config.wolfram_path or "wolframscript"
   local stdout_chunks = {}
   local stderr_chunks = {}

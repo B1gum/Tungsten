@@ -114,6 +114,8 @@ function M.solve_equation_async(text, callback)
     logger.notify("TungstenSolve: Wolfram command: " .. wolfram_command, logger.levels.DEBUG, {title = "Tungsten Debug"})
   end
 
+   wolfram_command = "ToString[TeXForm[" .. wolfram_command .. "], CharacterEncoding -> \"UTF8\"]"
+
   local job_id
   local stdout_chunks = {}
   local stderr_chunks = {}

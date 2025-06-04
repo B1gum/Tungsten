@@ -36,4 +36,9 @@ wk.add({
     ":<C-u>TungstenSolve<CR>",
     desc = "Define Persistent Variable",
   },
+  {
+    "<leader>tg",
+    ":<C-u>TungstenGaussEliminate<CR>",
+    desc = "Gauss Eliminate",
+  },
 })

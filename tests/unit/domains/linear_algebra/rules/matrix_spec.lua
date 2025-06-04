@@ -198,9 +198,18 @@ describe("Linear Algebra Matrix Rule: tungsten.domains.linear_algebra.rules.matr
       assert.is_nil(parse_input(input))
     end)
 
-    it("should handle a matrix with a trailing row separator correctly (current rule does not support this explicitly, should fail)", function()
+    it("should correctly parse a matrix with a trailing row separator", function()
       local input = "\\begin{pmatrix} 1 \\\\ 2 \\\\ \\end{pmatrix}"
-      assert.is_nil(parse_input(input), "Matrix with trailing row separator should not parse with the current strict rule.")
+      local expected_ast = {
+        type = "matrix",
+        env_type = "pmatrix",
+        rows = {
+          { placeholder_expr_node("num:1") },
+          { placeholder_expr_node("num:2") }
+        }
+      }
+      local parsed = parse_input(input)
+      assert.are.same(expected_ast, parsed, "Matrix with trailing row separator should parse correctly.")
     end)
   end)
 end)

@@ -144,4 +144,8 @@ function M.create_zero_vector_matrix_node(dimensions_spec)
   return node("zero_vector_matrix", { dimensions = dimensions_spec })
 end
 
+function M.create_gauss_eliminate_node(matrix_expression_ast)
+  return node("gauss_eliminate", { expression = matrix_expression_ast })
+end
+
 return M

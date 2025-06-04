@@ -1,4 +1,5 @@
--- tungsten/lua/tungsten/domains/linear_algebra/rules/matrix.lua
+-- In tungsten/lua/tungsten/domains/linear_algebra/rules/matrix.lua
+
 local lpeg = require "lpeg"
 local P, Ct, V = lpeg.P, lpeg.Ct, lpeg.V
 
@@ -28,9 +29,11 @@ local MatrixRow = MatrixRowWithSeparators / function(captures)
     return elements_only
 end
 
-local MatrixBodyWithSeparators = Ct(
-    MatrixRow * (space * tk.double_backslash * space * MatrixRow)^0
-)
+local MatrixContentLoop = MatrixRow * (space * tk.double_backslash * space * MatrixRow)^0
+local OptionalTrailingSeparatorPattern = (space * tk.double_backslash * space)^-1
+
+MatrixBodyWithSeparators = Ct(MatrixContentLoop * OptionalTrailingSeparatorPattern)
+
 local MatrixBody = MatrixBodyWithSeparators / function(captures)
     local rows_only = {}
     if type(captures) == "table" then
@@ -43,12 +46,10 @@ local MatrixBody = MatrixBodyWithSeparators / function(captures)
     return rows_only
 end
 
-local OptionalTrailingBackslash = (space * tk.double_backslash * space)^-1
 
 local MatrixRule = Ct(
   matrix_begin_pattern * space *
   MatrixBody *
-  (OptionalTrailingBackslash) *
   space *
   matrix_end_pattern
 ) / function(captures)
@@ -68,12 +69,9 @@ local MatrixRule = Ct(
             return nil
         end
     end
-    if #row_table == 0 and #actual_matrix_rows == 1 and not next(row_table) then
-        if #actual_matrix_rows == 1 and #row_table == 0 and not next(row_table[1]) then
-            return nil
-        end
+    if #row_table == 0 and #actual_matrix_rows == 1 and (row_table[1] == nil and not next(row_table)) then
+        return nil
     end
-
 
     for c_idx, element_ast in ipairs(row_table) do
       if not (type(element_ast) == "table" and element_ast.type) then
@@ -81,11 +79,10 @@ local MatrixRule = Ct(
       end
     end
   end
-  
+
   if #actual_matrix_rows == 0 then
       return nil
   end
-
 
   return ast.create_matrix_node(actual_matrix_rows, begin_env_type)
 end

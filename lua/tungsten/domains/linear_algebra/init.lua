@@ -9,8 +9,9 @@ local MatrixRule = require "tungsten.domains.linear_algebra.rules.matrix"
 local VectorRule = require "tungsten.domains.linear_algebra.rules.vector"
 local DeterminantRule = require "tungsten.domains.linear_algebra.rules.determinant"
 local NormRule = require "tungsten.domains.linear_algebra.rules.norm"
-
 local SmartSS = require "tungsten.domains.linear_algebra.rules.smart_supersub"
+
+require("tungsten.domains.linear_algebra.commands")
 
 M.metadata = {
   name = "linear_algebra",

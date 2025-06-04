@@ -78,6 +78,11 @@ M.handlers = {
     local dim_spec_str = recur_render(node.dimensions)
     return ("ConstantArray[0, %s]"):format(dim_spec_str)
   end,
+
+  gauss_eliminate = function(node, recur_render)
+    local matrix_str = recur_render(node.expression)
+    return ("RowReduce[%s]"):format(matrix_str)
+  end,
 }
 
 return M

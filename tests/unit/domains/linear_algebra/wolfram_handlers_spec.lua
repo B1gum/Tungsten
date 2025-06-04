@@ -253,4 +253,43 @@ describe("Tungsten Linear Algebra Domain Wolfram Handlers", function()
       assert.spy(mock_recur_render).was.called_with(dim_node_for_matrix)
     end)
   end)
+
+    describe("gauss_eliminate handler", function()
+    it("should correctly format RowReduce[matrix_representation]", function()
+      local matrix_ast_placeholder = ast_node("matrix_placeholder", { name = "MyMatrix" })
+      local gauss_node = ast_node("gauss_eliminate", { expression = matrix_ast_placeholder })
+
+      mock_recur_render = spy.new(function(node_to_render)
+        if node_to_render == matrix_ast_placeholder then
+          return "RenderedMatrix"
+        end
+        return "unexpected_node_in_gauss_eliminate_test"
+      end)
+
+      local result = handlers.gauss_eliminate(gauss_node, mock_recur_render)
+      assert.are.equal("RowReduce[RenderedMatrix]", result)
+      assert.spy(mock_recur_render).was.called_with(matrix_ast_placeholder)
+    end)
+
+    it("should correctly render with a complex matrix AST", function()
+        local complex_matrix_node = ast_node("matrix", {
+            rows = {
+                { ast_node("number", { value = 1 }), ast_node("number", { value = 2 }) },
+                { ast_node("number", { value = 3 }), ast_node("number", { value = 4 }) },
+            }
+        })
+        local gauss_node = ast_node("gauss_eliminate", {expression = complex_matrix_node})
+
+        mock_recur_render = spy.new(function(node_to_render)
+            if node_to_render == complex_matrix_node then
+                return "{{1,2},{3,4}}"
+            end
+            return "rendered(" .. node_to_render.type .. ")"
+        end)
+
+        local result = handlers.gauss_eliminate(gauss_node, mock_recur_render)
+        assert.are.equal("RowReduce[{{1,2},{3,4}}]", result)
+        assert.spy(mock_recur_render).was.called_with(complex_matrix_node)
+    end)
+  end)
 end)

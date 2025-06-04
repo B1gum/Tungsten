@@ -542,14 +542,14 @@ describe("tungsten.core.solver", function()
       solver.solve_equation_async("x+1=2;x", actual_callback)
       assert.spy(mock_jobstart_spy.fn).was.called(1)
       local job_args = mock_jobstart_spy.fn.calls[1].vals[1]
-      assert.are.same({ "mock_wolframscript_path", "-code", "Solve[{wolfram_parsed_x+1=2}, {x}]" }, job_args)
+      assert.are.same({ "mock_wolframscript_path", "-code", "ToString[TeXForm[Solve[{wolfram_parsed_x+1=2}, {x}]], CharacterEncoding -> \"UTF8\"]" }, job_args)
     end)
 
     it("should correctly form Wolfram command for a system of equations", function()
       solver.solve_equation_async("x+y=3,x-y=1;x,y", actual_callback)
       assert.spy(mock_jobstart_spy.fn).was.called(1)
       local job_args = mock_jobstart_spy.fn.calls[1].vals[1]
-      assert.are.same({ "mock_wolframscript_path", "-code", "Solve[{wolfram_parsed_x+y=3, wolfram_parsed_x-y=1}, {x, y}]" }, job_args)
+      assert.are.same({ "mock_wolframscript_path", "-code", "ToString[TeXForm[Solve[{wolfram_parsed_x+y=3, wolfram_parsed_x-y=1}, {x, y}]], CharacterEncoding -> \"UTF8\"]" }, job_args)
     end)
 
     it("should log Wolfram command if debug is true", function()
