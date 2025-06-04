@@ -46,4 +46,9 @@ wk.add({
     ":<C-u>TungstenLinearIndependen<CR>",
     desc = "Linear independence test",
   },
+  {
+    "<leader>tr",
+    ":<C-u>TungstenRank<CR>",
+    desc = "Returns the rank of a matrix"
+  },
 })

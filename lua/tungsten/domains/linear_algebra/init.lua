@@ -10,6 +10,7 @@ local VectorRule = require "tungsten.domains.linear_algebra.rules.vector"
 local DeterminantRule = require "tungsten.domains.linear_algebra.rules.determinant"
 local NormRule = require "tungsten.domains.linear_algebra.rules.norm"
 local SmartSS = require "tungsten.domains.linear_algebra.rules.smart_supersub"
+local RankRule = require "tungsten.domains.linear_algebra.rules.rank"
 
 require("tungsten.domains.linear_algebra.commands")
 require("tungsten.domains.linear_algebra.wolfram_handlers")
@@ -27,6 +28,7 @@ M.metadata = {
     "SmartSupSub",
     "SmartUnary",
     "LinearIndependentTest",
+    "Rank",
   }
 }
 
@@ -50,6 +52,8 @@ function M.init_grammar()
   registry.register_grammar_contribution(domain_name, domain_priority, "SupSub", SmartSS.SmartSupSub, "SupSub")
   registry.register_grammar_contribution(domain_name, domain_priority, "Unary", SmartSS.SmartUnary, "Unary")
   registry.register_grammar_contribution(domain_name, domain_priority, "IntercalCommand", tokenizer.intercal_command, "AtomBaseItem")
+
+  registry.register_grammar_contribution(domain_name, domain_priority, "Rank", RankRule, "AtomBaseItem")
 
   if config.debug then
     logger.notify("Linear Algebra Domain: Grammar contributions registered for: " .. table.concat(M.metadata.provides, ", "), logger.levels.DEBUG, { title = "Tungsten Debug" })

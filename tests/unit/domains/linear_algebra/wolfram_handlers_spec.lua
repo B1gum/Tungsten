@@ -292,4 +292,45 @@ describe("Tungsten Linear Algebra Domain Wolfram Handlers", function()
         assert.spy(mock_recur_render).was.called_with(complex_matrix_node)
     end)
   end)
+
+  describe("rank handler", function()
+    it("should correctly format MatrixRank[matrix_representation]", function()
+      local matrix_expr_node = ast_node("matrix_placeholder", { name = "MyTestMatrix" })
+      local node = ast_node("rank", { expression = matrix_expr_node })
+
+      mock_recur_render:clear()
+      mock_recur_render = spy.new(function(child_node)
+        if child_node == matrix_expr_node then
+          return "RenderedMatrixRepresentation"
+        end
+        return "unexpected_child_in_rank_test"
+      end)
+
+      local result = handlers.rank(node, mock_recur_render)
+      assert.are.equal("MatrixRank[RenderedMatrixRepresentation]", result)
+      assert.spy(mock_recur_render).was.called_with(matrix_expr_node)
+    end)
+
+    it("should correctly render with a complex matrix AST passed to recur_render", function()
+        local complex_matrix_node = ast_node("matrix", {
+            rows = {
+                { ast_node("number", { value = 1 }), ast_node("number", { value = 2 }) },
+                { ast_node("number", { value = 3 }), ast_node("number", { value = 4 }) },
+            }
+        })
+        local rank_node = ast_node("rank", {expression = complex_matrix_node})
+
+        mock_recur_render:clear()
+        mock_recur_render = spy.new(function(node_to_render)
+            if node_to_render == complex_matrix_node then
+                return "{{1,2},{3,4}}"
+            end
+            return "rendered_unexpected_child"
+        end)
+
+        local result = handlers.rank(rank_node, mock_recur_render)
+        assert.are.equal("MatrixRank[{{1,2},{3,4}}]", result)
+        assert.spy(mock_recur_render).was.called_with(complex_matrix_node)
+    end)
+  end)
 end)

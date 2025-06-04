@@ -150,6 +150,10 @@ M.handlers = {
     return ("ResourceFunction[\"LinearlyIndependent\"][%s]"):format(rendered_argument_list)
   end,
 
+  rank = function(node, recur_render)
+    local matrix_str = recur_render(node.expression)
+    return ("MatrixRank[%s]"):format(matrix_str)
+  end
 }
 
 return M

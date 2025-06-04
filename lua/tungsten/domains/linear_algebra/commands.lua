@@ -96,6 +96,40 @@ local function tungsten_linear_independent_command(_)
   end)
 end
 
+local function tungsten_rank_command(_)
+  local visual_selection_text = selection.get_visual_selection()
+  if visual_selection_text == "" or visual_selection_text == nil then
+    logger.notify("TungstenRank: No matrix selected.", logger.levels.ERROR, { title = "Tungsten Error" })
+    return
+  end
+
+  local parse_ok, matrix_ast_node = pcall(parser.parse, visual_selection_text)
+  if not parse_ok or not matrix_ast_node then
+    logger.notify("TungstenRank: Parse error for selected matrix – " .. tostring(matrix_ast_node), logger.levels.ERROR, { title = "Tungsten Error" })
+    return
+  end
+
+  if matrix_ast_node.type ~= "matrix" then
+     logger.notify("TungstenRank: The selected text is not a valid matrix. Parsed as: " .. matrix_ast_node.type, logger.levels.ERROR, { title = "Tungsten Error" })
+    return
+  end
+
+  local rank_ast_node = ast.create_rank_node(matrix_ast_node)
+
+  local use_numeric_mode = true -- Or config.numeric_mode if symbolic rank is a desired output
+
+  evaluator.evaluate_async(rank_ast_node, use_numeric_mode, function(result, err)
+    if err then
+      logger.notify("TungstenRank: Error during evaluation: " .. tostring(err), logger.levels.ERROR, { title = "Tungsten Error" })
+      return
+    end
+    if result == nil or result == "" then
+      logger.notify("TungstenRank: No result from evaluation (expected a number).", logger.levels.WARN, { title = "Tungsten Warning" })
+      return
+    end
+    insert_result_util.insert_result(result)
+  end)
+end
 
 
 vim.api.nvim_create_user_command(
@@ -110,7 +144,15 @@ vim.api.nvim_create_user_command(
   { range = true, desc = "Test if selected vectors/matrix rows or columns are linearly independent" }
 )
 
+vim.api.nvim_create_user_command(
+  "TungstenRank",
+  tungsten_rank_command,
+  { range = true, desc = "Calculate the rank of the selected LaTeX matrix" }
+)
+
+
 return {
   tungsten_gauss_eliminate_command = tungsten_gauss_eliminate_command,
   tungsten_linear_independent_command = tungsten_linear_independent_command,
+    tungsten_rank_command = tungsten_rank_command,
 }

@@ -152,4 +152,8 @@ function M.create_linear_independent_test_node(target_ast)
   return node("linear_independent_test", { target = target_ast })
 end
 
+function M.create_rank_node(matrix_expression_ast)
+  return node("rank", { expression = matrix_expression_ast })
+end
+
 return M
