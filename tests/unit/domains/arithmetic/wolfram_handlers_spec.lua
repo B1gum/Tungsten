@@ -90,22 +90,22 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
 
     it("should render a + b as 'a+b'", function()
       local node = { type = "binary", operator = "+", left = { type = "variable", name = "a" }, right = { type = "variable", name = "b" } }
-      assert.are.equal("a+b", handlers.binary(node, recur_render_for_binary))
+      assert.are.equal("a + b", handlers.binary(node, recur_render_for_binary))
     end)
 
     it("should render a - b as 'a-b'", function()
       local node = { type = "binary", operator = "-", left = { type = "variable", name = "a" }, right = { type = "variable", name = "b" } }
-      assert.are.equal("a-b", handlers.binary(node, recur_render_for_binary))
+      assert.are.equal("a - b", handlers.binary(node, recur_render_for_binary))
     end)
 
     it("should render a * b as 'a*b'", function()
       local node = { type = "binary", operator = "*", left = { type = "variable", name = "a" }, right = { type = "variable", name = "b" } }
-      assert.are.equal("a*b", handlers.binary(node, recur_render_for_binary))
+      assert.are.equal("a * b", handlers.binary(node, recur_render_for_binary))
     end)
 
     it("should render a / b as 'a/b'", function()
       local node = { type = "binary", operator = "/", left = { type = "variable", name = "a" }, right = { type = "variable", name = "b" } }
-      assert.are.equal("a/b", handlers.binary(node, recur_render_for_binary))
+      assert.are.equal("a / b", handlers.binary(node, recur_render_for_binary))
     end)
 
     it("a * (b + c) should be rendered as a*(b+c)", function()
@@ -114,7 +114,7 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         left = { type = "variable", name = "a" },
         right = { type = "binary", operator = "+", left = { type = "variable", name = "b" }, right = { type = "variable", name = "c" } }
       }
-      assert.are.equal("a*(b+c)", handlers.binary(node, recur_render_for_binary))
+      assert.are.equal("a * (b + c)", handlers.binary(node, recur_render_for_binary))
     end)
 
     it("(a + b) * c should be rendered as (a+b)*c", function()
@@ -123,7 +123,7 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         left = { type = "binary", operator = "+", left = { type = "variable", name = "a" }, right = { type = "variable", name = "b" } },
         right = { type = "variable", name = "c" }
       }
-      assert.are.equal("(a+b)*c", handlers.binary(node, recur_render_for_binary))
+      assert.are.equal("(a + b) * c", handlers.binary(node, recur_render_for_binary))
     end)
 
     it("a + b * c should be rendered as a+b*c (no parens for higher precedence child on right)", function()
@@ -132,7 +132,7 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         left = { type = "variable", name = "a" },
         right = { type = "binary", operator = "*", left = { type = "variable", name = "b" }, right = { type = "variable", name = "c" } }
       }
-      assert.are.equal("a+b*c", handlers.binary(node, recur_render_for_binary))
+      assert.are.equal("a + b * c", handlers.binary(node, recur_render_for_binary))
     end)
 
     it("a * b + c should be rendered as a*b+c (no parens for higher precedence child on left)", function()
@@ -141,7 +141,7 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         left = { type = "binary", operator = "*", left = { type = "variable", name = "a" }, right = { type = "variable", name = "b" } },
         right = { type = "variable", name = "c" }
       }
-      assert.are.equal("a*b+c", handlers.binary(node, recur_render_for_binary))
+      assert.are.equal("a * b + c", handlers.binary(node, recur_render_for_binary))
     end)
 
     it("a / (b + c) should be rendered as a/(b+c)", function()
@@ -150,7 +150,7 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         left = { type = "variable", name = "a" },
         right = { type = "binary", operator = "+", left = { type = "variable", name = "b" }, right = { type = "variable", name = "c" } }
       }
-      assert.are.equal("a/(b+c)", handlers.binary(node, recur_render_for_binary))
+      assert.are.equal("a / (b + c)", handlers.binary(node, recur_render_for_binary))
     end)
 
     it("(a + b) / c should be rendered as (a+b)/c", function()
@@ -159,7 +159,7 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         left = { type = "binary", operator = "+", left = { type = "variable", name = "a" }, right = { type = "variable", name = "b" } },
         right = { type = "variable", name = "c" }
       }
-      assert.are.equal("(a+b)/c", handlers.binary(node, recur_render_for_binary))
+      assert.are.equal("(a + b) / c", handlers.binary(node, recur_render_for_binary))
     end)
 
     it("a - (b + c) should be rendered as a-(b+c) for correctness", function()
@@ -168,7 +168,7 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         left = { type = "variable", name = "a" },
         right = { type = "binary", operator = "+", left = { type = "variable", name = "b" }, right = { type = "variable", name = "c" } }
       }
-      assert.are.equal("a-(b+c)", handlers.binary(node, recur_render_for_binary))
+      assert.are.equal("a - (b + c)", handlers.binary(node, recur_render_for_binary))
     end)
 
     it("a - (b - c) should be rendered as a-(b-c) for correctness", function()
@@ -177,7 +177,7 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         left = { type = "variable", name = "a" },
         right = { type = "binary", operator = "-", left = { type = "variable", name = "b" }, right = { type = "variable", name = "c" } }
       }
-      assert.are.equal("a-(b-c)", handlers.binary(node, recur_render_for_binary))
+      assert.are.equal("a - (b - c)", handlers.binary(node, recur_render_for_binary))
     end)
 
     it("a / (b * c) should be rendered as a/(b*c) (no parens for higher precedence child on right)", function()
@@ -186,7 +186,7 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         left = { type = "variable", name = "a" },
         right = { type = "binary", operator = "*", left = { type = "variable", name = "b" }, right = { type = "variable", name = "c" } }
       }
-      assert.are.equal("a/(b*c)", handlers.binary(node, recur_render_for_binary))
+      assert.are.equal("a / (b * c)", handlers.binary(node, recur_render_for_binary))
     end)
 
     it("(a * b) / c should be rendered as (a*b)/c (no parens for higher precedence on left)", function()
@@ -195,7 +195,7 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         left = { type = "binary", operator = "*", left = { type = "variable", name = "a" }, right = { type = "variable", name = "b" } },
         right = { type = "variable", name = "c" }
       }
-      assert.are.equal("a*b/c", handlers.binary(node, recur_render_for_binary))
+      assert.are.equal("a * b / c", handlers.binary(node, recur_render_for_binary))
     end)
 
 
@@ -205,7 +205,7 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         left = { type = "variable", name = "a" },
         right = { type = "binary", operator = "+", left = { type = "variable", name = "b" }, right = { type = "variable", name = "c" } }
       }
-      assert.are.equal("a^(b+c)", handlers.binary(node, recur_render_for_binary))
+      assert.are.equal("Power[a, (b + c)]", handlers.binary(node, recur_render_for_binary))
     end)
 
     it("(a + b) ^ c should be rendered as (a+b)^c", function()
@@ -214,7 +214,7 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         left = { type = "binary", operator = "+", left = { type = "variable", name = "a" }, right = { type = "variable", name = "b" } },
         right = { type = "variable", name = "c" }
       }
-      assert.are.equal("(a+b)^c", handlers.binary(node, recur_render_for_binary))
+      assert.are.equal("Power[(a + b), c]", handlers.binary(node, recur_render_for_binary))
     end)
   end)
 
@@ -225,7 +225,7 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         numerator = { type = "number", value = 1 },
         denominator = { type = "variable", name = "n" }
       }
-      assert.are.equal("(1)/(n)", handlers.fraction(node, mock_recur_render))
+      assert.are.equal("Divide[1, n]", handlers.fraction(node, mock_recur_render))
       assert.spy(mock_recur_render).was.called_with(node.numerator)
       assert.spy(mock_recur_render).was.called_with(node.denominator)
     end)
@@ -236,7 +236,7 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         numerator = { type = "binary", operator = "+", left = { type = "variable", name = "a"}, right = { type = "number", value = 1 }},
         denominator = { type = "sqrt", radicand = {type = "variable", name = "x"}}
       }
-      assert.are.equal("(a+1)/(mock_rendered(sqrt))", handlers.fraction(node, mock_recur_render))
+      assert.are.equal("Divide[a+1, mock_rendered(sqrt)]", handlers.fraction(node, mock_recur_render))
     end)
   end)
 
@@ -253,7 +253,7 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         index = { type = "number", value = 3 },
         radicand = { type = "variable", name = "y" }
       }
-      assert.are.equal("Surd[y,3]", handlers.sqrt(node, mock_recur_render))
+      assert.are.equal("Surd[y, 3]", handlers.sqrt(node, mock_recur_render))
       assert.spy(mock_recur_render).was.called_with(node.radicand)
       assert.spy(mock_recur_render).was.called_with(node.index)
     end)
@@ -274,7 +274,7 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         base = { type = "variable", name = "x" },
         exponent = { type = "number", value = 2 }
       }
-      assert.are.equal("x^2", handlers.superscript(node, mock_recur_render))
+      assert.are.equal("Power[x, 2]", handlers.superscript(node, mock_recur_render))
       assert.spy(mock_recur_render).was.called_with(node.base)
       assert.spy(mock_recur_render).was.called_with(node.exponent)
     end)
@@ -285,7 +285,7 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         base = { type = "number", value = 10 },
         exponent = { type = "variable", name = "n" }
       }
-      assert.are.equal("10^n", handlers.superscript(node, mock_recur_render))
+      assert.are.equal("Power[10, n]", handlers.superscript(node, mock_recur_render))
     end)
 
     it("should render Power[base,exponent] for complex base (e.g. binary)", function()
@@ -294,7 +294,7 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         base = { type = "binary", operator = "+", left = {type="variable", name="a"}, right={type="variable", name="b"}},
         exponent = { type = "number", value = 3 }
       }
-      assert.are.equal("Power[a+b,3]", handlers.superscript(node, mock_recur_render))
+      assert.are.equal("Power[a+b, 3]", handlers.superscript(node, mock_recur_render))
     end)
 
     it("should render Power[base,exponent] for complex base (e.g. fraction)", function()
@@ -303,7 +303,7 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         base = { type = "fraction", numerator = {type="variable", name="a"}, denominator={type="variable", name="b"}},
         exponent = { type = "variable", name = "x" }
       }
-      assert.are.equal("Power[mock_rendered(fraction),x]", handlers.superscript(node, mock_recur_render))
+      assert.are.equal("Power[mock_rendered(fraction), x]", handlers.superscript(node, mock_recur_render))
     end)
 
     it("should render x^mock_rendered(complex_exponent)", function()
@@ -312,7 +312,7 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         base = { type = "variable", name = "x" },
         exponent = { type = "sqrt", radicand = {type="number", value=2} }
       }
-      assert.are.equal("x^mock_rendered(sqrt)", handlers.superscript(node, mock_recur_render))
+      assert.are.equal("Power[x, mock_rendered(sqrt)]", handlers.superscript(node, mock_recur_render))
     end)
   end)
 
@@ -323,7 +323,7 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         base = { type = "variable", name = "y" },
         subscript = { type = "number", value = 1 }
       }
-      assert.are.equal("Subscript[y,1]", handlers.subscript(node, mock_recur_render))
+      assert.are.equal("Subscript[y, 1]", handlers.subscript(node, mock_recur_render))
       assert.spy(mock_recur_render).was.called_with(node.base)
       assert.spy(mock_recur_render).was.called_with(node.subscript)
     end)
@@ -334,14 +334,14 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         base = { type = "greek", name = "Omega" },
         subscript = { type = "binary", operator = "+", left={type="variable", name="i"}, right={type="number", value=1}}
       }
-      assert.are.equal("Subscript[Omega,i+1]", handlers.subscript(node, mock_recur_render))
+      assert.are.equal("Subscript[Omega, i+1]", handlers.subscript(node, mock_recur_render))
     end)
   end)
 
   describe("unary handler", function()
     it("should render -value for negative unary operator", function()
       local node = { type = "unary", operator = "-", value = { type = "number", value = 5 } }
-      assert.are.equal("-5", handlers.unary(node, mock_recur_render))
+      assert.are.equal("(-5)", handlers.unary(node, mock_recur_render))
       assert.spy(mock_recur_render).was.called_with(node.value)
     end)
 
@@ -352,7 +352,7 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
 
     it("should render operator with complex value", function()
       local node = { type = "unary", operator = "-", value = { type = "fraction", numerator={type="number", value=1}, denominator={type="number", value=2}} }
-      assert.are.equal("-mock_rendered(fraction)", handlers.unary(node, mock_recur_render))
+      assert.are.equal("(-mock_rendered(fraction))", handlers.unary(node, mock_recur_render))
     end)
   end)
 
@@ -424,6 +424,80 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
       assert.spy(logger.notify).was.called()
 
       logger.notify:revert()
+    end)
+  end)
+
+  describe("solve_system handler", function()
+    it("should correctly format Solve[{eq1, eq2}, {var1, var2}]", function()
+      local node = ast.create_solve_system_node(
+        {
+          ast.create_binary_operation_node("=",
+            {type="variable", name="x"},
+            {type="number", value=1}
+          ),
+          ast.create_binary_operation_node("=",
+            {type="variable", name="y"},
+            {type="number", value=2}
+          )
+        },
+        {
+          {type="variable", name="x"},
+          {type="variable", name="y"}
+        }
+      )
+      local result = handlers.solve_system(node, mock_recur_render)
+      assert.are.equal("Solve[{x=1, y=2}, {x, y}]", result)
+
+      assert.spy(mock_recur_render).was.called_with(node.equations[1])
+      assert.spy(mock_recur_render).was.called_with(node.equations[2])
+      assert.spy(mock_recur_render).was.called_with(node.variables[1])
+      assert.spy(mock_recur_render).was.called_with(node.variables[2])
+    end)
+
+    it("should correctly format for a single equation and single variable", function()
+      local node = ast.create_solve_system_node(
+        {
+          ast.create_binary_operation_node("=",
+            {type="variable", name="a"},
+            {type="number", value=0}
+          )
+        },
+        {
+          {type="variable", name="a"}
+        }
+      )
+      local result = handlers.solve_system(node, mock_recur_render)
+      assert.are.equal("Solve[{a=0}, {a}]", result)
+    end)
+
+    it("should handle complex expressions within equations", function()
+        local original_mock_recur_render = mock_recur_render
+        mock_recur_render = spy.new(function(child_node)
+            if child_node.type == "binary" and child_node.operator == "+" then
+                return mock_recur_render(child_node.left) .. "+" .. mock_recur_render(child_node.right)
+            elseif child_node.type == "variable" then return child_node.name
+            elseif child_node.type == "number" then return tostring(child_node.value)
+            elseif child_node.type == "binary" and child_node.operator == "=" then
+                 return mock_recur_render(child_node.left) .. "==" .. mock_recur_render(child_node.right)
+            end
+            return "complex_expr_mock_("..tostring(child_node.type)..":"..tostring(child_node.operator)..")"
+        end)
+
+        local eq1 = ast.create_binary_operation_node("=",
+            ast.create_binary_operation_node("+",
+                {type="variable", name="x"},
+                {type="variable", name="y"}
+            ),
+            {type="number", value=1}
+        )
+        local var1 = {type="variable", name="x"}
+
+        local node = ast.create_solve_system_node({ eq1 }, { var1 })
+
+        local result = handlers.solve_system(node, mock_recur_render)
+        assert.are.equal("Solve[{x+y==1}, {x}]", result)
+
+        mock_recur_render = original_mock_recur_render
     end)
   end)
 end)

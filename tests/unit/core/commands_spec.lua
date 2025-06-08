@@ -1,9 +1,6 @@
--- tests/unit/core/commands_spec.lua
-
 local spy = require 'luassert.spy'
 local vim_test_env = require 'tests.helpers.vim_test_env'
 local match = require 'luassert.match'
-local vim_inspect = require "vim.inspect"
 
 describe("Tungsten core commands", function()
   local commands_module
@@ -37,7 +34,6 @@ describe("Tungsten core commands", function()
   local eval_async_behaviors = {}
   local parser_behaviors = {}
   local wolfram_to_string_behaviors = {}
-  local solver_behaviors = {}
 
   local modules_to_clear_from_cache = {
     'tungsten.core.commands',
@@ -84,7 +80,7 @@ describe("Tungsten core commands", function()
       if module_path == 'tungsten.state' then return mock_state_module end
       if module_path == 'tungsten.backends.wolfram' then return mock_wolfram_backend_module end
       if module_path == 'tungsten.core.solver' then return mock_solver_module end
-      
+
       if package.loaded[module_path] then return package.loaded[module_path] end
       return original_require(module_path)
     end
@@ -146,7 +142,7 @@ describe("Tungsten core commands", function()
 
     mock_insert_result_insert_result_spy = spy.new(function(_) end)
     mock_insert_result_util_module.insert_result = mock_insert_result_insert_result_spy
-    
+
     mock_logger_notify_spy = spy.new(function () end)
     mock_logger_module.notify = mock_logger_notify_spy
     mock_logger_module.levels = { ERROR = 1, WARN = 2, INFO = 3, DEBUG = 4 }
@@ -154,26 +150,32 @@ describe("Tungsten core commands", function()
     mock_state_module.persistent_variables = {}
 
     wolfram_to_string_behaviors.default = function(ast)
-      if ast and ast.representation then
-        if ast.representation == "parsed:1+1" then return "1+1"
-        elseif ast.representation == "parsed:\\frac{a}{b}" then return "Divide[a,b]"
-        elseif ast.representation == "parsed:error_wolfram_conversion" then error("Simulated Wolfram conversion error from mock_wolfram_backend.to_string")
-        elseif current_to_string_config[ast.representation] then
-            if current_to_string_config[ast.representation].error then error(current_to_string_config[ast.representation].error)
-            else return current_to_string_config[ast.representation].output end
-        end
-        return "wolfram(" .. ast.representation .. ")"
+      if not ast then return "wolfram_conversion_error_nil_ast" end
+
+      if current_to_string_config[ast.representation] then
+          if current_to_string_config[ast.representation].error then error(current_to_string_config[ast.representation].error)
+          else return current_to_string_config[ast.representation].output end
       end
-      return "wolfram_conversion_failed_for_ast_nil_representation"
+
+      if ast.name == "quadratic_eq" then return "wolfram(quadratic_eq)" end
+      if ast.name == "x" then return "wolfram(x)" end
+      if ast.id == "eq1_ast" then return "wolfram(eq1_ast)" end
+      if ast.id == "eq2_ast" then return "wolfram(eq2_ast)" end
+
+      if ast.representation and string.find(ast.representation, "parsed:") then
+        return string.gsub(ast.representation, "parsed:", "")
+      end
+
+      return "wolfram_conversion_failed_for_unknown_ast"
     end
+
     mock_wolfram_backend_to_string_spy = spy.new(function(ast) return wolfram_to_string_behaviors.default(ast) end)
     mock_wolfram_backend_module.to_string = mock_wolfram_backend_to_string_spy
     mock_wolfram_backend_module.reset_and_reinit_handlers = spy.new(function() end)
 
-    solver_behaviors.default = function(text, callback)
-        callback(current_solve_equation_config.result, current_solve_equation_config.err)
-    end
-    mock_solver_solve_equation_async_spy = spy.new(function(text, callback) return solver_behaviors.default(text, callback) end)
+    mock_solver_solve_equation_async_spy = spy.new(function(eqs, vars, is_system, callback)
+      callback(current_solve_equation_config.result, current_solve_equation_config.err)
+    end)
     mock_solver_module.solve_equation_async = mock_solver_solve_equation_async_spy
 
     package.loaded['tungsten.config'] = mock_config_module
@@ -193,7 +195,6 @@ describe("Tungsten core commands", function()
     vim_test_env.cleanup()
     clear_modules_from_cache()
   end)
-
 
   describe(":TungstenEvaluate", function()
     it("should process visual selection, parse, evaluate, and insert result", function()
@@ -265,7 +266,7 @@ describe("Tungsten core commands", function()
       current_parser_config["\\frac{1+1}{2}"] = { output = { type = "expression", representation = "parsed:\\frac{1+1}{2}" } }
       current_eval_async_config_key = "numeric_eval"
 
-      package.loaded['tungsten.core.commands'] = nil 
+      package.loaded['tungsten.core.commands'] = nil
       local temp_commands_module = require("tungsten.core.commands")
       temp_commands_module.tungsten_eval_command({})
 
@@ -275,7 +276,7 @@ describe("Tungsten core commands", function()
       assert.is_true(evaluate_async_calls[1].vals[2])
       assert.spy(mock_insert_result_insert_result_spy).was.called_with("1.0")
 
-      vim_test_env.set_plugin_config({'numeric_mode'}, false) 
+      vim_test_env.set_plugin_config({'numeric_mode'}, false)
     end)
   end)
 
@@ -284,7 +285,7 @@ describe("Tungsten core commands", function()
       local state_before_mock = mock_state_module
       state_before_mock.integrity_marker = "visible_before_reload"
 
-      package.loaded['tungsten.core.commands'] = nil 
+      package.loaded['tungsten.core.commands'] = nil
       local _ = require("tungsten.core.commands")
 
       local state_after_reload_via_package_loaded = package.loaded['tungsten.state']
@@ -442,8 +443,20 @@ describe("Tungsten core commands", function()
   end)
 
   describe(":TungstenSolve", function()
+    local original_ui_input
+
     before_each(function()
-      current_get_visual_selection_text = "a*x^2+b*x+c=0; x"
+      vim_test_env.set_visual_selection(1, 1, 1, 15)
+      current_get_visual_selection_text = "a*x^2+b*x+c=0"
+      current_parser_config["a*x^2+b*x+c=0"] = { output = { type = "equation", name = "quadratic_eq" } }
+      current_parser_config["x"] = { output = { type = "variable", name = "x" } }
+
+      original_ui_input = vim.ui.input
+      vim.ui.input = spy.new(function(opts, on_confirm) on_confirm("x") end)
+    end)
+
+    after_each(function()
+        vim.ui.input = original_ui_input
     end)
 
     it("should call selection.get_visual_selection", function()
@@ -451,53 +464,121 @@ describe("Tungsten core commands", function()
       assert.spy(mock_selection_get_visual_selection_spy).was.called(1)
     end)
 
-    it("should log an error and not proceed if no text is selected", function()
+    it("should log a warning if no text is selected", function()
       current_get_visual_selection_text = ""
       commands_module.tungsten_solve_command({})
-      assert.spy(mock_logger_notify_spy).was.called_with("TungstenSolve: No text selected.", mock_logger_module.levels.ERROR, { title = "Tungsten Error"})
-      assert.spy(mock_solver_solve_equation_async_spy).was_not.called()
+      assert.spy(mock_logger_notify_spy).was.called_with("TungstenSolve: Selected equation text is empty. Will attempt to insert result at selection point.", mock_logger_module.levels.WARN, { title = "Tungsten Warning"})
     end)
 
-    it("should call solver.solve_equation_async with selected text and a callback", function()
-      local selected_text = "a*x^2+b*x+c=0; x"
-      current_get_visual_selection_text = selected_text
+    it("should call solver.solve_equation_async with processed ASTs and a callback", function()
       current_solve_equation_config = { result = "some_solution", err = nil }
-
       commands_module.tungsten_solve_command({})
       assert.spy(mock_solver_solve_equation_async_spy).was.called(1)
-      assert.spy(mock_solver_solve_equation_async_spy).was.called_with(selected_text, match.is_function())
+      assert.spy(mock_solver_solve_equation_async_spy).was.called_with({"wolfram(quadratic_eq)"}, {"wolfram(x)"}, false, match.is_function())
     end)
 
     it("should call insert_result when solver callback provides a solution", function()
       local mock_solution = "x = 1"
       current_solve_equation_config = { result = mock_solution, err = nil }
-
       commands_module.tungsten_solve_command({})
       assert.spy(mock_insert_result_insert_result_spy).was.called(1)
-      assert.spy(mock_insert_result_insert_result_spy).was.called_with(mock_solution)
+      assert.spy(mock_insert_result_insert_result_spy).was.called_with(mock_solution, " \\rightarrow ", match.is_table(), match.is_table(), "a*x^2+b*x+c=0")
     end)
 
     it("should log an error if solver callback provides an error", function()
-      local mock_error_message = "Solver failed"
-      current_solve_equation_config = { result = nil, err = mock_error_message }
-
-      commands_module.tungsten_solve_command({})
-      assert.spy(mock_logger_notify_spy).was.called_with("TungstenSolve: Error during solving: " .. mock_error_message, mock_logger_module.levels.ERROR, { title = "Tungsten Error"})
-      assert.spy(mock_insert_result_insert_result_spy).was_not.called()
+        local mock_error_message = "Solver failed"
+        current_solve_equation_config = { result = nil, err = mock_error_message }
+        commands_module.tungsten_solve_command({})
+        assert.spy(mock_logger_notify_spy).was.called_with("TungstenSolve: Solver error: " .. mock_error_message, mock_logger_module.levels.ERROR, { title = "Tungsten Error"})
     end)
 
     it("should log a warning if solver callback provides no solution (nil) and no error", function()
-      current_solve_equation_config = { result = nil, err = nil }
-      commands_module.tungsten_solve_command({})
-      assert.spy(mock_logger_notify_spy).was.called_with("TungstenSolve: No solution found or an issue occurred.", mock_logger_module.levels.WARN, { title = "Tungsten Warning"})
-      assert.spy(mock_insert_result_insert_result_spy).was_not.called()
+        current_solve_equation_config = { result = nil, err = nil }
+        commands_module.tungsten_solve_command({})
+        assert.spy(mock_logger_notify_spy).was.called_with("TungstenSolve: No solution found.", mock_logger_module.levels.WARN, { title = "Tungsten Warning"})
     end)
 
     it("should log a warning if solver callback provides empty string solution and no error", function()
-      current_solve_equation_config = { result = "", err = nil }
-      commands_module.tungsten_solve_command({})
-      assert.spy(mock_logger_notify_spy).was.called_with("TungstenSolve: No solution found or an issue occurred.", mock_logger_module.levels.WARN, { title = "Tungsten Warning"})
-      assert.spy(mock_insert_result_insert_result_spy).was_not.called()
+        current_solve_equation_config = { result = "", err = nil }
+        commands_module.tungsten_solve_command({})
+        assert.spy(mock_logger_notify_spy).was.called_with("TungstenSolve: No solution found.", mock_logger_module.levels.WARN, { title = "Tungsten Warning"})
+    end)
+  end)
+
+  describe(":TungstenSolveSystem", function()
+    local mock_vim_ui_input_spy
+    local original_vim_ui_input
+
+    before_each(function()
+      original_vim_ui_input = vim.ui.input
+      mock_vim_ui_input_spy = spy.new(function(opts, on_confirm_callback)
+        on_confirm_callback("x,y")
+      end)
+      vim.ui.input = mock_vim_ui_input_spy
+
+      mock_selection_get_visual_selection_spy:clear()
+      mock_parser_parse_spy:clear()
+      mock_insert_result_insert_result_spy:clear()
+      mock_logger_notify_spy:clear()
+      mock_solver_solve_equation_async_spy:clear()
+
+      current_get_visual_selection_text = "eq1=0 \\\\ eq2=0"
+      current_parser_config[current_get_visual_selection_text] = {
+        output = {
+          type = "solve_system_equations_capture",
+          equations = {
+            { type = "equation", id="eq1_ast" },
+            { type = "equation", id="eq2_ast" },
+          }
+        }
+      }
+      current_solve_equation_config = { result = "solution_for_system", err = nil }
+    end)
+
+    after_each(function()
+      vim.ui.input = original_vim_ui_input
+    end)
+
+    it("should process visual selection, prompt for vars, parse, evaluate system, and insert result", function()
+      commands_module.tungsten_solve_system_command({})
+      assert.spy(mock_solver_solve_equation_async_spy).was.called(1)
+      local solver_call_args = mock_solver_solve_equation_async_spy.calls[1].vals
+      assert.are.same({"wolfram(eq1_ast)", "wolfram(eq2_ast)"}, solver_call_args[1])
+      assert.spy(mock_insert_result_insert_result_spy).was.called(1)
+    end)
+
+
+    it("should log error if no text selected for equations", function()
+      current_get_visual_selection_text = ""
+      commands_module.tungsten_solve_system_command({})
+      assert.spy(mock_logger_notify_spy).was.called_with("TungstenSolveSystem: No equations selected.", mock_logger_module.levels.ERROR, { title = "Tungsten Error" })
+      assert.spy(mock_vim_ui_input_spy).was_not.called()
+    end)
+
+    it("should log error if equation parsing fails", function()
+      current_get_visual_selection_text = "bad_equation_system"
+      current_parser_config["bad_equation_system"] = { output = nil }
+      commands_module.tungsten_solve_system_command({})
+      assert.spy(mock_logger_notify_spy).was.called_with("TungstenSolveSystem: Parse error for equations: nil", mock_logger_module.levels.ERROR, { title = "Tungsten Error" })
+    end)
+
+    it("should log error if parsed AST is not 'solve_system_equations_capture'", function()
+      current_get_visual_selection_text = "nota_system"
+      current_parser_config["nota_system"] = { output = { type = "some_other_ast" } }
+      commands_module.tungsten_solve_system_command({})
+      assert.spy(mock_logger_notify_spy).was.called_with("TungstenSolveSystem: Selected text does not form a valid system of equations. Parsed as: some_other_ast", mock_logger_module.levels.ERROR, { title = "Tungsten Error" })
+    end)
+
+    it("should log error if evaluation of solve_system AST fails", function()
+      current_solve_equation_config = { result = nil, err = "System evaluation error" }
+      commands_module.tungsten_solve_system_command({})
+      assert.spy(mock_logger_notify_spy).was.called_with("TungstenSolveSystem: Error during system evaluation: System evaluation error", mock_logger_module.levels.ERROR, { title = "Tungsten Error" })
+    end)
+
+    it("should log warning if evaluation result is nil or empty for system", function()
+      current_solve_equation_config = { result = nil, err = nil }
+      commands_module.tungsten_solve_system_command({})
+      assert.spy(mock_logger_notify_spy).was.called_with("TungstenSolveSystem: No solution found or an issue occurred.", mock_logger_module.levels.WARN, { title = "Tungsten Warning" })
     end)
   end)
 end)

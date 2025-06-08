@@ -50,15 +50,12 @@ function M.register_command(cmd_tbl)
   M.commands[#M.commands+1] = cmd_tbl
 end
 
-
 function M.get_combined_grammar()
   local grammar_def = { "Expression" }
   local rule_providers = {}
 
   table.sort(M.grammar_contributions, function(a, b)
     if a.category ~= b.category then
-      if a.category == "TopLevelRule" and b.category ~= "TopLevelRule" then return true end
-      if b.category == "TopLevelRule" and a.category ~= "TopLevelRule" then return false end
       return a.category < b.category
     end
     if a.domain_priority ~= b.domain_priority then
@@ -75,10 +72,11 @@ function M.get_combined_grammar()
   end
 
   if #M.grammar_contributions == 0 then
-    logger.notify(
-        "Registry: No grammar contributions at all. 'Expression' will default to AtomBase.",
-        logger.levels.ERROR, { title = "Tungsten Registry Error" }
-    )
+    logger.notify("Registry: No grammar contributions. Parser will be empty.", logger.levels.ERROR, { title = "Tungsten Registry Error" })
+    grammar_def.AtomBase = P(false)
+    grammar_def.ExpressionContent = P(false)
+    grammar_def.Expression = P(false)
+    return lpeg_lib.P(grammar_def)
   end
 
   local atom_base_item_patterns = {}
@@ -89,34 +87,19 @@ function M.get_combined_grammar()
       if config.debug then
           logger.notify(("Registry: Adding AtomBaseItem pattern for '%s' from %s."):format(contrib.name, contrib.domain_name), logger.levels.DEBUG, {title="Tungsten Debug"})
       end
-    else
+    else 
       if grammar_def[contrib.name] and rule_providers[contrib.name] then
         local existing_provider = rule_providers[contrib.name]
         if existing_provider.domain_priority < contrib.domain_priority then
-          logger.notify(
-            ("Registry: Rule '%s': %s (Prio %d) overrides %s (Prio %d)."):format(
-              contrib.name, contrib.domain_name, contrib.domain_priority,
-              existing_provider.domain_name, existing_provider.domain_priority),
-            logger.levels.DEBUG, { title = "Tungsten Registry" }
-          )
+          if config.debug then logger.notify(("Registry: Rule '%s': %s (Prio %d) overrides %s (Prio %d)."):format(contrib.name, contrib.domain_name, contrib.domain_priority, existing_provider.domain_name, existing_provider.domain_priority), logger.levels.DEBUG, { title = "Tungsten Registry" }) end
           grammar_def[contrib.name] = contrib.pattern
           rule_providers[contrib.name] = { domain_name = contrib.domain_name, domain_priority = contrib.domain_priority }
         elseif existing_provider.domain_priority == contrib.domain_priority and existing_provider.domain_name ~= contrib.domain_name then
-           logger.notify(
-            ("Registry: Rule '%s': CONFLICT/AMBIGUITY - %s (Prio %d) and %s (Prio %d) have same priority. '%s' takes precedence due to sort order."):format(
-              contrib.name, contrib.domain_name, contrib.domain_priority,
-              existing_provider.domain_name, existing_provider.domain_priority, contrib.domain_name
-            ), logger.levels.WARN, { title = "Tungsten Registry Conflict" }
-          )
-          grammar_def[contrib.name] = contrib.pattern
-          rule_providers[contrib.name] = { domain_name = contrib.domain_name, domain_priority = contrib.domain_priority }
+           if config.debug then logger.notify(("Registry: Rule '%s': CONFLICT/AMBIGUITY - %s (Prio %d) and %s (Prio %d) have same priority. '%s' takes precedence due to sort order."):format(contrib.name, contrib.domain_name, contrib.domain_priority, existing_provider.domain_name, existing_provider.domain_priority, contrib.domain_name), logger.levels.WARN, { title = "Tungsten Registry Conflict" }) end
+           grammar_def[contrib.name] = contrib.pattern
+           rule_providers[contrib.name] = { domain_name = contrib.domain_name, domain_priority = contrib.domain_priority }
         else
-             logger.notify(
-            ("Registry: Rule '%s': %s (Prio %d) NOT overriding %s (Prio %d)."):format(
-              contrib.name, contrib.domain_name, contrib.domain_priority,
-              existing_provider.domain_name, existing_provider.domain_priority),
-            logger.levels.DEBUG, { title = "Tungsten Registry" }
-          )
+            if config.debug then logger.notify(("Registry: Rule '%s': %s (Prio %d) NOT overriding existing from %s (Prio %d)."):format(contrib.name, contrib.domain_name, contrib.domain_priority, existing_provider.domain_name, existing_provider.domain_priority), logger.levels.DEBUG, { title = "Tungsten Registry" }) end
         end
       else
         grammar_def[contrib.name] = contrib.pattern
@@ -130,97 +113,76 @@ function M.get_combined_grammar()
     for i = 2, #atom_base_item_patterns do
       combined_atom_base = combined_atom_base + atom_base_item_patterns[i]
     end
-    grammar_def.AtomBase = combined_atom_base
-                         + (tokens_mod.lbrace * V("Expression") * tokens_mod.rbrace)
-                         + (tokens_mod.lparen * V("Expression") * tokens_mod.rparen)
-                         + (tokens_mod.lbrack * V("Expression") * tokens_mod.rbrack)
+    grammar_def.AtomBase = combined_atom_base +
+                         (tokens_mod.lbrace * V("Expression") * tokens_mod.rbrace) +
+                         (tokens_mod.lparen * V("Expression") * tokens_mod.rparen) +
+                         (tokens_mod.lbrack * V("Expression") * tokens_mod.rbrack)
   else
-    logger.notify("Registry: No 'AtomBaseItem' contributions. AtomBase will be empty.", logger.levels.WARN, { title = "Tungsten Registry" })
-    grammar_def.AtomBase = P(false)
+    logger.notify("Registry: No 'AtomBaseItem' contributions. AtomBase will only be parenthesized expressions.", logger.levels.WARN, { title = "Tungsten Registry" })
+    grammar_def.AtomBase = (tokens_mod.lbrace * V("Expression") * tokens_mod.rbrace) +
+                         (tokens_mod.lparen * V("Expression") * tokens_mod.rparen) +
+                         (tokens_mod.lbrack * V("Expression") * tokens_mod.rbrack) +
+                         P(false)
   end
 
-  local actual_expression_content_pattern
-  local addsub_found = grammar_def.AddSub ~= nil
+  local content_rule_priority = {"AddSub", "MulDiv", "Unary", "SupSub", "AtomBase"}
+  local expression_content_defined = false
+  local addsub_is_defined = grammar_def["AddSub"] ~= nil
+  local chosen_content_rule_name = ""
 
-  if addsub_found then
-    actual_expression_content_pattern = V("AddSub")
-    if config.debug then
-      logger.notify("Registry: ExpressionContent is V('AddSub').", logger.levels.DEBUG, { title = "Tungsten Debug" })
+  for _, rule_name in ipairs(content_rule_priority) do
+    if grammar_def[rule_name] then
+      grammar_def.ExpressionContent = V(rule_name)
+      chosen_content_rule_name = rule_name
+      if config.debug then logger.notify("Registry: ExpressionContent is V('" .. rule_name .. "').", logger.levels.DEBUG, { title = "Tungsten Debug" }) end
+      expression_content_defined = true
+      break
     end
-  else
+  end
+
+  if not addsub_is_defined and expression_content_defined then -- Only if AddSub was NOT defined by any domain
     logger.notify("Registry: Main expression rule 'AddSub' not found. Attempting to find a fallback. This may lead to parsing issues.", logger.levels.WARN, { title = "Tungsten Registry" })
-    if grammar_def.MulDiv then
-      actual_expression_content_pattern = V("MulDiv")
-      if config.debug then
-        logger.notify("Registry: ExpressionContent is V('MulDiv') (fallback from AddSub).", logger.levels.DEBUG, { title = "Tungsten Debug" })
-      end
-      logger.notify("Registry: Using 'MulDiv' as a fallback for 'Expression'.", logger.levels.WARN, { title = "Tungsten Registry" })
-    elseif grammar_def.AtomBase and grammar_def.AtomBase ~= P(false) then
-       actual_expression_content_pattern = V("AtomBase")
-       if config.debug then
-          logger.notify("Registry: ExpressionContent is V('AtomBase') (further fallback from AddSub/MulDiv).", logger.levels.DEBUG, { title = "Tungsten Debug" })
-       end
-       logger.notify("Registry: Using 'AtomBase' as a fallback for 'Expression'.", logger.levels.WARN, { title = "Tungsten Registry" })
-       logger.notify("Registry: No suitable rule found for 'Expression'. Parser will likely fail.", logger.levels.ERROR, { title = "Tungsten Registry Error" })
-    else
-      actual_expression_content_pattern = P(false)
-      logger.notify("Registry: CRITICAL - Cannot define 'ExpressionContent' as AddSub, MulDiv, or AtomBase are missing. Defaulting to P(false).", logger.levels.ERROR, { title = "Tungsten Registry Error" })
-      logger.notify("Registry: No suitable rule found for 'Expression'. Parser will likely fail.", logger.levels.ERROR, { title = "Tungsten Registry Error" })
+    if chosen_content_rule_name == "AtomBase" then
+        logger.notify("Registry: No suitable rule found for 'ExpressionContent' other than AtomBase. Parser may be limited.", logger.levels.ERROR, { title = "Tungsten Registry Error" })
+    elseif chosen_content_rule_name ~= "" and chosen_content_rule_name ~= "AddSub" then 
+        logger.notify("Registry: Using '" .. chosen_content_rule_name .. "' as a fallback for 'ExpressionContent'.", logger.levels.WARN, { title = "Tungsten Registry" })
     end
   end
-  grammar_def.ExpressionContent = actual_expression_content_pattern
 
-  if grammar_def.EquationRule then
-    grammar_def.Expression = V("EquationRule") + actual_expression_content_pattern
-    if config.debug then
-        logger.notify("Registry: Main 'Expression' rule is V('EquationRule') + resolved ExpressionContent pattern.", logger.levels.DEBUG, {title="Tungsten Debug"})
+  if not expression_content_defined then
+    logger.notify("Registry: CRITICAL - Cannot define 'ExpressionContent' as core rules are missing. Defaulting to P(false).", logger.levels.ERROR, { title = "Tungsten Registry Error" })
+    grammar_def.ExpressionContent = P(false)
+  end
+
+
+  local expression_choices = {}
+  for _, contrib in ipairs(M.grammar_contributions) do
+    if contrib.category == "TopLevelRule" then
+      if grammar_def[contrib.name] == contrib.pattern then
+        table.insert(expression_choices, V(contrib.name))
+      end
     end
+  end
+
+  table.insert(expression_choices, V("ExpressionContent"))
+
+  if #expression_choices == 0 then
+    grammar_def.Expression = P(false)
+    logger.notify("Registry: CRITICAL - No rule choices for 'Expression'. Defaulting to P(false).", logger.levels.ERROR, { title = "Tungsten Registry Error"})
   else
-    grammar_def.Expression = actual_expression_content_pattern
-    if config.debug then
-        logger.notify("Registry: Main 'Expression' rule is resolved ExpressionContent pattern (EquationRule missing).", logger.levels.DEBUG, {title="Tungsten Debug"})
+    local final_expression_pattern = expression_choices[1]
+    for i = 2, #expression_choices do
+      final_expression_pattern = final_expression_pattern + expression_choices[i]
     end
+    grammar_def.Expression = final_expression_pattern
   end
 
   if config.debug then
     local keys = {}
-    for k, _ in pairs(grammar_def) do
-      table.insert(keys, tostring(k))
-    end
+    for k, _ in pairs(grammar_def) do table.insert(keys, tostring(k)) end
     table.sort(keys)
-    local key_list_str = table.concat(keys, ", ")
-    logger.notify("Registry: Final grammar definition keys: " .. key_list_str, logger.levels.DEBUG, { title = "Tungsten Debug" })
+    logger.notify("Registry: Final grammar definition keys: " .. table.concat(keys, ", "), logger.levels.DEBUG, { title = "Tungsten Debug" })
   end
-
-  if config.debug then
-    if grammar_def.EquationRule then
-      logger.notify("Registry: DEBUG - EquationRule IS PRESENT in grammar_def.", logger.levels.DEBUG, {title="Tungsten Debug"})
-      logger.notify("Registry: DEBUG - Type of grammar_def.EquationRule: " .. type(grammar_def.EquationRule), logger.levels.DEBUG, {title="Tungsten Debug"})
-      if type(grammar_def.EquationRule) == "function" then
-        logger.notify("Registry: DEBUG - grammar_def.EquationRule IS a function. Attempting to call it...", logger.levels.DEBUG, {title="Tungsten Debug"})
-        local p_ok, pattern_or_error = pcall(grammar_def.EquationRule)
-        if p_ok then
-          logger.notify("Registry: DEBUG - EquationRule function call successful. Returned type: " .. type(pattern_or_error), logger.levels.DEBUG, {title="Tungsten Debug"})
-          if type(pattern_or_error) == "table" and getmetatable(pattern_or_error) and getmetatable(pattern_or_error).__name == "pattern" then
-            logger.notify("Registry: DEBUG - EquationRule function returned a valid LPeg pattern.", logger.levels.DEBUG, {title="Tungsten Debug"})
-          else
-            logger.notify("Registry: DEBUG - EquationRule function DID NOT return a recognizable LPeg pattern. Returned: " .. tostring(pattern_or_error), logger.levels.DEBUG, {title="Tungsten Debug"})
-          end
-        else
-          logger.notify("Registry: DEBUG - EquationRule function call FAILED. Error: " .. tostring(pattern_or_error), logger.levels.DEBUG, {title="Tungsten Debug"})
-        end
-      end
-    else
-      logger.notify("Registry: DEBUG - EquationRule IS NIL/MISSING in grammar_def!", logger.levels.DEBUG, {title="Tungsten Debug"})
-    end
-
-    if grammar_def.AddSub then
-      logger.notify("Registry: DEBUG - AddSub IS PRESENT. Type: " .. type(grammar_def.AddSub), logger.levels.DEBUG, {title="Tungsten Debug"})
-    else
-      logger.notify("Registry: DEBUG - AddSub IS NIL/MISSING in grammar_def!", logger.levels.DEBUG, {title="Tungsten Debug"})
-    end
-  end
-
 
   local ok, compiled_grammar_or_err = pcall(lpeg_lib.P, grammar_def)
   if not ok then
@@ -236,3 +198,4 @@ function M.get_combined_grammar()
 end
 
 return M
+

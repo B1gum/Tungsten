@@ -1,31 +1,48 @@
 local M = {}
 
-local prec = { ["+"] = 1, ["-"] = 1, ["*"] = 2, ["/"] = 2, ["^"] = 3 }
-
-local assoc = {
-  ["+"] = "L",
-  ["-"] = "L",
-  ["*"] = "L",
-  ["/"] = "L",
-  ["^"] = "R"
+local op_attributes = {
+  ["+"] = { prec = 1, assoc = "L", wolfram = "+" },
+  ["-"] = { prec = 1, assoc = "L", wolfram = "-" },
+  ["*"] = { prec = 2, assoc = "L", wolfram = "*" },
+  ["/"] = { prec = 2, assoc = "L", wolfram = "/" },
+  ["^"] = { prec = 3, assoc = "R", wolfram = "^" },
+  ["=="] = { prec = 0, assoc = "N", wolfram = "==" },
+  ["="] = { prec = 0, assoc = "N", wolfram = "==" },
+  ["\\cdot"] = { prec = 2, assoc = "L", wolfram = "*" },
+  ["\\times"] = { prec = 2, assoc = "L", wolfram = "*" },
 }
 
 local function bin_with_parens(node, recur_render)
-  local parent_op = node.operator
-  local parent_prec_val = prec[parent_op]
-  local parent_assoc_val = assoc[parent_op]
+  local parent_op_data = op_attributes[node.operator]
+
+  if not parent_op_data then
+    local logger = require "tungsten.util.logger"
+    logger.notify(
+      "Tungsten Wolfram Handler (bin_with_parens): Undefined operator '" .. tostring(node.operator) ..
+      "'. Rendering directly without precedence.",
+      logger.levels.WARN
+    )
+    local rendered_left_unknown = recur_render(node.left)
+    local rendered_right_unknown = recur_render(node.right)
+    return rendered_left_unknown .. " " .. node.operator .. " " .. rendered_right_unknown
+  end
+
+  local parent_prec_val = parent_op_data.prec
+  local parent_assoc_val = parent_op_data.assoc
+  local wolfram_op_display = parent_op_data.wolfram
 
   local function child_needs_parentheses(child_node, is_left_child_of_parent)
-    if child_node.type ~= "binary" then
+    if not child_node or child_node.type ~= "binary" then
       return false
     end
 
-    local child_op = child_node.operator
-    local child_prec_val = prec[child_op]
+    local child_op_data = op_attributes[child_node.operator]
 
-    if not parent_prec_val or not child_prec_val then
+    if not child_op_data then
       return true
     end
+
+    local child_prec_val = child_op_data.prec
 
     if child_prec_val < parent_prec_val then
       return true
@@ -35,12 +52,15 @@ local function bin_with_parens(node, recur_render)
       return false
     end
 
+    if parent_assoc_val == "N" then
+        return true
+    end
+
     if is_left_child_of_parent then
       return parent_assoc_val == "R"
     else
       return parent_assoc_val == "L"
     end
-
   end
 
   local rendered_left = recur_render(node.left)
@@ -53,9 +73,11 @@ local function bin_with_parens(node, recur_render)
     rendered_right = "(" .. rendered_right .. ")"
   end
 
-  local op_display = node.operator
+  if wolfram_op_display == "^" then
+    return string.format("Power[%s, %s]", rendered_left, rendered_right)
+  end
 
-  return rendered_left .. op_display .. rendered_right
+  return rendered_left .. " " .. wolfram_op_display .. " " .. rendered_right
 end
 
 M.handlers = {
@@ -68,13 +90,15 @@ M.handlers = {
   greek = function(node)
     return node.name
   end,
+
   binary = bin_with_parens,
+
   fraction = function(node, recur_render)
-    return ("(%s)/(%s)"):format(recur_render(node.numerator), recur_render(node.denominator))
+    return string.format("Divide[%s, %s]", recur_render(node.numerator), recur_render(node.denominator))
   end,
   sqrt = function(node, recur_render)
     if node.index then
-      return ("Surd[%s,%s]"):format(recur_render(node.radicand), recur_render(node.index))
+      return ("Surd[%s, %s]"):format(recur_render(node.radicand), recur_render(node.index))
     else
       return ("Sqrt[%s]"):format(recur_render(node.radicand))
     end
@@ -82,71 +106,69 @@ M.handlers = {
   superscript = function(node, recur_render)
     local base_str = recur_render(node.base)
     local exp_str = recur_render(node.exponent)
-    if node.base.type == "variable" or node.base.type == "number" or node.base.type == "greek" or (node.base.type == "function_call" and not string.find(base_str, "%s")) then
-      return base_str .. "^" .. exp_str
-    else
-      return ("Power[%s,%s]"):format(base_str, exp_str)
-    end
+    return ("Power[%s, %s]"):format(base_str, exp_str)
   end,
   subscript = function(node, recur_render)
-    return ("Subscript[%s,%s]"):format(recur_render(node.base), recur_render(node.subscript))
+    return ("Subscript[%s, %s]"):format(recur_render(node.base), recur_render(node.subscript))
   end,
   unary = function(node, recur_render)
-    local value_str = recur_render(node.value)
-    if node.value.type == "binary" then
-         return node.operator .. "(" .. value_str .. ")"
+    local operand_str = recur_render(node.value)
+    if node.operator == "-" then
+        if node.value.type == "binary" then
+            return string.format("(-(%s))", operand_str)
+        else
+            return string.format("(-%s)", operand_str)
+        end
+    else
+        return node.operator .. operand_str
     end
-    return node.operator .. value_str
   end,
   function_call = function(node, recur_render)
     local func_name_map = {
-      sin = "Sin",
-      cos = "Cos",
-      tan = "Tan",
-      arcsin = "ArcSin",
-      arccos = "ArcCos",
-      arctan = "ArcTan",
-      sinh = "Sinh",
-      cosh = "Cosh",
-      tanh = "Tanh",
-      arsinh = "ArcSinh",
-      arcosh = "ArcCosh",
-      artanh = "ArcTanh",
-      log = "Log",
-      ln = "Log",
-      log10 = "Log10",
+      sin = "Sin", cos = "Cos", tan = "Tan", arcsin = "ArcSin", arccos = "ArcCos",
+      arctan = "ArcTan", sinh = "Sinh", cosh = "Cosh", tanh = "Tanh", arsinh = "ArcSinh",
+      arcosh = "ArcCosh", artanh = "ArcTanh", log = "Log", ln = "Log", log10 = "Log10",
       exp = "Exp",
     }
-    local func_name_str = node.name_node.name
+    local func_name_str = (node.name_node and node.name_node.name) or "UnknownFunction"
     local wolfram_func_name = func_name_map[func_name_str:lower()]
 
     if not wolfram_func_name then
-      wolfram_func_name = func_name_str:sub(1,1):upper() .. func_name_str:sub(2)
+      wolfram_func_name = func_name_str:match("^%a") and (func_name_str:sub(1,1):upper() .. func_name_str:sub(2)) or func_name_str
       local logger = require "tungsten.util.logger"
       logger.notify(
-        ("Tungsten Wolfram Handler: No specific mapping for function '%s'. Using capitalized form '%s'."):format(
-          func_name_str,
-          wolfram_func_name
+        ("Tungsten Wolfram Handler: No specific mapping for function '%s'. Using form '%s'."):format(
+          func_name_str, wolfram_func_name
         ),
         logger.levels.WARN
       )
     end
 
     local rendered_args = {}
-    for _, arg_node in ipairs(node.args) do
-      table.insert(rendered_args, recur_render(arg_node))
+    if node.args then
+        for _, arg_node in ipairs(node.args) do
+          table.insert(rendered_args, recur_render(arg_node))
+        end
     end
-
     return ("%s[%s]"):format(wolfram_func_name, table.concat(rendered_args, ", "))
   end,
 
-  equation = function(node, recur_render)
-    local lhs_str = recur_render(node.lhs)
-    local rhs_str = recur_render(node.rhs)
-    return lhs_str .. " == " .. rhs_str
-  end
-}
+  solve_system = function(node, recur_render)
+    local rendered_equations = {}
+    for _, eq_node in ipairs(node.equations) do
+      table.insert(rendered_equations, recur_render(eq_node))
+    end
 
-M.precedence = prec
+    local rendered_variables = {}
+    for _, var_node in ipairs(node.variables) do
+      table.insert(rendered_variables, recur_render(var_node))
+    end
+
+    local equations_str = "{" .. table.concat(rendered_equations, ", ") .. "}"
+    local variables_str = "{" .. table.concat(rendered_variables, ", ") .. "}"
+
+    return ("Solve[%s, %s]"):format(equations_str, variables_str)
+  end,
+}
 
 return M

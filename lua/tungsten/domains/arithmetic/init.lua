@@ -24,17 +24,12 @@ M.metadata = {
     "Fraction",
     "Sqrt",
     "SinFunction",
+    "SolveSystemEquationsCapture",
   }
 }
 
-local minimal_equation_debug_pattern = lpeg.P("=") / function()
-  if config.debug then
-    print("[DEBUG] MinimalEquationDebugRule's action invoked for input '='.")
-  end
-  return { type = "debug_minimal_equals_matched" }
-end
 
-local standard_equation_pattern = (V("ExpressionContent") * tokens_mod.space * tokens_mod.equals_op * tokens_mod.space * V("ExpressionContent")) / function(lhs, _, rhs)
+local standard_equation_pattern = (V("AddSub") * tokens_mod.space * tokens_mod.equals_op * tokens_mod.space * V("AddSub")) / function(lhs, _, rhs)
   return ast_utils.create_binary_operation_node("=", lhs, rhs)
 end
 
@@ -50,6 +45,9 @@ function M.init_grammar()
     local domain_name = M.metadata.name
     local domain_priority = M.metadata.priority
 
+    local equation_rule_priority = domain_priority + 5
+    local solve_system_priority = domain_priority + 10
+
     registry.register_grammar_contribution(domain_name, domain_priority, "Number", tokens_mod.number, "AtomBaseItem")
     registry.register_grammar_contribution(domain_name, domain_priority, "Variable", tokens_mod.variable, "AtomBaseItem")
     registry.register_grammar_contribution(domain_name, domain_priority, "Greek", tokens_mod.Greek, "AtomBaseItem")
@@ -60,7 +58,8 @@ function M.init_grammar()
     registry.register_grammar_contribution(domain_name, domain_priority, "MulDiv", require("tungsten.domains.arithmetic.rules.muldiv"), "MulDiv")
     registry.register_grammar_contribution(domain_name, domain_priority, "AddSub", require("tungsten.domains.arithmetic.rules.addsub"), "AddSub")
     registry.register_grammar_contribution(domain_name, domain_priority, "SinFunction", require("tungsten.domains.arithmetic.rules.trig_functions").SinRule, "AtomBaseItem")
-
+    registry.register_grammar_contribution(domain_name, equation_rule_priority, "EquationRule", equation_pattern_to_register, "TopLevelRule")
+    registry.register_grammar_contribution(domain_name, solve_system_priority, "SolveSystemEquationsCapture", require "tungsten.domains.arithmetic.rules.solve_system_rule", "TopLevelRule")
 
     local equation_pattern_to_register
     if config.debug then

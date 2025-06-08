@@ -156,4 +156,8 @@ function M.create_rank_node(matrix_expression_ast)
   return node("rank", { expression = matrix_expression_ast })
 end
 
+function M.create_solve_system_node(equations_list, variables_list)
+  return node("solve_system", { equations = equations_list, variables = variables_list })
+end
+
 return M

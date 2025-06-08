@@ -10,111 +10,34 @@ local state = require "tungsten.state"
 
 local M = {}
 
-local function split_string(input, sep)
-  if sep == nil then
-    sep = "%s"
-  end
-  local t = {}
-  for str in string.gmatch(input, "([^" .. sep .. "]+)") do
-    table.insert(t, str:match("^%s*(.-)%s*$"))
-  end
-  return t
-end
-
-function M.parse_solve_input(text)
-  local sep_pos = text:find(";", 1, true)
-
-  if not sep_pos then
-    logger.notify("TungstenSolve: Invalid format. Missing semicolon separator. Expected '<EQUATIONS>; <VARS_TO_SOLVE>'.", logger.levels.ERROR, { title = "Tungsten Error" })
-    return nil
-  end
-
-  local equations_block_latex = text:sub(1, sep_pos - 1):match("^%s*(.-)%s*$")
-  local variables_block_str = text:sub(sep_pos + 1):match("^%s*(.-)%s*$")
-
-  if equations_block_latex == "" then
-    logger.notify("TungstenSolve: Equations part cannot be empty.", logger.levels.ERROR, { title = "Tungsten Error" })
-    return nil
-  end
-  if variables_block_str == "" then
-    logger.notify("TungstenSolve: Variables to solve cannot be empty.", logger.levels.ERROR, { title = "Tungsten Error" })
-    return nil
-  end
-
-  local individual_equation_latex_strs = split_string(equations_block_latex, ",")
-  local individual_variable_strs = split_string(variables_block_str, ",")
-
-  if #individual_equation_latex_strs == 0 then
-    logger.notify("TungstenSolve: No equations found after splitting.", logger.levels.ERROR, { title = "Tungsten Error"})
-    return nil
-  end
-  if #individual_variable_strs == 0 then
-    logger.notify("TungstenSolve: No variables found after splitting.", logger.levels.ERROR, { title = "Tungsten Error"})
-    return nil
-  end
-
-  local wolfram_eq_strs = {}
-  for i, eq_latex in ipairs(individual_equation_latex_strs) do
-    local ok_eq, ast_eq_or_err = pcall(parser.parse, eq_latex)
-    if not ok_eq or not ast_eq_or_err then
-      logger.notify("TungstenSolve: Parse error for equation #" .. i .. " ('" .. eq_latex .. "') – " .. tostring(ast_eq_or_err), logger.levels.ERROR, { title = "Tungsten Error" })
-      return nil
-    end
-    local ast_eq = ast_eq_or_err
-
-    if not ast_eq or ast_eq.type ~= "equation" then
-      logger.notify("TungstenSolve: Input for equation #" .. i .. " ('" .. eq_latex .. "') is not a valid equation structure after parsing.", logger.levels.ERROR, { title = "Tungsten Error" })
-      return nil
-    end
-
-    local ok_wolfram, wolfram_eq_str_or_err = pcall(wolfram_backend.to_string, ast_eq)
-
-    if not ok_wolfram or not wolfram_eq_str_or_err or type(wolfram_eq_str_or_err) ~= "string" then
-      logger.notify("TungstenSolve: Failed to convert AST to Wolfram string for equation #" .. i .. " ('" .. eq_latex .. "'): " .. tostring(wolfram_eq_str_or_err), logger.levels.ERROR, { title = "Tungsten Error" })
-      return nil
-    end
-
-    local wolfram_eq_str_before_subst = wolfram_eq_str_or_err
-    local wolfram_eq_str_after_subst = evaluator.substitute_persistent_vars(wolfram_eq_str_before_subst, state.persistent_variables)
-
-    table.insert(wolfram_eq_strs, wolfram_eq_str_after_subst)
-  end
-
-  local parsed_variable_names = {}
-  for i, var_str in ipairs(individual_variable_strs) do
-    local var_ast_check_ok, var_ast_or_error = pcall(parser.parse, var_str)
-    if not var_ast_check_ok or not var_ast_or_error or var_ast_or_error.type ~= "variable" then
-      logger.notify("TungstenSolve: Variable to solve #" .. i .. " ('" .. var_str .. "') is not a valid simple variable.", logger.levels.ERROR, { title = "Tungsten Error" })
-      return nil
-    end
-    table.insert(parsed_variable_names, wolfram_backend.to_string(var_ast_or_error))
-  end
-
-  return {
-    equation_strs = wolfram_eq_strs,
-    variable_strs = parsed_variable_names,
-    is_system = #individual_equation_latex_strs > 1 or #individual_variable_strs > 1
-  }
-end
-
-function M.solve_equation_async(text, callback)
+function M.solve_equation_async(eq_wolfram_strs_table, var_wolfram_strs_table, is_system_solve, callback)
   assert(callback, "solve_equation_async expects a callback to be provided")
+  assert(type(eq_wolfram_strs_table) == "table", "eq_wolfram_strs_table must be a table")
+  assert(type(var_wolfram_strs_table) == "table", "var_wolfram_strs_table must be a table")
 
-  local parsed_input = M.parse_solve_input(text)
-  if not parsed_input then
-    callback(nil, "Failed to parse solve input.")
+  if #eq_wolfram_strs_table == 0 then
+    callback(nil, "No equations provided to solver.")
+    return
+  end
+  if #var_wolfram_strs_table == 0 then
+    callback(nil, "No variables provided to solver.")
     return
   end
 
-  local equations_wolfram_list = "{" .. table.concat(parsed_input.equation_strs, ", ") .. "}"
-  local variables_wolfram_list = "{" .. table.concat(parsed_input.variable_strs, ", ") .. "}"
+  local final_eq_strs = {}
+  for _, eq_str in ipairs(eq_wolfram_strs_table) do
+      table.insert(final_eq_strs, evaluator.substitute_persistent_vars(eq_str, state.persistent_variables))
+  end
+
+  local equations_wolfram_list = "{" .. table.concat(final_eq_strs, ", ") .. "}"
+  local variables_wolfram_list = "{" .. table.concat(var_wolfram_strs_table, ", ") .. "}"
   local wolfram_command = string.format("Solve[%s, %s]", equations_wolfram_list, variables_wolfram_list)
 
   if config.debug then
     logger.notify("TungstenSolve: Wolfram command: " .. wolfram_command, logger.levels.DEBUG, {title = "Tungsten Debug"})
   end
 
-   wolfram_command = "ToString[TeXForm[" .. wolfram_command .. "], CharacterEncoding -> \"UTF8\"]"
+  wolfram_command = "ToString[TeXForm[" .. wolfram_command .. "], CharacterEncoding -> \"UTF8\"]"
 
   local job_id
   local stdout_chunks = {}
@@ -177,30 +100,33 @@ function M.solve_equation_async(text, callback)
         end
 
         if not vim.tbl_isempty(formatted_solutions_map) then
-            if #parsed_input.variable_strs == 1 and formatted_solutions_map[parsed_input.variable_strs[1]] then
-                callback(formatted_solutions_map[parsed_input.variable_strs[1]], nil)
+            if not is_system_solve and #var_wolfram_strs_table == 1 and formatted_solutions_map[var_wolfram_strs_table[1]] then
+                callback(formatted_solutions_map[var_wolfram_strs_table[1]], nil)
             else
                 local solution_strings = {}
-                for _, var_name in ipairs(parsed_input.variable_strs) do
+                for _, var_name in ipairs(var_wolfram_strs_table) do
                     if formatted_solutions_map[var_name] then
                         table.insert(solution_strings, var_name .. " = " .. formatted_solutions_map[var_name])
                     else
-                        table.insert(solution_strings, var_name .. " = Not Found")
+                        table.insert(solution_strings, var_name .. " = (Not explicitly solved)")
                     end
                 end
                 callback(table.concat(solution_strings, ", "), nil)
             end
         else
-          if #parsed_input.variable_strs == 1 and not parsed_input.is_system then
-            local single_var_val = raw_solution_str:match("{{%s*" .. parsed_input.variable_strs[1] .. "%s*->%s*(.-)%s*}}")
-            if single_var_val then
-                 callback(single_var_val:match("^%s*(.-)%s*$"), nil)
+          if not is_system_solve and #var_wolfram_strs_table == 1 then
+            local single_var_name_for_match = vim.pesc(var_wolfram_strs_table[1])
+            local single_var_val_match = raw_solution_str:match("{{%s*" .. single_var_name_for_match .. "%s*->%s*(.-)%s*}}") or
+                                         raw_solution_str:match("{%s*" .. single_var_name_for_match .. "%s*->%s*(.-)%s*}")
+
+            if single_var_val_match then
+                 callback(single_var_val_match:match("^%s*(.-)%s*$"), nil)
             else
                 logger.notify("TungstenSolve: Could not parse single solution from Wolfram output (fallback): " .. raw_solution_str, logger.levels.WARN, { title = "Tungsten Solve" })
                 callback(raw_solution_str, nil)
             end
           else
-            logger.notify("TungstenSolve: Could not parse system solution from Wolfram output (general fallback): " .. raw_solution_str, logger.levels.WARN, { title = "Tungsten Solve" })
+            logger.notify("TungstenSolve: Could not parse solution from Wolfram output (general fallback): " .. raw_solution_str, logger.levels.WARN, { title = "Tungsten Solve" })
             callback(raw_solution_str, nil)
           end
         end
@@ -233,7 +159,7 @@ function M.solve_equation_async(text, callback)
     if state.active_jobs then
       state.active_jobs[job_id] = {
         bufnr = vim.api.nvim_get_current_buf(),
-        expr_key = "solve:" .. text,
+        expr_key = "solve:" .. equations_wolfram_list .. "_for_" .. variables_wolfram_list,
         code_sent = wolfram_command,
         start_time = vim.loop.now(),
       }

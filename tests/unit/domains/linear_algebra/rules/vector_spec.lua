@@ -1,6 +1,4 @@
--- tests/unit/domains/linear_algebra/rules/vector_spec.lua
--- Unit tests for the symbolic vector parsing rule (\vec, \mathbf).
----------------------------------------------------------------------
+-- tungsten/tests/unit/domains/linear_algebra/rules/vector_spec.lua
 
 package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
@@ -8,6 +6,7 @@ local lpeg = require "lpeg"
 local P, V, C, R, S, Ct = lpeg.P, lpeg.V, lpeg.C, lpeg.R, lpeg.S, lpeg.Ct
 
 local VectorRule
+local MatrixRule_module
 
 local mock_tokenizer_module
 local mock_ast_module
@@ -15,6 +14,7 @@ local modules_to_reset = {
   "tungsten.domains.linear_algebra.rules.vector",
   "tungsten.core.tokenizer",
   "tungsten.core.ast",
+  "tungsten.domains.linear_algebra.rules.matrix",
 }
 
 local test_grammar_table_definition
@@ -35,12 +35,18 @@ describe("Linear Algebra Vector Rule (Symbolic): tungsten.domains.linear_algebra
       package.loaded[name] = nil
     end
 
+    local lpeg_P, lpeg_C, lpeg_S, lpeg_R = lpeg.P, lpeg.C, lpeg.S, lpeg.R
+
     mock_tokenizer_module = {
-      space = S(" \t\n\r")^0,
-      lbrace = P("{"),
-      rbrace = P("}"),
-      variable = C(R("az","AZ") * (R("az","AZ","09")^0)) / function(v_str) return variable_node(v_str) end,
-      number = C(R("09")^1) / function(n_str) return number_node(tonumber(n_str)) end,
+      space = lpeg_S(" \t\n\r")^0,
+      lbrace = lpeg_P("{"),
+      rbrace = lpeg_P("}"),
+      variable = lpeg_C(lpeg_R("az","AZ") * (lpeg_R("az","AZ","09")^0)) / function(v_str) return variable_node(v_str) end,
+      number = lpeg_C(lpeg_R("09")^1) / function(n_str) return number_node(tonumber(n_str)) end,
+
+      matrix_env_name_capture = lpeg_C(lpeg_P("pmatrix") + lpeg_P("bmatrix") + lpeg_P("vmatrix")),
+      ampersand = lpeg_P("&") / function() return {type = "ampersand_token_from_mock"} end,
+      double_backslash = lpeg_P("\\\\") / function() return {type = "double_backslash_token_from_mock"} end,
     }
     package.loaded["tungsten.core.tokenizer"] = mock_tokenizer_module
 
@@ -54,27 +60,31 @@ describe("Linear Algebra Vector Rule (Symbolic): tungsten.domains.linear_algebra
       end,
       create_subscript_node = function(base, sub)
         return { type = "subscript", base = base, subscript = sub }
+      end,
+      create_matrix_node = function(rows_table, env_type_str)
+          return {
+              type = "matrix_ast_placeholder",
+              env = env_type_str,
+              mock_rows = rows_table
+          }
       end
     }
     package.loaded["tungsten.core.ast"] = mock_ast_module
 
+    MatrixRule_module = require("tungsten.domains.linear_algebra.rules.matrix")
     VectorRule = require("tungsten.domains.linear_algebra.rules.vector")
 
     local local_mock_space = mock_tokenizer_module.space
-    if not local_mock_space then
-        error("mock_tokenizer_module.space is nil, check mock_tokenizer_module definition.")
-    end
-
     test_grammar_table_definition = {
       "TestEntryPoint",
-      TestEntryPoint = VectorRule * -P(1),
-      Expression = ( mock_tokenizer_module.variable * P("_") * local_mock_space * (mock_tokenizer_module.variable + mock_tokenizer_module.number) / function(b,s) return mock_ast_module.create_subscript_node(b,s) end) +
+      TestEntryPoint = VectorRule * -lpeg_P(1),
+      Expression = ( mock_tokenizer_module.variable * lpeg_P("_") * local_mock_space * (mock_tokenizer_module.variable + mock_tokenizer_module.number) / function(b,s) return mock_ast_module.create_subscript_node(b,s) end) +
                    mock_tokenizer_module.variable +
                    mock_tokenizer_module.number,
-      AtomBase = mock_tokenizer_module.variable + mock_tokenizer_module.number
+      AtomBase = mock_tokenizer_module.variable + mock_tokenizer_module.number,
+      Matrix = MatrixRule_module,
     }
     compiled_test_grammar = lpeg.P(test_grammar_table_definition)
-
   end)
 
   after_each(function()
@@ -167,6 +177,7 @@ describe("Linear Algebra Vector Rule (Symbolic): tungsten.domains.linear_algebra
         "TestEntryPoint",
         TestEntryPoint = VectorRule * C(P(1)^0),
         Expression = mock_tokenizer_module.variable + mock_tokenizer_module.number,
+        Matrix = MatrixRule_module 
       }
       local vec_ast, remainder = lpeg.match(grammar_for_partial_match, "\\vec{a} + b")
       local expected_ast = {
@@ -175,7 +186,7 @@ describe("Linear Algebra Vector Rule (Symbolic): tungsten.domains.linear_algebra
         command = "vec"
       }
       assert.are.same(expected_ast, vec_ast)
-      assert.are.equal(" + b", remainder)
+      assert.are.equal("+ b", remainder)
     end)
   end)
 end)

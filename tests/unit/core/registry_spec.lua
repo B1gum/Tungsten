@@ -272,15 +272,9 @@ describe("tungsten.core.registry", function()
     it("should handle no grammar contributions (logs error, returns P(false) for AtomBase and Expression)", function()
       local grammar = registry_module.get_combined_grammar()
       assert.spy(mock_logger_notify_spy).was.called_with(
-        "Registry: No 'AtomBaseItem' contributions. AtomBase will be empty.",
-        mock_logger_module.levels.WARN, { title = "Tungsten Registry" }
-      )
-      assert.spy(mock_logger_notify_spy).was.called_with(
-        "Registry: No grammar contributions at all. 'Expression' will default to AtomBase.",
+        "Registry: No grammar contributions. Parser will be empty.",
         mock_logger_module.levels.ERROR, { title = "Tungsten Registry Error" }
       )
-      assert.spy(mock_lpeg_P_spy).was.called_with(false)
-      assert.spy(mock_lpeg_V_spy).was.called_with("AtomBase")
 
       local p_calls = mock_lpeg_P_spy.calls
       local final_grammar_def_arg
@@ -292,14 +286,17 @@ describe("tungsten.core.registry", function()
       end
       assert.is_not_nil(final_grammar_def_arg, "Final lpeg.P(grammar_table) call not found")
       assert.are.same(create_mock_pattern("P(false)"), final_grammar_def_arg.AtomBase)
-      assert.are.same(create_mock_pattern("V(AtomBase)"), final_grammar_def_arg.Expression)
+      assert.are.same(create_mock_pattern("P(false)"), final_grammar_def_arg.ExpressionContent)
+      assert.are.same(create_mock_pattern("P(false)"), final_grammar_def_arg.Expression)
       assert.are.same("mock_compiled_grammar_table", grammar)
     end)
 
     it("should compile with AtomBaseItem contributions and default parenthesized/braced/bracketed Expression V-references", function()
       registry_module.register_grammar_contribution("core", 0, "Number", create_mock_pattern("num_pattern"), "AtomBaseItem")
       registry_module.register_grammar_contribution("core", 0, "Variable", create_mock_pattern("var_pattern"), "AtomBaseItem")
+      mock_config_module.debug = true 
       local grammar = registry_module.get_combined_grammar()
+      mock_config_module.debug = false
       assert.are.same("mock_compiled_grammar_table", grammar)
 
       local final_call_arg = mock_lpeg_P_spy.calls[#mock_lpeg_P_spy.calls].vals[1]
@@ -310,60 +307,92 @@ describe("tungsten.core.registry", function()
       assert.truthy(string.find(atom_base_str, "num_pattern"), "AtomBase string missing num_pattern. Got: " .. atom_base_str)
       assert.truthy(string.find(atom_base_str, "var_pattern"), "AtomBase string missing var_pattern. Got: " .. atom_base_str)
       assert.truthy(string.find(atom_base_str, "token.lbrace"), "AtomBase string missing token.lbrace for {Expr}. Got: " .. atom_base_str)
-      assert.truthy(string.find(atom_base_str, "V(Expression)", 1, true), "AtomBase string missing V(Expression). Got: " .. atom_base_str)
+      assert.truthy(string.find(atom_base_str, "(token.lbrace * V(Expression))", 1, true) or string.find(atom_base_str, "(V(Expression) * token.rbrace)", 1, true), "AtomBase string missing V(Expression) in context. Got: " .. atom_base_str)
       assert.truthy(string.find(atom_base_str, "token.rbrace"), "AtomBase string missing token.rbrace for {Expr}. Got: " .. atom_base_str)
       assert.truthy(string.find(atom_base_str, "*"), "AtomBase string missing '*' for concatenation. Got: " .. atom_base_str)
       assert.truthy(string.find(atom_base_str, "+"), "AtomBase string missing '+' for choice. Got: " .. atom_base_str)
 
       assert.spy(mock_logger_notify_spy).was_not.called_with(
-          "Registry: No 'AtomBaseItem' contributions. AtomBase will be empty.",
+          "Registry: No 'AtomBaseItem' contributions. AtomBase will only be parenthesized expressions.",
           mock_logger_module.levels.WARN, { title = "Tungsten Registry" }
       )
-      assert.are.same(create_mock_pattern("V(AtomBase)"), final_call_arg.Expression)
+      assert.are.same(create_mock_pattern("V(AtomBase)"), final_call_arg.ExpressionContent)
+      assert.are.same(create_mock_pattern("V(ExpressionContent)"), final_call_arg.Expression)
+      assert.spy(mock_logger_notify_spy).was.called_with("Registry: ExpressionContent is V('AtomBase').", mock_logger_module.levels.DEBUG, { title = "Tungsten Debug" })
     end)
+
 
     it("Expression rule should default to V('AddSub') if AddSub is defined", function()
       registry_module.register_grammar_contribution("arithmetic", 100, "AddSub", create_mock_pattern("add_sub_pattern"), "AddSub")
       registry_module.register_grammar_contribution("core", 0, "Number", create_mock_pattern("num_pattern"), "AtomBaseItem")
+      mock_config_module.debug = true
       local grammar = registry_module.get_combined_grammar()
+      mock_config_module.debug = false
       assert.are.same("mock_compiled_grammar_table", grammar)
       local final_call_arg = mock_lpeg_P_spy.calls[#mock_lpeg_P_spy.calls].vals[1]
-      assert.are.same(create_mock_pattern("V(AddSub)"), final_call_arg.Expression)
+
+      assert.are.same(create_mock_pattern("V(AddSub)"), final_call_arg.ExpressionContent)
+      assert.are.same(create_mock_pattern("V(ExpressionContent)"), final_call_arg.Expression)
       assert.are.same(create_mock_pattern("add_sub_pattern"), final_call_arg.AddSub)
+      assert.spy(mock_logger_notify_spy).was.called_with("Registry: ExpressionContent is V('AddSub').", mock_logger_module.levels.DEBUG, { title = "Tungsten Debug" })
     end)
 
     it("Expression rule should fall back to another rule if AddSub not defined, and log warning", function()
       registry_module.register_grammar_contribution("arithmetic", 100, "MulDiv", create_mock_pattern("mul_div_pattern"), "MulDiv")
       registry_module.register_grammar_contribution("core", 0, "Number", create_mock_pattern("num_pattern"), "AtomBaseItem")
+      mock_config_module.debug = false
+
+      mock_logger_notify_spy:clear()
       local grammar = registry_module.get_combined_grammar()
+
       assert.are.same("mock_compiled_grammar_table", grammar)
       local final_call_arg = mock_lpeg_P_spy.calls[#mock_lpeg_P_spy.calls].vals[1]
-      assert.are.same(create_mock_pattern("V(MulDiv)"), final_call_arg.Expression)
-      assert.spy(mock_logger_notify_spy).was.called_with(
-        "Registry: Main expression rule 'AddSub' not found. Attempting to find a fallback. This may lead to parsing issues.",
-        mock_logger_module.levels.WARN, { title = "Tungsten Registry" }
-      )
-      assert.spy(mock_logger_notify_spy).was.called_with(
-        "Registry: Using 'MulDiv' as a fallback for 'Expression'.",
-        mock_logger_module.levels.WARN, { title = "Tungsten Registry" }
-      )
+      assert.are.same(create_mock_pattern("V(MulDiv)"), final_call_arg.ExpressionContent)
+      assert.are.same(create_mock_pattern("V(ExpressionContent)"), final_call_arg.Expression)
+
+      local was_warn_addsub_missing_called = false
+      local was_warn_using_muldiv_called = false
+      for _, call in ipairs(mock_logger_notify_spy.calls) do
+        if call.vals[1] == "Registry: Main expression rule 'AddSub' not found. Attempting to find a fallback. This may lead to parsing issues." and call.vals[2] == mock_logger_module.levels.WARN then
+          was_warn_addsub_missing_called = true
+        end
+        if call.vals[1] == "Registry: Using 'MulDiv' as a fallback for 'ExpressionContent'." and call.vals[2] == mock_logger_module.levels.WARN then
+          was_warn_using_muldiv_called = true
+        end
+      end
+      assert.is_true(was_warn_addsub_missing_called, "Warning for AddSub missing not logged. Logs: " .. vim.inspect(mock_logger_notify_spy.calls))
+      assert.is_true(was_warn_using_muldiv_called, "Warning for using MulDiv as fallback for ExpressionContent not logged. Logs: " .. vim.inspect(mock_logger_notify_spy.calls))
     end)
 
     it("Expression rule defaults to V('AtomBase') if no other suitable top-level rule and logs error (AtomBase exists)", function()
         registry_module.register_grammar_contribution("core", 0, "NumberOnly", create_mock_pattern("num_pattern_item"), "AtomBaseItem")
+        mock_config_module.debug = false
+
+        mock_logger_notify_spy:clear()
         local grammar = registry_module.get_combined_grammar()
+
         assert.are.same("mock_compiled_grammar_table", grammar)
         local final_call_arg = mock_lpeg_P_spy.calls[#mock_lpeg_P_spy.calls].vals[1]
-        assert.are.same(create_mock_pattern("V(AtomBase)"), final_call_arg.Expression)
-        assert.spy(mock_logger_notify_spy).was.called_with(
-            "Registry: Main expression rule 'AddSub' not found. Attempting to find a fallback. This may lead to parsing issues.",
-            mock_logger_module.levels.WARN, { title = "Tungsten Registry" }
-        )
-          assert.spy(mock_logger_notify_spy).was.called_with(
-            "Registry: No suitable rule found for 'Expression'. Parser will likely fail.",
-            mock_logger_module.levels.ERROR, { title = "Tungsten Registry Error" }
-        )
+
+        assert.are.same(create_mock_pattern("V(AtomBase)"), final_call_arg.ExpressionContent)
+        assert.are.same(create_mock_pattern("V(ExpressionContent)"), final_call_arg.Expression)
+
+        local was_warn_addsub_missing_called = false
+        local was_error_atombase_fallback_called = false
+        local logged_calls_for_debug = vim.inspect(mock_logger_notify_spy.calls)
+
+        for _, call in ipairs(mock_logger_notify_spy.calls) do
+            if call.vals[1] == "Registry: Main expression rule 'AddSub' not found. Attempting to find a fallback. This may lead to parsing issues." and call.vals[2] == mock_logger_module.levels.WARN then
+              was_warn_addsub_missing_called = true
+            end
+            if call.vals[1] == "Registry: No suitable rule found for 'ExpressionContent' other than AtomBase. Parser may be limited." and call.vals[2] == mock_logger_module.levels.ERROR then
+              was_error_atombase_fallback_called = true
+            end
+        end
+        assert.is_true(was_warn_addsub_missing_called, "Warning for AddSub missing not logged. Logs: " .. logged_calls_for_debug)
+        assert.is_true(was_error_atombase_fallback_called, "Error for AtomBase fallback for ExpressionContent not logged. Logs: " .. logged_calls_for_debug)
     end)
+
 
     it("should correctly sort contributions: by category, then domain_priority (desc), then name (asc)", function()
       mock_config_module.debug = true
@@ -385,19 +414,31 @@ describe("tungsten.core.registry", function()
       mock_config_module.debug = true
       registry_module.register_domain_metadata("LowPrioDomain", { priority = 50 })
       registry_module.register_domain_metadata("HighPrioDomain", { priority = 100 })
+
       registry_module.register_grammar_contribution("LowPrioDomain", 50, "MyRule", create_mock_pattern("low_pattern"), "MyCategory")
       registry_module.register_grammar_contribution("HighPrioDomain", 100, "MyRule", create_mock_pattern("high_pattern"), "MyCategory")
-      registry_module.get_combined_grammar()
+      registry_module.register_grammar_contribution("core", 0, "Number", create_mock_pattern("num_pattern"), "AtomBaseItem")
+
+      mock_logger_notify_spy:clear()
+      local grammar = registry_module.get_combined_grammar()
+
       local final_call_arg = mock_lpeg_P_spy.calls[#mock_lpeg_P_spy.calls].vals[1]
       assert.are.same(create_mock_pattern("high_pattern"), final_call_arg.MyRule)
-      assert.spy(mock_logger_notify_spy).was.called_with(
-        ("Registry: Rule '%s': %s (Prio %d) NOT overriding %s (Prio %d)."):format(
-          "MyRule", "LowPrioDomain", 50, "HighPrioDomain", 100
-        ),
-        mock_logger_module.levels.DEBUG, { title = "Tungsten Registry" }
-      )
+
+      local expected_log_msg = ("Registry: Rule '%s': %s (Prio %d) NOT overriding existing from %s (Prio %d)."):format("MyRule", "LowPrioDomain", 50, "HighPrioDomain", 100)
+      local log_found = false
+      local actual_logs = vim.inspect(mock_logger_notify_spy.calls)
+
+      for _, call in ipairs(mock_logger_notify_spy.calls) do
+        if call.vals[1] == expected_log_msg and call.vals[2] == mock_logger_module.levels.DEBUG and call.vals[3].title == "Tungsten Registry" then
+          log_found = true
+          break
+        end
+      end
+      assert.is_true(log_found, "Expected log for LowPrio NOT overriding HighPrio not found. Expected: '" .. expected_log_msg .. "'. Actual logs: " .. actual_logs)
       mock_config_module.debug = false
     end)
+
 
     it("Rule Non-Overriding: Lower priority does not override higher, logs debug", function()
       mock_config_module.debug = true
@@ -405,34 +446,58 @@ describe("tungsten.core.registry", function()
       registry_module.register_domain_metadata("LowPrioDomain", { priority = 50 })
       registry_module.register_grammar_contribution("HighPrioDomain", 100, "MyRule", create_mock_pattern("high_pattern"), "MyCategory")
       registry_module.register_grammar_contribution("LowPrioDomain", 50, "MyRule", create_mock_pattern("low_pattern"), "MyCategory")
-      registry_module.get_combined_grammar()
+      registry_module.register_grammar_contribution("core", 0, "Number", create_mock_pattern("num_pattern"), "AtomBaseItem")
+
+      mock_logger_notify_spy:clear()
+      local grammar = registry_module.get_combined_grammar()
+
       local final_call_arg = mock_lpeg_P_spy.calls[#mock_lpeg_P_spy.calls].vals[1]
       assert.are.same(create_mock_pattern("high_pattern"), final_call_arg.MyRule)
-      assert.spy(mock_logger_notify_spy).was.called_with(
-        ("Registry: Rule '%s': %s (Prio %d) NOT overriding %s (Prio %d)."):format(
-          "MyRule", "LowPrioDomain", 50, "HighPrioDomain", 100
-        ),
-        mock_logger_module.levels.DEBUG, { title = "Tungsten Registry" }
-      )
+
+      local expected_log_msg = ("Registry: Rule '%s': %s (Prio %d) NOT overriding existing from %s (Prio %d)."):format("MyRule", "LowPrioDomain", 50, "HighPrioDomain", 100)
+      local log_found = false
+      for _, call in ipairs(mock_logger_notify_spy.calls) do
+        if call.vals[1] == expected_log_msg and call.vals[2] == mock_logger_module.levels.DEBUG then
+          log_found = true
+          break
+        end
+      end
+      assert.is_true(log_found, "Expected NON-override log not found. Expected: " .. expected_log_msg)
       mock_config_module.debug = false
     end)
 
     it("Conflict Handling (Same Priority): One takes precedence due to sort order, logs warning", function()
+      mock_config_module.debug = true
       registry_module.register_domain_metadata("DomainA", { priority = 100 })
       registry_module.register_domain_metadata("DomainB", { priority = 100 })
-      registry_module.register_grammar_contribution("DomainA", 100, "MyRule", create_mock_pattern("pattern_A"), "MyCategory")
+
       registry_module.register_grammar_contribution("DomainB", 100, "MyRule", create_mock_pattern("pattern_B"), "MyCategory")
-      registry_module.get_combined_grammar()
+      registry_module.register_grammar_contribution("DomainA", 100, "MyRule", create_mock_pattern("pattern_A"), "MyCategory")
+      registry_module.register_grammar_contribution("core", 0, "Number", create_mock_pattern("num_pattern"), "AtomBaseItem")
+
+      mock_logger_notify_spy:clear()
+      local grammar = registry_module.get_combined_grammar()
+
       local final_call_arg = mock_lpeg_P_spy.calls[#mock_lpeg_P_spy.calls].vals[1]
 
       assert.are.same(create_mock_pattern("pattern_B"), final_call_arg.MyRule)
-      assert.spy(mock_logger_notify_spy).was.called_with(
-        ("Registry: Rule '%s': CONFLICT/AMBIGUITY - %s (Prio %d) and %s (Prio %d) have same priority. '%s' takes precedence due to sort order."):format(
+
+      local expected_conflict_log = ("Registry: Rule '%s': CONFLICT/AMBIGUITY - %s (Prio %d) and %s (Prio %d) have same priority. '%s' takes precedence due to sort order."):format(
           "MyRule", "DomainB", 100, "DomainA", 100, "DomainB"
-        ),
-        mock_logger_module.levels.WARN, { title = "Tungsten Registry Conflict" }
-      )
+        )
+
+      local conflict_log_found = false
+      local actual_logs_for_debug = vim.inspect(mock_logger_notify_spy.calls)
+      for _, call in ipairs(mock_logger_notify_spy.calls) do
+        if call.vals[1] == expected_conflict_log and call.vals[2] == mock_logger_module.levels.WARN and call.vals[3].title == "Tungsten Registry Conflict" then
+          conflict_log_found = true
+          break
+        end
+      end
+      assert.is_true(conflict_log_found, "Expected conflict log for DomainB winning not found. Expected: '" .. expected_conflict_log .. "'. Actual logs: " .. actual_logs_for_debug)
+      mock_config_module.debug = false
     end)
+
 
     it("should return nil and log error if lpeg.P fails on final grammar definition", function()
       registry_module.register_grammar_contribution("core", 0, "Number", create_mock_pattern("num_pattern"), "AtomBaseItem")
@@ -441,8 +506,8 @@ describe("tungsten.core.registry", function()
       mock_lpeg_module.P = spy.new(function(gdef)
         if type(gdef) == "table" and gdef[1] == "Expression" then
           error("mock LPeg compilation error")
-            return create_mock_pattern("P_other_call_in_fail_test(" .. tostring(gdef) .. ")")
         end
+        return create_mock_pattern("P_mock(" .. vim.inspect(gdef) .. ")")
       end)
 
       local grammar = registry_module.get_combined_grammar()
@@ -457,6 +522,7 @@ describe("tungsten.core.registry", function()
 
     it("State Management: ensure get_combined_grammar is relatively stateless for multiple calls", function()
       registry_module.register_grammar_contribution("domain1", 10, "RuleX", create_mock_pattern("patX1"), "CatX")
+      registry_module.register_grammar_contribution("core", 0, "Number", create_mock_pattern("num_pattern"), "AtomBaseItem")
       local grammar1 = registry_module.get_combined_grammar()
       assert.are.same("mock_compiled_grammar_table", grammar1)
       local final_call_arg1 = mock_lpeg_P_spy.calls[#mock_lpeg_P_spy.calls].vals[1]
@@ -466,9 +532,12 @@ describe("tungsten.core.registry", function()
       mock_lpeg_P_spy:clear()
       mock_lpeg_V_spy:clear()
       mock_logger_notify_spy:clear()
+      registry_module.grammar_contributions = {}
+
 
       registry_module.register_grammar_contribution("domain2", 20, "RuleX", create_mock_pattern("patX2_new"), "CatX")
       registry_module.register_grammar_contribution("domain2", 20, "RuleY", create_mock_pattern("patY2"), "CatY")
+      registry_module.register_grammar_contribution("core", 0, "Number2", create_mock_pattern("num_pattern2"), "AtomBaseItem") 
       local grammar2 = registry_module.get_combined_grammar()
       assert.are.same("mock_compiled_grammar_table", grammar2)
       local final_call_arg2 = mock_lpeg_P_spy.calls[#mock_lpeg_P_spy.calls].vals[1]
@@ -487,6 +556,7 @@ describe("tungsten.core.registry", function()
                 return string.find(actual, "Registry: Final grammar definition keys:") and
                        string.find(actual, "AddSub") and
                        string.find(actual, "AtomBase") and
+                       string.find(actual, "ExpressionContent") and 
                        string.find(actual, "Expression")
             end),
             mock_logger_module.levels.DEBUG, { title = "Tungsten Debug" }
@@ -504,5 +574,6 @@ describe("tungsten.core.registry", function()
         )
         mock_config_module.debug = false
     end)
+
   end)
 end)

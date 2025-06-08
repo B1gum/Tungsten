@@ -51,4 +51,10 @@ wk.add({
     ":<C-u>TungstenRank<CR>",
     desc = "Returns the rank of a matrix"
   },
+  {
+    "<leader>tx",
+    ":<C-u>TungstenSolveSystem<CR>",
+    desc = "Solve System of Equations",
+  },
+
 })

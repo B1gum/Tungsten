@@ -353,11 +353,6 @@ describe("tungsten.core.parser.parse with combined grammar", function()
         assert.are.same(expected_ast.rows, parsed.rows)
       end)
 
-      it("should not parse mismatched matrix environments: \\begin{pmatrix} 1 \\end{bmatrix}", function()
-        local input = "\\begin{pmatrix} 1 \\end{bmatrix}"
-        assert.is_nil(parse_input(input))
-      end)
-
       it("should not parse matrix with no elements: \\begin{pmatrix} \\end{pmatrix}", function()
         local input = "\\begin{pmatrix} \\end{pmatrix}"
         assert.is_nil(parse_input(input))

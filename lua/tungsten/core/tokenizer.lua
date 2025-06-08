@@ -44,7 +44,7 @@ local double_backslash = P("\\\\") / function()
   return {type = "double_backslash"}
 end
 
-local equals_op = P("=") / function()
+local equals_op = (P("&"))^-1 * P("=") / function()
   return { type = "equals_op", value = "=" }
 end
 

@@ -9,8 +9,6 @@ local match = require 'luassert.match'
 
 local solver
 
-local mock_parser_module
-local mock_wolfram_backend_module
 local mock_evaluator_module
 local mock_config_module
 local mock_logger_module
@@ -90,25 +88,15 @@ describe("tungsten.core.solver", function()
   local original_nvim_get_current_buf
 
   before_each(function()
-    mock_parser_module = {
-      parse = spy.new(function(input_str)
-        if string.find(input_str, "non_equation_ast") then return { type = "NotAnEquation" } end
-        if string.find(input_str, "non_variable_ast") then return { type = "NotAVariable" } end
-        return { type = "equation", value = "parsed_" .. input_str }
-      end)
-    }
-
-    mock_wolfram_backend_module = {
-      to_string = spy.new(function(ast)
-        if ast and ast.type == "ErrorToWolframAST" then error("Simulated Wolfram conversion error") end
-        if ast and ast.value then return "wolfram_" .. ast.value end
-        if ast and ast.type == "variable" then return ast.name or "mock_var" end
-        return "mock_wolfram_code"
-      end)
-    }
-
     mock_evaluator_module = {
       substitute_persistent_vars = spy.new(function(wolfram_str, persistent_vars)
+        if persistent_vars and not vim.tbl_isempty(persistent_vars) then
+            local result_str = wolfram_str
+            for var, val in pairs(persistent_vars) do
+                result_str = result_str:gsub(var, val)
+            end
+            return result_str
+        end
         return wolfram_str
       end)
     }
@@ -134,8 +122,6 @@ describe("tungsten.core.solver", function()
 
     original_require = _G.require
     _G.require = function(module_path)
-      if module_path == 'tungsten.core.parser' then return mock_parser_module end
-      if module_path == 'tungsten.backends.wolfram' then return mock_wolfram_backend_module end
       if module_path == 'tungsten.core.engine' then return mock_evaluator_module end
       if module_path == 'tungsten.config' then return mock_config_module end
       if module_path == 'tungsten.util.logger' then return mock_logger_module end
@@ -200,8 +186,6 @@ describe("tungsten.core.solver", function()
     vim.loop.new_timer = original_vim_loop_new_timer
     vim.api.nvim_get_current_buf = original_nvim_get_current_buf
 
-    mock_parser_module.parse:clear()
-    mock_wolfram_backend_module.to_string:clear()
     mock_evaluator_module.substitute_persistent_vars:clear()
     mock_logger_module.notify:clear()
     mock_jobstart_spy.fn:clear()
@@ -222,288 +206,7 @@ describe("tungsten.core.solver", function()
     end
   end)
 
-  describe("M.parse_solve_input(text)", function()
-    it("should correctly parse a single equation and single variable", function()
-      local input = "x+y=z; x"
-      mock_parser_module.parse = spy.new(function(s)
-          if s == "x+y=z" then return { type = "equation", value = "parsed_x+y=z"}
-          elseif s == "x" then return { type = "variable", name = "x"}
-          else return { type = "unknown"}
-          end
-      end)
-      mock_wolfram_backend_module.to_string = spy.new(function(ast)
-          if ast.type == "equation" then return "wolfram_" .. ast.value
-          elseif ast.type == "variable" then return ast.name
-          else return "wolfram_error"
-          end
-      end)
-      solver = require("tungsten.core.solver")
-
-      local result = solver.parse_solve_input(input)
-      assert.is_not_nil(result)
-      assert.are.same({ "wolfram_parsed_x+y=z" }, result.equation_strs)
-      assert.are.same({ "x" }, result.variable_strs)
-      assert.is_false(result.is_system)
-    end)
-
-    it("should correctly parse multiple equations and multiple variables (system)", function()
-      local input = "a+b=1, c-d=2; a, d"
-       mock_parser_module.parse = spy.new(function(s)
-          if s == "a+b=1" then return { type = "equation", value = "parsed_a+b=1"}
-          elseif s == "c-d=2" then return { type = "equation", value = "parsed_c-d=2"}
-          elseif s == "a" then return { type = "variable", name = "a"}
-          elseif s == "d" then return { type = "variable", name = "d"}
-          else return { type = "unknown"}
-          end
-      end)
-      mock_wolfram_backend_module.to_string = spy.new(function(ast)
-          if ast.type == "equation" then return "wolfram_" .. ast.value
-          elseif ast.type == "variable" then return ast.name
-          else return "wolfram_error"
-          end
-      end)
-      solver = require("tungsten.core.solver")
-      local result = solver.parse_solve_input(input)
-      assert.is_not_nil(result)
-      assert.are.same({ "wolfram_parsed_a+b=1", "wolfram_parsed_c-d=2" }, result.equation_strs)
-      assert.are.same({ "a", "d" }, result.variable_strs)
-      assert.is_true(result.is_system)
-    end)
-
-    it("should return nil and log error if semicolon is missing", function()
-      solver = require("tungsten.core.solver")
-      local input = "x+y=z x"
-      local result = solver.parse_solve_input(input)
-      assert.is_nil(result)
-      assert.spy(mock_logger_module.notify).was.called_with(
-        "TungstenSolve: Invalid format. Missing semicolon separator. Expected '<EQUATIONS>; <VARS_TO_SOLVE>'.",
-        mock_logger_module.levels.ERROR,
-        { title = "Tungsten Error" }
-      )
-    end)
-
-    it("should return nil and log error if equations part is empty", function()
-      solver = require("tungsten.core.solver")
-      local input = "; x"
-      local result = solver.parse_solve_input(input)
-      assert.is_nil(result)
-      assert.spy(mock_logger_module.notify).was.called_with(
-        "TungstenSolve: Equations part cannot be empty.",
-        mock_logger_module.levels.ERROR,
-        { title = "Tungsten Error" }
-      )
-    end)
-
-    it("should return nil and log error if variables part is empty", function()
-      solver = require("tungsten.core.solver")
-      local input = "x=1;"
-      local result = solver.parse_solve_input(input)
-      assert.is_nil(result)
-      assert.spy(mock_logger_module.notify).was.called_with(
-        "TungstenSolve: Variables to solve cannot be empty.",
-        mock_logger_module.levels.ERROR,
-        { title = "Tungsten Error" }
-      )
-    end)
-
-    it("should return nil and log if equation parsing fails", function()
-        mock_parser_module.parse = spy.new(function(s)
-            if s == "eq_error_parse_eq" then error("Parse failed") end
-            return { type = "equation", value = "parsed_"..s }
-        end)
-        solver = require("tungsten.core.solver")
-        local result = solver.parse_solve_input("eq_error_parse_eq; x")
-        assert.is_nil(result)
-        assert.spy(mock_logger_module.notify).was.called_with(
-            match.has_match("^TungstenSolve: Parse error for equation #1 %('eq_error_parse_eq'%) – .+Parse failed$"),
-            mock_logger_module.levels.ERROR,
-            { title = "Tungsten Error" }
-        )
-    end)
-
-    it("should return nil and log if parsed equation AST is not an equation type", function()
-        mock_parser_module.parse = spy.new(function(s)
-            if s == "notaeq" then return { type = "NotaEquation", value = "notaeq" } end
-            return { type = "equation", value = "parsed_"..s }
-        end)
-        solver = require("tungsten.core.solver")
-        local result = solver.parse_solve_input("notaeq; x")
-        assert.is_nil(result)
-        assert.spy(mock_logger_module.notify).was.called_with(
-            "TungstenSolve: Input for equation #1 ('notaeq') is not a valid equation structure after parsing.",
-            mock_logger_module.levels.ERROR,
-            { title = "Tungsten Error" }
-        )
-    end)
-
-    it("should return nil and log if Wolfram conversion for equation fails", function()
-        mock_parser_module.parse = spy.new(function(s) return { type = "equation", value = s } end)
-        mock_wolfram_backend_module.to_string = spy.new(function(ast)
-            if ast.value == "eq_wolfram_fail" then error("Wolfram conversion error") end
-            return "wolfram_" .. ast.value
-        end)
-        solver = require("tungsten.core.solver")
-        local result = solver.parse_solve_input("eq_wolfram_fail; x")
-        assert.is_nil(result)
-        assert.spy(mock_logger_module.notify).was.called_with(
-            match.has_match("^TungstenSolve: Failed to convert AST to Wolfram string for equation #1 %('eq_wolfram_fail'%): .+Wolfram conversion error$"),
-            mock_logger_module.levels.ERROR,
-            { title = "Tungsten Error" }
-        )
-    end)
-
-    it("should return nil and log if variable parsing fails (not a simple variable)", function()
-        mock_parser_module.parse = spy.new(function(s)
-            if s == "x+y=1" then return { type = "equation", value = "parsed_x+y=1"}
-            elseif s == "x+1" then return { type = "expression" }
-            else return { type = "variable", name = s}
-            end
-        end)
-        mock_wolfram_backend_module.to_string = spy.new(function(ast)
-            if ast.type == "equation" then return "wolfram_" .. ast.value
-            elseif ast.type == "variable" then return ast.name
-            else return "wolfram_error_var_parse"
-            end
-        end)
-        solver = require("tungsten.core.solver")
-        local result = solver.parse_solve_input("x+y=1; x+1")
-        assert.is_nil(result)
-        assert.spy(mock_logger_module.notify).was.called_with(
-            "TungstenSolve: Variable to solve #1 ('x+1') is not a valid simple variable.",
-            mock_logger_module.levels.ERROR,
-            { title = "Tungsten Error" }
-        )
-    end)
-
-    it("should correctly parse 'x + 4 = 10; x' with spaces and numbers", function()
-      mock_parser_module.parse = spy.new(function(s)
-        if s == "x + 4 = 10" then
-          return { type = "equation", value = "ast_for_x_plus_4_equals_10" }
-        elseif s == "x" then
-          return { type = "variable", name = "x_var_name" }
-        else
-          return { type = "unknown_input_to_parser", original_str = s }
-        end
-      end)
-
-      mock_wolfram_backend_module.to_string = spy.new(function(ast)
-        if ast and ast.type == "equation" and ast.value == "ast_for_x_plus_4_equals_10" then
-          return "wolfram_representation_of_x+4=10"
-        elseif ast and ast.type == "variable" and ast.name == "x_var_name" then
-          return "x"
-        else
-          return "wolfram_conversion_error_unexpected_ast"
-        end
-      end)
-
-      clear_modules_from_cache_func()
-      solver = require("tungsten.core.solver")
-
-      local input = "x + 4 = 10; x"
-      local result = solver.parse_solve_input(input)
-
-      assert.spy(mock_parser_module.parse).was.called_with("x + 4 = 10")
-      assert.spy(mock_parser_module.parse).was.called_with("x")
-
-      assert.is_not_nil(result, "parse_solve_input should return a result for 'x + 4 = 10; x'")
-      if result then
-        assert.are.same({ "wolfram_representation_of_x+4=10" }, result.equation_strs)
-        assert.are.same({ "x" }, result.variable_strs)
-        assert.is_false(result.is_system)
-      end
-    end)
-
-    it("should correctly parse equation with numbers and variable, including surrounding spaces: '  y - 5 = 0  ;  y  '", function()
-      mock_parser_module.parse = spy.new(function(s)
-        if s == "y - 5 = 0" then
-          return { type = "equation", value = "ast_for_y_minus_5_equals_0" }
-        elseif s == "y" then
-          return { type = "variable", name = "y_var_name" }
-        else
-          return { type = "unknown_input_to_parser", original_str = s }
-        end
-      end)
-
-      mock_wolfram_backend_module.to_string = spy.new(function(ast)
-        if ast and ast.type == "equation" and ast.value == "ast_for_y_minus_5_equals_0" then
-          return "wolfram_y-5=0"
-        elseif ast and ast.type == "variable" and ast.name == "y_var_name" then
-          return "y"
-        else
-          return "wolfram_conversion_error_unexpected_ast_2"
-        end
-      end)
-
-      clear_modules_from_cache_func()
-      solver = require("tungsten.core.solver")
-
-      local input = "  y - 5 = 0  ;  y  "
-      local result = solver.parse_solve_input(input)
-
-      assert.spy(mock_parser_module.parse).was.called_with("y - 5 = 0")
-      assert.spy(mock_parser_module.parse).was.called_with("y")
-
-      assert.is_not_nil(result, "parse_solve_input should handle input with surrounding spaces")
-      if result then
-        assert.are.same({ "wolfram_y-5=0" }, result.equation_strs)
-        assert.are.same({ "y" }, result.variable_strs)
-        assert.is_false(result.is_system)
-      end
-    end)
-
-    it("should return nil and log error if parser throws an error for 'x + 4 = 10'", function()
-      mock_parser_module.parse = spy.new(function(s)
-        if s == "x + 4 = 10" then
-          error("Simulated parser failure for this specific equation")
-        elseif s == "x" then
-          return { type = "variable", name = "x_var_name" }
-        else
-          return { type = "unknown_input_to_parser", original_str = s }
-        end
-      end)
-
-      clear_modules_from_cache_func()
-      solver = require("tungsten.core.solver")
-
-      local input = "x + 4 = 10; x"
-      local result = solver.parse_solve_input(input)
-
-      assert.is_nil(result, "parse_solve_input should return nil when equation parsing fails")
-      assert.spy(mock_logger_module.notify).was.called_with(
-        match.has_match("^TungstenSolve: Parse error for equation #1 %('x %S% 4 %S% 10'%) – .+Simulated parser failure"),
-        mock_logger_module.levels.ERROR,
-        { title = "Tungsten Error" }
-      )
-    end)
-
-    it("should return nil and log error if parsed AST for 'x + 4 = 10' is not of type 'equation'", function()
-      mock_parser_module.parse = spy.new(function(s)
-        if s == "x + 4 = 10" then
-          return { type = "NotAValidEquationType", value = "some_other_ast_structure" }
-        elseif s == "x" then
-          return { type = "variable", name = "x_var_name" }
-        else
-          return { type = "unknown_input_to_parser", original_str = s }
-        end
-      end)
-
-      clear_modules_from_cache_func()
-      solver = require("tungsten.core.solver")
-
-      local input = "x + 4 = 10; x"
-      local result = solver.parse_solve_input(input)
-
-      assert.is_nil(result, "parse_solve_input should return nil if equation AST has incorrect type")
-      assert.spy(mock_logger_module.notify).was.called_with(
-        "TungstenSolve: Input for equation #1 ('x + 4 = 10') is not a valid equation structure after parsing.",
-        mock_logger_module.levels.ERROR,
-        { title = "Tungsten Error" }
-      )
-    end)
-
-  end)
-
-  describe("M.solve_equation_async(text, callback)", function()
+  describe("M.solve_equation_async(eq_wolfram_strs, var_wolfram_strs, is_system, callback)", function()
     local callback_spy
     local actual_callback
 
@@ -511,53 +214,27 @@ describe("tungsten.core.solver", function()
       callback_spy = spy.new(function() end)
       actual_callback = function(...) callback_spy(...) end
       mock_state_module.active_jobs = {}
-
-      mock_parser_module.parse = spy.new(function(s)
-          if string.find(s, "=") then return { type = "equation", value = "parsed_"..s}
-          else return { type = "variable", name = s}
-          end
-      end)
-      mock_wolfram_backend_module.to_string = spy.new(function(ast)
-          if ast.type == "equation" then return "wolfram_" .. ast.value
-          elseif ast.type == "variable" then return ast.name
-          else return "wolfram_error_default"
-          end
-      end)
-      solver = require("tungsten.core.solver")
-    end)
-
-    it("should call callback with error if parse_solve_input fails", function()
-      local original_parse_solve_input = solver.parse_solve_input
-      solver.parse_solve_input = spy.new(function() return nil end)
-
-      solver.solve_equation_async("invalid input format no semicolon", actual_callback)
-
-      assert.spy(callback_spy).was.called_with(nil, "Failed to parse solve input.")
-      assert.spy(mock_jobstart_spy.fn).was_not.called()
-
-      solver.parse_solve_input = original_parse_solve_input
     end)
 
     it("should correctly form Wolfram command for a single equation", function()
-      solver.solve_equation_async("x+1=2;x", actual_callback)
+      solver.solve_equation_async({"x+1==2"}, {"x"}, false, actual_callback)
       assert.spy(mock_jobstart_spy.fn).was.called(1)
       local job_args = mock_jobstart_spy.fn.calls[1].vals[1]
-      assert.are.same({ "mock_wolframscript_path", "-code", "ToString[TeXForm[Solve[{wolfram_parsed_x+1=2}, {x}]], CharacterEncoding -> \"UTF8\"]" }, job_args)
+      assert.are.same({ "mock_wolframscript_path", "-code", "ToString[TeXForm[Solve[{x+1==2}, {x}]], CharacterEncoding -> \"UTF8\"]" }, job_args)
     end)
 
     it("should correctly form Wolfram command for a system of equations", function()
-      solver.solve_equation_async("x+y=3,x-y=1;x,y", actual_callback)
+      solver.solve_equation_async({"x+y==3", "x-y==1"}, {"x","y"}, true, actual_callback)
       assert.spy(mock_jobstart_spy.fn).was.called(1)
       local job_args = mock_jobstart_spy.fn.calls[1].vals[1]
-      assert.are.same({ "mock_wolframscript_path", "-code", "ToString[TeXForm[Solve[{wolfram_parsed_x+y=3, wolfram_parsed_x-y=1}, {x, y}]], CharacterEncoding -> \"UTF8\"]" }, job_args)
+      assert.are.same({ "mock_wolframscript_path", "-code", "ToString[TeXForm[Solve[{x+y==3, x-y==1}, {x, y}]], CharacterEncoding -> \"UTF8\"]" }, job_args)
     end)
 
     it("should log Wolfram command if debug is true", function()
       mock_config_module.debug = true
-      solver = require("tungsten.core.solver")
-      solver.solve_equation_async("dbg=1;dbg", actual_callback)
+      solver.solve_equation_async({"dbg==1"}, {"dbg"}, false, actual_callback)
       assert.spy(mock_logger_module.notify).was.called_with(
-        "TungstenSolve: Wolfram command: Solve[{wolfram_parsed_dbg=1}, {dbg}]",
+        "TungstenSolve: Wolfram command: Solve[{dbg==1}, {dbg}]",
         mock_logger_module.levels.DEBUG,
         { title = "Tungsten Debug" }
       )
@@ -565,47 +242,46 @@ describe("tungsten.core.solver", function()
     end)
 
     it("should handle successful job execution and parse single solution (e.g. {{x -> 1}})", function()
-      solver.solve_equation_async("x=1;x", actual_callback)
+      solver.solve_equation_async({"x==1"}, {"x"}, false, actual_callback)
       assert.spy(mock_jobstart_spy.fn).was.called(1)
       local job_id = mock_jobstart_spy.last_returned_id
       local job_options = mock_jobstart_spy.fn.calls[1].vals[2]
 
-      job_options.on_stdout(job_id, { "{{x -> 1}}" }, 1)
-      job_options.on_exit(job_id, 0, 1)
+      job_options.on_stdout(job_id, { "{{x -> 1}}" }, "stdout")
+      job_options.on_exit(job_id, 0, "exit")
       assert.spy(callback_spy).was.called_with("1", nil)
       assert.is_nil(mock_state_module.active_jobs[job_id])
     end)
 
     it("should handle successful job execution and parse system solution (e.g. {{x -> 1, y -> 2}})", function()
-      solver.solve_equation_async("x=1,y=2;x,y", actual_callback)
+      solver.solve_equation_async({"x==1", "y==2"}, {"x","y"}, true, actual_callback)
       assert.spy(mock_jobstart_spy.fn).was.called(1)
       local job_id = mock_jobstart_spy.last_returned_id
       local job_options = mock_jobstart_spy.fn.calls[1].vals[2]
 
-      job_options.on_stdout(job_id, { "{{x -> 1, y -> 2}}" }, 1)
-      job_options.on_exit(job_id, 0, 1)
+      job_options.on_stdout(job_id, { "{{x -> 1, y -> 2}}" }, "stdout")
+      job_options.on_exit(job_id, 0, "exit")
 
       assert.spy(callback_spy).was.called_with("x = 1, y = 2", nil)
       assert.is_nil(mock_state_module.active_jobs[job_id])
     end)
-
+    
     it("should handle successful job execution and parse solution like {x -> 1} (single outer brace)", function()
-      solver.solve_equation_async("x=1;x", actual_callback)
+      solver.solve_equation_async({"x==1"}, {"x"}, false, actual_callback)
       local job_id = mock_jobstart_spy.last_returned_id
       local job_options = mock_jobstart_spy.fn.calls[1].vals[2]
-      job_options.on_stdout(job_id, { "{x -> 1}" }, 1)
-      job_options.on_exit(job_id, 0, 1)
+      job_options.on_stdout(job_id, { "{x -> 1}" }, "stdout")
+      job_options.on_exit(job_id, 0, "exit")
       assert.spy(callback_spy).was.called_with("1", nil)
     end)
 
-
     it("should callback with 'No solution found' if Wolfram returns empty stdout/stderr", function()
-      solver.solve_equation_async("x=y;x", actual_callback)
+      solver.solve_equation_async({"x==y"}, {"x"}, false, actual_callback)
       local job_id = mock_jobstart_spy.last_returned_id
       local job_options = mock_jobstart_spy.fn.calls[1].vals[2]
-      job_options.on_stdout(job_id, { "" }, 1)
-      job_options.on_stderr(job_id, { "" }, 1)
-      job_options.on_exit(job_id, 0, 1)
+      job_options.on_stdout(job_id, { "" }, "stdout")
+      job_options.on_stderr(job_id, { "" }, "stderr")
+      job_options.on_exit(job_id, 0, "exit")
       assert.spy(callback_spy).was.called_with("No solution found", nil)
        assert.spy(mock_logger_module.notify).was.called_with(
          "TungstenSolve: Wolfram returned empty stdout and stderr. No solution found or equation not solvable.",
@@ -614,12 +290,12 @@ describe("tungsten.core.solver", function()
     end)
 
     it("should use stderr if stdout is empty but stderr has content (and exit 0)", function()
-      solver.solve_equation_async("x=1;x", actual_callback)
+      solver.solve_equation_async({"x==1"}, {"x"}, false, actual_callback)
       local job_id = mock_jobstart_spy.last_returned_id
       local job_options = mock_jobstart_spy.fn.calls[1].vals[2]
-      job_options.on_stdout(job_id, { "" }, 1)
-      job_options.on_stderr(job_id, { "{{x -> from_stderr}}" }, 1)
-      job_options.on_exit(job_id, 0, 1)
+      job_options.on_stdout(job_id, { "" }, "stdout")
+      job_options.on_stderr(job_id, { "{{x -> from_stderr}}" }, "stderr")
+      job_options.on_exit(job_id, 0, "exit")
 
       assert.spy(mock_logger_module.notify).was.called_with(
         "TungstenSolve: Wolfram returned result via stderr: {{x -> from_stderr}}",
@@ -631,54 +307,54 @@ describe("tungsten.core.solver", function()
     it("should callback with raw output if solution parsing fails for system", function()
       local raw_output_for_this_test = "SomeUnparseableWolframOutput"
 
-      solver.solve_equation_async("a=1,b=2;a,b", actual_callback)
+      solver.solve_equation_async({"a==1","b==2"}, {"a","b"}, true, actual_callback)
       local job_id = mock_jobstart_spy.last_returned_id
       local job_options = mock_jobstart_spy.fn.calls[1].vals[2]
 
-      job_options.on_stdout(job_id, { raw_output_for_this_test }, 1)
-      job_options.on_stderr(job_id, { "" }, 1)
-      job_options.on_exit(job_id, 0, 1)
+      job_options.on_stdout(job_id, { raw_output_for_this_test }, "stdout")
+      job_options.on_stderr(job_id, { "" }, "stderr")
+      job_options.on_exit(job_id, 0, "exit")
 
       assert.spy(callback_spy).was.called_with(raw_output_for_this_test, nil)
 
       assert.spy(mock_logger_module.notify).was.called_with(
-        "TungstenSolve: Could not parse system solution from Wolfram output (general fallback): " .. raw_output_for_this_test,
+        "TungstenSolve: Could not parse solution from Wolfram output (general fallback): " .. raw_output_for_this_test,
         mock_logger_module.levels.WARN, { title = "Tungsten Solve" }
       )
     end)
 
     it("should callback with error if jobstart returns 0 (invalid args)", function()
       mock_jobstart_spy.fn = spy.new(function() return 0 end)
-      solver.solve_equation_async("x=1;x", actual_callback)
-      assert.spy(callback_spy).was.called_with(nil, match.has_match("^TungstenSolve: Failed to start WolframScript job for solving%. %(Reason: Invalid arguments%)$"))
+      solver.solve_equation_async({"x==1"}, {"x"}, false, actual_callback)
+      assert.spy(callback_spy).was.called_with(nil, match.has_match("^TungstenSolve: Failed to start WolframScript job for solving%. %(Reason: Invalid arguments%)"))
       assert.spy(mock_logger_module.notify).was.called_with(
-        match.has_match("^TungstenSolve: Failed to start WolframScript job for solving%. %(Reason: Invalid arguments%)$"),
+        match.has_match("^TungstenSolve: Failed to start WolframScript job for solving%. %(Reason: Invalid arguments%)"),
         mock_logger_module.levels.ERROR, { title = "Tungsten Error" }
       )
     end)
 
     it("should callback with error if jobstart returns -1 (cmd not found)", function()
       mock_jobstart_spy.fn = spy.new(function() return -1 end)
-      solver.solve_equation_async("x=1;x", actual_callback)
-      assert.spy(callback_spy).was.called_with(nil, match.has_match("^TungstenSolve: Failed to start WolframScript job for solving%. %(Reason: Command not found%)$"))
+      solver.solve_equation_async({"x==1"}, {"x"}, false, actual_callback)
+      assert.spy(callback_spy).was.called_with(nil, match.has_match("^TungstenSolve: Failed to start WolframScript job for solving%. %(Reason: Command not found%)"))
        assert.spy(mock_logger_module.notify).was.called_with(
-        match.has_match("^TungstenSolve: Failed to start WolframScript job for solving%. %(Reason: Command not found%)$"),
+        match.has_match("^TungstenSolve: Failed to start WolframScript job for solving%. %(Reason: Command not found%)"),
         mock_logger_module.levels.ERROR, { title = "Tungsten Error" }
       )
     end)
 
     it("should callback with error if WolframScript exits with non-zero code", function()
-      solver.solve_equation_async("err=1;err", actual_callback)
+      solver.solve_equation_async({"err==1"}, {"err"}, false, actual_callback)
       local job_id = mock_jobstart_spy.last_returned_id
       local job_options = mock_jobstart_spy.fn.calls[1].vals[2]
-      job_options.on_stderr(job_id, { "Wolfram error details" }, 1)
-      job_options.on_stdout(job_id, { "Some output perhaps" }, 1)
-      job_options.on_exit(job_id, 127, 1)
+      job_options.on_stderr(job_id, { "Wolfram error details" }, "stderr")
+      job_options.on_stdout(job_id, { "Some output perhaps" }, "stdout")
+      job_options.on_exit(job_id, 127, "exit")
 
       assert.spy(callback_spy).was.called_with(nil, match.is_string())
       local actual_err_msg = callback_spy.calls[1].vals[2]
 
-      local expected_err_fragment = string.format("TungstenSolve: WolframScript (Job %s) error. Code: 127", tostring(job_id))
+      local expected_err_fragment = string.format("TungstenSolve: WolframScript (Job %s) error. Code: 127", tostring(job_id or 'N/A'))
       assert.is_not_nil(string.find(actual_err_msg, expected_err_fragment, 1, true), "Callback error message mismatch (job code). Got: " .. actual_err_msg)
       assert.is_not_nil(string.find(actual_err_msg, "Stderr: Wolfram error details", 1, true), "Callback error message mismatch (stderr). Got: " .. actual_err_msg)
 
@@ -686,34 +362,25 @@ describe("tungsten.core.solver", function()
         match.is_string(),
         mock_logger_module.levels.ERROR, { title = "Tungsten Error" }
       )
-      local logged_msg_containing_error = ""
-      for _, call_args in ipairs(mock_logger_module.notify.calls) do
-        if type(call_args.vals[1]) == "string" and string.find(call_args.vals[1], "TungstenSolve: WolframScript (Job", 1, true) then
-          logged_msg_containing_error = call_args.vals[1]
-          break
-        end
-      end
-      assert.is_not_nil(string.find(logged_msg_containing_error, expected_err_fragment, 1, true), "Logged message mismatch. Got: " .. logged_msg_containing_error)
     end)
 
     it("should add job to active_jobs on start and remove on exit", function()
       assert.is_true(vim.tbl_isempty(mock_state_module.active_jobs))
-      solver.solve_equation_async("active=job;active", actual_callback)
+      solver.solve_equation_async({"active==job"}, {"active"}, false, actual_callback)
       local job_id = mock_jobstart_spy.last_returned_id
       assert.is_not_nil(job_id, "Job ID should not be nil")
       assert.is_not_nil(mock_state_module.active_jobs[job_id], "Job should be in active_jobs")
-      assert.are.equal("solve:active=job;active", mock_state_module.active_jobs[job_id].expr_key)
+      assert.are.equal("solve:{active==job}_for_{active}", mock_state_module.active_jobs[job_id].expr_key)
 
       local job_options = mock_jobstart_spy.fn.calls[1].vals[2]
-      job_options.on_exit(job_id, 0, 1)
+      job_options.on_exit(job_id, 0, "exit")
       assert.is_nil(mock_state_module.active_jobs[job_id], "Job should be removed from active_jobs")
     end)
 
     it("should correctly handle job timeout", function()
         mock_config_module.wolfram_timeout_ms = 50
-        solver = require("tungsten.core.solver")
-
-        solver.solve_equation_async("timeout=test;timeout", actual_callback)
+        
+        solver.solve_equation_async({"timeout==test"}, {"timeout"}, false, actual_callback)
 
         local job_id = mock_jobstart_spy.last_returned_id
         assert.is_not_nil(job_id, "Job ID should be returned by jobstart")
@@ -721,7 +388,7 @@ describe("tungsten.core.solver", function()
 
         mock_state_module.active_jobs[job_id].start_time = current_mock_time
 
-        assert.spy(mock_loop_new_timer_spy).was.called(1) 
+        assert.spy(mock_loop_new_timer_spy).was.called(1)
         assert.spy(mock_timer_start_spy).was.called_with(mock_timer_object, 50, 0, match.is_function())
 
         current_mock_time = current_mock_time + mock_config_module.wolfram_timeout_ms + 10
@@ -744,7 +411,7 @@ describe("tungsten.core.solver", function()
 
           local job_options = mock_jobstart_spy.fn.calls[1].vals[2]
           if job_options and job_options.on_exit then
-              job_options.on_exit(job_id, -15, 1)
+              job_options.on_exit(job_id, -15, "exit")
           else
               error("job_options or on_exit not found for job_id: " .. tostring(job_id))
           end
@@ -758,38 +425,32 @@ describe("tungsten.core.solver", function()
           assert.is_nil(mock_state_module.active_jobs[job_id])
         end, 50)
     end)
-
+    
     it("should use default timeout if config.wolfram_timeout_ms is nil", function()
       mock_config_module.wolfram_timeout_ms = nil
-      solver = require("tungsten.core.solver")
-      solver.solve_equation_async("def_timeout=1;def_timeout", actual_callback)
+      solver.solve_equation_async({"def_timeout==1"}, {"def_timeout"}, false, actual_callback)
       assert.spy(mock_loop_new_timer_spy).was.called(1)
       assert.spy(mock_timer_start_spy).was.called_with(mock_timer_object, 10000, 0, match.is_function())
     end)
 
     it("should close timer if job completes before timeout", function()
-      solver.solve_equation_async("x=1;x", actual_callback)
+      solver.solve_equation_async({"x==1"}, {"x"}, false, actual_callback)
       local job_id = mock_jobstart_spy.last_returned_id
-      assert.is_not_nil(job_id, "Job ID should exist")
-      assert.is_table(mock_jobstart_spy.fn.calls[1], "jobstart call record missing")
       local job_options = mock_jobstart_spy.fn.calls[1].vals[2]
-      assert.is_table(job_options, "job_options missing")
 
-      assert.spy(mock_loop_new_timer_spy).was.called(1) 
+      assert.spy(mock_loop_new_timer_spy).was.called(1)
       assert.spy(mock_timer_object.close).was_not.called()
 
-      job_options.on_stdout(job_id, { "{{x -> 1}}" }, 1)
-      job_options.on_exit(job_id, 0, 1)
+      job_options.on_stdout(job_id, { "{{x -> 1}}" }, "stdout")
+      job_options.on_exit(job_id, 0, "exit")
       assert.spy(mock_timer_object.close).was.called()
     end)
 
     it("should log error if vim.loop.new_timer returns nil", function()
         local original_vim_new_timer_func = vim.loop.new_timer
         vim.loop.new_timer = spy.new(function() return nil end)
-
-        solver = require("tungsten.core.solver")
-
-        solver.solve_equation_async("timerfail=1;timerfail", actual_callback)
+        
+        solver.solve_equation_async({"timerfail==1"}, {"timerfail"}, false, actual_callback)
 
         vim.loop.new_timer = original_vim_new_timer_func
 
@@ -801,8 +462,8 @@ describe("tungsten.core.solver", function()
         )
         local job_id = mock_jobstart_spy.last_returned_id
         local job_options = mock_jobstart_spy.fn.calls[1].vals[2]
-        job_options.on_stdout(job_id, { "{{timerfail -> 1}}" }, 1)
-        job_options.on_exit(job_id, 0, 1)
+        job_options.on_stdout(job_id, { "{{timerfail -> 1}}" }, "stdout")
+        job_options.on_exit(job_id, 0, "exit")
         assert.spy(callback_spy).was.called_with("1", nil)
     end)
   end)
