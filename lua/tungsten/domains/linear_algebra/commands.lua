@@ -38,7 +38,7 @@ local function tungsten_gauss_eliminate_command(_)
       logger.notify("TungstenGaussEliminate: No result from evaluation.", logger.levels.WARN, { title = "Tungsten Warning" })
       return
     end
-    insert_result_util.insert_result(result)
+    insert_result_util.insert_result(result, " \\rightarrow ")
   end)
 end
 
@@ -116,7 +116,7 @@ local function tungsten_rank_command(_)
 
   local rank_ast_node = ast.create_rank_node(matrix_ast_node)
 
-  local use_numeric_mode = true -- Or config.numeric_mode if symbolic rank is a desired output
+  local use_numeric_mode = true
 
   evaluator.evaluate_async(rank_ast_node, use_numeric_mode, function(result, err)
     if err then
@@ -127,10 +127,39 @@ local function tungsten_rank_command(_)
       logger.notify("TungstenRank: No result from evaluation (expected a number).", logger.levels.WARN, { title = "Tungsten Warning" })
       return
     end
-    insert_result_util.insert_result(result)
+    insert_result_util.insert_result(result, " \\rightarrow ")
   end)
 end
 
+local function tungsten_eigenvalue_command(_)
+    local visual_selection_text = selection.get_visual_selection()
+    if visual_selection_text == "" or visual_selection_text == nil then
+        logger.notify("TungstenEigenvalue: No matrix selected.", logger.levels.ERROR, { title = "Tungsten Error" })
+        return
+    end
+
+    local parse_ok, matrix_ast_node = pcall(parser.parse, visual_selection_text)
+    if not parse_ok or not matrix_ast_node or matrix_ast_node.type ~= "matrix" then
+        logger.notify("TungstenEigenvalue: The selected text is not a valid matrix. Parsed as: " .. (matrix_ast_node and matrix_ast_node.type or "nil"), logger.levels.ERROR, { title = "Tungsten Error" })
+        return
+    end
+
+    local eigenvalues_ast_node = ast.create_eigenvalues_node(matrix_ast_node)
+
+    local use_numeric_mode = config.numeric_mode
+
+    evaluator.evaluate_async(eigenvalues_ast_node, use_numeric_mode, function(result, err)
+        if err then
+            logger.notify("TungstenEigenvalue: Error during evaluation: " .. tostring(err), logger.levels.ERROR, { title = "Tungsten Error" })
+            return
+        end
+        if result == nil or result == "" then
+            logger.notify("TungstenEigenvalue: No result from evaluation.", logger.levels.WARN, { title = "Tungsten Warning" })
+            return
+        end
+        insert_result_util.insert_result(result, " \\rightarrow ")
+    end)
+end
 
 vim.api.nvim_create_user_command(
   "TungstenGaussEliminate",
@@ -150,9 +179,15 @@ vim.api.nvim_create_user_command(
   { range = true, desc = "Calculate the rank of the selected LaTeX matrix" }
 )
 
+vim.api.nvim_create_user_command(
+  "TungstenEigenvalue",
+  tungsten_eigenvalue_command,
+  { range = true, desc = "Calculate the eigenvalues of the selected LaTeX matrix" }
+)
 
 return {
   tungsten_gauss_eliminate_command = tungsten_gauss_eliminate_command,
   tungsten_linear_independent_command = tungsten_linear_independent_command,
-    tungsten_rank_command = tungsten_rank_command,
+  tungsten_rank_command = tungsten_rank_command,
+  tungsten_eigenvalue_command = tungsten_eigenvalue_command,
 }

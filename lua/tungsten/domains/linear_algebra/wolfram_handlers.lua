@@ -153,7 +153,12 @@ M.handlers = {
   rank = function(node, recur_render)
     local matrix_str = recur_render(node.expression)
     return ("MatrixRank[%s]"):format(matrix_str)
-  end
+  end,
+
+  eigenvalues = function(node, recur_render)
+    local matrix_str = recur_render(node.expression)
+    return ("Eigenvalues[%s]"):format(matrix_str)
+  end,
 }
 
 return M

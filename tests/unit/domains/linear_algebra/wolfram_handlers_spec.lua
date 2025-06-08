@@ -333,4 +333,44 @@ describe("Tungsten Linear Algebra Domain Wolfram Handlers", function()
         assert.spy(mock_recur_render).was.called_with(complex_matrix_node)
     end)
   end)
+  describe("eigenvalues handler", function()
+    it("should correctly format Eigenvalues[matrix_representation]", function()
+      local matrix_expr_node = ast_node("matrix_placeholder", { name = "MyEigenMatrix" })
+      local node = ast_node("eigenvalues", { expression = matrix_expr_node })
+
+      mock_recur_render:clear()
+      mock_recur_render = spy.new(function(child_node)
+        if child_node == matrix_expr_node then
+          return "RenderedMatrixForEigen"
+        end
+        return "unexpected_child_in_eigenvalues_test"
+      end)
+
+      local result = handlers.eigenvalues(node, mock_recur_render)
+      assert.are.equal("Eigenvalues[RenderedMatrixForEigen]", result)
+      assert.spy(mock_recur_render).was.called_with(matrix_expr_node)
+    end)
+
+    it("should correctly render with a complex matrix AST passed to recur_render", function()
+        local complex_matrix_node = ast_node("matrix", {
+            rows = {
+                { ast_node("number", { value = 2 }), ast_node("number", { value = -1 }) },
+                { ast_node("number", { value = 1 }), ast_node("number", { value = 2 }) },
+            }
+        })
+        local eigenvalues_node = ast_node("eigenvalues", {expression = complex_matrix_node})
+
+        mock_recur_render:clear()
+        mock_recur_render = spy.new(function(node_to_render)
+            if node_to_render == complex_matrix_node then
+                return "{{2,-1},{1,2}}"
+            end
+            return "rendered_unexpected_child"
+        end)
+
+        local result = handlers.eigenvalues(eigenvalues_node, mock_recur_render)
+        assert.are.equal("Eigenvalues[{{2,-1},{1,2}}]", result)
+        assert.spy(mock_recur_render).was.called_with(complex_matrix_node)
+    end)
+  end)
 end)

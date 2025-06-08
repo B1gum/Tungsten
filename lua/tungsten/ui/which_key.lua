@@ -56,5 +56,9 @@ wk.add({
     ":<C-u>TungstenSolveSystem<CR>",
     desc = "Solve System of Equations",
   },
-
+  {
+    "<leader>ty",
+    ":<C-u>TungstenEigenvalue<CR>",
+    desc = "Find eigenvalues of a matrix",
+  },
 })
