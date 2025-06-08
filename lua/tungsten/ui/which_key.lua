@@ -61,4 +61,14 @@ wk.add({
     ":<C-u>TungstenEigenvalue<CR>",
     desc = "Find eigenvalues of a matrix",
   },
+  {
+    "<leader>tz",
+    ":<C-u>TungstenEigenvector<CR>",
+    desc = "Find eigenvectors of a matrix",
+  },
+  {
+    "<leader>tq",
+    ":<C-u>TungstenEigensystem<CR>",
+    desc = "Find eigensystem of a matrix",
+  },
 })

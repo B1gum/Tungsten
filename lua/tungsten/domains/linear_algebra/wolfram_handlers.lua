@@ -159,6 +159,16 @@ M.handlers = {
     local matrix_str = recur_render(node.expression)
     return ("Eigenvalues[%s]"):format(matrix_str)
   end,
+
+  eigenvectors = function(node, recur_render)
+    local matrix_str = recur_render(node.expression)
+    return ("Eigenvectors[%s]"):format(matrix_str)
+  end,
+
+  eigensystem = function(node, recur_render)
+    local matrix_str = recur_render(node.expression)
+    return ("Eigensystem[%s]"):format(matrix_str)
+  end,
 }
 
 return M

@@ -161,6 +161,66 @@ local function tungsten_eigenvalue_command(_)
     end)
 end
 
+local function tungsten_eigenvector_command(_)
+    local visual_selection_text = selection.get_visual_selection()
+    if visual_selection_text == "" or visual_selection_text == nil then
+        logger.notify("TungstenEigenvector: No matrix selected.", logger.levels.ERROR, { title = "Tungsten Error" })
+        return
+    end
+
+    local parse_ok, matrix_ast_node = pcall(parser.parse, visual_selection_text)
+    if not parse_ok or not matrix_ast_node or matrix_ast_node.type ~= "matrix" then
+        logger.notify("TungstenEigenvector: The selected text is not a valid matrix. Parsed as: " .. (matrix_ast_node and matrix_ast_node.type or "nil"), logger.levels.ERROR, { title = "Tungsten Error" })
+        return
+    end
+
+    local eigenvectors_ast_node = ast.create_eigenvectors_node(matrix_ast_node)
+
+    local use_numeric_mode = config.numeric_mode
+
+    evaluator.evaluate_async(eigenvectors_ast_node, use_numeric_mode, function(result, err)
+        if err then
+            logger.notify("TungstenEigenvector: Error during evaluation: " .. tostring(err), logger.levels.ERROR, { title = "Tungsten Error" })
+            return
+        end
+        if result == nil or result == "" then
+            logger.notify("TungstenEigenvector: No result from evaluation.", logger.levels.WARN, { title = "Tungsten Warning" })
+            return
+        end
+        insert_result_util.insert_result(result, " \\rightarrow ")
+    end)
+end
+
+local function tungsten_eigensystem_command(_)
+    local visual_selection_text = selection.get_visual_selection()
+    if visual_selection_text == "" or visual_selection_text == nil then
+        logger.notify("TungstenEigensystem: No matrix selected.", logger.levels.ERROR, { title = "Tungsten Error" })
+        return
+    end
+
+    local parse_ok, matrix_ast_node = pcall(parser.parse, visual_selection_text)
+    if not parse_ok or not matrix_ast_node or matrix_ast_node.type ~= "matrix" then
+        logger.notify("TungstenEigensystem: The selected text is not a valid matrix. Parsed as: " .. (matrix_ast_node and matrix_ast_node.type or "nil"), logger.levels.ERROR, { title = "Tungsten Error" })
+        return
+    end
+
+    local eigensystem_ast_node = ast.create_eigensystem_node(matrix_ast_node)
+
+    local use_numeric_mode = config.numeric_mode
+
+    evaluator.evaluate_async(eigensystem_ast_node, use_numeric_mode, function(result, err)
+        if err then
+            logger.notify("TungstenEigensystem: Error during evaluation: " .. tostring(err), logger.levels.ERROR, { title = "Tungsten Error" })
+            return
+        end
+        if result == nil or result == "" then
+            logger.notify("TungstenEigensystem: No result from evaluation.", logger.levels.WARN, { title = "Tungsten Warning" })
+            return
+        end
+        insert_result_util.insert_result(result, " \\rightarrow ")
+    end)
+end
+
 vim.api.nvim_create_user_command(
   "TungstenGaussEliminate",
   tungsten_gauss_eliminate_command,
@@ -185,9 +245,23 @@ vim.api.nvim_create_user_command(
   { range = true, desc = "Calculate the eigenvalues of the selected LaTeX matrix" }
 )
 
+vim.api.nvim_create_user_command(
+  "TungstenEigenvector",
+  tungsten_eigenvector_command,
+  { range = true, desc = "Calculate the eigenvectors of the selected LaTeX matrix" }
+)
+
+vim.api.nvim_create_user_command(
+  "TungstenEigensystem",
+  tungsten_eigensystem_command,
+  { range = true, desc = "Calculate the eigensystem (eigenvalues and eigenvectors) of the selected LaTeX matrix" }
+)
+
 return {
   tungsten_gauss_eliminate_command = tungsten_gauss_eliminate_command,
   tungsten_linear_independent_command = tungsten_linear_independent_command,
   tungsten_rank_command = tungsten_rank_command,
   tungsten_eigenvalue_command = tungsten_eigenvalue_command,
+  tungsten_eigenvector_command = tungsten_eigenvector_command,
+  tungsten_eigensystem_command = tungsten_eigensystem_command,
 }
