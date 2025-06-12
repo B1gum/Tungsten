@@ -8,7 +8,7 @@ local space = tk.space
 local SingleEquation = V("EquationRule")
 
 local EquationSeparator = space * (P("\\\\") + P(";")) * space
-local EquationList = Ct(SingleEquation * (EquationSeparator * SingleEquation)^0)
+local EquationList = Ct(SingleEquation * (EquationSeparator * SingleEquation)^1)
 
 local SolveSystemEquationsPattern = EquationList
 

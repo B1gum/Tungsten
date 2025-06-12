@@ -1,16 +1,16 @@
--- tungsten/tests/unit/domains/linear_algebra/rules/smart_supersub_spec.lua
+-- tungsten/tests/unit/domains/arithmetic/rules/supersub_spec.lua
 package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
 local lpeg = require "lpeg"
 local P, V, C, R, S, Cg, Ct, Cf = lpeg.P, lpeg.V, lpeg.C, lpeg.R, lpeg.S, lpeg.Cg, lpeg.Ct, lpeg.Cf
 
-local SmartSupSubRule
-local SmartUnaryRule
+local SupSubRule
+local UnaryRule
 
 local mock_tokenizer_module
 local mock_ast_module
 local modules_to_reset = {
-  "tungsten.domains.linear_algebra.rules.smart_supersub",
+  "tungsten.domains.arithmetic.rules.supersub",
   "tungsten.core.tokenizer",
   "tungsten.core.ast",
 }
@@ -42,7 +42,7 @@ local function base_node(name_or_val, type, sub_props)
   return node
 end
 
-describe("Linear Algebra SmartSupSub Rule: tungsten.domains.linear_algebra.rules.smart_supersub", function()
+describe("Arithmetic SupSub Rule: tungsten.domains.arithmetic.rules.supersub", function()
 
   before_each(function()
     for _, name in ipairs(modules_to_reset) do
@@ -80,15 +80,15 @@ describe("Linear Algebra SmartSupSub Rule: tungsten.domains.linear_algebra.rules
     }
     package.loaded["tungsten.core.ast"] = mock_ast_module
 
-    local SmartSS = require("tungsten.domains.linear_algebra.rules.smart_supersub")
-    SmartSupSubRule = SmartSS.SmartSupSub
-    SmartUnaryRule = SmartSS.SmartUnary
+    local Rules = require("tungsten.domains.arithmetic.rules.supersub")
+    SupSubRule = Rules.SupSub
+    UnaryRule = Rules.Unary
 
     local exponent_token_content = mock_tokenizer_module.variable + mock_tokenizer_module.number + (P"expComplex" / function() return {type="complex_exponent_placeholder"} end)
 
     test_grammar_table_definition = {
       "TestEntryPoint",
-      TestEntryPoint = SmartUnaryRule * -P(1),
+      TestEntryPoint = UnaryRule * -P(1),
 
       AtomBase = mock_tokenizer_module.matrix_placeholder +
                  mock_tokenizer_module.vector_placeholder +
@@ -189,7 +189,7 @@ describe("Linear Algebra SmartSupSub Rule: tungsten.domains.linear_algebra.rules
     end)
   end)
 
-  describe("Arithmetic Fallback (Superscript/Power)", function()
+  describe("Standard Superscript/Power Operations", function()
     it("should parse x^2 as superscript", function()
       local input = "x^2"
       local expected = mock_ast_module.create_superscript_node(base_node("x", "variable"), base_node(2, "number"))
@@ -233,7 +233,7 @@ describe("Linear Algebra SmartSupSub Rule: tungsten.domains.linear_algebra.rules
     end)
   end)
 
-  describe("Arithmetic Fallback (Subscript)", function()
+  describe("Standard Subscript Operations", function()
     it("should parse x_i as subscript", function()
       local input = "x_i"
       local expected = mock_ast_module.create_subscript_node(base_node("x", "variable"), base_node("i", "variable"))
@@ -253,7 +253,7 @@ describe("Linear Algebra SmartSupSub Rule: tungsten.domains.linear_algebra.rules
     end)
   end)
 
-  describe("SmartUnary integration", function()
+  describe("Unary integration", function()
     it("should parse -MatrixA^T as unary minus of transpose",function()
       local input = "-MatrixA^T"
       local transpose_node = mock_ast_module.create_transpose_node(base_node("A", "matrix"))

@@ -77,6 +77,40 @@ wk.add({
     desc = "Eigensystem",
   },
   {
+    "<leader>td",
+    group = "Differential Equations",
+  },
+  {
+    "<leader>tdo",
+    ":<C-u>TungstenSolveODE<CR>",
+    desc = "Solve ODE",
+  },
+  {
+    "<leader>tds",
+    ":<C-u>TungstenSolveODESystem<CR>",
+    desc = "Solve ODE System",
+  },
+  {
+    "<leader>tdw",
+    ":<C-u>TungstenWronskian<CR>",
+    desc = "Wronskian",
+  },
+  {
+    "<leader>tdl",
+    ":<C-u>TungstenLaplace<CR>",
+    desc = "Laplace Transform",
+  },
+  {
+    "<leader>tdi",
+    ":<C-u>TungstenInverseLaplace<CR>",
+    desc = "Inverse Laplace Transform",
+  },
+  {
+    "<leader>tdc",
+    ":<C-u>TungstenConvolve<CR>",
+    desc = "Convolution",
+  },
+  {
     "<leader>tc",
     group = "Cache",
   },

@@ -1,28 +1,21 @@
 -- lua/tungsten/domains/calculus/rules/ordinary_derivatives.lua
--- Defines the lpeg rule for parsing ordinary derivatives like \frac{d}{dx} f(x)
+-- Defines the lpeg rule for parsing ordinary derivatives including Leibniz, Lagrange, and Newton notations.
 
 local lpeg = require "lpeg"
-local P, V, Cg, Ct = lpeg.P, lpeg.V, lpeg.Cg, lpeg.Ct
+local P, V, C, R, S, Ct, Cg, Cf = lpeg.P, lpeg.V, lpeg.C, lpeg.R, lpeg.S, lpeg.Ct, lpeg.Cg, lpeg.Cf
 
 local tk = require "tungsten.core.tokenizer"
 local space = tk.space
 local ast = require "tungsten.core.ast"
 
 local d_operator_match = P("\\mathrm{d}") + P("d")
-
 local variable_of_diff_capture_cg = Cg(tk.variable, "variable")
-
 local order_content_atom = V("AtomBase")
-
 local flexible_order_capture = Cg( (tk.lbrace * space * order_content_atom * space * tk.rbrace) + order_content_atom, "order")
 local superscript_part_capturing_order = P("^") * space * flexible_order_capture
-
-local superscript_part_for_denominator_var_match = P("^") * space * ( (tk.lbrace * space * order_content_atom * space * tk.rbrace) + order_content_atom )
-
 local expression_to_diff_capture = Cg(V("Expression"), "expression")
-
 local denominator_variable_part = d_operator_match * space * variable_of_diff_capture_cg
-local denominator_segment_full = denominator_variable_part * superscript_part_for_denominator_var_match
+local denominator_segment_full = denominator_variable_part * (P("^") * space * order_content_atom)
 local denominator_segment_simple = denominator_variable_part
 
 local higher_order_derivative_frac_structure =
@@ -47,7 +40,7 @@ local first_order_derivative_frac_structure =
 
 local following_expression_segment = space * expression_to_diff_capture
 
-local ordinary_derivative_higher_order_rule =
+local leibniz_higher_order_rule =
   Ct(higher_order_derivative_frac_structure * following_expression_segment) / function(captures)
     return ast.create_ordinary_derivative_node(
       captures.expression,
@@ -56,7 +49,7 @@ local ordinary_derivative_higher_order_rule =
     )
 end
 
-local ordinary_derivative_first_order_rule =
+local leibniz_first_order_rule =
   Ct(first_order_derivative_frac_structure * following_expression_segment) / function(captures)
     return ast.create_ordinary_derivative_node(
       captures.expression,
@@ -65,6 +58,45 @@ local ordinary_derivative_first_order_rule =
     )
   end
 
-local OrdinaryDerivative = ordinary_derivative_higher_order_rule + ordinary_derivative_first_order_rule
+local LeibnizNotation = leibniz_higher_order_rule + leibniz_first_order_rule
+
+local func_identifier = tk.variable
+local primes = C(P"'"^1)
+local args = tk.lparen * space * Cg(V("Expression"), "arg") * space * tk.rparen
+
+local lagrange_infix_notation = Ct(
+    Cg(func_identifier, "func_name") *
+    Cg(primes, "primes") *
+    args
+) / function(captures)
+    local order = #captures.primes
+    local expression = ast.create_function_call_node(captures.func_name, { captures.arg })
+    local variable = captures.arg
+    return ast.create_ordinary_derivative_node(expression, variable, { type = "number", value = order })
+end
+
+local lagrange_postfix_notation = Ct(tk.variable * C(P"'"^1)) / function(t)
+  local var_name = t[1]
+  local order = #t[2]
+  local derivative_node = ast.create_ordinary_derivative_node(
+    var_name,
+    { type = "variable", name = "x" },
+    { type = "number", value = order }
+  )
+  return derivative_node
+end
+
+
+local LagrangeNotation = lagrange_infix_notation + lagrange_postfix_notation
+
+local newton_dot = (P"\\ddot" / function() return 2 end) + (P"\\dot" / function() return 1 end)
+local newton_notation = Ct(newton_dot * ( (tk.lbrace * space * V("AtomBase") * space * tk.rbrace) + V("AtomBase") )) / function(captures)
+    local order = captures[1]
+    local base_expr = captures[2]
+    return ast.create_ordinary_derivative_node(base_expr, { type = "variable", name = "t" }, { type = "number", value = order })
+end
+
+
+local OrdinaryDerivative = LeibnizNotation + LagrangeNotation + newton_notation
 
 return OrdinaryDerivative

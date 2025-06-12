@@ -125,7 +125,7 @@ function M.get_combined_grammar()
                          P(false)
   end
 
-  local content_rule_priority = {"AddSub", "MulDiv", "Unary", "SupSub", "AtomBase"}
+  local content_rule_priority = {"AddSub", "MulDiv", "Convolution", "Unary", "SupSub", "AtomBase"}
   local expression_content_defined = false
   local addsub_is_defined = grammar_def["AddSub"] ~= nil
   local chosen_content_rule_name = ""

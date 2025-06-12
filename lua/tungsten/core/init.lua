@@ -47,8 +47,9 @@ for _, domain_name in ipairs(domains_to_load) do
   end
 end
 
-for domain_name, domain_mod in pairs(loaded_domain_modules) do
-  if type(domain_mod.init_grammar) == "function" then
+for _, domain_name in ipairs(domains_to_load) do
+  local domain_mod = loaded_domain_modules[domain_name]
+  if domain_mod and type(domain_mod.init_grammar) == "function" then
     if cfg.debug then
       logger.notify("Core: Initializing grammar for domain - " .. domain_name, logger.levels.DEBUG, { title = "Tungsten Debug" })
     end
@@ -59,15 +60,14 @@ for domain_name, domain_mod in pairs(loaded_domain_modules) do
         logger.levels.ERROR, { title = "Tungsten Core Error" }
       )
     elseif cfg.debug then
-       logger.notify("Core: Successfully initialized grammar for domain - " .. domain_name, logger.levels.DEBUG, { title = "Tungsten Debug" })
+      logger.notify("Core: Successfully initialized grammar for domain - " .. domain_name, logger.levels.DEBUG, { title = "Tungsten Debug" })
     end
   else
-     if cfg.debug then
+    if cfg.debug then
       logger.notify("Core: Domain " .. domain_name .. " has no init_grammar function. Skipping grammar initialization.", logger.levels.DEBUG, { title = "Tungsten Debug" })
     end
   end
 end
-
 
 if cfg.debug then
   logger.notify("Core: Domain loading and grammar registration phase complete.", logger.levels.DEBUG, { title = "Tungsten Debug" })

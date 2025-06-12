@@ -25,6 +25,7 @@ M.metadata = {
     "Sqrt",
     "SinFunction",
     "SolveSystemEquationsCapture",
+    "FunctionCall",
   }
 }
 
@@ -53,6 +54,7 @@ function M.init_grammar()
     registry.register_grammar_contribution(domain_name, domain_priority, "Greek", tokens_mod.Greek, "AtomBaseItem")
     registry.register_grammar_contribution(domain_name, domain_priority, "Fraction", require("tungsten.domains.arithmetic.rules.fraction"), "AtomBaseItem")
     registry.register_grammar_contribution(domain_name, domain_priority, "Sqrt", require("tungsten.domains.arithmetic.rules.sqrt"), "AtomBaseItem")
+    registry.register_grammar_contribution(domain_name, domain_priority, "FunctionCall", require("tungsten.domains.arithmetic.rules.function_call"), "AtomBaseItem")
     registry.register_grammar_contribution(domain_name, domain_priority, "SupSub", require("tungsten.domains.arithmetic.rules.supersub").SupSub, "SupSub")
     registry.register_grammar_contribution(domain_name, domain_priority, "Unary", require("tungsten.domains.arithmetic.rules.supersub").Unary, "Unary")
     registry.register_grammar_contribution(domain_name, domain_priority, "MulDiv", require("tungsten.domains.arithmetic.rules.muldiv"), "MulDiv")
@@ -61,18 +63,7 @@ function M.init_grammar()
     registry.register_grammar_contribution(domain_name, equation_rule_priority, "EquationRule", equation_pattern_to_register, "TopLevelRule")
     registry.register_grammar_contribution(domain_name, solve_system_priority, "SolveSystemEquationsCapture", require "tungsten.domains.arithmetic.rules.solve_system_rule", "TopLevelRule")
 
-    local equation_pattern_to_register
-    if config.debug then
-        if config.debug then
-            logger.notify("Arithmetic Domain: Registering DEBUG EquationRule.", logger.levels.DEBUG, { title = "Tungsten Debug" })
-        end
-        equation_pattern_to_register = minimal_equation_debug_pattern
-    else
-        if config.debug then
-            logger.notify("Arithmetic Domain: Registering STANDARD EquationRule.", logger.levels.DEBUG, { title = "Tungsten Debug" })
-        end
-        equation_pattern_to_register = standard_equation_pattern
-    end
+    local equation_pattern_to_register = standard_equation_pattern
     registry.register_grammar_contribution(domain_name, domain_priority + 5, "EquationRule", equation_pattern_to_register, "TopLevelRule")
 
 

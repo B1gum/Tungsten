@@ -9,7 +9,6 @@ local MatrixRule = require "tungsten.domains.linear_algebra.rules.matrix"
 local VectorRule = require "tungsten.domains.linear_algebra.rules.vector"
 local DeterminantRule = require "tungsten.domains.linear_algebra.rules.determinant"
 local NormRule = require "tungsten.domains.linear_algebra.rules.norm"
-local SmartSS = require "tungsten.domains.linear_algebra.rules.smart_supersub"
 local RankRule = require "tungsten.domains.linear_algebra.rules.rank"
 
 require("tungsten.domains.linear_algebra.commands")
@@ -19,14 +18,12 @@ M.metadata = {
   name = "linear_algebra",
   priority = 120,
   dependencies = {"arithmetic"},
-  overrides = {"SupSub", "Unary"},
+  overrides = {},
   provides = {
     "Matrix",
     "Vector",
     "Determinant",
     "Norm",
-    "SmartSupSub",
-    "SmartUnary",
     "LinearIndependentTest",
     "Rank",
   }
@@ -48,11 +45,7 @@ function M.init_grammar()
   registry.register_grammar_contribution(domain_name, domain_priority, "Vector", VectorRule, "AtomBaseItem")
   registry.register_grammar_contribution(domain_name, domain_priority, "Determinant", DeterminantRule, "AtomBaseItem")
   registry.register_grammar_contribution(domain_name, domain_priority, "Norm", NormRule, "AtomBaseItem")
-
-  registry.register_grammar_contribution(domain_name, domain_priority, "SupSub", SmartSS.SmartSupSub, "SupSub")
-  registry.register_grammar_contribution(domain_name, domain_priority, "Unary", SmartSS.SmartUnary, "Unary")
   registry.register_grammar_contribution(domain_name, domain_priority, "IntercalCommand", tokenizer.intercal_command, "AtomBaseItem")
-
   registry.register_grammar_contribution(domain_name, domain_priority, "Rank", RankRule, "AtomBaseItem")
 
   if config.debug then
@@ -61,3 +54,4 @@ function M.init_grammar()
 end
 
 return M
+

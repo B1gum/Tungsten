@@ -94,7 +94,7 @@ M.handlers = {
   binary = bin_with_parens,
 
   fraction = function(node, recur_render)
-    return string.format("Divide[%s, %s]", recur_render(node.numerator), recur_render(node.denominator))
+    return string.format("(%s) / (%s)", recur_render(node.numerator), recur_render(node.denominator))
   end,
   sqrt = function(node, recur_render)
     if node.index then
@@ -129,6 +129,7 @@ M.handlers = {
       arctan = "ArcTan", sinh = "Sinh", cosh = "Cosh", tanh = "Tanh", arsinh = "ArcSinh",
       arcosh = "ArcCosh", artanh = "ArcTanh", log = "Log", ln = "Log", log10 = "Log10",
       exp = "Exp",
+      u = "HeavisideTheta",
     }
     local func_name_str = (node.name_node and node.name_node.name) or "UnknownFunction"
     local wolfram_func_name = func_name_map[func_name_str:lower()]

@@ -172,4 +172,28 @@ function M.create_solve_system_node(equations_list, variables_list)
   return node("solve_system", { equations = equations_list, variables = variables_list })
 end
 
+function M.create_ode_node(lhs, rhs)
+    return node("ode", { lhs = lhs, rhs = rhs })
+end
+
+function M.create_ode_system_node(equations)
+  return node("ode_system", { equations = equations })
+end
+
+function M.create_wronskian_node(functions_list)
+  return node("wronskian", { functions = functions_list })
+end
+
+function M.create_laplace_transform_node(expression)
+  return node("laplace_transform", { expression = expression })
+end
+
+function M.create_inverse_laplace_transform_node(expression)
+  return node("inverse_laplace_transform", { expression = expression })
+end
+
+function M.create_convolution_node(left, right)
+  return node("convolution", { left = left, right = right })
+end
+
 return M
