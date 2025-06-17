@@ -5,6 +5,7 @@
 local wolfram_codegen = require "tungsten.backends.wolfram"
 local config = require "tungsten.config"
 local state = require "tungsten.state"
+local async = require "tungsten.util.async"
 
 local M = {}
 
@@ -129,44 +130,10 @@ function M.evaluate_async(ast, numeric, callback)
 
   code_to_execute = "ToString[TeXForm[" .. code_to_execute .. "], CharacterEncoding -> \"UTF8\"]"
 
-  local wolfram_path = config.wolfram_path or "wolframscript"
-  local stdout_chunks = {}
-  local stderr_chunks = {}
-  local job_id
-  local job_timer
-
-  local function handle_stdout(_, data, _)
-    if data then
-      for _, chunk in ipairs(data) do table.insert(stdout_chunks, chunk) end
-    end
-  end
-
-  local function handle_stderr(_, data, _)
-    if data then
-      for _, chunk in ipairs(data) do table.insert(stderr_chunks, chunk) end
-    end
-  end
-
-  local function handle_exit(_, exit_code, _)
-    if job_timer then
-        if job_timer.stop then job_timer:stop() end
-        if job_timer.close then job_timer:close() end
-        job_timer = nil
-    end
-
-    local final_stdout = table.concat(stdout_chunks, "\n"):gsub("^%s*(.-)%s*$", "%1")
-    local final_stderr = table.concat(stderr_chunks, "\n"):gsub("^%s*(.-)%s*$", "%1")
-
-    if job_id and state.active_jobs[job_id] then
-      state.active_jobs[job_id] = nil
-      if config.debug then
-        logger.notify("Tungsten Debug: Job " .. job_id .. " finished and removed from active jobs.", logger.levels.DEBUG, { title = "Tungsten Debug" })
-      end
-    end
-
+  async.run_job({ wolfram_path, "-code", code_to_execute }, expr_key, function(exit_code, final_stdout, final_stderr)
     if exit_code == 0 then
       if final_stderr ~= "" and config.debug then
-        logger.notify("Tungsten Debug (Job " .. job_id .. " stderr): " .. final_stderr, logger.levels.DEBUG, { title = "Tungsten Debug" })
+        logger.notify("Tungsten Debug (stderr): " .. final_stderr, logger.levels.DEBUG, { title = "Tungsten Debug" })
       end
       if use_cache then
         state.cache[expr_key] = final_stdout
@@ -176,7 +143,7 @@ function M.evaluate_async(ast, numeric, callback)
       end
       callback(final_stdout, nil)
     else
-      local err_msg = ("WolframScript (Job %s) exited with code %d"):format(tostring(job_id or "N/A"), exit_code)
+      local err_msg = ("WolframScript exited with code %d"):format(exit_code)
       if final_stderr ~= "" then
         err_msg = err_msg .. "\nStderr: " .. final_stderr
       elseif final_stdout ~= "" then
@@ -185,53 +152,9 @@ function M.evaluate_async(ast, numeric, callback)
       logger.notify("Tungsten: " .. err_msg, logger.levels.ERROR, { title = "Tungsten Error" })
       callback(nil, err_msg)
     end
-  end
-
-  local job_options = {
-    stdout_buffered = true,
-    stderr_buffered = true,
-    on_stdout = handle_stdout,
-    on_stderr = handle_stderr,
-    on_exit = handle_exit,
-  }
-
-  job_id = vim.fn.jobstart({ wolfram_path, "-code", code_to_execute }, job_options)
-
-  if not job_id or job_id <= 0 then
-    local err_msg = "Failed to start WolframScript job."
-    if job_id == 0 then
-      err_msg = err_msg .. " (Reason: Invalid arguments to jobstart)"
-    elseif job_id == -1 then
-      err_msg = err_msg .. " (Reason: Command '" .. wolfram_path .. "' not found - is wolframscript in your PATH?)"
-    else
-      err_msg = err_msg .. " (Reason: jobstart returned " .. tostring(job_id) .. ")"
-    end
-    logger.notify("Tungsten: " .. err_msg, logger.levels.ERROR, { title = "Tungsten Error" })
-    callback(nil, err_msg)
-  else
-    local current_job_start_time = vim.loop.now()
-    state.active_jobs[job_id] = {
-      bufnr = vim.api.nvim_get_current_buf(),
-      expr_key = expr_key,
-      code_sent = code_to_execute,
-      start_time = current_job_start_time,
-    }
-    if config.debug then
-      logger.notify(("Tungsten: Started WolframScript job %d for key '%s' with code: %s"):format(job_id, expr_key, code_to_execute), logger.levels.INFO, { title = "Tungsten Debug" })
-    end
-
-    local timeout_ms = config.wolfram_timeout_ms or 10000
-    job_timer = vim.loop.new_timer()
-    job_timer:start(timeout_ms, 0, function()
-      if job_id and state.active_jobs[job_id] then
-        if vim.loop.now() - state.active_jobs[job_id].start_time >= timeout_ms then
-          logger.notify(("Tungsten: Wolframscript job %d timed out after %d ms."):format(job_id, timeout_ms), logger.levels.WARN, { title = "Tungsten" })
-        end
-      end
-      if job_timer and job_timer.close then job_timer:close(); job_timer = nil; end
-    end)
-  end
+  end)
 end
+
 
 function M.run_async(input, numeric, callback)
   assert(type(callback) == "function", "run_async expects a callback function")

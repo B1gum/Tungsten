@@ -42,14 +42,52 @@ M.handlers = {
   end,
 
   dot_product = function(node, recur_render)
-    local left_str = recur_render(node.left)
-    local right_str = recur_render(node.right)
+    local function matrix_to_vector_str(target)
+      if type(target) == "table" and target.type == "matrix" then
+        if #target.rows == 1 then
+          local elems = {}
+          for _, el in ipairs(target.rows[1]) do
+            table.insert(elems, recur_render(el))
+          end
+          return "{" .. table.concat(elems, ", ") .. "}"
+        elseif target.rows[1] and #target.rows[1] == 1 then
+          local elems = {}
+          for _, row in ipairs(target.rows) do
+            table.insert(elems, recur_render(row[1]))
+          end
+          return "{" .. table.concat(elems, ", ") .. "}"
+        end
+      end
+      return recur_render(target)
+    end
+
+    local left_str = matrix_to_vector_str(node.left)
+    local right_str = matrix_to_vector_str(node.right)
     return ("Dot[%s, %s]"):format(left_str, right_str)
   end,
 
   cross_product = function(node, recur_render)
-    local left_str = recur_render(node.left)
-    local right_str = recur_render(node.right)
+    local function matrix_to_vector_str(target)
+      if type(target) == "table" and target.type == "matrix" then
+        if #target.rows == 1 then
+          local elems = {}
+          for _, el in ipairs(target.rows[1]) do
+            table.insert(elems, recur_render(el))
+          end
+          return "{" .. table.concat(elems, ", ") .. "}"
+        elseif target.rows[1] and #target.rows[1] == 1 then
+          local elems = {}
+          for _, row in ipairs(target.rows) do
+            table.insert(elems, recur_render(row[1]))
+          end
+          return "{" .. table.concat(elems, ", ") .. "}"
+        end
+      end
+      return recur_render(target)
+    end
+
+    local left_str = matrix_to_vector_str(node.left)
+    local right_str = matrix_to_vector_str(node.right)
     return ("Cross[%s, %s]"):format(left_str, right_str)
   end,
 

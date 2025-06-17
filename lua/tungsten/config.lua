@@ -5,7 +5,7 @@
 local config = {
   wolfram_path = "wolframscript",
   numeric_mode = false,
-  debug = true,
+  debug = false,
   cache_enabled = true,
   domains = { "arithmetic", "calculus", "linear_algebra", "differential_equations" },
   wolfram_timeout_ms = 30000,

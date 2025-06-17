@@ -12,13 +12,12 @@ local logger    = require "tungsten.util.logger"
 local state     = require "tungsten.state"
 local wolfram_backend = require "tungsten.backends.wolfram"
 local vim_inspect = require "vim.inspect"
+local string_util = require "tungsten.util.string"
+local cmd_utils = require "tungsten.util.commands"
 
 local function tungsten_eval_command(_)
-  local text = selection.get_visual_selection()
-  if text == "" or text == nil then
-    logger.notify("Tungsten: No text selected.", logger.levels.ERROR)
-    return
-  end
+  local ast, _ = cmd_utils.parse_selected_latex("expression")
+  if not ast then return end
 
   local ok, ast_or_err = pcall(parser.parse, text)
   if not ok or not ast_or_err then
@@ -35,14 +34,6 @@ local function tungsten_eval_command(_)
     end
     insert_result_util.insert_result(result)
   end)
-end
-
-
-local function trim_whitespace(str)
-  if type(str) ~= "string" then
-    return str
-  end
-  return str:match("^%s*(.-)%s*$")
 end
 
 local function define_persistent_variable_command(_)
@@ -90,14 +81,14 @@ local function define_persistent_variable_command(_)
   if config.debug then
       logger.notify("Tungsten Debug: Raw parts[1] before trim: '" .. raw_part1 .. "' (op_start_pos was " .. tostring(op_start_pos) .. ")", logger.levels.DEBUG, {title = "Tungsten Debug"})
   end
-  local var_name_str = trim_whitespace(raw_part1)
+  local var_name_str = string_util.trim(raw_part1)
 
   local rhs_start_index = op_start_pos + #op_to_use_str
   local raw_part2 = selected_text:sub(rhs_start_index)
   if config.debug then
       logger.notify("Tungsten Debug: Raw parts[2] before trim: '" .. raw_part2 .. "' (rhs_start_index was " .. tostring(rhs_start_index) .. ", operator was '" .. op_to_use_str .. "')", logger.levels.DEBUG, {title = "Tungsten Debug"})
   end
-  local rhs_latex_str = trim_whitespace(raw_part2)
+  local rhs_latex_str = string_util.trim(raw_part2)
 
   if var_name_str == "" then
     logger.notify("Tungsten: Variable name cannot be empty.", logger.levels.ERROR, { title = "Tungsten Error" })
@@ -156,11 +147,8 @@ local function tungsten_solve_command(_)
     return
   end
 
-  local equation_text = selection.get_visual_selection()
-
-  if equation_text == "" or equation_text == nil then
-     logger.notify("TungstenSolve: Selected equation text is empty. Will attempt to insert result at selection point.", logger.levels.WARN, { title = "Tungsten Warning"})
-  end
+  local parsed_ast_top, equation_text = cmd_utils.parse_selected_latex("equation")
+  if not parsed_ast_top then return end
 
   local eq_parse_ok, parsed_ast_top = pcall(parser.parse, equation_text)
   if not eq_parse_ok or not parsed_ast_top then
@@ -198,7 +186,7 @@ local function tungsten_solve_command(_)
       logger.notify("TungstenSolve: No variable entered.", logger.levels.WARN, { title = "Tungsten Warning" })
       return
     end
-    local trimmed_var_name = var_input_str:match("^%s*(.-)%s*$")
+    local trimmed_var_name = string_util.trim(var_input_str)
     if trimmed_var_name == "" then
       logger.notify("TungstenSolve: Variable cannot be empty.", logger.levels.ERROR, { title = "Tungsten Error" })
       return
@@ -240,23 +228,12 @@ end
 local function tungsten_solve_system_command(_)
   local initial_start_pos = vim.fn.getpos("'<")
   local initial_end_pos = vim.fn.getpos("'>")
-  local visual_selection_text = selection.get_visual_selection()
-  if visual_selection_text == "" or visual_selection_text == nil then
-    logger.notify("TungstenSolveSystem: No equations selected.", logger.levels.ERROR, { title = "Tungsten Error" })
-    return
-  end
 
-  local equations_capture_ast_or_err
-  local parse_eq_ok, parsed_eq_result = pcall(parser.parse, visual_selection_text)
-
-  if not parse_eq_ok or not parsed_eq_result then
-    logger.notify("TungstenSolveSystem: Parse error for equations: " .. tostring(parsed_eq_result or "nil"), logger.levels.ERROR, { title = "Tungsten Error" })
-    return
-  end
-  equations_capture_ast_or_err = parsed_eq_result
+  local equations_capture_ast_or_err, visual_selection_text = cmd_utils.parse_selected_latex("system of equations")
+  if not equations_capture_ast_or_err then return end
 
   if not equations_capture_ast_or_err or equations_capture_ast_or_err.type ~= "solve_system_equations_capture" then
-    logger.notify("TungstenSolveSystem: Selected text does not form a valid system of equations. Parsed as: " .. (equations_capture_ast_or_err and equations_capture_ast_or_err.type or "nil"), logger.levels.ERROR, { title = "Tungsten Error" })
+    logger.notify("TungstenSolveSystem: Selected text does not form a valid system of equations...", logger.levels.ERROR)
     return
   end
 
