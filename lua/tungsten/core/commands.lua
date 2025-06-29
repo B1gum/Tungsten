@@ -19,13 +19,6 @@ local function tungsten_eval_command(_)
   local ast, _ = cmd_utils.parse_selected_latex("expression")
   if not ast then return end
 
-  local ok, ast_or_err = pcall(parser.parse, text)
-  if not ok or not ast_or_err then
-    logger.notify("Tungsten: parse error – " .. tostring(ast_or_err), logger.levels.ERROR)
-    return
-  end
-  local ast = ast_or_err
-
   local use_numeric_mode = config.numeric_mode
 
   evaluator.evaluate_async(ast, use_numeric_mode, function(result)
@@ -150,12 +143,6 @@ local function tungsten_solve_command(_)
   local parsed_ast_top, equation_text = cmd_utils.parse_selected_latex("equation")
   if not parsed_ast_top then return end
 
-  local eq_parse_ok, parsed_ast_top = pcall(parser.parse, equation_text)
-  if not eq_parse_ok or not parsed_ast_top then
-    logger.notify("TungstenSolve: Parse error for equation: " .. tostring(parsed_ast_top or "nil"), logger.levels.ERROR, { title = "Tungsten Error" })
-    return
-  end
-
   local eq_ast
   if parsed_ast_top.type == "solve_system_equations_capture" then
     if parsed_ast_top.equations and #parsed_ast_top.equations == 1 then
@@ -170,6 +157,7 @@ local function tungsten_solve_command(_)
   else
     eq_ast = parsed_ast_top
   end
+
 
   local is_valid_equation_structure = false
   if eq_ast and ( (eq_ast.type == "binary" and eq_ast.operator == "=") or eq_ast.type == "EquationRule" or eq_ast.type == "equation" ) then

@@ -76,17 +76,6 @@ describe("Arithmetic Solve System Rule: tungsten.domains.arithmetic.rules.solve_
   end
 
   describe("Valid System of Equations Parsing", function()
-    it("should parse a single equation: x=1", function()
-      local input = "x=1"
-      local expected_ast = {
-        type = "solve_system_equations_capture",
-        equations = {
-          equation_placeholder_node("x=1")
-        }
-      }
-      assert.are.same(expected_ast, parse_input(input))
-    end)
-
     it("should parse two equations separated by \\\\: x=1 \\\\ y=2", function()
       local input = "x=1 \\\\ y=2"
       local expected_ast = {

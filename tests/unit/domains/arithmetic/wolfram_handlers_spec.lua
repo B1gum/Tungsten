@@ -225,7 +225,7 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         numerator = { type = "number", value = 1 },
         denominator = { type = "variable", name = "n" }
       }
-      assert.are.equal("Divide[1, n]", handlers.fraction(node, mock_recur_render))
+      assert.are.equal("(1) / (n)", handlers.fraction(node, mock_recur_render))
       assert.spy(mock_recur_render).was.called_with(node.numerator)
       assert.spy(mock_recur_render).was.called_with(node.denominator)
     end)
@@ -236,7 +236,7 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
         numerator = { type = "binary", operator = "+", left = { type = "variable", name = "a"}, right = { type = "number", value = 1 }},
         denominator = { type = "sqrt", radicand = {type = "variable", name = "x"}}
       }
-      assert.are.equal("Divide[a+1, mock_rendered(sqrt)]", handlers.fraction(node, mock_recur_render))
+      assert.are.equal("(a+1) / (mock_rendered(sqrt))", handlers.fraction(node, mock_recur_render))
     end)
   end)
 

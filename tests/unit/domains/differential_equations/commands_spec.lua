@@ -39,6 +39,9 @@ describe("Tungsten Differential Equations Commands", function()
         mock_parser.parse = spy.new(function(text) return current_parsed_ast end)
         mock_evaluator.evaluate_async = spy.new(function(ast, numeric, cb) cb(current_eval_result, nil) end)
         mock_insert_result.insert_result = spy.new(function() end)
+
+        mock_ast.create_ode_node = spy.new(function(lhs, rhs) return { type = "ode", lhs = lhs, rhs = rhs } end)
+        mock_ast.create_ode_system_node = spy.new(function(odes) return { type = "ode_system", equations = odes } end)
         mock_ast.create_laplace_transform_node = spy.new(function(ast) return { type = "laplace_transform", expression = ast } end)
         mock_ast.create_inverse_laplace_transform_node = spy.new(function(ast) return { type = "inverse_laplace_transform", expression = ast } end)
 
@@ -57,6 +60,7 @@ describe("Tungsten Differential Equations Commands", function()
         package.loaded["tungsten.domains.differential_equations.commands"] = nil
         de_commands = require("tungsten.domains.differential_equations.commands")
     end)
+
 
     after_each(function()
         _G.require = original_require
@@ -82,7 +86,9 @@ describe("Tungsten Differential Equations Commands", function()
         ":TungstenSolveODE",
         "y' = y",
         { type = "ode" },
-        function(ast) return ast end
+        function(parsed_ast)
+            return mock_ast.create_ode_system_node({ parsed_ast })
+        end
     )
 
     test_command(

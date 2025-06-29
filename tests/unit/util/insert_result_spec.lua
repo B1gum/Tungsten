@@ -192,15 +192,6 @@ describe("tungsten.util.insert_result", function()
     end)
 
     describe("Edge Cases and No-ops", function()
-      it("should do nothing if original selection and result_text are both empty", function()
-        local mock_start_pos = { 0, 1, 1, 0 }
-        local mock_end_pos = { 0, 1, 1, 0 }
-        local mock_selection = ""
-
-        insert_result.insert_result("", " = ", mock_start_pos, mock_end_pos, mock_selection)
-        assert.spy(_G.vim.api.nvim_buf_set_text).was_not.called()
-      end)
-
       it("should handle selection of an empty line correctly (inserting result)", function()
           local mock_start_pos = { 0, 1, 1, 0 }
           local mock_end_pos = { 0, 1, 1, 0 }

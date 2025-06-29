@@ -2,7 +2,15 @@
 -- Unit tests for the LPeg parser functionality in core/parser.lua
 ---------------------------------------------------------------------
 
-package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
+package.loaded["tungsten.core.registry"] = nil
+package.loaded["tungsten.core.parser"] = nil
+package.loaded["tungsten.core"] = nil
+package.loaded["tungsten.domains.arithmetic"] = nil
+package.loaded["tungsten.domains.calculus"] = nil
+package.loaded["tungsten.domains.linear_algebra"] = nil
+package.loaded["tungsten.domains.differential_equations"] = nil
+
+
 
 local parser = require "tungsten.core.parser"
 require "tungsten.core"

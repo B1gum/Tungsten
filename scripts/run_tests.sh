@@ -44,4 +44,6 @@ export XDG_STATE_HOME="$HOME/.local/state"
 
 "$NVIM_BIN" --headless \
   -u "$PROJECT_ROOT/tests/minimal_init.lua" \
-  -c "PlenaryBustedDirectory $PROJECT_ROOT/tests { minimal_init = '$PROJECT_ROOT/tests/minimal_init.lua' }"
+  -c "PlenaryBustedDirectory $PROJECT_ROOT/tests { exit = true }"
+
+

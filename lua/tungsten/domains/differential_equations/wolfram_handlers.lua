@@ -22,10 +22,9 @@ local function find_ode_vars(equation_nodes, walk)
       end
 
       if func_name_str and not seen_dependent[func_name_str] then
-        local wolfram_func_name = func_name_str:match("^%a") and (func_name_str:sub(1,1):upper() .. func_name_str:sub(2)) or func_name_str
         local indep_name = (node.variable and node.variable.name) or "x"
         
-        table.insert(dependent_vars, wolfram_func_name .. "[" .. indep_name .. "]")
+        table.insert(dependent_vars, func_name_str .. "[" .. indep_name .. "]")
         seen_dependent[func_name_str] = true
 
         if not seen_independent[indep_name] then
@@ -33,6 +32,11 @@ local function find_ode_vars(equation_nodes, walk)
           seen_independent[indep_name] = true
         end
       end
+    elseif node.type == "variable" and not seen_dependent[node.name] then
+         if node.name ~= 'x' and node.name ~= 't' then
+            table.insert(dependent_vars, node.name .. "[x]")
+            seen_dependent[node.name] = true
+         end
     end
 
     for _, v in pairs(node) do
@@ -54,24 +58,22 @@ local function find_ode_vars(equation_nodes, walk)
 end
 
 
+
 M.handlers = {
     ["ordinary_derivative"] = function(node, walk)
       local order = (node.order and node.order.value) or 1
       local variable_str = (node.variable and walk(node.variable)) or "x"
 
       if node.expression.type == "function_call" then
-        -- Handles cases like y'(x)
         local func_name = walk(node.expression.name_node)
         local prime_str = string.rep("'", order)
         local arg_str = walk(node.expression.args[1])
         return func_name .. prime_str .. "[" .. arg_str .. "]"
       elseif node.expression.type == "variable" then
-        -- Handles cases like y'
         local func_name = walk(node.expression)
         local prime_str = string.rep("'", order)
         return func_name .. prime_str .. "[" .. variable_str .. "]"
       else
-        -- Handles general derivatives like D[x^2, x]
         local expression_str = walk(node.expression)
         if order == 1 then
           return "D[" .. expression_str .. ", " .. variable_str .. "]"
@@ -82,18 +84,21 @@ M.handlers = {
     end,
 
     ["ode"] = function(node, walk)
-        return walk(node.lhs) .. " == " .. walk(node.rhs)
+        local equation_str = walk(node.lhs) .. " == " .. walk(node.rhs)
+        local vars_str, indep_vars_str = find_ode_vars({ node }, walk)
+        return "DSolve[" .. equation_str .. ", " .. vars_str .. ", " .. indep_vars_str .. "]"
     end,
 
     ["ode_system"] = function(node, walk)
         local rendered_odes = {}
         for _, ode_node in ipairs(node.equations) do
-            table.insert(rendered_odes, walk(ode_node))
+            table.insert(rendered_odes, walk(ode_node.lhs) .. " == " .. walk(ode_node.rhs))
         end
         local equations_str = "{" .. table.concat(rendered_odes, ", ") .. "}"
         local vars_str, indep_vars_str = find_ode_vars(node.equations, walk)
         return "DSolve[" .. equations_str .. ", {" .. vars_str .. "}, " .. indep_vars_str .. "]"
     end,
+
 
     ["solve_system_equations_capture"] = function(node, walk)
         local rendered_equations = {}
@@ -111,7 +116,7 @@ M.handlers = {
     end,
 
     ["convolution"] = function(node, walk)
-        return "Convolve[" .. walk(node.left) .. ", " .. walk(node.right) .. ", t, y]" -- Assumes t, y
+        return "Convolve[" .. walk(node.left) .. ", " .. walk(node.right) .. ", t, y]"
     end,
 
     ["laplace_transform"] = function(node, walk)

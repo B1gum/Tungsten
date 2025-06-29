@@ -6,34 +6,16 @@ local M = {}
 
 M.handlers = {
   ordinary_derivative = function(node, walk)
-    local order = (node.order and node.order.value) or 1
+    local order = (node.order and walk(node.order)) or 1
+    local expression_str = walk(node.expression)
+    local variable_str = walk(node.variable)
 
-    if (node.expression.type == "variable" or node.expression.type == "function_call") and order <= 4 then
-      local func_name_str
-      if node.expression.type == "function_call" then
-        func_name_str = node.expression.name_node.name
-      else
-        func_name_str = node.expression.name
-      end
-
-      local wolfram_func_name = func_name_str:match("^%a") and (func_name_str:sub(1,1):upper() .. func_name_str:sub(2)) or func_name_str
-
-      local prime_str = string.rep("'", order)
-      local variable_str = walk(node.variable)
-
-      return wolfram_func_name .. prime_str .. "[" .. variable_str .. "]"
+    if tostring(order) == "1" then
+      return "D[" .. expression_str .. ", " .. variable_str .. "]"
     else
-      local expression_str = walk(node.expression)
-      local variable_str = walk(node.variable)
-      if order == 1 then
-        return "D[" .. expression_str .. ", " .. variable_str .. "]"
-      else
-        return "D[" .. expression_str .. ", {" .. variable_str .. ", " .. tostring(order) .. "}]"
-      end
+      return "D[" .. expression_str .. ", {" .. variable_str .. ", " .. tostring(order) .. "}]"
     end
   end,
-
-
 
   partial_derivative = function(node, recur_render)
     local expr_str = recur_render(node.expression)

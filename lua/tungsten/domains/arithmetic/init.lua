@@ -49,6 +49,8 @@ function M.init_grammar()
     local equation_rule_priority = domain_priority + 5
     local solve_system_priority = domain_priority + 10
 
+    local equation_pattern_to_register = standard_equation_pattern
+
     registry.register_grammar_contribution(domain_name, domain_priority, "Number", tokens_mod.number, "AtomBaseItem")
     registry.register_grammar_contribution(domain_name, domain_priority, "Variable", tokens_mod.variable, "AtomBaseItem")
     registry.register_grammar_contribution(domain_name, domain_priority, "Greek", tokens_mod.Greek, "AtomBaseItem")
@@ -63,13 +65,10 @@ function M.init_grammar()
     registry.register_grammar_contribution(domain_name, equation_rule_priority, "EquationRule", equation_pattern_to_register, "TopLevelRule")
     registry.register_grammar_contribution(domain_name, solve_system_priority, "SolveSystemEquationsCapture", require "tungsten.domains.arithmetic.rules.solve_system_rule", "TopLevelRule")
 
-    local equation_pattern_to_register = standard_equation_pattern
-    registry.register_grammar_contribution(domain_name, domain_priority + 5, "EquationRule", equation_pattern_to_register, "TopLevelRule")
-
-
     if config.debug then
       logger.notify("Arithmetic Domain: Grammar contributions registered.", logger.levels.DEBUG, { title = "Tungsten Debug" })
     end
 end
+
 
 return M

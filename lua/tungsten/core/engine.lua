@@ -81,7 +81,7 @@ function M.evaluate_async(ast, numeric, callback)
 
   local initial_wolfram_code
   local pcall_ok, pcall_result = pcall(wolfram_codegen.to_string, ast)
-  if not pcall_ok then
+  if not pcall_ok or pcall_result == nil then
     local err_msg = "Error converting AST to Wolfram code: " .. tostring(pcall_result)
     logger.notify("Tungsten: " .. err_msg, logger.levels.ERROR, { title = "Tungsten Error" })
     callback(nil, err_msg)
@@ -107,7 +107,7 @@ function M.evaluate_async(ast, numeric, callback)
       if config.debug then
         logger.notify("Tungsten Debug: Cache hit for key: " .. expr_key, logger.levels.INFO, { title = "Tungsten Debug" })
       end
-      callback(state.cache[expr_key], nil)
+      vim.schedule(function() callback(state.cache[expr_key], nil) end)
       return
     end
   end
@@ -130,7 +130,7 @@ function M.evaluate_async(ast, numeric, callback)
 
   code_to_execute = "ToString[TeXForm[" .. code_to_execute .. "], CharacterEncoding -> \"UTF8\"]"
 
-  async.run_job({ wolfram_path, "-code", code_to_execute }, expr_key, function(exit_code, final_stdout, final_stderr)
+  async.run_job({ config.wolfram_path, "-code", code_to_execute }, expr_key, function(exit_code, final_stdout, final_stderr)
     if exit_code == 0 then
       if final_stderr ~= "" and config.debug then
         logger.notify("Tungsten Debug (stderr): " .. final_stderr, logger.levels.DEBUG, { title = "Tungsten Debug" })
