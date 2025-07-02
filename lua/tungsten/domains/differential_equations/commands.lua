@@ -2,7 +2,7 @@
 -- Defines the implementation for user-facing commands in the differential_equations domain.
 
 local selection = require "tungsten.util.selection"
-local logger = require "tungsten.util.logger"
+local error_handler = require "tungsten.util.error_handler"
 local parser = require "tungsten.core.parser"
 local evaluator = require "tungsten.core.engine"
 local insert_result_util = require "tungsten.util.insert_result"
@@ -12,30 +12,30 @@ local ast = require("tungsten.core.ast")
 local function evaluate_and_insert(command_name, ast_producer)
     local visual_selection_text = selection.get_visual_selection()
     if not visual_selection_text or visual_selection_text == "" then
-        logger.notify(command_name .. ": No text selected.", logger.levels.ERROR, { title = "Tungsten Error" })
+        error_handler.notify_error(command_name, "No text selected.")
         return
     end
 
     local parse_ok, parsed_ast = pcall(parser.parse, visual_selection_text)
     if not parse_ok or not parsed_ast then
-        logger.notify(command_name .. ": Parse error – " .. tostring(parsed_ast or "nil"), logger.levels.ERROR, { title = "Tungsten Error" })
+        error_handler.notify_error(command_name, "Parse error – " .. tostring(parsed_ast or "nil")) 
         return
     end
 
     local final_ast = ast_producer(parsed_ast)
     if not final_ast then
-        logger.notify(command_name .. ": Could not create a valid AST from selection.", logger.levels.ERROR, { title = "Tungsten Error" })
+        error_handler.notify_error(command_name, "Could not create a valid AST from selection.")
         return
     end
 
 
     evaluator.evaluate_async(final_ast, config.numeric_mode, function(result, err)
         if err then
-            logger.notify(command_name .. ": Error during evaluation: " .. tostring(err), logger.levels.ERROR, { title = "Tungsten Error" })
+            error_handler.notify_error(command_name, "Error during evaluation: " .. tostring(err))
             return
         end
         if result == nil or result == "" then
-            logger.notify(command_name .. ": No result from evaluation.", logger.levels.WARN, { title = "Tungsten Warning" })
+            error_handler.notify_error(command_name, "No result from evaluation.")
             return
         end
         insert_result_util.insert_result(result, " \\rightarrow ")

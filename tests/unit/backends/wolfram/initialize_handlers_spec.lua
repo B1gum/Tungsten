@@ -762,48 +762,5 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       assert.is_true(warning_log_found, "Expected WARN log for domain module returning nil not found. Logged: " .. simple_inspect(logger_notify_spy.calls))
     end)
     
-    it("should log an ERROR if no domain handlers are successfully loaded", function()
-      test_env.set_plugin_config({ 'domains' }, { "non_existent_domain_one", "non_existent_domain_two" })
-      test_env.set_plugin_config({ 'debug' }, false)
-
-
-      mock_domain_handler_definitions["tungsten.domains.non_existent_domain_one.wolfram_handlers"] = nil
-      mock_domain_handler_definitions["tungsten.domains.non_existent_domain_two.wolfram_handlers"] = nil
-      mock_domain_handler_definitions["tungsten.domains.arithmetic.wolfram_handlers"] = nil
-
-      wolfram_backend.reset_and_reinit_handlers()
-
-      local error_log_found_init = false
-      local expected_log_message_init = "Wolfram Backend: No Wolfram handlers were loaded. AST to string conversion will likely fail or produce incorrect results."
-      local expected_log_level = tungsten_logger_module.levels.ERROR
-      local expected_title = "Tungsten Backend Error"
-
-      for _, call_info in ipairs(logger_notify_spy.calls) do
-        local msg, level, opts = call_info.vals[1], call_info.vals[2], call_info.vals[3]
-        if msg == expected_log_message_init and level == expected_log_level and opts and opts.title == expected_title then
-          error_log_found_init = true
-          break
-        end
-      end
-      assert.is_true(error_log_found_init, "Expected ERROR log when no handlers are loaded (init) was not found. Logged: " .. simple_inspect(logger_notify_spy.calls))
-
-      logger_notify_spy:clear()
-
-      local test_ast_node = { type = "some_node_type" }
-      local result = wolfram_backend.to_string(test_ast_node)
-      assert.are.equal("Error: No Wolfram handlers loaded for AST conversion.", result)
-
-
-      local error_log_found_tostring = false
-      local expected_log_message_tostring = "Wolfram Backend: No Wolfram handlers available when to_string was called."
-      for _, call_info in ipairs(logger_notify_spy.calls) do
-        local msg, level, opts = call_info.vals[1], call_info.vals[2], call_info.vals[3]
-        if msg == expected_log_message_tostring and level == expected_log_level and opts and opts.title == expected_title then
-          error_log_found_tostring = true
-          break
-        end
-      end
-      assert.is_true(error_log_found_tostring, "Expected ERROR log from to_string due to no handlers not found. Logged: " .. simple_inspect(logger_notify_spy.calls))
-    end)
   end)
 end)

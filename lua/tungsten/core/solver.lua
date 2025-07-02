@@ -121,7 +121,6 @@ function M.solve_equation_async(eq_wolfram_strs_table, var_wolfram_strs_table, i
                     tostring(exit_code), final_stderr, final_stdout)
             end
 
-            logger.notify(err_msg, logger.levels.ERROR, { title = "Tungsten Error" })
             callback(nil, err_msg)
         end
     end

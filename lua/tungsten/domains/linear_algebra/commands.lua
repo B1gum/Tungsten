@@ -1,5 +1,5 @@
 local selection = require "tungsten.util.selection"
-local logger = require "tungsten.util.logger"
+local error_handler = require "tungsten.util.error_handler"
 local parser    = require "tungsten.core.parser"
 local evaluator = require "tungsten.core.engine"
 local insert_result_util = require "tungsten.util.insert_result"
@@ -9,11 +9,15 @@ local cmd_utils = require "tungsten.util.commands"
 
 
 local function tungsten_gauss_eliminate_command(_)
-  local matrix_ast, _ = cmd_utils.parse_selected_latex("matrix")
+  local matrix_ast, _, err = cmd_utils.parse_selected_latex("matrix")
+  if err then
+    error_handler.notify_error("GaussEliminate", err)
+    return
+  end
   if not matrix_ast then return end
 
   if matrix_ast.type ~= "matrix" then
-     logger.notify("TungstenGaussEliminate: The selected text is not a valid matrix.", logger.levels.ERROR, { title = "Tungsten Error" })
+    error_handler.notify_error("GaussEliminate", "The selected text is not a valid matrix.")
     return
   end
 
@@ -23,11 +27,11 @@ local function tungsten_gauss_eliminate_command(_)
 
   evaluator.evaluate_async(gauss_eliminate_ast_node, use_numeric_mode, function(result, err)
     if err then
-      logger.notify("TungstenGaussEliminate: Error during evaluation: " .. tostring(err), logger.levels.ERROR, { title = "Tungsten Error" })
+      error_handler.notify_error("GaussEliminate", "Error during evaluation: " .. tostring(err))
       return
     end
     if result == nil or result == "" then
-      logger.notify("TungstenGaussEliminate: No result from evaluation.", logger.levels.WARN, { title = "Tungsten Warning" })
+      error_handler.notify_error("GaussEliminate", "No result from evaluation.")
       return
     end
     insert_result_util.insert_result(result, " \\rightarrow ")
@@ -35,11 +39,15 @@ local function tungsten_gauss_eliminate_command(_)
 end
 
 local function tungsten_linear_independent_command(_)
-  local parsed_ast, _ = cmd_utils.parse_selected_latex("matrix or list of vectors")
+  local parsed_ast, _, err = cmd_utils.parse_selected_latex("matrix or list of vectors")
+  if err then
+    error_handler.notify_error("LinearIndependent", err)
+    return
+  end
   if not parsed_ast then return end
 
   if parsed_ast.type ~= "matrix" and parsed_ast.type ~= "vector_list" and parsed_ast.type ~= "symbolic_vector" and parsed_ast.type ~= "vector" then
-     logger.notify("TungstenLinearIndependent: Selected text is not a valid matrix or list of vectors. Parsed as: " .. parsed_ast.type, logger.levels.ERROR, { title = "Tungsten Error" })
+    error_handler.notify_error("LinearIndependent", "Selected text is not a valid matrix or list of vectors. Parsed as: " .. parsed_ast.type)
     return
   end
 
@@ -47,11 +55,11 @@ local function tungsten_linear_independent_command(_)
 
   evaluator.evaluate_async(linear_independent_node, false, function(result, err)
     if err then
-      logger.notify("TungstenLinearIndependent: Error during evaluation: " .. tostring(err), logger.levels.ERROR, { title = "Tungsten Error" })
+      error_handler.notify_error("LinearIndependent", "Error during evaluation: " .. tostring(err))
       return
     end
     if result == nil or result == "" then
-      logger.notify("TungstenLinearIndependent: No result from evaluation (True/False expected).", logger.levels.WARN, { title = "Tungsten Warning" })
+      error_handler.notify_error("LinearIndependent", "No result from evaluation (True/False expected).")
       return
     end
 
@@ -76,11 +84,15 @@ local function tungsten_linear_independent_command(_)
 end
 
 local function tungsten_rank_command(_)
-  local matrix_ast_node, _ = cmd_utils.parse_selected_latex("matrix")
+  local matrix_ast_node, _, err = cmd_utils.parse_selected_latex("matrix")
+  if err then
+    error_handler.notify_error("Rank", err)
+    return
+  end
   if not matrix_ast_node then return end
 
   if matrix_ast_node.type ~= "matrix" then
-     logger.notify("TungstenRank: The selected text is not a valid matrix. Parsed as: " .. matrix_ast_node.type, logger.levels.ERROR, { title = "Tungsten Error" })
+    error_handler.notify_error("Rank", "The selected text is not a valid matrix. Parsed as: " .. matrix_ast_node.type)
     return
   end
 
@@ -89,11 +101,11 @@ local function tungsten_rank_command(_)
 
   evaluator.evaluate_async(rank_ast_node, use_numeric_mode, function(result, err)
     if err then
-      logger.notify("TungstenRank: Error during evaluation: " .. tostring(err), logger.levels.ERROR, { title = "Tungsten Error" })
+      error_handler.notify_error("Rank", "Error during evaluation: " .. tostring(err))
       return
     end
     if result == nil or result == "" then
-      logger.notify("TungstenRank: No result from evaluation (expected a number).", logger.levels.WARN, { title = "Tungsten Warning" })
+      error_handler.notify_error("Rank", "No result from evaluation (expected a numner).")
       return
     end
     insert_result_util.insert_result(result, " \\rightarrow ")
@@ -101,11 +113,15 @@ local function tungsten_rank_command(_)
 end
 
 local function tungsten_eigenvalue_command(_)
-    local matrix_ast_node, _ = cmd_utils.parse_selected_latex("matrix")
+    local matrix_ast_node, _, err = cmd_utils.parse_selected_latex("matrix")
+    if err then
+      error_handler.notify_error("Eigenvalue", err)
+      return
+    end
     if not matrix_ast_node then return end
 
     if matrix_ast_node.type ~= "matrix" then
-        logger.notify("TungstenEigenvalue: The selected text is not a valid matrix. Parsed as: " .. (matrix_ast_node and matrix_ast_node.type or "nil"), logger.levels.ERROR, { title = "Tungsten Error" })
+        error_handler.notify_error("Eigenvalue", "The selected text is not a valid matrix. Parsed as: " .. (matrix_ast_node and matrix_ast_node.type or "nil"))
         return
     end
 
@@ -114,11 +130,11 @@ local function tungsten_eigenvalue_command(_)
 
     evaluator.evaluate_async(eigenvalues_ast_node, use_numeric_mode, function(result, err)
         if err then
-            logger.notify("TungstenEigenvalue: Error during evaluation: " .. tostring(err), logger.levels.ERROR, { title = "Tungsten Error" })
+            error_handler.notify_error("Eigenvalue", "Error during evaluation: " ..tostring(err))
             return
         end
         if result == nil or result == "" then
-            logger.notify("TungstenEigenvalue: No result from evaluation.", logger.levels.WARN, { title = "Tungsten Warning" })
+            error_handler.notify_error("Eigenvalue", "No result from evaluation.")
             return
         end
         insert_result_util.insert_result(result, " \\rightarrow ")
@@ -126,11 +142,15 @@ local function tungsten_eigenvalue_command(_)
 end
 
 local function tungsten_eigenvector_command(_)
-    local matrix_ast_node, _ = cmd_utils.parse_selected_latex("matrix")
+    local matrix_ast_node, _, err = cmd_utils.parse_selected_latex("matrix")
+    if err then
+      error_handler.notify_error("Eigenvector", err)
+      return
+    end
     if not matrix_ast_node then return end
 
     if matrix_ast_node.type ~= "matrix" then
-        logger.notify("TungstenEigenvector: The selected text is not a valid matrix. Parsed as: " .. (matrix_ast_node and matrix_ast_node.type or "nil"), logger.levels.ERROR, { title = "Tungsten Error" })
+        error_handler.notify_error("Eigenvector", "The selected text is not a valid matrix. Parsed as: " .. (matrix_ast_node and matrix_ast_node.type or "Nil"))
         return
     end
 
@@ -139,11 +159,11 @@ local function tungsten_eigenvector_command(_)
 
     evaluator.evaluate_async(eigenvectors_ast_node, use_numeric_mode, function(result, err)
         if err then
-            logger.notify("TungstenEigenvector: Error during evaluation: " .. tostring(err), logger.levels.ERROR, { title = "Tungsten Error" })
+            error_handler.notify_error("Eigenvector", "Error during evaluation: " .. tostring(err))
             return
         end
         if result == nil or result == "" then
-            logger.notify("TungstenEigenvector: No result from evaluation.", logger.levels.WARN, { title = "Tungsten Warning" })
+            error_handler.notify_error("Eigenvector", "No result from evaluation.")
             return
         end
         insert_result_util.insert_result(result, " \\rightarrow ")
@@ -151,11 +171,15 @@ local function tungsten_eigenvector_command(_)
 end
 
 local function tungsten_eigensystem_command(_)
-    local matrix_ast_node, _ = cmd_utils.parse_selected_latex("matrix")
+    local matrix_ast_node, _, err = cmd_utils.parse_selected_latex("matrix")
+    if err then
+      error_handler.notify_error("Eigensysem", err)
+      return
+    end
     if not matrix_ast_node then return end
 
     if matrix_ast_node.type ~= "matrix" then
-        logger.notify("TungstenEigensystem: The selected text is not a valid matrix. Parsed as: " .. (matrix_ast_node and matrix_ast_node.type or "nil"), logger.levels.ERROR, { title = "Tungsten Error" })
+        error_handler.notify_error("Eigensystem", "The selected text is not a valid matrix. Parsed as: " .. (matrix_ast_node and matrix_ast_node.type or "Nil"))
         return
     end
 
@@ -164,11 +188,11 @@ local function tungsten_eigensystem_command(_)
 
     evaluator.evaluate_async(eigensystem_ast_node, use_numeric_mode, function(result, err)
         if err then
-            logger.notify("TungstenEigensystem: Error during evaluation: " .. tostring(err), logger.levels.ERROR, { title = "Tungsten Error" })
+            error_handler.notify_error("Eigensystem", "Error during evaluation: " .. tostring(err))
             return
         end
         if result == nil or result == "" then
-            logger.notify("TungstenEigensystem: No result from evaluation.", logger.levels.WARN, { title = "Tungsten Warning" })
+            error_handler.notify_error("Eigensystem", "No result from evaluation.")
             return
         end
         insert_result_util.insert_result(result, " \\rightarrow ")

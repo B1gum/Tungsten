@@ -83,7 +83,6 @@ function M.evaluate_async(ast, numeric, callback)
   local pcall_ok, pcall_result = pcall(wolfram_codegen.to_string, ast)
   if not pcall_ok or pcall_result == nil then
     local err_msg = "Error converting AST to Wolfram code: " .. tostring(pcall_result)
-    logger.notify("Tungsten: " .. err_msg, logger.levels.ERROR, { title = "Tungsten Error" })
     callback(nil, err_msg)
     return
   end
@@ -149,7 +148,6 @@ function M.evaluate_async(ast, numeric, callback)
       elseif final_stdout ~= "" then
         err_msg = err_msg .. "\nStdout (potentially error): " .. final_stdout
       end
-      logger.notify("Tungsten: " .. err_msg, logger.levels.ERROR, { title = "Tungsten Error" })
       callback(nil, err_msg)
     end
   end)
@@ -164,7 +162,6 @@ function M.run_async(input, numeric, callback)
   local ok, ast = pcall(parser_module.parse, input)
   if not ok or ast == nil then
     local err_msg = "Parse error: " .. tostring(ast or "nil AST")
-    logger.notify("Tungsten: " .. err_msg, logger.levels.ERROR, { title = "Tungsten Error" })
     callback(nil, err_msg)
     return
   end

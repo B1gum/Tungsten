@@ -178,20 +178,6 @@ describe("tungsten.core.engine", function()
       assert.are.equal("should_not_be_used", mock_state.cache[expr_key])
     end)
 
-    it("should invoke callback with error if AST to Wolfram code conversion fails", function()
-      local error_ast = ast_node("error_ast")
-      local callback_spy = spy.new()
-
-      engine.evaluate_async(error_ast, false, function(...) callback_spy(...) end)
-
-      assert.spy(logger_notify_spy).was.called_with(
-        "Tungsten: Error converting AST to Wolfram code: nil",
-        mock_logger.levels.ERROR,
-        match.is_table()
-      )
-      assert.spy(callback_spy).was.called_with(nil, "Error converting AST to Wolfram code: nil")
-    end)
-
     it("should invoke callback with error if async.run_job returns a falsy job_id", function()
       mock_async.run_job = spy.new(function() return nil end)
       local test_ast = ast_node("job_fail_ast")

@@ -9,6 +9,7 @@ local selection = require "tungsten.util.selection"
 local insert_result_util = require "tungsten.util.insert_result"
 local config    = require "tungsten.config"
 local logger    = require "tungsten.util.logger"
+local error_handler = require "tungsten.util.error_handler"
 local state     = require "tungsten.state"
 local wolfram_backend = require "tungsten.backends.wolfram"
 local vim_inspect = require "vim.inspect"
@@ -16,12 +17,20 @@ local string_util = require "tungsten.util.string"
 local cmd_utils = require "tungsten.util.commands"
 
 local function tungsten_eval_command(_)
-  local ast, _ = cmd_utils.parse_selected_latex("expression")
+  local ast, _, err = cmd_utils.parse_selected_latex("expression")
+  if err then
+    error_handler.notify_error("Eval", err)
+    return
+  end
   if not ast then return end
 
   local use_numeric_mode = config.numeric_mode
 
-  evaluator.evaluate_async(ast, use_numeric_mode, function(result)
+  evaluator.evaluate_async(ast, use_numeric_mode, function(result, err2)
+    if err2 then
+      error_handler.notify_error("Eval", err2)
+      return
+    end
     if result == nil or result == "" then
       return
     end
@@ -32,13 +41,13 @@ end
 local function define_persistent_variable_command(_)
   local selected_text = selection.get_visual_selection()
   if selected_text == "" or selected_text == nil then
-    logger.notify("Tungsten: No text selected for variable definition.", logger.levels.ERROR, { title = "Tungsten Error" })
+    error_handler.notify_error("DefineVar", "No text selected for variable definition.")
     return
   end
 
   local configured_op_str = config.persistent_variable_assignment_operator
   if configured_op_str ~= "=" and configured_op_str ~= ":=" then
-    logger.notify("Tungsten: Invalid assignment operator in config. Using ':='.", logger.levels.WARN, { title = "Tungsten Warning" })
+    error_handler.notify_error("DefineVar", "Invalid assignment operator in config. Using: '='")
     configured_op_str = ":="
   end
 
@@ -63,7 +72,7 @@ local function define_persistent_variable_command(_)
   end
 
   if not op_start_pos then
-    logger.notify("Tungsten: No assignment operator ('=' or ':=') found in selection.", logger.levels.ERROR, { title = "Tungsten Error" })
+    error_handler.notify_error("DefineVar", "No assignment operator ('=' or ':=') found in selection.")
     return
   end
 
@@ -84,12 +93,12 @@ local function define_persistent_variable_command(_)
   local rhs_latex_str = string_util.trim(raw_part2)
 
   if var_name_str == "" then
-    logger.notify("Tungsten: Variable name cannot be empty.", logger.levels.ERROR, { title = "Tungsten Error" })
+    error_handler.notify_error("DefineVar", "Variable name cannot be empty.")
     return
   end
 
   if rhs_latex_str == "" then
-    logger.notify("Tungsten: Variable definition (LaTeX) cannot be empty.", logger.levels.ERROR, { title = "Tungsten Error" })
+    error_handler.notify_error("DefineVar", "Variable definition (LaTeX) cannot be empty.")
     return
   end
 
@@ -99,7 +108,7 @@ local function define_persistent_variable_command(_)
 
   local parse_ok, definition_ast_or_err = pcall(parser.parse, rhs_latex_str)
   if not parse_ok or not definition_ast_or_err then
-    logger.notify("Tungsten: Failed to parse LaTeX definition for '" .. var_name_str .. "': " .. tostring(definition_ast_or_err), logger.levels.ERROR, { title = "Tungsten Error" })
+    error_handler.notify_error("DefineVar", "Failed to parse LaTeX definition for '" .. var_name_str .. "': " .. tostring(definition_ast_or_err))
     return
   end
   local definition_ast = definition_ast_or_err
@@ -115,7 +124,7 @@ local function define_persistent_variable_command(_)
   end
 
   if not conversion_ok or not wolfram_definition_str_or_err or type(wolfram_definition_str_or_err) ~= "string" then
-    logger.notify("Tungsten: Failed to convert definition AST to Wolfram string for '" .. var_name_str .. "': " .. tostring(wolfram_definition_str_or_err), logger.levels.ERROR, { title = "Tungsten Error" })
+    error_handler.notify_error("DefineVar", "Failed to convert definition AST to wolfram string for '" .. var_name_str .. "': " .. tostring(wolfram_definition_str_or_err))
     return
   end
   local wolfram_definition_str = wolfram_definition_str_or_err
@@ -136,11 +145,15 @@ local function tungsten_solve_command(_)
   local initial_end_pos = vim.fn.getpos("'>")
 
   if initial_start_pos[2] == 0 and initial_start_pos[3] == 0 and initial_end_pos[2] == 0 and initial_end_pos[3] == 0 then
-    logger.notify("TungstenSolve: No equation selected (visual selection marks invalid).", logger.levels.ERROR, { title = "Tungsten Error"})
+    error_handler.notify_error("Solve", "No equation selected.")
     return
   end
 
-  local parsed_ast_top, equation_text = cmd_utils.parse_selected_latex("equation")
+  local parsed_ast_top, equation_text, parse_err = cmd_utils.parse_selected_latex("equation")
+  if parse_err then
+    error_handler.notify_error("Solve", parse_err)
+    return
+  end
   if not parsed_ast_top then return end
 
   local eq_ast
@@ -151,7 +164,7 @@ local function tungsten_solve_command(_)
         logger.notify("TungstenSolve: Extracted single equation from system capture.", logger.levels.DEBUG, {title="Tungsten Debug"})
       end
     else
-      logger.notify("TungstenSolve: Parsed as system with not exactly one equation. AST: " .. vim.inspect(parsed_ast_top), logger.levels.ERROR, { title = "Tungsten Error" })
+      error_handler.notify_error("Solve", "Parsed as system with not exactly one equation.")
       return
     end
   else
@@ -165,45 +178,45 @@ local function tungsten_solve_command(_)
   end
 
   if not is_valid_equation_structure then
-    logger.notify("TungstenSolve: Selected text is not a valid single equation. Effective AST: " .. vim.inspect(eq_ast), logger.levels.ERROR, { title = "Tungsten Error" })
+    error_handler.notify_error("Solve", "Selected text is not a valid single equation.")
     return
   end
 
   vim.ui.input({ prompt = "Enter variable to solve for (e.g., x):" }, function(var_input_str)
     if var_input_str == nil or var_input_str == "" then
-      logger.notify("TungstenSolve: No variable entered.", logger.levels.WARN, { title = "Tungsten Warning" })
+      error_handler.notify_error("Solve", "No variable entered.")
       return
     end
     local trimmed_var_name = string_util.trim(var_input_str)
     if trimmed_var_name == "" then
-      logger.notify("TungstenSolve: Variable cannot be empty.", logger.levels.ERROR, { title = "Tungsten Error" })
+      error_handler.notify_error("Solve", "Variable cannot be empty.")
       return
     end
 
     local var_parse_ok, var_ast = pcall(parser.parse, trimmed_var_name)
     if not var_parse_ok or not var_ast or var_ast.type ~= "variable" then
-      logger.notify("TungstenSolve: Invalid variable: '" .. trimmed_var_name .. "'. Parsed as: " .. vim.inspect(var_ast), logger.levels.ERROR, { title = "Tungsten Error" })
+      error_handler.notify_error("Solve", "Invalid variable: '" .. trimmed_var_name .. "'.")
       return
     end
 
     local eq_wolfram_ok, eq_wolfram_str = pcall(wolfram_backend.to_string, eq_ast)
     if not eq_wolfram_ok or not eq_wolfram_str then
-      logger.notify("TungstenSolve: Failed to convert equation: " .. tostring(eq_wolfram_str), logger.levels.ERROR, {title = "Tungsten Error"})
+      error_handler.notify_error("Solve", "Failed to convert equation.")
       return
     end
     local var_wolfram_ok, var_wolfram_str = pcall(wolfram_backend.to_string, var_ast)
     if not var_wolfram_ok or not var_wolfram_str then
-      logger.notify("TungstenSolve: Failed to convert variable: " .. tostring(var_wolfram_str), logger.levels.ERROR, {title = "Tungsten Error"})
+      error_handler.notify_error("Solve", "Failed to convert variable.")
       return
     end
 
     solver.solve_equation_async({eq_wolfram_str}, {var_wolfram_str}, false, function(solution, err)
       if err then
-        logger.notify("TungstenSolve: Solver error: " .. tostring(err), logger.levels.ERROR, { title = "Tungsten Error"})
+        error_handler.notify_error("Solve", err)
         return
       end
       if solution == nil or solution == "" then
-        logger.notify("TungstenSolve: No solution found.", logger.levels.WARN, { title = "Tungsten Warning"})
+        error_handler.notify_error("Solve", "No solution found.")
         return
       end
       insert_result_util.insert_result(solution, " \\rightarrow ", initial_start_pos, initial_end_pos, equation_text)
@@ -217,11 +230,15 @@ local function tungsten_solve_system_command(_)
   local initial_start_pos = vim.fn.getpos("'<")
   local initial_end_pos = vim.fn.getpos("'>")
 
-  local equations_capture_ast_or_err, visual_selection_text = cmd_utils.parse_selected_latex("system of equations")
+  local equations_capture_ast_or_err, visual_selection_text, parse_err = cmd_utils.parse_selected_latex("system of equations")
+  if parse_err then
+    error_handler.notify_error("SolveSystem", parse_err)
+    return
+  end
   if not equations_capture_ast_or_err then return end
 
   if not equations_capture_ast_or_err or equations_capture_ast_or_err.type ~= "solve_system_equations_capture" then
-    logger.notify("TungstenSolveSystem: Selected text does not form a valid system of equations...", logger.levels.ERROR)
+    error_handler.notify_error("SolveSystem", "Selected text does not form a valid system of equations.")
     return
   end
 
@@ -229,7 +246,7 @@ local function tungsten_solve_system_command(_)
 
   vim.ui.input({ prompt = "Enter variables (e.g., x, y or x; y):" }, function(input_vars_str)
     if input_vars_str == nil or input_vars_str:match("^%s*$") then
-      logger.notify("TungstenSolveSystem: No variables entered.", logger.levels.WARN, { title = "Tungsten Warning" })
+      error_handler.notify_error("SolveSystem", "No variables entered.")
       return
     end
 
@@ -249,7 +266,7 @@ local function tungsten_solve_system_command(_)
     end
 
     if #variable_asts == 0 then
-      logger.notify("TungstenSolveSystem: No valid variables parsed from input.", logger.levels.ERROR, { title = "Tungsten Error" })
+      error_handler.notify_error("SolveSystem", "No valid variables parsed from input.")
       return
     end
 
@@ -257,8 +274,8 @@ local function tungsten_solve_system_command(_)
     for _, eq_ast_node in ipairs(captured_equation_asts) do
         local ok, str = pcall(wolfram_backend.to_string, eq_ast_node)
         if not ok then
-            logger.notify("TungstenSolveSystem: Failed to convert an equation to Wolfram string: " .. tostring(str), logger.levels.ERROR, {title = "Tungsten Error"})
-            return
+          error_handler.notify_error("SolveSystem", "Failed to convert an equation to Wolfram string: " .. tostring(str))
+          return
         end
         table.insert(eq_wolfram_strs, str)
     end
@@ -267,7 +284,7 @@ local function tungsten_solve_system_command(_)
     for _, var_ast_node in ipairs(variable_asts) do
         local ok, str = pcall(wolfram_backend.to_string, var_ast_node)
          if not ok then
-            logger.notify("TungstenSolveSystem: Failed to convert a variable to Wolfram string: " .. tostring(str), logger.levels.ERROR, {title = "Tungsten Error"})
+            error_handler.notify_error("SolveSystem", "Failed to convert a varianle to Wolfram string: " .. tostring(str))
             return
         end
         table.insert(var_wolfram_strs, str)
@@ -275,11 +292,11 @@ local function tungsten_solve_system_command(_)
 
     solver.solve_equation_async(eq_wolfram_strs, var_wolfram_strs, true, function(result, err)
       if err then
-        logger.notify("TungstenSolveSystem: Error during system evaluation: " .. tostring(err), logger.levels.ERROR, { title = "Tungsten Error" })
+        error_handler.notify_error("SolveSystem", err)
         return
       end
       if result == nil or result == "" then
-        logger.notify("TungstenSolveSystem: No solution found or an issue occurred.", logger.levels.WARN, { title = "Tungsten Warning" })
+        error_handler.notify_error("SolveSystem", "No solution found or an issue occurred.")
         return
       end
       insert_result_util.insert_result(result, " \\rightarrow ", initial_start_pos, initial_end_pos, visual_selection_text)
