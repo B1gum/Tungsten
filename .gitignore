@@ -5,3 +5,4 @@
 *__MACOSX
 *.shada
 *.shada.tmp.*
+.test_home/
