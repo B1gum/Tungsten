@@ -24,7 +24,7 @@ deps:
 	@echo "→ All dependencies installed into $(ROCKTREE)."
 
 .PHONY: test
-test:
+test: deps
 	@echo "Running tests under LuaJIT rock-tree with your custom vusted…"
 	@LUA_PATH="`$(LUAROCKS) --tree=$(ROCKTREE) path --lua-version=5.1 --lr-path`":$$LUA_PATH \
 	 LUA_CPATH="`$(LUAROCKS) --tree=$(ROCKTREE) path --lua-version=5.1 --lr-cpath`":$$LUA_CPATH \
