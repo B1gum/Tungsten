@@ -4,21 +4,16 @@ set -euo pipefail
 PROJECT_ROOT=$(cd "$(dirname "$0")/.." && pwd)
 NVIM_BIN=${NVIM_BIN:-}
 
-# Determine Neovim executable or bootstrap a local copy
 if [[ -z "$NVIM_BIN" ]]; then
   if command -v nvim >/dev/null 2>&1; then
     NVIM_BIN=$(command -v nvim)
   else
-    NVIM_DIR="$PROJECT_ROOT/.deps/nvim"
-    NVIM_BIN="$NVIM_DIR/bin/nvim"
-    if [[ ! -x "$NVIM_BIN" ]]; then
-      echo "Neovim not found, downloading nightly build..."
-      mkdir -p "$NVIM_DIR"
-      curl -L https://github.com/neovim/neovim/releases/latest/download/nvim-linux64.tar.gz |
-        tar xz --strip-components=1 -C "$NVIM_DIR"
-    fi
+    sudo apt-get update
+    sudo apt-get install -y neovim luarocks
+    NVIM_BIN=$(command -v nvim)
   fi
 fi
+
 
 # Bootstrap plugin dependencies into a temporary HOME
 TEST_HOME="${TEST_HOME:-$PROJECT_ROOT/.test_home}"
