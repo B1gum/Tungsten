@@ -15,7 +15,6 @@ default: test
 .PHONY: deps
 deps:
 	@echo "Installing test deps into $(ROCKTREE)…"
-	@git config --global url."https://github.com/".insteadOf git://github.com/
 	@$(LUAROCKS) install --tree=$(ROCKTREE) vusted
 	@$(LUAROCKS) install --tree=$(ROCKTREE) luacheck
 	@$(LUAROCKS) install --tree=$(ROCKTREE) luafilesystem

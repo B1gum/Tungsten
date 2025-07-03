@@ -37,6 +37,19 @@ clone_if_missing https://github.com/nvim-lua/plenary.nvim "$PLUGIN_BASE/plenary.
 clone_if_missing https://github.com/folke/which-key.nvim "$PLUGIN_BASE/which-key.nvim"
 clone_if_missing https://github.com/nvim-telescope/telescope.nvim "$PLUGIN_BASE/telescope.nvim"
 
+ROCKTREE="$HOME/.local"
+luarocks install --tree="$ROCKTREE" vusted
+luarocks install --tree="$ROCKTREE" luacheck
+luarocks install --tree="$ROCKTREE" luafilesystem
+luarocks install --tree="$ROCKTREE" penlight
+luarocks install --tree="$ROCKTREE" lpeg
+luarocks install --tree="$ROCKTREE" plenary.nvim
+export PATH="$ROCKTREE/bin:$PATH"
+DEFAULT_LUA_PATH=$(lua5.1 -e 'print(package.path)')
+DEFAULT_LUA_CPATH=$(lua5.1 -e 'print(package.cpath)')
+export LUA_PATH="$(luarocks --tree="$ROCKTREE" path --lua-version=5.1 --lr-path);$DEFAULT_LUA_PATH"
+export LUA_CPATH="$(luarocks --tree="$ROCKTREE" path --lua-version=5.1 --lr-cpath);$DEFAULT_LUA_CPATH"
+
 export TUNGSTEN_PROJECT_ROOT="$PROJECT_ROOT"
 export XDG_DATA_HOME="$HOME/.local/share"
 export XDG_CONFIG_HOME="$HOME/.config"
