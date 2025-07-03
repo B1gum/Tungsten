@@ -14,59 +14,27 @@ function M.substitute_persistent_vars(code_string, variables_map)
     return code_string
   end
 
-  local sorted_var_names = {}
-  for var_name, _ in pairs(variables_map) do
-    table.insert(sorted_var_names, var_name)
-  end
-  table.sort(sorted_var_names, function(a, b)
+  local names = vim.tbl_keys(variables_map)
+  table.sort(names, function(a, b)
     return #a > #b
   end)
 
-  local current_code = code_string
-  local changed_in_a_full_pass
+  local changed
 
   repeat
-    changed_in_a_full_pass = false
-    for _, var_name in ipairs(sorted_var_names) do
-      local var_wolfram_def = variables_map[var_name]
-      local pattern_to_find = vim.pesc(var_name)
-
-      local temp_code_before_this_var_substitution = current_code
-      local new_parts = {}
-      local search_start_index = 1
-
-      while true do
-        local s, e = string.find(current_code, pattern_to_find, search_start_index, true)
-
-        if not s then
-          table.insert(new_parts, string.sub(current_code, search_start_index))
-          break
-        end
-
-        local pre_char = (s == 1) and "" or string.sub(current_code, s - 1, s - 1)
-        local post_char = (e == #current_code) and "" or string.sub(current_code, e + 1, e + 1)
-
-        local is_pre_boundary = (s == 1) or (not pre_char:match("%w"))
-        local is_post_boundary = (e == #current_code) or (not post_char:match("%w"))
-
-        table.insert(new_parts, string.sub(current_code, search_start_index, s - 1))
-
-        if is_pre_boundary and is_post_boundary then
-          table.insert(new_parts, "(" .. var_wolfram_def .. ")")
-        else
-          table.insert(new_parts, string.sub(current_code, s, e))
-        end
-        search_start_index = e + 1
-      end
-      current_code = table.concat(new_parts)
-
-      if current_code ~= temp_code_before_this_var_substitution then
-        changed_in_a_full_pass = true
+    changed = false
+    for _, name in ipairs(names) do
+      local value = variables_map[name]
+      local pat = "%f[%w]" .. vim.pesc(name) .. "%f[%W]"
+      local replaced, n = code_string:gsub(pat, "(" .. value .. ")")
+      if n > 0 then
+        code_string = replaced
+        changed = true
       end
     end
-  until not changed_in_a_full_pass
+  until not changed
 
-  return current_code
+  return code_string
 end
 
 
