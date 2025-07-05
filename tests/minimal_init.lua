@@ -1,25 +1,24 @@
 -- tests/minimal_init.lua
 -- Minimal init.lua for running tests.
-
-local rocktree = os.getenv("HOME") .. "/.local"
-
-local function get_luarocks_path(path_type)
-  local cmd = string.format("luarocks --tree=%s path --lua-version=5.1 %s", rocktree, path_type)
-  local handle = io.popen(cmd)
-  if not handle then return "" end
-  local output = handle:read("*a")
-  handle:close()
-  return output:gsub("[\r\n]", "")
+local home = os.getenv("HOME")
+if not home then
+  print("Error: HOME environment variable not set.")
+  return
 end
 
-local lua_path = get_luarocks_path("--lr-path")
-local cpath = get_luarocks_path("--lr-cpath")
+local rocktree_share = home .. "/.local/share/lua/5.1"
+local rocktree_lib = home .. "/.local/lib/lua/5.1"
 
-package.path = lua_path .. ";" .. package.path
-package.cpath = cpath .. ";" .. package.cpath
+package.path = rocktree_share .. "/?.lua;" .. rocktree_share .. "/?/init.lua;" .. package.path
+package.cpath = rocktree_lib .. "/?.so;" .. package.cpath
 
-local tungsten_root = vim.fn.fnamemodify(vim.fn.resolve(vim.fn.stdpath("config") .. "/lua/tungsten"), ":h:h")
-package.path = package.path .. ";" .. tungsten_root .. "/lua/?.lua"
-package.path = package.path .. ";" .. tungsten_root .. "/lua/?/init.lua"
+local project_root = vim.fn.getcwd()
+if project_root and project_root ~= "" then
+  package.path = package.path .. ";" .. project_root .. "/lua/?.lua"
+  package.path = package.path .. ";" .. project_root .. "/lua/?/init.lua"
+else
+  print("Error: Could not determine project root.")
+end
 
-vim.opt.rtp:prepend(vim.fn.stdpath("data") .. "/lazy/plenary.nvim")
+vim.opt.rtp:prepend(home .. "/.local/share/nvim/site/pack/plugins/start/plenary.nvim")
+
