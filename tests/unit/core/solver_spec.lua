@@ -8,6 +8,7 @@ local spy = require 'luassert.spy'
 local match = require 'luassert.match'
 
 local solver
+local solution_helper
 
 local mock_evaluator_module
 local mock_config_module
@@ -72,11 +73,37 @@ describe("tungsten.core.solver", function()
         end
         
         solver = require("tungsten.core.solver")
+        solution_helper = require("tungsten.util.wolfram_solution")
     end)
 
     after_each(function()
         _G.require = original_require
         clear_modules_from_cache_func()
+    end)
+
+      describe("parse_wolfram_solution", function()
+        it("handles single variable", function()
+            local res = solution_helper.parse_wolfram_solution("{{x -> 2}}", {"x"}, false)
+            assert.is_true(res.ok)
+            assert.are.equal("x = 2", res.formatted)
+        end)
+
+        it("handles system of equations", function()
+            local res = solution_helper.parse_wolfram_solution("{{x -> 1, y -> -3}}", {"x", "y"}, true)
+            assert.is_true(res.ok)
+            assert.are.equal("x = 1, y = -3", res.formatted)
+        end)
+
+        it("returns no solution when output empty", function()
+            local res = solution_helper.parse_wolfram_solution("", {"x"}, false)
+            assert.is_false(res.ok)
+            assert.are.equal("No solution", res.reason)
+        end)
+
+        it("handles timeout-like nil output", function()
+            local res = solution_helper.parse_wolfram_solution(nil, {"x"}, false)
+            assert.is_false(res.ok)
+        end)
     end)
 
     describe("M.solve_equation_async(eq_wolfram_strs, var_wolfram_strs, is_system, callback)", function()
@@ -116,7 +143,7 @@ describe("tungsten.core.solver", function()
                 cb(0, "{{x -> 1}}", "")
             end)
             solver.solve_equation_async({"x==1"}, {"x"}, false, callback_spy)
-            assert.spy(callback_spy).was.called_with("1", nil)
+            assert.spy(callback_spy).was.called_with("x = 1", nil)
         end)
 
         it("should handle successful job execution and parse system solution (e.g. {{x -> 1, y -> 2}})", function()
