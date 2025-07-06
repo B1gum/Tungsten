@@ -6,3 +6,4 @@
 *.shada
 *.shada.tmp.*
 .test_home/
+.test_deps/
