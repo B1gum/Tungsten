@@ -45,17 +45,11 @@ local function define_persistent_variable_command(_)
     return
   end
 
-  local configured_op_str = config.persistent_variable_assignment_operator
-  if configured_op_str ~= "=" and configured_op_str ~= ":=" then
-    error_handler.notify_error("DefineVar", "Invalid assignment operator in config. Using: '='")
-    configured_op_str = ":="
-  end
-
   local op_to_use_str = nil
   local op_start_pos = nil
 
-  local op_double_start, op_double_end = selected_text:find(":=", 1, true)
-  local op_single_start, op_single_end = selected_text:find("=", 1, true)
+  local op_double_start = selected_text:find(":=", 1, true)
+  local op_single_start = selected_text:find("=", 1, true)
 
   if op_double_start then
     op_to_use_str = ":="
@@ -250,7 +244,7 @@ local function tungsten_solve_system_command(_)
       return
     end
 
-    local variable_names_str = {}
+    local variable_names_str
     if input_vars_str:find(";") then
         variable_names_str = vim.split(input_vars_str, ";%s*")
     else

@@ -2,7 +2,7 @@
 -- Defines the lpeg rule for parsing a system of ODEs.
 
 local lpeg = require "lpeg"
-local P, S, V, Ct = lpeg.P, lpeg.S, lpeg.V, lpeg.Ct
+local P, V, Ct = lpeg.P, lpeg.V, lpeg.Ct
 
 local tk = require "tungsten.core.tokenizer"
 local ast = require "tungsten.core.ast"

@@ -87,7 +87,7 @@ function M.get_combined_grammar()
       if config.debug then
           logger.notify(("Registry: Adding AtomBaseItem pattern for '%s' from %s."):format(contrib.name, contrib.domain_name), logger.levels.DEBUG, {title="Tungsten Debug"})
       end
-    else 
+    else
       if grammar_def[contrib.name] and rule_providers[contrib.name] then
         local existing_provider = rule_providers[contrib.name]
         if existing_provider.domain_priority < contrib.domain_priority then
@@ -144,7 +144,7 @@ function M.get_combined_grammar()
     logger.notify("Registry: Main expression rule 'AddSub' not found. Attempting to find a fallback. This may lead to parsing issues.", logger.levels.WARN, { title = "Tungsten Registry" })
     if chosen_content_rule_name == "AtomBase" then
         logger.notify("Registry: No suitable rule found for 'ExpressionContent' other than AtomBase. Parser may be limited.", logger.levels.ERROR, { title = "Tungsten Registry Error" })
-    elseif chosen_content_rule_name ~= "" and chosen_content_rule_name ~= "AddSub" then 
+    elseif chosen_content_rule_name ~= "" and chosen_content_rule_name ~= "AddSub" then
         logger.notify("Registry: Using '" .. chosen_content_rule_name .. "' as a fallback for 'ExpressionContent'.", logger.levels.WARN, { title = "Tungsten Registry" })
     end
   end

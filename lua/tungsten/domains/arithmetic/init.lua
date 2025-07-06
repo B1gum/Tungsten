@@ -1,6 +1,6 @@
 -- tungsten/lua/tungsten/domains/arithmetic/init.lua
 local lpeg = require "lpeg"
-local P, V, C = lpeg.P, lpeg.V, lpeg.C
+local V = lpeg.V
 local tokens_mod = require "tungsten.core.tokenizer"
 local ast_utils = require "tungsten.core.ast"
 local registry = require "tungsten.core.registry"

@@ -6,6 +6,7 @@ local wolfram_codegen = require "tungsten.backends.wolfram"
 local config = require "tungsten.config"
 local state = require "tungsten.state"
 local async = require "tungsten.util.async"
+local logger = require "tungsten.util.logger"
 
 local M = {}
 
@@ -45,7 +46,6 @@ M.get_cache_key = get_cache_key
 
 function M.evaluate_async(ast, numeric, callback)
   assert(type(callback) == "function", "evaluate_async expects a callback function")
-  local logger = require "tungsten.util.logger"
 
   local initial_wolfram_code
   local pcall_ok, pcall_result = pcall(wolfram_codegen.to_string, ast)
@@ -124,7 +124,6 @@ end
 
 function M.run_async(input, numeric, callback)
   assert(type(callback) == "function", "run_async expects a callback function")
-  local logger = require "tungsten.util.logger"
   local parser_module = require "tungsten.core.parser"
 
   local ok, ast = pcall(parser_module.parse, input)
@@ -146,7 +145,6 @@ function M.clear_cache()
 end
 
 function M.view_active_jobs()
-  local logger = require "tungsten.util.logger"
   if vim.tbl_isempty(state.active_jobs) then
     logger.notify("Tungsten: No active jobs.", logger.levels.INFO, { title = "Tungsten" })
     return

@@ -22,7 +22,6 @@ local MatrixRow = MatrixRowWithSeparators / function(captures)
         for _, item in ipairs(captures) do
             if type(item) == "table" and item.type ~= "ampersand" then
                 table.insert(elements_only, item)
-            elseif type(item) ~= "table" or not item.type then
             end
         end
     end
@@ -32,7 +31,7 @@ end
 local MatrixContentLoop = MatrixRow * (space * tk.double_backslash * space * MatrixRow)^0
 local OptionalTrailingSeparatorPattern = (space * tk.double_backslash * space)^-1
 
-MatrixBodyWithSeparators = Ct(MatrixContentLoop * OptionalTrailingSeparatorPattern)
+local MatrixBodyWithSeparators = Ct(MatrixContentLoop * OptionalTrailingSeparatorPattern)
 
 local MatrixBody = MatrixBodyWithSeparators / function(captures)
     local rows_only = {}
@@ -60,24 +59,23 @@ local MatrixRule = Ct(
   if not (type(begin_env_type) == "string" and begin_env_type ~= "") then return nil end
   if not (type(end_env_type) == "string" and end_env_type ~= "") then return nil end
   if begin_env_type ~= end_env_type then return nil end
-  if not (type(actual_matrix_rows) == "table") then return nil end
+  if type(actual_matrix_rows) ~= "table" then return nil end
 
-  for r_idx, row_table in ipairs(actual_matrix_rows) do
-    if not (type(row_table) == "table") then
-        if #row_table == 0 and #actual_matrix_rows > 0 then
-        elseif #row_table == 0 then
+    for _, row_table in ipairs(actual_matrix_rows) do
+        if type(row_table) ~= "table" then
+            if #row_table == 0 then
+                return nil
+            end
+        end
+        if #row_table == 0 and #actual_matrix_rows == 1 and (row_table[1] == nil and not next(row_table)) then
             return nil
         end
-    end
-    if #row_table == 0 and #actual_matrix_rows == 1 and (row_table[1] == nil and not next(row_table)) then
-        return nil
-    end
 
-    for c_idx, element_ast in ipairs(row_table) do
-      if not (type(element_ast) == "table" and element_ast.type) then
-        return nil
-      end
-    end
+        for _, element_ast in ipairs(row_table) do
+            if type(element_ast) ~= "table" or not element_ast.type then
+                return nil
+            end
+        end
   end
 
   if #actual_matrix_rows == 0 then
@@ -88,3 +86,4 @@ local MatrixRule = Ct(
 end
 
 return MatrixRule
+

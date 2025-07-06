@@ -2,7 +2,7 @@
 
 local M = {}
 
-local function find_ode_vars(equation_nodes, walk)
+local function find_ode_vars(equation_nodes)
   local dependent_vars = {}
   local independent_vars = {}
   local seen_dependent = {}
@@ -23,7 +23,7 @@ local function find_ode_vars(equation_nodes, walk)
 
       if func_name_str and not seen_dependent[func_name_str] then
         local indep_name = (node.variable and node.variable.name) or "x"
-        
+
         table.insert(dependent_vars, func_name_str .. "[" .. indep_name .. "]")
         seen_dependent[func_name_str] = true
 
@@ -85,7 +85,7 @@ M.handlers = {
 
     ["ode"] = function(node, walk)
         local equation_str = walk(node.lhs) .. " == " .. walk(node.rhs)
-        local vars_str, indep_vars_str = find_ode_vars({ node }, walk)
+        local vars_str, indep_vars_str = find_ode_vars({ node })
         return "DSolve[" .. equation_str .. ", " .. vars_str .. ", " .. indep_vars_str .. "]"
     end,
 
@@ -95,7 +95,7 @@ M.handlers = {
             table.insert(rendered_odes, walk(ode_node.lhs) .. " == " .. walk(ode_node.rhs))
         end
         local equations_str = "{" .. table.concat(rendered_odes, ", ") .. "}"
-        local vars_str, indep_vars_str = find_ode_vars(node.equations, walk)
+        local vars_str, indep_vars_str = find_ode_vars(node.equations)
         return "DSolve[" .. equations_str .. ", {" .. vars_str .. "}, " .. indep_vars_str .. "]"
     end,
 
@@ -106,7 +106,7 @@ M.handlers = {
             table.insert(rendered_equations, walk(eq_node))
         end
         local equations_str = "{" .. table.concat(rendered_equations, ", ") .. "}"
-        local vars_str, indep_vars_str = find_ode_vars(node.equations, walk)
+        local vars_str, indep_vars_str = find_ode_vars(node.equations)
 
         if vars_str == "" then
             return "Solve[" .. equations_str .. "]"
@@ -143,10 +143,6 @@ M.handlers = {
         local funcs_str = "{" .. table.concat(rendered_functions, ", ") .. "}"
         local var_str = (node.variable and walk(node.variable)) or "x"
         return "Wronskian[" .. funcs_str .. ", " .. var_str .. "]"
-    end,
-
-    ["evaluated_derivative"] = function(node, walk)
-        return "(" .. walk(node.derivative) .. ") /. " .. walk(node.variable) .. " -> " .. walk(node.value)
     end,
 }
 

@@ -43,12 +43,6 @@ function M.run_job(cmd, expr_key, on_complete)
   })
 
   if not job_id or job_id <= 0 then
-    local reason = "Unknown error"
-    if job_id == 0 then
-        reason = "Invalid arguments"
-    elseif job_id == -1 then
-        reason = "Command not found"
-    end
     finalize(job_id)
     return nil
   end
@@ -63,9 +57,9 @@ function M.run_job(cmd, expr_key, on_complete)
   job_timer = vim.loop.new_timer()
   if not job_timer then
       logger.notify("TungstenSolve: Failed to create job timer.", logger.levels.ERROR, { title = "Tungsten Error" })
-      return job_id 
+      return job_id
   end
-  
+
   job_timer:start(timeout_ms, 0, function()
     if state.active_jobs[job_id] then
       logger.notify(

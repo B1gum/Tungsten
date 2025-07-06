@@ -3,7 +3,7 @@
 --------------------------------------------------------------------------
 
 local lpeg = require "lpeg"
-local P, V, Cg, Ct, C = lpeg.P, lpeg.V, lpeg.Cg, lpeg.Ct, lpeg.C
+local P, V, Cg, Ct = lpeg.P, lpeg.V, lpeg.Cg, lpeg.Ct
 
 local tk = require "tungsten.core.tokenizer"
 local space = tk.space

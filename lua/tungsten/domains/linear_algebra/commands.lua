@@ -1,6 +1,4 @@
-local selection = require "tungsten.util.selection"
 local error_handler = require "tungsten.util.error_handler"
-local parser    = require "tungsten.core.parser"
 local evaluator = require "tungsten.core.engine"
 local insert_result_util = require "tungsten.util.insert_result"
 local config    = require "tungsten.config"
@@ -25,9 +23,9 @@ local function tungsten_gauss_eliminate_command(_)
 
   local use_numeric_mode = config.numeric_mode
 
-  evaluator.evaluate_async(gauss_eliminate_ast_node, use_numeric_mode, function(result, err)
-    if err then
-      error_handler.notify_error("GaussEliminate", "Error during evaluation: " .. tostring(err))
+  evaluator.evaluate_async(gauss_eliminate_ast_node, use_numeric_mode, function(result, callback_err)
+    if callback_err then
+      error_handler.notify_error("GaussEliminate", "Error during evaluation: " .. tostring(callback_err))
       return
     end
     if result == nil or result == "" then
@@ -53,9 +51,9 @@ local function tungsten_linear_independent_command(_)
 
   local linear_independent_node = ast.create_linear_independent_test_node(parsed_ast)
 
-  evaluator.evaluate_async(linear_independent_node, false, function(result, err)
-    if err then
-      error_handler.notify_error("LinearIndependent", "Error during evaluation: " .. tostring(err))
+  evaluator.evaluate_async(linear_independent_node, false, function(result, callback_err)
+    if callback_err then
+      error_handler.notify_error("LinearIndependent", "Error during evaluation: " .. tostring(callback_err))
       return
     end
     if result == nil or result == "" then
@@ -99,9 +97,9 @@ local function tungsten_rank_command(_)
   local rank_ast_node = ast.create_rank_node(matrix_ast_node)
   local use_numeric_mode = true
 
-  evaluator.evaluate_async(rank_ast_node, use_numeric_mode, function(result, err)
-    if err then
-      error_handler.notify_error("Rank", "Error during evaluation: " .. tostring(err))
+  evaluator.evaluate_async(rank_ast_node, use_numeric_mode, function(result, callback_err)
+    if callback_err then
+      error_handler.notify_error("Rank", "Error during evaluation: " .. tostring(callback_err))
       return
     end
     if result == nil or result == "" then
@@ -128,9 +126,9 @@ local function tungsten_eigenvalue_command(_)
     local eigenvalues_ast_node = ast.create_eigenvalues_node(matrix_ast_node)
     local use_numeric_mode = config.numeric_mode
 
-    evaluator.evaluate_async(eigenvalues_ast_node, use_numeric_mode, function(result, err)
-        if err then
-            error_handler.notify_error("Eigenvalue", "Error during evaluation: " ..tostring(err))
+    evaluator.evaluate_async(eigenvalues_ast_node, use_numeric_mode, function(result, callback_err)
+        if callback_err then
+            error_handler.notify_error("Eigenvalue", "Error during evaluation: " ..tostring(callback_err))
             return
         end
         if result == nil or result == "" then
@@ -157,9 +155,9 @@ local function tungsten_eigenvector_command(_)
     local eigenvectors_ast_node = ast.create_eigenvectors_node(matrix_ast_node)
     local use_numeric_mode = config.numeric_mode
 
-    evaluator.evaluate_async(eigenvectors_ast_node, use_numeric_mode, function(result, err)
-        if err then
-            error_handler.notify_error("Eigenvector", "Error during evaluation: " .. tostring(err))
+    evaluator.evaluate_async(eigenvectors_ast_node, use_numeric_mode, function(result, callback_err)
+        if callback_err then
+            error_handler.notify_error("Eigenvector", "Error during evaluation: " .. tostring(callback_err))
             return
         end
         if result == nil or result == "" then
@@ -186,9 +184,9 @@ local function tungsten_eigensystem_command(_)
     local eigensystem_ast_node = ast.create_eigensystem_node(matrix_ast_node)
     local use_numeric_mode = config.numeric_mode
 
-    evaluator.evaluate_async(eigensystem_ast_node, use_numeric_mode, function(result, err)
-        if err then
-            error_handler.notify_error("Eigensystem", "Error during evaluation: " .. tostring(err))
+    evaluator.evaluate_async(eigensystem_ast_node, use_numeric_mode, function(result, callback_err)
+        if callback_err then
+            error_handler.notify_error("Eigensystem", "Error during evaluation: " .. tostring(callback_err))
             return
         end
         if result == nil or result == "" then

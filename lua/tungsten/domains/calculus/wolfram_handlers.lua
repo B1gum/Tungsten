@@ -63,7 +63,7 @@ M.handlers = {
     return ("Sum[%s, {%s, %s, %s}]"):format(body_str, index_var_str, start_str, end_str)
   end,
 
-  symbol = function(node, recur_render)
+  symbol = function(node, _)
     if node.name == "infinity" then
       return "Infinity"
     elseif node.name == "pi" then

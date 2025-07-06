@@ -2,7 +2,7 @@
 -- Defines the lpeg rule for parsing the Wronskian.
 
 local lpeg = require "lpeg"
-local P, V, S, Ct = lpeg.P, lpeg.V, lpeg.S, lpeg.Ct
+local P, V, Ct = lpeg.P, lpeg.V, lpeg.Ct
 
 local tk = require "tungsten.core.tokenizer"
 local ast = require "tungsten.core.ast"

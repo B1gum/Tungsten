@@ -1,12 +1,9 @@
 -- lua/tungsten/core/solver.lua
 
-local parser = require "tungsten.core.parser"
-local wolfram_backend = require "tungsten.backends.wolfram"
 local evaluator = require "tungsten.core.engine"
 local config = require "tungsten.config"
 local logger = require "tungsten.util.logger"
 local state = require "tungsten.state"
-local string_util = require "tungsten.util.string"
 local async = require "tungsten.util.async"
 local solution_helper = require "tungsten.util.wolfram_solution"
 

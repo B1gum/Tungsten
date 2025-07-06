@@ -23,7 +23,6 @@ M.metadata = {
     "Wronskian",
     "LaplaceTransform",
     "Convolution",
-    "EvaluatedDerivative",
   },
 }
 
@@ -46,7 +45,6 @@ function M.init_grammar()
   registry.register_grammar_contribution(domain_name, domain_priority, "Wronskian", WronskianRule, "AtomBaseItem")
   registry.register_grammar_contribution(domain_name, domain_priority, "LaplaceTransform", LaplaceRule, "AtomBaseItem")
   registry.register_grammar_contribution(domain_name, domain_priority, "Convolution", ConvolutionRule, "Convolution")
-  registry.register_grammar_contribution(domain_name, domain_priority, "EvaluatedDerivative", EvaluatedDerivativeRule, "AtomBaseItem")
 
   if config.debug then
     logger.notify("Differential Equations Domain: Grammar contributions registered.", logger.levels.DEBUG, { title = "Tungsten Debug" })

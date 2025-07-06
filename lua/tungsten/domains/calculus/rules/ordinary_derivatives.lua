@@ -2,8 +2,7 @@
 -- Defines the lpeg rule for parsing ordinary derivatives including Leibniz, Lagrange, and Newton notations.
 
 local lpeg = require "lpeg"
-local P, V, C, R, S, Ct, Cg, Cf = lpeg.P, lpeg.V, lpeg.C, lpeg.R, lpeg.S, lpeg.Ct, lpeg.Cg, lpeg.Cf
-
+local P, V, C, Ct, Cg = lpeg.P, lpeg.V, lpeg.C, lpeg.Ct, lpeg.Cg
 local tk = require "tungsten.core.tokenizer"
 local space = tk.space
 local ast = require "tungsten.core.ast"

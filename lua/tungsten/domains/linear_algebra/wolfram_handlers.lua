@@ -1,6 +1,7 @@
 -- lua/tungsten/domains/linear_algebra/wolfram_handlers.lua
 -- Wolfram Language handlers for linear algebra operations
 ---------------------------------------------------------------------
+local logger = require "tungsten.util.logger"
 
 local M = {}
 
