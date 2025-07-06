@@ -10,7 +10,7 @@ local logger = require "tungsten.util.logger"
 
 local lpeg = require "lpeg"
 
-local P, Cp, Cmt, Cs = lpeg.P, lpeg.Cp, lpeg.Cmt, lpeg.Cs
+local P, Cs = lpeg.P, lpeg.Cs
 
 local M = {}
 
