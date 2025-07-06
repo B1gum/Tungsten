@@ -1,1 +1,42 @@
+name: CI
 
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Lua
+        uses: leafo/gh-actions-lua@v9
+      - name: Set up Luarocks
+        uses: leafo/gh-actions-luarocks@v4
+      - name: Install dependencies
+        run: make lint_deps
+      - name: Lint
+        run: make lint
+
+  test:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: 'stable'
+      - name: Set up Lua
+        uses: leafo/gh-actions-lua@v9
+      - name: Set up Luarocks
+        uses: leafo/gh-actions-luarocks@v4
+      - name: Install dependencies
+        run: make test_deps
+      - name: Run tests
+        run:
+          echo "LUA_PATH=$(luarocks path --lua-path);$LUA_PATH" >> $GITHUB_ENV
+          make test
