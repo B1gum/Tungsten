@@ -8,31 +8,48 @@ local state = require "tungsten.state"
 local async = require "tungsten.util.async"
 local logger = require "tungsten.util.logger"
 
+local lpeg = require "lpeg"
+
+local P, Cp, Cmt, Cs = lpeg.P, lpeg.Cp, lpeg.Cmt, lpeg.Cs
+
 local M = {}
+
+local function build_var_pattern(vars)
+  local names = vim.tbl_keys(vars)
+  table.sort(names, function(a, b)
+    return #a > #b
+  end)
+
+  local patterns = {}
+  local word = lpeg.R("AZ", "az", "09") + P("_")
+
+  for _, name in ipairs(names) do
+    local value = vars[name]
+    local p = (-lpeg.B(word)) * P(name) * -word / ("(" .. value .. ")")
+    table.insert(patterns, p)
+  end
+
+  local combined = patterns[1]
+  for i = 2, #patterns do
+    combined = combined + patterns[i]
+  end
+
+  return combined
+end
 
 function M.substitute_persistent_vars(code_string, variables_map)
   if not variables_map or vim.tbl_isempty(variables_map) then
     return code_string
   end
 
-  local names = vim.tbl_keys(variables_map)
-  table.sort(names, function(a, b)
-    return #a > #b
-  end)
+  local var_pattern = build_var_pattern(variables_map)
+  local replacer = Cs((var_pattern + P(1)) ^ 0)
 
   local changed
-
   repeat
-    changed = false
-    for _, name in ipairs(names) do
-      local value = variables_map[name]
-      local pat = "%f[%w]" .. vim.pesc(name) .. "%f[%W]"
-      local replaced, n = code_string:gsub(pat, "(" .. value .. ")")
-      if n > 0 then
-        code_string = replaced
-        changed = true
-      end
-    end
+    local replaced = replacer:match(code_string)
+    changed = replaced ~= code_string
+    code_string = replaced
   until not changed
 
   return code_string

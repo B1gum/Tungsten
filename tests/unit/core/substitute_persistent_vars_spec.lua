@@ -28,11 +28,23 @@ describe("substitute_persistent_vars", function()
     assert.are.equal("2 * (1+1)", result)
   end)
 
+  it("substitutes recursively when values reference other vars", function()
+    local vars = { x = "y", y = "3" }
+    local result = engine.substitute_persistent_vars("x", vars)
+    assert.are.equal("((3))", result)
+  end)
+
   it("is reasonably fast on large input", function()
     local vars = { x = "42" }
     local large = ("x + "):rep(10000)
     local start = os.clock()
     engine.substitute_persistent_vars(large, vars)
     assert.is_true(os.clock() - start < 0.5)
+  end)
+
+  
+  it("returns input unchanged when no variables provided", function()
+    local result = engine.substitute_persistent_vars("x + y", nil)
+    assert.are.equal("x + y", result)
   end)
 end)
