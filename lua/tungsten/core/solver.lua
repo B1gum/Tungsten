@@ -25,7 +25,9 @@ function M.solve_equation_async(eq_strs, vars, is_system, callback)
 
   local expr_key = "solve:" .. eq_list .. "_for_" .. var_list
 
-  async.run_job({ config.wolfram_path, "-code", wolfram_command }, expr_key, function(code, stdout, stderr)
+  async.run_job({ config.wolfram_path, "-code", wolfram_command }, {
+    expr_key = expr_key,
+    on_exit = function(code, stdout, stderr)
     if code == 0 then
       local out = stdout
       if stdout == "" and stderr ~= "" then
@@ -42,7 +44,8 @@ function M.solve_equation_async(eq_strs, vars, is_system, callback)
         or string.format("TungstenSolve: WolframScript (Job N/A) error. Code: %s\nStderr: %s\nStdout: %s", tostring(code), stderr, stdout)
       callback(nil, err)
     end
-  end)
+  end
+  })
 end
 
 

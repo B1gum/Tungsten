@@ -21,10 +21,9 @@ describe("Tungsten Persistent Variable Pipeline", function()
   local mock_selection_get_visual_selection_spy
   local mock_insert_result_insert_result_spy
   local mock_logger_notify_spy
-  local mock_vim_fn_jobstart_spy
-
+  local mock_async_run_job_spy
+  
   local original_require
-  local original_vim_fn_jobstart
 
   local current_visual_selection_text
   local get_visual_selection_call_count
@@ -68,7 +67,6 @@ describe("Tungsten Persistent Variable Pipeline", function()
     }
 
     original_require = _G.require
-    original_vim_fn_jobstart = vim.fn.jobstart
 
     _G.require = function(module_path)
       if module_path == 'tungsten.core.parser' then return mock_parser_module end
@@ -112,8 +110,11 @@ describe("Tungsten Persistent Variable Pipeline", function()
     mock_logger_module.notify = mock_logger_notify_spy
     mock_logger_module.levels = { ERROR = 1, WARN = 2, INFO = 3, DEBUG = 4 }
 
-    mock_vim_fn_jobstart_spy = spy.new(function() return 1 end)
-    vim.fn.jobstart = mock_vim_fn_jobstart_spy
+    mock_async_run_job_spy = spy.new(function(cmd, opts)
+        if opts.on_exit then opts.on_exit(1, "result", "") end
+        return { id = 1, cancel = function() end, is_active = function() return false end }
+    end)
+    package.loaded['tungsten.util.async'] = { run_job = mock_async_run_job_spy }
 
     package.loaded['tungsten.core.commands'] = nil
     package.loaded['tungsten.core.engine'] = nil
@@ -122,32 +123,25 @@ describe("Tungsten Persistent Variable Pipeline", function()
 
   after_each(function()
     _G.require = original_require
-    vim.fn.jobstart = original_vim_fn_jobstart
+    package.loaded['tungsten.util.async'] = nil
 
     if mock_parser_parse_spy and mock_parser_parse_spy.clear then mock_parser_parse_spy:clear() end
     if mock_wolfram_to_string_spy and mock_wolfram_to_string_spy.clear then mock_wolfram_to_string_spy:clear() end
     if mock_selection_get_visual_selection_spy and mock_selection_get_visual_selection_spy.clear then mock_selection_get_visual_selection_spy:clear() end
     if mock_insert_result_insert_result_spy and mock_insert_result_insert_result_spy.clear then mock_insert_result_insert_result_spy:clear() end
     if mock_logger_notify_spy and mock_logger_notify_spy.clear then mock_logger_notify_spy:clear() end
-    if mock_vim_fn_jobstart_spy and mock_vim_fn_jobstart_spy.clear then mock_vim_fn_jobstart_spy:clear() end
+    if mock_async_run_job_spy and mock_async_run_job_spy.clear then mock_async_run_job_spy:clear() end
 
     clear_modules_from_cache()
   end)
 
-  local function simulate_wolfram_eval(job_id, stdout_lines, exit_code)
-    if #mock_vim_fn_jobstart_spy.calls == 0 then
-        error("simulate_wolfram_eval: vim.fn.jobstart was not called before simulating eval.")
+  local function simulate_wolfram_eval(stdout_lines, exit_code)
+    if #mock_async_run_job_spy.calls == 0 then
+        error("simulate_wolfram_eval: async.run_job was not called before simulating eval.")
     end
-    local job_options = mock_vim_fn_jobstart_spy.calls[#mock_vim_fn_jobstart_spy.calls].vals[2]
-    if job_options then
-      if job_options.on_stdout and stdout_lines then
-        job_options.on_stdout(job_id, stdout_lines, "stdout")
-      end
-      if job_options.on_exit then
-        job_options.on_exit(job_id, exit_code or 0, "exit")
-      end
-    else
-        error("simulate_wolfram_eval: job_options not found in jobstart spy call.")
+    local job_options = mock_async_run_job_spy.calls[#mock_async_run_job_spy.calls].vals[2]
+    if job_options and job_options.on_exit then
+      job_options.on_exit(exit_code or 0, stdout_lines and table.concat(stdout_lines, "\n") or "", "")
     end
   end
 
@@ -174,16 +168,14 @@ describe("Tungsten Persistent Variable Pipeline", function()
       local ast_for_eval = { type = "expression", latex = "x * 2", id = "ast_for_" .. ("x * 2"):gsub("%W", "") }
       assert.spy(mock_wolfram_to_string_spy).was.called_with(ast_for_eval)
 
-      assert.spy(mock_vim_fn_jobstart_spy).was.called(1)
-      local jobstart_args_command = mock_vim_fn_jobstart_spy.calls[1].vals[1][1]
-      local jobstart_args_code = mock_vim_fn_jobstart_spy.calls[1].vals[1][3]
-
-      assert.are.same(mock_config_module.wolfram_path, jobstart_args_command)
+      assert.spy(mock_async_run_job_spy).was.called(1)
+      local cmd_args = mock_async_run_job_spy.calls[1].vals[1]
       local expected_code_after_substitution = "ToString[TeXForm[wolfram((wolfram(1+1)) * 2)], CharacterEncoding -> \"UTF8\"]"
-      assert.are.same(expected_code_after_substitution, jobstart_args_code)
+      assert.are.same(mock_config_module.wolfram_path, cmd_args[1])
+      assert.are.same(expected_code_after_substitution, cmd_args[3])
 
       local wolfram_result = "ComputedResultFromX*2"
-      simulate_wolfram_eval(1, {wolfram_result}, 0)
+      simulate_wolfram_eval({wolfram_result}, 0)
       assert.spy(mock_insert_result_insert_result_spy).was.called_with(wolfram_result)
     end)
 
@@ -199,18 +191,18 @@ describe("Tungsten Persistent Variable Pipeline", function()
       assert.are.same("wolfram(a + 1)", mock_state_module.persistent_variables["b"]) 
 
       current_visual_selection_text = "b * 2"
-      mock_vim_fn_jobstart_spy:clear()
+      mock_async_run_job_spy:clear()
       mock_insert_result_insert_result_spy:clear()
       commands_module.tungsten_eval_command({})
       assert.are.equal(1, get_visual_selection_call_count); get_visual_selection_call_count = 0
 
-      assert.spy(mock_vim_fn_jobstart_spy).was.called(1)
-      local jobstart_args_code = mock_vim_fn_jobstart_spy.calls[1].vals[1][3]
+      assert.spy(mock_async_run_job_spy).was.called(1)
+      local cmd_args = mock_async_run_job_spy.calls[1].vals[1]
       local expected_wolfram_code = "ToString[TeXForm[wolfram((wolfram((wolfram(5)) + 1)) * 2)], CharacterEncoding -> \"UTF8\"]"
-      assert.are.same(expected_wolfram_code, jobstart_args_code)
+      assert.are.same(expected_wolfram_code, cmd_args[3])
 
       local wolfram_result = "ComputedResultFromB*2"
-      simulate_wolfram_eval(1, {wolfram_result}, 0)
+      simulate_wolfram_eval({wolfram_result}, 0)
       assert.spy(mock_insert_result_insert_result_spy).was.called_with(wolfram_result)
     end)
 
@@ -221,12 +213,12 @@ describe("Tungsten Persistent Variable Pipeline", function()
       assert.are.same("wolfram(10)", mock_state_module.persistent_variables["y"])
 
       current_visual_selection_text = "y + 5"
-      mock_vim_fn_jobstart_spy:clear()
+      mock_async_run_job_spy:clear()
       commands_module.tungsten_eval_command({})
       assert.are.equal(1, get_visual_selection_call_count); get_visual_selection_call_count = 0
-      local jobstart_args1_code = mock_vim_fn_jobstart_spy.calls[1].vals[1][3]
-      assert.are.same("ToString[TeXForm[wolfram((wolfram(10)) + 5)], CharacterEncoding -> \"UTF8\"]", jobstart_args1_code)
-      simulate_wolfram_eval(1, {"15"}, 0)
+      local cmd_args1 = mock_async_run_job_spy.calls[1].vals[1]
+      assert.are.same("ToString[TeXForm[wolfram((wolfram(10)) + 5)], CharacterEncoding -> \"UTF8\"]", cmd_args1[3])
+      simulate_wolfram_eval({"15"}, 0)
 
       current_visual_selection_text = "y := 20"
       commands_module.define_persistent_variable_command({})
@@ -234,28 +226,28 @@ describe("Tungsten Persistent Variable Pipeline", function()
       assert.are.same("wolfram(20)", mock_state_module.persistent_variables["y"])
 
       current_visual_selection_text = "y + 5"
-      mock_vim_fn_jobstart_spy:clear()
+      mock_async_run_job_spy:clear()
       mock_insert_result_insert_result_spy:clear()
       commands_module.tungsten_eval_command({})
       assert.are.equal(1, get_visual_selection_call_count); get_visual_selection_call_count = 0
-      local jobstart_args2_code = mock_vim_fn_jobstart_spy.calls[1].vals[1][3]
-      assert.are.same("ToString[TeXForm[wolfram((wolfram(20)) + 5)], CharacterEncoding -> \"UTF8\"]", jobstart_args2_code)
-      simulate_wolfram_eval(1, {"25"}, 0)
+      local cmd_args2 = mock_async_run_job_spy.calls[1].vals[1]
+      assert.are.same("ToString[TeXForm[wolfram((wolfram(20)) + 5)], CharacterEncoding -> \"UTF8\"]", cmd_args2[3])
+      simulate_wolfram_eval({"25"}, 0)
       assert.spy(mock_insert_result_insert_result_spy).was.called_with("25")
     end)
 
     it("should evaluate an expression without substitution if variable is not defined", function()
       mock_state_module.persistent_variables = {}
       current_visual_selection_text = "z / 2"
-      mock_vim_fn_jobstart_spy:clear()
+      mock_async_run_job_spy:clear()
       mock_insert_result_insert_result_spy:clear()
       commands_module.tungsten_eval_command({})
       assert.are.equal(1, get_visual_selection_call_count); get_visual_selection_call_count = 0
 
-      assert.spy(mock_vim_fn_jobstart_spy).was.called(1)
-      local jobstart_args_code = mock_vim_fn_jobstart_spy.calls[1].vals[1][3]
-      assert.are.same("ToString[TeXForm[wolfram(z / 2)], CharacterEncoding -> \"UTF8\"]", jobstart_args_code)
-      simulate_wolfram_eval(1, {"ResultFromZ/2"}, 0)
+      assert.spy(mock_async_run_job_spy).was.called(1)
+      local cmd_args = mock_async_run_job_spy.calls[1].vals[1]
+      assert.are.same("ToString[TeXForm[wolfram(z / 2)], CharacterEncoding -> \"UTF8\"]", cmd_args[3])
+      simulate_wolfram_eval({"ResultFromZ/2"}, 0)
       assert.spy(mock_insert_result_insert_result_spy).was.called_with("ResultFromZ/2")
     end)
 
@@ -270,13 +262,13 @@ describe("Tungsten Persistent Variable Pipeline", function()
       assert.are.same("wolfram(3)", mock_state_module.persistent_variables["v"])
 
       current_visual_selection_text = "v * v"
-      mock_vim_fn_jobstart_spy:clear()
+      mock_async_run_job_spy:clear()
       mock_insert_result_insert_result_spy:clear()
       commands_module.tungsten_eval_command({})
       assert.are.equal(1, get_visual_selection_call_count); get_visual_selection_call_count = 0
-      local jobstart_args_code = mock_vim_fn_jobstart_spy.calls[1].vals[1][3]
-      assert.are.same("ToString[TeXForm[wolfram((wolfram(3)) * (wolfram(3)))], CharacterEncoding -> \"UTF8\"]", jobstart_args_code)
-      simulate_wolfram_eval(1, {"9"}, 0)
+      local cmd_args = mock_async_run_job_spy.calls[1].vals[1]
+      assert.are.same("ToString[TeXForm[wolfram((wolfram(3)) * (wolfram(3)))], CharacterEncoding -> \"UTF8\"]", cmd_args[3])
+      simulate_wolfram_eval({"9"}, 0)
       assert.spy(mock_insert_result_insert_result_spy).was.called_with("9")
 
       mock_config_module.persistent_variable_assignment_operator = ":="

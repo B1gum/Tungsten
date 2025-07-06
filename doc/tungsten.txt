@@ -1,1 +1,0 @@
-*tungsten.txt* Tungsten – Wolfram CAS for Neovim *tungsten

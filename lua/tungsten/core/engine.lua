@@ -97,7 +97,9 @@ function M.evaluate_async(ast, numeric, callback)
 
   code_to_execute = "ToString[TeXForm[" .. code_to_execute .. "], CharacterEncoding -> \"UTF8\"]"
 
-  async.run_job({ config.wolfram_path, "-code", code_to_execute }, expr_key, function(exit_code, final_stdout, final_stderr)
+  async.run_job({ config.wolfram_path, "-code", code_to_execute }, {
+    expr_key = expr_key,
+    on_exit = function(exit_code, final_stdout, final_stderr)
     if exit_code == 0 then
       if final_stderr ~= "" and config.debug then
         logger.notify("Tungsten Debug (stderr): " .. final_stderr, logger.levels.DEBUG, { title = "Tungsten Debug" })
@@ -118,7 +120,8 @@ function M.evaluate_async(ast, numeric, callback)
       end
       callback(nil, err_msg)
     end
-  end)
+  end
+  })
 end
 
 

@@ -122,28 +122,16 @@ git push origin feature/YourFeatureName
 
 Please ensure your code follows the project's coding standards and includes appropriate tests.
 
-
 ## Running Tests
 
-This project includes a helper script `scripts/run_tests.sh` which sets up a
-temporary Neovim environment and executes the test suite. The script will clone
-the required plugins into `.test_home/.local/share/nvim/lazy` if they are not
-already present. If your environment does not have network access, you can
-manually populate these plugin directories before running the script.
+Run the test suite with:
 
 ```
-mkdir -p .test_home/.local/share/nvim/lazy
-cp -r /path/to/which-key.nvim .test_home/.local/share/nvim/lazy/
-cp -r /path/to/plenary.nvim  .test_home/.local/share/nvim/lazy/
-cp -r /path/to/telescope.nvim .test_home/.local/share/nvim/lazy/
+make test
 ```
 
-After ensuring the plugins are available, run the tests with:
-
-```
-bash scripts/run_tests.sh
-```
-
+The test helper will install Lua dependencies via `luarocks` and clone
+`plenary.nvim` into `~/.local/share/nvim/lazy` if it is missing.
 
 
 ## License

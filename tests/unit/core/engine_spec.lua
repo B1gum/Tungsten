@@ -71,9 +71,11 @@ describe("tungsten.core.engine", function()
     end)
     mock_wolfram_codegen.to_string = wolfram_to_string_spy
 
-    async_run_job_spy = spy.new(function(cmd, expr_key, on_complete)
-      on_complete(0, "mock_result", "")
-      return 123
+    async_run_job_spy = spy.new(function(cmd, opts)
+      if opts.on_exit then
+        opts.on_exit(0, "mock_result", "")
+      end
+      return { id = 123, cancel = function() end, is_active = function() return false end }
     end)
     mock_async.run_job = async_run_job_spy
 
