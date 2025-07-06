@@ -12,7 +12,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up Lua
-        uses: leafo/gh-actions-lua@v9
+        uses: leafo/gh-actions-lua@v11
+        with:
+          luaVersion: 5.4
+          buildCache: false
       - name: Set up Luarocks
         uses: leafo/gh-actions-luarocks@v4
       - name: Install dependencies
@@ -31,7 +34,10 @@ jobs:
           neovim: true
           version: 'stable'
       - name: Set up Lua
-        uses: leafo/gh-actions-lua@v9
+        uses: leafo/gh-actions-lua@v11
+        with:
+          luaVersion: 5.4
+          buildCache: false
       - name: Set up Luarocks
         uses: leafo/gh-actions-luarocks@v4
       - name: Install dependencies
