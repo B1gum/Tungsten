@@ -1,24 +1,30 @@
-local pickers = require 'telescope.pickers'
-local finders = require 'telescope.finders'
-local sorters = require 'telescope.sorters'
-
 local picker   = require 'tungsten.ui.picker'
 local mappings = require 'tungsten.ui.mappings'
 local logger   = require 'tungsten.util.logger'
 
 local M = {}
 
-function M.open(opts)
+local function open_picker(opts)
+  local ok, pickers = pcall(require, 'telescope.pickers')
+  if not ok then
+    vim.schedule(function()
+      vim.notify('Telescope not found. Install telescope.nvim for enhanced UI.', vim.log.levels.WARN)
+    end)
+    return
+  end
+  local finders = require 'telescope.finders'
+  local sorters = require 'telescope.sorters'
+
   opts = opts or {}
 
   local commands = picker.list()
   if vim.tbl_isempty(commands) then
-    logger.notify("No Tungsten commands found.", logger.log.levels.WARN)
+    logger.notify('No Tungsten commands found.', logger.log.levels.WARN)
     return
   end
 
   pickers.new(opts, {
-    prompt_title    = "Tungsten Commands",
+    prompt_title    = 'Tungsten Commands',
     finder          = finders.new_table {
       results = commands,
       entry_maker = function(e)
@@ -34,5 +40,11 @@ function M.open(opts)
   }):find()
 end
 
-return M
+M.open = open_picker
 
+local ok, telescope = pcall(require, 'telescope')
+if ok then
+  telescope.register_extension({ exports = { open = open_picker } })
+end
+
+return M

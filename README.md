@@ -61,6 +61,11 @@ Plug 'B1gum/Tungsten'
 
 Then run `:PlugInstall` within Neovim.
 
+### Optional Integrations
+
+- **which-key**: install to get key-hint popups
+- **telescope.nvim**: install to use `:TungstenPalette` picker
+
 
 ### Setting Up the Wolfram Engine
 **Tungsten** integrates Wolfram functionalities, which requires the Wolfram Engine and WolframScript to be installed and properly configured on your computer. The steps below outline the steps to set up the necessary components.
