@@ -564,7 +564,7 @@ describe("tungsten.core.registry", function()
         mock_config_module.debug = false
     end)
 
-    it("should log AtomBaseItem additions in debug mode", function()
+  it("should log AtomBaseItem additions in debug mode", function()
         mock_config_module.debug = true
         registry_module.register_grammar_contribution("core", 0, "MyNum", create_mock_pattern("num_pat"), "AtomBaseItem")
         registry_module.get_combined_grammar()
@@ -574,6 +574,47 @@ describe("tungsten.core.registry", function()
         )
         mock_config_module.debug = false
     end)
+  end)
+  describe("Helper functions", function()
+    it("sort_contributions should sort without mutating", function()
+      local c1 = {domain_name="b", domain_priority=50, name="B", pattern=create_mock_pattern("pB"), category="Op"}
+      local c2 = {domain_name="a", domain_priority=200, name="C", pattern=create_mock_pattern("pC"), category="Op"}
+      local c3 = {domain_name="a", domain_priority=100, name="A", pattern=create_mock_pattern("pA"), category="AtomBaseItem"}
+      local contribs = {c1, c2, c3}
+      local orig = vim.deepcopy(contribs)
+      local sorted = registry_module.sort_contributions(contribs)
+      assert.are.same(orig, contribs)
+      assert.are.equal("AtomBaseItem", sorted[1].category)
+      assert.are.equal("C", sorted[2].name)
+      assert.are.equal("B", sorted[3].name)
+    end)
 
+    it("build_atom_base merges rules and collects top levels", function()
+      local sorted = {
+        {domain_name="core", domain_priority=0, name="Number", pattern=create_mock_pattern("num"), category="AtomBaseItem"},
+        {domain_name="low", domain_priority=10, name="RuleX", pattern=create_mock_pattern("low"), category="Op"},
+        {domain_name="high", domain_priority=20, name="RuleX", pattern=create_mock_pattern("high"), category="Op"},
+        {domain_name="core", domain_priority=0, name="Equation", pattern=create_mock_pattern("eq"), category="TopLevelRule"}
+      }
+      local atoms = registry_module.build_atom_base(sorted)
+      assert.are.same(create_mock_pattern("high"), atoms.RuleX)
+      assert.is_table(atoms.AtomBase)
+      assert.are.same({"Equation"}, atoms._top_level_rule_names)
+    end)
+
+    it("choose_expression_content selects AddSub", function()
+      local atoms = { AddSub=create_mock_pattern("add"), AtomBase=create_mock_pattern("atom"), _top_level_rule_names={"Equation"} }
+      local exprs = registry_module.choose_expression_content(atoms, {})
+      assert.are.same(create_mock_pattern("V(AddSub)"), exprs.ExpressionContent)
+      assert.is_table(exprs.Expression)
+    end)
+
+    it("compile_grammar merges and compiles", function()
+      local atoms = {AtomBase = create_mock_pattern("atom")}
+      local exprs = {ExpressionContent=create_mock_pattern("V(AtomBase)"), Expression=create_mock_pattern("expr")}
+      local g = registry_module.compile_grammar(atoms, exprs)
+      assert.are.same("mock_compiled_grammar_table", g)
+      assert.spy(mock_lpeg_P_spy).was.called()
+    end)
   end)
 end)
