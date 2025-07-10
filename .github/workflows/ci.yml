@@ -44,5 +44,4 @@ jobs:
         run: make test_deps
       - name: Run tests
         run:
-          echo "LUA_PATH=$(luarocks path --lua-path);$LUA_PATH" >> $GITHUB_ENV
           make test
