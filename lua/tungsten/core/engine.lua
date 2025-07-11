@@ -160,7 +160,7 @@ M.parse = function(...)
 end
 
 function M.clear_cache()
-  state.cache = {}
+  state.cache:clear()
   require("tungsten.util.logger").notify("Tungsten: Cache cleared.", require("tungsten.util.logger").levels.INFO, { title = "Tungsten" })
 end
 
@@ -182,10 +182,7 @@ function M.view_active_jobs()
 end
 
 function M.get_cache_size()
-    local count = 0
-    for _ in pairs(state.cache) do
-        count = count + 1
-    end
+    local count = state.cache:count()
     require("tungsten.util.logger").notify("Tungsten: Cache size: " .. count .. " entries.", require("tungsten.util.logger").levels.INFO, { title = "Tungsten" })
     return count
 end

@@ -53,7 +53,7 @@ describe("tungsten.core.engine", function()
       wolfram_timeout_ms = 5000,
     }
     mock_state = {
-      cache = {},
+      cache = require "tungsten.cache".new(100, nil),
       active_jobs = {},
       persistent_variables = {}
     }
@@ -242,12 +242,13 @@ describe("tungsten.core.engine", function()
     it("clear_cache() should empty the cache and log", function()
       mock_state.cache["key1"] = "val1"
       engine.clear_cache()
-      assert.is_true(vim.tbl_isempty(mock_state.cache))
+      assert.are_equal(0, mock_state.cache:count())
       assert.spy(logger_notify_spy).was.called_with("Tungsten: Cache cleared.", mock_logger.levels.INFO, match.is_table())
     end)
 
     it("get_cache_size() should return the correct number of entries and log", function()
-      mock_state.cache = { key1 = "val1", key2 = "val2" }
+      mock_state.cache["key1"] = "val1"
+      mock_state.cache["key2"] = "val2"
       local size = engine.get_cache_size()
       assert.are.equal(2, size)
       assert.spy(logger_notify_spy).was.called_with("Tungsten: Cache size: 2 entries.", mock_logger.levels.INFO, match.is_table())

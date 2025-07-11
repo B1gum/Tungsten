@@ -2,7 +2,6 @@
 -- Test helpers for running Tungsten tests in a headless Neovim instance.
 
 local spy = require('luassert.spy')
-local async = require('plenary.async')
 
 local M = {}
 
