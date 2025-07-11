@@ -148,7 +148,7 @@ function M.build_atom_base(sorted)
                          P(false)
   end
 
-  grammar_def.top_level_rule_names = top_level_rule_names
+  grammar_def._top_level_rule_names = top_level_rule_names
   return grammar_def
 end
 
@@ -243,7 +243,7 @@ function M.compile_grammar(atoms, expressions)
   return compiled_grammar_or_err
 end
 
-function M.get_combiner_grammar(contributions, opts)
+function M.get_combined_grammar(contributions, opts)
   contributions = contributions or M.grammar_contributions
   local sorted = M.sort_contributions(contributions)
   local atom_base = M.build_atom_base(sorted)

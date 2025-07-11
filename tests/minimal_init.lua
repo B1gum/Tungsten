@@ -35,5 +35,16 @@ else
 end
 
 local plenary_path = home .. "/.local/share/nvim/lazy/plenary.nvim"
+
+if vim.fn.empty(vim.fn.glob(plenary_path)) > 0 then
+  os.execute(string.format(
+    "git clone --depth 1 https://github.com/nvim-lua/plenary.nvim %s",
+    plenary_path
+  ))
+end
 vim.opt.rtp:prepend(plenary_path)
+
+if project_root and project_root ~= "" then
+  vim.opt.rtp:prepend(project_root)
+end
 
