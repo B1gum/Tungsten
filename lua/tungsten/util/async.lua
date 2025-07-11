@@ -38,7 +38,7 @@ local function spawn_process(cmd, opts)
   end
 
   if has_vim_system then
-    local job = vim.system(cmd, { text = true, timeout = timeout }, function(obj)
+    local function system_cb(obj)
       stdout_chunks = { obj.stdout or '' }
       stderr_chunks = { obj.stderr or '' }
       local code = obj.code
@@ -46,7 +46,9 @@ local function spawn_process(cmd, opts)
         code = 128 + obj.signal
       end
       finalize(code)
-    end)
+    end
+
+    local job = vim.system(cmd, { text = true, timeout = timeout }, vim.schedule_wrap(system_cb))
 
     handle = {
       id = job.pid,
