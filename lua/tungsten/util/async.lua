@@ -7,12 +7,10 @@ local config = require('tungsten.config')
 
 local M = {}
 
-local has_vim_system = type(vim.system) == 'function'
-
 local function spawn_process(cmd, opts)
   opts = opts or {}
   local expr_key = opts.expr_key
-  local on_exit = opts.on_exit or opts.on_complete -- backward compat
+  local on_exit = opts.on_exit or opts.on_complete
   local timeout = opts.timeout or config.wolfram_timeout_ms or 10000
 
   local stdout_chunks, stderr_chunks = {}, {}
@@ -35,79 +33,54 @@ local function spawn_process(cmd, opts)
         table.concat(stderr_chunks, '\n'):gsub('^%s*(.-)%s*$', '%1')
       )
     end
+end
+
+  local Job = require('plenary.job')
+  local job = Job:new{
+    command = cmd[1],
+    args = vim.list_slice(cmd, 2),
+    enable_recording = true,
+    on_stdout = function(_, line)
+      if line then table.insert(stdout_chunks, line) end
+    end,
+    on_stderr = function(_, line)
+      if line then table.insert(stderr_chunks, line) end
+    end,
+    on_exit = function(j, code)
+      stdout_chunks = j:result()
+      stderr_chunks = j:stderr_result()
+      finalize(code)
+    end,
+  }
+  job:start()
+  handle = {
+    id = job.pid,
+    _job = job,
+  }
+  function handle.cancel()
+    if not completed then
+      job:shutdown()
+      finalize(-1)
+    end
+  end
+  function handle.is_active()
+    return not completed
   end
 
-  if has_vim_system then
-    local function system_cb(obj)
-      stdout_chunks = { obj.stdout or '' }
-      stderr_chunks = { obj.stderr or '' }
-      local code = obj.code
-      if obj.signal and obj.signal ~= 0 then
-        code = 128 + obj.signal
-      end
-      finalize(code)
-    end
-
-    local job = vim.system(cmd, { text = true, timeout = timeout }, vim.schedule_wrap(system_cb))
-
-    handle = {
-      id = job.pid,
-      _job = job,
-    }
-    function handle.cancel()
-      if not completed then job:kill(15) end
-    end
-    function handle.is_active()
-      return not completed
-    end
-  else
-    local Job = require('plenary.job')
-    local job = Job:new{
-      command = cmd[1],
-      args = vim.list_slice(cmd, 2),
-      enable_recording = true,
-      on_stdout = function(_, line)
-        if line then table.insert(stdout_chunks, line) end
-      end,
-      on_stderr = function(_, line)
-        if line then table.insert(stderr_chunks, line) end
-      end,
-      on_exit = function(j, code)
-        stdout_chunks = j:result()
-        stderr_chunks = j:stderr_result()
-        finalize(code)
-      end,
-    }
-    job:start()
-    handle = {
-      id = job.pid,
-      _job = job,
-    }
-    function handle.cancel()
+  if timeout then
+    vim.defer_fn(function()
       if not completed then
-        job:shutdown()
-        finalize(-1)
+        logger.notify(
+          string.format(
+            'Tungsten: Wolframscript job %d timed out after %d ms.',
+            handle.id, timeout
+          ),
+          logger.levels.WARN,
+          { title = 'Tungsten' }
+        )
+        handle.cancel()
       end
-    end
-    function handle.is_active()
-      return not completed
-    end
-
-    if timeout then
-      vim.defer_fn(function()
-        if not completed then
-          logger.notify(
-            string.format(
-              'Tungsten: Wolframscript job %d timed out after %d ms.',
-              handle.id, timeout
-            ),
-            logger.levels.WARN,
-            { title = 'Tungsten' }
-          )
-          handle.cancel()
-        end
-      end, timeout)
-    end
+    end, timeout)
   end
 
   state.active_jobs[handle.id] = {
