@@ -14,12 +14,10 @@ jobs:
       - name: Set up Lua
         uses: leafo/gh-actions-lua@v11
         with:
-          luaVersion: 5.4
+          luaVersion: 5.1
           buildCache: false
       - name: Set up Luarocks
         uses: leafo/gh-actions-luarocks@v4
-      - name: Install dependencies
-        run: make lint_deps
       - name: Lint
         run: make lint
 
@@ -36,12 +34,9 @@ jobs:
       - name: Set up Lua
         uses: leafo/gh-actions-lua@v11
         with:
-          luaVersion: 5.4
+          luaVersion: 5.1
           buildCache: false
       - name: Set up Luarocks
         uses: leafo/gh-actions-luarocks@v4
-      - name: Install dependencies
-        run: make test_deps
       - name: Run tests
-        run:
-          make test
+        run: make test

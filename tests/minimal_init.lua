@@ -1,12 +1,12 @@
 -- tests/minimal_init.lua
 -- Minimal init.lua for running tests.
 
-local luarocks_path = os.getenv("LUAROCKS_PATH")
+local luarocks_path = os.getenv("LUAROCKS_PATH") or os.getenv("LUA_PATH")
 if luarocks_path then
   package.path = luarocks_path .. ';' .. package.path
 end
 
-local luarocks_cpath = os.getenv("LUAROCKS_CPATH")
+local luarocks_cpath = os.getenv("LUAROCKS_CPATH") or os.getenv("LUA_CPATH")
 if luarocks_cpath then
   package.cpath = luarocks_cpath .. ';' .. package.cpath
 end
@@ -20,8 +20,8 @@ end
 local major_version, minor_version = _VERSION:match("Lua (%d)%.(%d)")
 local lua_version_short = major_version .. "." .. minor_version
 
-local rocktree_share = home .. "/.local/share/lua/" .. lua_version_short
-local rocktree_lib = home .. "/.local/lib/lua/" .. lua_version_short
+local rocktree_share = home .. "/.luarocks/share/lua/" .. lua_version_short
+local rocktree_lib = home .. "/.luarocks/lib/lua/" .. lua_version_short
 
 package.path = rocktree_share .. "/?.lua;" .. rocktree_share .. "/?/init.lua;" .. package.path
 package.cpath = rocktree_lib .. "/?.so;" .. package.cpath

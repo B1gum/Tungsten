@@ -1,5 +1,5 @@
 LUAROCKS ?= luarocks
-ROCKTREE ?= $(HOME)/.local
+ROCKTREE ?= $(HOME)/.luarocks
 
 .PHONY: default all test deps lint clean test_deps lint_deps
 
