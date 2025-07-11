@@ -17,11 +17,7 @@ local function bin_with_parens(node, recur_render)
 
   if not parent_op_data then
     local logger = require "tungsten.util.logger"
-    logger.notify(
-      "Tungsten Wolfram Handler (bin_with_parens): Undefined operator '" .. tostring(node.operator) ..
-      "'. Rendering directly without precedence.",
-      logger.levels.WARN
-    )
+    logger.warn("Tungsten", "Tungsten Wolfram Handler (bin_with_parens): Undefined operator '" .. tostring(node.operator) .. "'. Rendering directly without precedence.")
     local rendered_left_unknown = recur_render(node.left)
     local rendered_right_unknown = recur_render(node.right)
     return rendered_left_unknown .. " " .. node.operator .. " " .. rendered_right_unknown
@@ -137,12 +133,9 @@ M.handlers = {
     if not wolfram_func_name then
       wolfram_func_name = func_name_str:match("^%a") and (func_name_str:sub(1,1):upper() .. func_name_str:sub(2)) or func_name_str
       local logger = require "tungsten.util.logger"
-      logger.notify(
-        ("Tungsten Wolfram Handler: No specific mapping for function '%s'. Using form '%s'."):format(
+      logger.warn("Tungsten", ("Tungsten Wolfram Handler: No specific mapping for function '%s'. Using form '%s'."):format(
           func_name_str, wolfram_func_name
-        ),
-        logger.levels.WARN
-      )
+        ))
     end
 
     local rendered_args = {}

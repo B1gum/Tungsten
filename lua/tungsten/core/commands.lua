@@ -54,15 +54,11 @@ local function define_persistent_variable_command(_)
   if op_double_start then
     op_to_use_str = ":="
     op_start_pos = op_double_start
-    if config.debug then
-      logger.notify("Tungsten Debug: Operator ':=' found at pos " .. tostring(op_start_pos), logger.levels.DEBUG, { title = "Tungsten Debug" })
-    end
+    logger.debug("Tungsten Debug", "Tungsten Debug: Operator ':=' found at pos " .. tostring(op_start_pos))
   elseif op_single_start then
     op_to_use_str = "="
     op_start_pos = op_single_start
-    if config.debug then
-      logger.notify("Tungsten Debug: Operator '=' found at pos " .. tostring(op_start_pos), logger.levels.DEBUG, { title = "Tungsten Debug" })
-    end
+    logger.debug("Tungsten Debug", "Tungsten Debug: Operator '=' found at pos " .. tostring(op_start_pos))
   end
 
   if not op_start_pos then
@@ -74,16 +70,12 @@ local function define_persistent_variable_command(_)
   if var_name_end_index < 0 then var_name_end_index = 0 end
 
   local raw_part1 = selected_text:sub(1, var_name_end_index)
-  if config.debug then
-      logger.notify("Tungsten Debug: Raw parts[1] before trim: '" .. raw_part1 .. "' (op_start_pos was " .. tostring(op_start_pos) .. ")", logger.levels.DEBUG, {title = "Tungsten Debug"})
-  end
+  logger.debug("Tungsten Debug", "Tungsten Debug: Raw parts[1] before trim: '" .. raw_part1 .. "' (op_start_pos was " .. tostring(op_start_pos) .. ")")
   local var_name_str = string_util.trim(raw_part1)
 
   local rhs_start_index = op_start_pos + #op_to_use_str
   local raw_part2 = selected_text:sub(rhs_start_index)
-  if config.debug then
-      logger.notify("Tungsten Debug: Raw parts[2] before trim: '" .. raw_part2 .. "' (rhs_start_index was " .. tostring(rhs_start_index) .. ", operator was '" .. op_to_use_str .. "')", logger.levels.DEBUG, {title = "Tungsten Debug"})
-  end
+  logger.debug("Tungsten Debug", "Tungsten Debug: Raw parts[2] before trim: '" .. raw_part2 .. "' (rhs_start_index was " .. tostring(rhs_start_index) .. ", operator was '" .. op_to_use_str .. "')")
   local rhs_latex_str = string_util.trim(raw_part2)
 
   if var_name_str == "" then
@@ -96,9 +88,7 @@ local function define_persistent_variable_command(_)
     return
   end
 
-  if config.debug then
-    logger.notify("Tungsten Debug: Defining variable '" .. var_name_str .. "' with LaTeX RHS: '" .. rhs_latex_str .. "'", logger.levels.DEBUG, { title = "Tungsten Debug" })
-  end
+  logger.debug("Tungsten Debug", "Tungsten Debug: Defining variable '" .. var_name_str .. "' with LaTeX RHS: '" .. rhs_latex_str .. "'")
 
   local parse_ok, definition_ast_or_err = pcall(parser.parse, rhs_latex_str)
   if not parse_ok or not definition_ast_or_err then
@@ -107,15 +97,11 @@ local function define_persistent_variable_command(_)
   end
   local definition_ast = definition_ast_or_err
 
-  if config.debug then
-    logger.notify("Tungsten Debug: AST for '" ..var_name_str.. "' before to_string: " .. vim_inspect(definition_ast), logger.levels.DEBUG, { title = "Tungsten Debug" })
-  end
+  logger.debug("Tungsten Debug", "Tungsten Debug: AST for '" ..var_name_str.. "' before to_string: " .. vim_inspect(definition_ast))
 
   local conversion_ok, wolfram_definition_str_or_err = pcall(wolfram_backend.to_string, definition_ast)
 
-  if config.debug then
-    logger.notify("Tungsten Debug: pcall result for to_string: conversion_ok=" .. tostring(conversion_ok) .. ", returned_value=" .. vim_inspect(wolfram_definition_str_or_err), logger.levels.DEBUG, { title = "Tungsten Debug" })
-  end
+  logger.debug("Tungsten Debug", "Tungsten Debug: pcall result for to_string: conversion_ok=" .. tostring(conversion_ok) .. ", returned_value=" .. vim_inspect(wolfram_definition_str_or_err))
 
   if not conversion_ok or not wolfram_definition_str_or_err or type(wolfram_definition_str_or_err) ~= "string" then
     error_handler.notify_error("DefineVar", "Failed to convert definition AST to wolfram string for '" .. var_name_str .. "': " .. tostring(wolfram_definition_str_or_err))
@@ -123,14 +109,12 @@ local function define_persistent_variable_command(_)
   end
   local wolfram_definition_str = wolfram_definition_str_or_err
 
-  if config.debug then
-    logger.notify("Tungsten Debug: Storing variable '" .. var_name_str .. "' with Wolfram string: '" .. wolfram_definition_str .. "'", logger.levels.DEBUG, { title = "Tungsten Debug" })
-  end
+  logger.debug("Tungsten Debug", "Tungsten Debug: Storing variable '" .. var_name_str .. "' with Wolfram string: '" .. wolfram_definition_str .. "'")
 
   state.persistent_variables = state.persistent_variables or {}
   state.persistent_variables[var_name_str] = wolfram_definition_str
 
-  logger.notify("Tungsten: Defined persistent variable '" .. var_name_str .. "' as '" .. wolfram_definition_str .. "'.", logger.levels.INFO, { title = "Tungsten" })
+  logger.info("Tungsten", "Tungsten: Defined persistent variable '" .. var_name_str .. "' as '" .. wolfram_definition_str .. "'.")
 end
 
 
@@ -154,9 +138,7 @@ local function tungsten_solve_command(_)
   if parsed_ast_top.type == "solve_system_equations_capture" then
     if parsed_ast_top.equations and #parsed_ast_top.equations == 1 then
       eq_ast = parsed_ast_top.equations[1]
-      if config.debug then
-        logger.notify("TungstenSolve: Extracted single equation from system capture.", logger.levels.DEBUG, {title="Tungsten Debug"})
-      end
+      logger.debug("Tungsten Debug", "TungstenSolve: Extracted single equation from system capture.")
     else
       error_handler.notify_error("Solve", "Parsed as system with not exactly one equation.")
       return

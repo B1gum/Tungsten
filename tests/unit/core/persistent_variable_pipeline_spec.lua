@@ -109,6 +109,10 @@ describe("Tungsten Persistent Variable Pipeline", function()
     mock_logger_notify_spy = spy.new(function () end)
     mock_logger_module.notify = mock_logger_notify_spy
     mock_logger_module.levels = { ERROR = 1, WARN = 2, INFO = 3, DEBUG = 4 }
+    mock_logger_module.debug = function(t,m) mock_logger_notify_spy(m, mock_logger_module.levels.DEBUG, { title = t }) end
+    mock_logger_module.info = function(t,m) mock_logger_notify_spy(m, mock_logger_module.levels.INFO, { title = t }) end
+    mock_logger_module.warn = function(t,m) mock_logger_notify_spy(m, mock_logger_module.levels.WARN, { title = t }) end
+    mock_logger_module.error = function(t,m) mock_logger_notify_spy(m, mock_logger_module.levels.ERROR, { title = t }) end
 
     mock_async_run_job_spy = spy.new(function(cmd, opts)
         if opts.on_exit then opts.on_exit(1, "result", "") end

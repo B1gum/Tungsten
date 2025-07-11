@@ -118,12 +118,16 @@ describe("Tungsten core commands", function()
     mock_logger_notify_spy = spy.new(function () end)
     mock_logger_module.notify = mock_logger_notify_spy
     mock_logger_module.levels = { ERROR = 1, WARN = 2, INFO = 3, DEBUG = 4 }
-    
+        mock_logger_module.debug = function(title,msg) mock_logger_notify_spy(msg, mock_logger_module.levels.DEBUG, { title = title }) end
+    mock_logger_module.info = function(title,msg) mock_logger_notify_spy(msg, mock_logger_module.levels.INFO, { title = title }) end
+    mock_logger_module.warn = function(title,msg) mock_logger_notify_spy(msg, mock_logger_module.levels.WARN, { title = title }) end
+    mock_logger_module.error = function(title,msg) mock_logger_notify_spy(msg, mock_logger_module.levels.ERROR, { title = title }) end
+
     mock_solver_solve_equation_async_spy = spy.new(function(eqs, vars, is_system, callback)
       callback(current_solve_equation_config.result, current_solve_equation_config.err)
     end)
     mock_solver_module.solve_equation_async = mock_solver_solve_equation_async_spy
-    
+
     mock_wolfram_backend_module.to_string = spy.new(function(ast) return "wolfram(".. (ast.name or ast.id) ..")" end)
 
 

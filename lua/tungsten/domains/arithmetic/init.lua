@@ -4,7 +4,6 @@ local V = lpeg.V
 local tokens_mod = require "tungsten.core.tokenizer"
 local ast_utils = require "tungsten.core.ast"
 local registry = require "tungsten.core.registry"
-local config = require "tungsten.config"
 local logger = require "tungsten.util.logger"
 
 local M = {}
@@ -39,9 +38,7 @@ function M.get_metadata()
 end
 
 function M.init_grammar()
-    if config.debug then
-      logger.notify("Arithmetic Domain: Initializing grammar contributions...", logger.levels.DEBUG, { title = "Tungsten Debug" })
-    end
+    logger.debug("Tungsten Debug", "Arithmetic Domain: Initializing grammar contributions...")
 
     local domain_name = M.metadata.name
     local domain_priority = M.metadata.priority
@@ -65,9 +62,7 @@ function M.init_grammar()
     registry.register_grammar_contribution(domain_name, equation_rule_priority, "EquationRule", equation_pattern_to_register, "TopLevelRule")
     registry.register_grammar_contribution(domain_name, solve_system_priority, "SolveSystemEquationsCapture", require "tungsten.domains.arithmetic.rules.solve_system_rule", "TopLevelRule")
 
-    if config.debug then
-      logger.notify("Arithmetic Domain: Grammar contributions registered.", logger.levels.DEBUG, { title = "Tungsten Debug" })
-    end
+    logger.debug("Tungsten Debug", "Arithmetic Domain: Grammar contributions registered.")
 end
 
 

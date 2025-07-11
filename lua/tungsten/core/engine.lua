@@ -74,12 +74,10 @@ function M.evaluate_async(ast, numeric, callback)
   initial_wolfram_code = pcall_result
 
   local code_with_vars_substituted = M.substitute_persistent_vars(initial_wolfram_code, state.persistent_variables)
-  if config.debug then
-    if code_with_vars_substituted ~= initial_wolfram_code then
-      logger.notify("Tungsten Debug: Code after persistent variable substitution: " .. code_with_vars_substituted, logger.levels.DEBUG, { title = "Tungsten Debug" })
-    else
-      logger.notify("Tungsten Debug: No persistent variable substitutions made.", logger.levels.DEBUG, { title = "Tungsten Debug" })
-    end
+  if code_with_vars_substituted ~= initial_wolfram_code then
+    logger.debug("Tungsten Debug", "Tungsten Debug: Code after persistent variable substitution: " .. code_with_vars_substituted)
+  else
+    logger.debug("Tungsten Debug", "Tungsten Debug: No persistent variable substitutions made.")
   end
 
   local expr_key = get_cache_key(code_with_vars_substituted, numeric)
@@ -87,10 +85,8 @@ function M.evaluate_async(ast, numeric, callback)
 
   if use_cache then
     if state.cache[expr_key] then
-      logger.notify("Tungsten: Result from cache.", logger.levels.INFO, { title = "Tungsten" })
-      if config.debug then
-        logger.notify("Tungsten Debug: Cache hit for key: " .. expr_key, logger.levels.INFO, { title = "Tungsten Debug" })
-      end
+      logger.info("Tungsten", "Tungsten: Result from cache.")
+      logger.debug("Tungsten Debug", "Tungsten Debug: Cache hit for key: " .. expr_key)
       vim.schedule(function() callback(state.cache[expr_key], nil) end)
       return
     end
@@ -99,9 +95,8 @@ function M.evaluate_async(ast, numeric, callback)
   for job_id_running, job_info in pairs(state.active_jobs) do
     if job_info.expr_key == expr_key then
       local notify_msg = "Tungsten: Evaluation already in progress for this expression."
-      if config.debug then
-        notify_msg = ("Tungsten: Evaluation already in progress for key: '%s' (Job ID: %s)"):format(expr_key, tostring(job_id_running))
-      end
+      logger.info("Tungsten", notify_msg)
+      logger.debug("Tungsten Debug", ("Tungsten: Evaluation already in progress for key: '%s' (Job ID: %s)"):format(expr_key, tostring(job_id_running)))
       logger.notify(notify_msg, logger.levels.INFO, { title = "Tungsten" })
       return
     end
@@ -118,14 +113,12 @@ function M.evaluate_async(ast, numeric, callback)
     expr_key = expr_key,
     on_exit = function(exit_code, final_stdout, final_stderr)
     if exit_code == 0 then
-      if final_stderr ~= "" and config.debug then
-        logger.notify("Tungsten Debug (stderr): " .. final_stderr, logger.levels.DEBUG, { title = "Tungsten Debug" })
+      if final_stderr ~= "" then
+        logger.debug("Tungsten Debug", "Tungsten Debug (stderr): " .. final_stderr)
       end
       if use_cache then
         state.cache[expr_key] = final_stdout
-        if config.debug then
-          logger.notify("Tungsten: Result for key '" .. expr_key .. "' stored in cache.", logger.levels.INFO, { title = "Tungsten Debug" })
-        end
+        logger.info("Tungsten Debug", "Tungsten: Result for key '" .. expr_key .. "' stored in cache.")
       end
       callback(final_stdout, nil)
     else
@@ -161,12 +154,12 @@ end
 
 function M.clear_cache()
   state.cache:clear()
-  require("tungsten.util.logger").notify("Tungsten: Cache cleared.", require("tungsten.util.logger").levels.INFO, { title = "Tungsten" })
+  logger.info("Tungsten", "Tungsten: Cache cleared.")
 end
 
 function M.view_active_jobs()
   if vim.tbl_isempty(state.active_jobs) then
-    logger.notify("Tungsten: No active jobs.", logger.levels.INFO, { title = "Tungsten" })
+    logger.info("Tungsten", "Tungsten: No active jobs.")
     return
   end
   local report = { "Active Tungsten Jobs:" }
@@ -178,12 +171,12 @@ function M.view_active_jobs()
       info.code_sent:sub(1, 50) .. (info.code_sent:len() > 50 and "..." or "")
     ))
   end
-  logger.notify(table.concat(report, "\n"), logger.levels.INFO, { title = "Tungsten Active Jobs" })
+  logger.info("Tungsten Active Jobs", table.concat(report, "\n"))
 end
 
 function M.get_cache_size()
     local count = state.cache:count()
-    require("tungsten.util.logger").notify("Tungsten: Cache size: " .. count .. " entries.", require("tungsten.util.logger").levels.INFO, { title = "Tungsten" })
+    logger.info("Tungsten", "Tungsten: Cache size: " .. count .. " entries.")
     return count
 end
 

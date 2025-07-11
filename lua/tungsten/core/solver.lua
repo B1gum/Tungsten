@@ -20,7 +20,7 @@ function M.solve_equation_async(eq_strs, vars, is_system, callback)
   local eq_list = "{" .. table.concat(final_eqs, ", ") .. "}"
   local var_list = "{" .. table.concat(vars, ", ") .. "}"
   local wolfram_command = string.format("Solve[%s, %s]", eq_list, var_list)
-  if config.debug then logger.notify("TungstenSolve: Wolfram command: " .. wolfram_command, logger.levels.DEBUG, { title = "Tungsten Debug" }) end
+  logger.debug("Tungsten Debug", "TungstenSolve: Wolfram command: " .. wolfram_command)
   wolfram_command = "ToString[TeXForm[" .. wolfram_command .. "], CharacterEncoding -> \"UTF8\"]"
 
   local expr_key = "solve:" .. eq_list .. "_for_" .. var_list
@@ -31,10 +31,10 @@ function M.solve_equation_async(eq_strs, vars, is_system, callback)
     if code == 0 then
       local out = stdout
       if stdout == "" and stderr ~= "" then
-        logger.notify("TungstenSolve: Wolfram returned result via stderr: " .. stderr, logger.levels.WARN, { title = "Tungsten Solve" })
+        logger.warn("Tungsten Solve", "TungstenSolve: Wolfram returned result via stderr: " .. stderr)
         out = stderr
       elseif stdout == "" and stderr == "" then
-        logger.notify("TungstenSolve: Wolfram returned empty stdout and stderr. No solution found or equation not solvable.", logger.levels.WARN, { title = "Tungsten Solve" })
+        logger.warn("Tungsten Solve", "TungstenSolve: Wolfram returned empty stdout and stderr. No solution found or equation not solvable.")
       end
       local result = solution_helper.parse_wolfram_solution(out, vars, is_system)
       if result.ok then callback(result.formatted, nil) else callback(nil, result.reason) end

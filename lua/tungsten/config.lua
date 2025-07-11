@@ -6,6 +6,7 @@ local config = {
   wolfram_path = "wolframscript",
   numeric_mode = false,
   debug = false,
+  log_level = "INFO",
   cache_enabled = true,
   cache_max_entries = 100,
   cache_ttl = 3600,

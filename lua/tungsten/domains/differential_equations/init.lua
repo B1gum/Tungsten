@@ -2,7 +2,6 @@
 -- Differential Equations domain for Tungsten plugin
 
 local M = {}
-local config = require "tungsten.config"
 local logger = require "tungsten.util.logger"
 local registry = require "tungsten.core.registry"
 local ODERule = require "tungsten.domains.differential_equations.rules.ode"
@@ -33,9 +32,7 @@ end
 function M.init_grammar()
   require "tungsten.domains.differential_equations.commands"
 
-  if config.debug then
-    logger.notify("Differential Equations Domain: Initializing grammar contributions...", logger.levels.DEBUG, { title = "Tungsten Debug" })
-  end
+  logger.debug("Tungsten Debug", "Differential Equations Domain: Initializing grammar contributions...")
 
   local domain_name = M.metadata.name
   local domain_priority = M.metadata.priority
@@ -46,9 +43,7 @@ function M.init_grammar()
   registry.register_grammar_contribution(domain_name, domain_priority, "LaplaceTransform", LaplaceRule, "AtomBaseItem")
   registry.register_grammar_contribution(domain_name, domain_priority, "Convolution", ConvolutionRule, "Convolution")
 
-  if config.debug then
-    logger.notify("Differential Equations Domain: Grammar contributions registered.", logger.levels.DEBUG, { title = "Tungsten Debug" })
-  end
+  logger.debug("Tungsten Debug", "Differential Equations Domain: Grammar contributions registered.")
 end
 
 

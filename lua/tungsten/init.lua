@@ -15,6 +15,8 @@ function M.setup(user_opts)
     M.config = vim.tbl_deep_extend('force', vim.deepcopy(M.config), user_opts)
   end
 
+  require('tungsten.util.logger').set_level(M.config.log_level or 'INFO')
+
   package.loaded['tungsten.config'] = M.config
 
   require('tungsten.core.commands')

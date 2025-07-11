@@ -70,14 +70,7 @@ end
   if timeout then
     vim.defer_fn(function()
       if not completed then
-        logger.notify(
-          string.format(
-            'Tungsten: Wolframscript job %d timed out after %d ms.',
-            handle.id, timeout
-          ),
-          logger.levels.WARN,
-          { title = 'Tungsten' }
-        )
+        logger.warn("Tungsten", string.format("Tungsten: Wolframscript job %d timed out after %d ms.", handle.id, timeout))
         handle.cancel()
       end
     end, timeout)

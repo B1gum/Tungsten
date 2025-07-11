@@ -5,7 +5,6 @@
 local lpeg     = require "lpeg"
 local registry = require "tungsten.core.registry"
 local space    = require "tungsten.core.tokenizer".space
-local config   = require "tungsten.config"
 local logger = require "tungsten.util.logger"
 
 local M = {}
@@ -14,17 +13,13 @@ local compiled_grammar
 
 function M.get_grammar()
   if not compiled_grammar then
-    if config.debug then
-      logger.notify("Parser: Compiling combined grammar...", logger.levels.DEBUG, {title = "Tungsten Parser"})
-    end
+    logger.debug("Tungsten Parser", "Parser: Compiling combined grammar...")
     compiled_grammar = registry.get_combined_grammar()
     if not compiled_grammar then
-        logger.notify("Parser: Grammar compilation failed. Subsequent parsing will fail.", logger.levels.ERROR, {title = "Tungsten Parser Error"})
+        logger.error("Tungsten Parser Error", "Parser: Grammar compilation failed. Subsequent parsing will fail.")
         compiled_grammar = lpeg.P(false)
     else
-      if config.debug then
-        logger.notify("Parser: Combined grammar compiled and cached.", logger.levels.DEBUG, {title = "Tungsten Parser"})
-      end
+      logger.debug("Tungsten Parser", "Parser: Combined grammar compiled and cached.")
     end
   end
   return compiled_grammar
@@ -36,7 +31,7 @@ function M.parse(input)
 end
 
 function M.reset_grammar()
-  logger.notify("Parser: Resetting compiled grammar.", logger.levels.INFO, {title = "Tungsten Parser"})
+  logger.info("Tungsten Parser", "Parser: Resetting compiled grammar.")
   compiled_grammar = nil
 end
 

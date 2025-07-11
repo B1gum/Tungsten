@@ -51,6 +51,10 @@ describe("tungsten.core.solver", function()
             levels = { ERROR = 1, WARN = 2, INFO = 3, DEBUG = 4 },
             notify = spy.new(function() end)
         }
+        mock_logger_module.debug = function(t,m) mock_logger_module.notify(m, mock_logger_module.levels.DEBUG, { title = t }) end
+        mock_logger_module.info = function(t,m) mock_logger_module.notify(m, mock_logger_module.levels.INFO, { title = t }) end
+        mock_logger_module.warn = function(t,m) mock_logger_module.notify(m, mock_logger_module.levels.WARN, { title = t }) end
+        mock_logger_module.error = function(t,m) mock_logger_module.notify(m, mock_logger_module.levels.ERROR, { title = t }) end
         mock_state_module = {
             persistent_variables = {},
             active_jobs = {}

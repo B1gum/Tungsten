@@ -13,7 +13,7 @@ function M.open(opts)
 
   local commands = picker.list()
   if vim.tbl_isempty(commands) then
-    logger.notify("No Tungsten commands found.", logger.log.levels.WARN)
+    logger.warn("Tungsten", "No Tungsten commands found.")
     return
   end
 

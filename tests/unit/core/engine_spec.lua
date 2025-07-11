@@ -62,6 +62,11 @@ describe("tungsten.core.engine", function()
       notify = function() end,
       levels = { ERROR = 1, WARN = 2, INFO = 3, DEBUG = 4 }
     }
+    mock_logger.debug = function(t,m) mock_logger.notify(m, mock_logger.levels.DEBUG, { title = t }) end
+    mock_logger.info = function(t,m) mock_logger.notify(m, mock_logger.levels.INFO, { title = t }) end
+    mock_logger.warn = function(t,m) mock_logger.notify(m, mock_logger.levels.WARN, { title = t }) end
+    mock_logger.error = function(t,m) mock_logger.notify(m, mock_logger.levels.ERROR, { title = t }) end
+
 
     wolfram_to_string_spy = spy.new(function(ast)
       if ast and ast.id == "error_ast" then

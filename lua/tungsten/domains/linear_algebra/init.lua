@@ -1,10 +1,8 @@
 -- lua/tungsten/domains/linear_algebra/init.lua
 local M = {}
-local config = require "tungsten.config"
 local logger = require "tungsten.util.logger"
 local registry = require "tungsten.core.registry"
 local tokenizer = require "tungsten.core.tokenizer"
-
 local MatrixRule = require "tungsten.domains.linear_algebra.rules.matrix"
 local VectorRule = require "tungsten.domains.linear_algebra.rules.vector"
 local DeterminantRule = require "tungsten.domains.linear_algebra.rules.determinant"
@@ -34,9 +32,7 @@ function M.get_metadata()
 end
 
 function M.init_grammar()
-  if config.debug then
-    logger.notify("Linear Algebra Domain: Initializing grammar contributions...", logger.levels.DEBUG, { title = "Tungsten Debug" })
-  end
+  logger.debug("Tungsten Debug", "Linear Algebra Domain: Initializing grammar contributions...")
 
   local domain_name = M.metadata.name
   local domain_priority = M.metadata.priority
@@ -48,9 +44,7 @@ function M.init_grammar()
   registry.register_grammar_contribution(domain_name, domain_priority, "IntercalCommand", tokenizer.intercal_command, "AtomBaseItem")
   registry.register_grammar_contribution(domain_name, domain_priority, "Rank", RankRule, "AtomBaseItem")
 
-  if config.debug then
-    logger.notify("Linear Algebra Domain: Grammar contributions registered for: " .. table.concat(M.metadata.provides, ", "), logger.levels.DEBUG, { title = "Tungsten Debug" })
-  end
+    logger.debug("Tungsten Debug", "Linear Algebra Domain: Grammar contributions registered for: " .. table.concat(M.metadata.provides, ", "))
 end
 
 return M

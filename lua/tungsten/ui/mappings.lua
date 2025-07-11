@@ -12,7 +12,7 @@ function M.attach(prompt_bufnr, _)
     if entry and entry.value then
       vim.cmd(entry.value)
     else
-      logger.notify("No command selected", logger.log.levels.WARN)
+      logger.warn("Tungsten", "No command selected")
     end
   end)
   return true

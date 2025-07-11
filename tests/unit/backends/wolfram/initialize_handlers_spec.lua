@@ -147,6 +147,10 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
         original_methods.notify = tungsten_logger_module.notify
         logger_notify_spy = spy.new(function() end)
         tungsten_logger_module.notify = logger_notify_spy
+        tungsten_logger_module.debug = function(t,m) logger_notify_spy(m, tungsten_logger_module.levels.DEBUG, { title = t }) end
+        tungsten_logger_module.info = function(t,m) logger_notify_spy(m, tungsten_logger_module.levels.INFO, { title = t }) end
+        tungsten_logger_module.warn = function(t,m) logger_notify_spy(m, tungsten_logger_module.levels.WARN, { title = t }) end
+        tungsten_logger_module.error = function(t,m) logger_notify_spy(m, tungsten_logger_module.levels.ERROR, { title = t }) end
     else
         error("tungsten_logger_module is nil, cannot set spy for notify")
     end
