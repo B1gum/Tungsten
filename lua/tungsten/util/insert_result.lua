@@ -2,6 +2,8 @@
 
 local M = {}
 
+local config = require "tungsten.config"
+
 function M.insert_result(result_text, separator_text, start_pos, end_pos, original_selection_text)
   local selection_util = require("tungsten.util.selection")
 
@@ -13,7 +15,7 @@ function M.insert_result(result_text, separator_text, start_pos, end_pos, origin
   local s_pos = start_pos or vim.fn.getpos("'<")
   local e_pos = end_pos or vim.fn.getpos("'>")
 
-  local current_separator = separator_text or " = "
+  local current_separator = separator_text or config.result_separator or " = "
 
   local final_text_to_insert = o_text .. current_separator .. (result_text or "")
 

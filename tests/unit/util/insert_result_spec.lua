@@ -213,6 +213,18 @@ describe("tungsten.util.insert_result", function()
           assert.spy(_G.vim.api.nvim_buf_set_text).was.called(1)
           assert.spy(_G.vim.api.nvim_buf_set_text).was.called_with(0, 0, 0, 0, 5, { "Text = " })
       end)
+
+      it("should use config.result_separator when separator is nil", function()
+          vim_test_env.set_plugin_config({'result_separator'}, ':')
+          local mock_start_pos = { 0, 1, 1, 0 }
+          local mock_end_pos = { 0, 1, 1, 0 }
+          local mock_selection = ""
+
+          insert_result.insert_result("42", nil, mock_start_pos, mock_end_pos, mock_selection)
+
+          assert.spy(_G.vim.api.nvim_buf_set_text).was.called(1)
+          assert.spy(_G.vim.api.nvim_buf_set_text).was.called_with(0, 0, 0, 0, 1, { ":42" })
+      end)
     end)
   end)
 end)
