@@ -50,6 +50,11 @@ local function tungsten_toggle_debug_command(_)
   logger.info("Debug mode " .. status .. ".")
 end
 
+local function tungsten_status_command(_)
+  local summary = evaluator.get_active_jobs_summary()
+  logger.info("Tungsten", summary)
+end
+
 local function define_persistent_variable_command(_)
   local selected_text = selection.get_visual_selection()
   if selected_text == "" or selected_text == nil then
@@ -321,6 +326,15 @@ vim.api.nvim_create_user_command(
 )
 
 vim.api.nvim_create_user_command(
+  "TungstenStatus",
+  function()
+    local summary = evaluator.get_active_jobs_summary()
+    require('tungsten.util.logger').info('Tungsten', summary)
+  end,
+  { desc = "Show Tungsten job status" }
+)
+
+vim.api.nvim_create_user_command(
   "TungstenToggleNumeric",
   tungsten_toggle_numeric_command,
   { desc = "Toggle Tungsten numeric mode" }
@@ -351,4 +365,5 @@ return {
   tungsten_solve_system_command = tungsten_solve_system_command,
   tungsten_toggle_numeric_command = tungsten_toggle_numeric_command,
   tungsten_toggle_debug_command = tungsten_toggle_debug_command,
+  tungsten_status_command = tungsten_status_command,
 }

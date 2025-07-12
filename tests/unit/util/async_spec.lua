@@ -22,6 +22,7 @@ local function wait_for(fn, timeout)
 end
 
 describe('tungsten.util.async.run_job', function()
+  vim.wait(10)
   before_each(function()
     clear_active_jobs()
   end)

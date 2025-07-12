@@ -148,21 +148,30 @@ function M.clear_cache()
   logger.info("Tungsten", "Tungsten: Cache cleared.")
 end
 
-function M.view_active_jobs()
+function M.get_active_jobs_summary()
   if vim.tbl_isempty(state.active_jobs) then
-    logger.info("Tungsten", "Tungsten: No active jobs.")
-    return
+    return "Tungsten: No active jobs."
   end
   local report = { "Active Tungsten Jobs:" }
   for id, info in pairs(state.active_jobs) do
-    table.insert(report, ("- ID: %s, Key: %s, Buf: %s, Code: %s"):format(
+    local age_ms = 0
+    if info.start_time then
+      age_ms = vim.loop.now() - info.start_time
+    end
+    local age_str = string.format("%.1fs", age_ms / 1000)
+    table.insert(report, ("- ID: %s, Key: %s, Buf: %s, Age: %s"):format(
       tostring(id),
       info.expr_key,
       tostring(info.bufnr),
-      info.code_sent:sub(1, 50) .. (info.code_sent:len() > 50 and "..." or "")
+      age_str
     ))
   end
-  logger.info("Tungsten Active Jobs", table.concat(report, "\n"))
+  return table.concat(report, "\n")
+end
+
+function M.view_active_jobs()
+  local summary = M.get_active_jobs_summary()
+  logger.info("Tungsten", summary)
 end
 
 function M.get_cache_size()
