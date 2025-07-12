@@ -443,44 +443,34 @@ describe("tungsten.core.parser.parse with combined grammar", function()
     end)
 
     describe("transpose parsing", function()
-      it("should parse \\vec{A}^T", function()
+      it("should parse \\vec{A}^T as superscript", function()
         local input = "\\vec{A}^T"
-        local expected_ast = ast_utils.create_transpose_node(
-          ast_utils.create_symbolic_vector_node({ type = "variable", name = "A" }, "vec")
+        local expected_ast = ast_utils.create_superscript_node(
+          ast_utils.create_symbolic_vector_node({ type = "variable", name = "A" }, "vec"),
+          { type = "variable", name = "T" }
         )
         assert.are.same(expected_ast, parse_input(input))
       end)
 
-      it("should parse \\vec{M}^{\\intercal}", function()
+      it("should parse \\vec{M}^{\\intercal} as superscript", function()
         local input = "\\vec{M}^{\\intercal}"
-        local expected_ast = ast_utils.create_transpose_node(
-          ast_utils.create_symbolic_vector_node({ type = "variable", name = "M" }, "vec")
+        local expected_ast = ast_utils.create_superscript_node(
+          ast_utils.create_symbolic_vector_node({ type = "variable", name = "M" }, "vec"),
+          { type = "intercal_command" }
         )
         assert.are.same(expected_ast, parse_input(input))
       end)
 
-      it("should parse \\vec{(X_i)}^T", function()
+      it("should parse \\vec{(X_i)}^T as superscript", function()
         local input = "\\vec{(X_i)}^T"
-        local expected_ast = ast_utils.create_transpose_node(
+        local expected_ast = ast_utils.create_superscript_node(
             ast_utils.create_symbolic_vector_node(
                 ast_utils.create_subscript_node({type="variable", name="X"}, {type="variable", name="i"}),
                 "vec"
-            )
+            ),
+            { type = "variable", name = "T" }
         )
-        local actual_parsed = parse_input(input)
-        local expected_manual_ast = {
-            type = "transpose",
-            expression = {
-                type = "symbolic_vector",
-                command = "vec",
-                name_expr = {
-                    type = "subscript",
-                    base = { type = "variable", name = "X" },
-                    subscript = { type = "variable", name = "i" }
-                }
-            }
-        }
-        assert.are.same(expected_manual_ast, actual_parsed)
+        assert.are.same(expected_ast, parse_input(input))
       end)
 
       it("should not parse A^t (lowercase 't')", function()
@@ -497,36 +487,25 @@ describe("tungsten.core.parser.parse with combined grammar", function()
     end)
 
     describe("inverse parsing", function()
-      it("should parse \\vec{A}^{-1}", function()
+      it("should parse \\vec{A}^{-1} as superscript", function()
         local input = "\\vec{A}^{-1}"
-        local expected_ast = ast_utils.create_inverse_node(
-          ast_utils.create_symbolic_vector_node({ type = "variable", name = "A" }, "vec")
+        local expected_ast = ast_utils.create_superscript_node(
+          ast_utils.create_symbolic_vector_node({ type = "variable", name = "A" }, "vec"),
+          { type = "unary", operator = '-', value = { type = 'number', value = 1 } }
         )
         assert.are.same(expected_ast, parse_input(input))
       end)
 
-      it("should parse \\vec{(M_1)}^{-1}", function()
+      it("should parse \\vec{(M_1)}^{-1} as superscript", function()
         local input = "\\vec{(M_1)}^{-1}"
-        local expected_ast = ast_utils.create_inverse_node(
+        local expected_ast = ast_utils.create_superscript_node(
             ast_utils.create_symbolic_vector_node(
                 ast_utils.create_subscript_node({type="variable", name="M"}, {type="number", value=1}),
                 "vec"
-            )
+            ),
+            { type = "unary", operator = '-', value = { type = 'number', value = 1 } }
         )
-        local actual_parsed = parse_input(input)
-        local expected_manual_ast = {
-            type = "inverse",
-            expression = {
-                type = "symbolic_vector",
-                command = "vec",
-                name_expr = {
-                    type = "subscript",
-                    base = { type = "variable", name = "M" },
-                    subscript = { type = "number", value = 1 }
-                }
-            }
-        }
-        assert.are.same(expected_manual_ast, actual_parsed)
+        assert.are.same(expected_ast, parse_input(input))
       end)
 
       it("should not parse A^-1 (no braces)", function()

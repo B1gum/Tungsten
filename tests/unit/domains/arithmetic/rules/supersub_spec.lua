@@ -113,27 +113,27 @@ describe("Arithmetic SupSub Rule: tungsten.domains.arithmetic.rules.supersub", f
   end
 
   describe("Valid Transpose Operations", function()
-    it("should parse MatrixA^T as transpose", function()
+    it("should parse MatrixA^T as superscript", function()
       local input = "MatrixA^T"
-      local expected = mock_ast_module.create_transpose_node(base_node("A", "matrix"))
+      local expected = mock_ast_module.create_superscript_node(base_node("A", "matrix"), base_node("T", "variable"))
       assert.are.same(expected, parse_input(input))
     end)
 
-    it("should parse MatrixB^{T} as transpose", function()
+    it("should parse MatrixB^{T} as superscript", function()
       local input = "MatrixB^{T}"
-      local expected = mock_ast_module.create_transpose_node(base_node("B", "matrix"))
+      local expected = mock_ast_module.create_superscript_node(base_node("B", "matrix"), base_node("T", "variable"))
       assert.are.same(expected, parse_input(input))
     end)
 
-    it("should parse MatrixC^{\\intercal} as transpose", function()
+    it("should parse MatrixC^{\\intercal} as superscript", function()
       local input = "MatrixC^{intercal}"
-      local expected = mock_ast_module.create_transpose_node(base_node("C", "matrix"))
+      local expected = mock_ast_module.create_superscript_node(base_node("C", "matrix"), {type="intercal_command"})
       assert.are.same(expected, parse_input(input))
     end)
 
-    it("should parse \\vec{v}^T as transpose", function()
+    it("should parse \\vec{v}^T as superscript", function()
       local input = "\\vec{v}^T"
-      local expected = mock_ast_module.create_transpose_node(base_node("v", "symbolic_vector"))
+      local expected = mock_ast_module.create_superscript_node(base_node("v", "symbolic_vector"), base_node("T", "variable"))
       assert.are.same(expected, parse_input(input))
     end)
 
@@ -149,7 +149,7 @@ describe("Arithmetic SupSub Rule: tungsten.domains.arithmetic.rules.supersub", f
         compiled_test_grammar = P(test_grammar_table_definition)
 
         local input = "(a+b)^T"
-        local expected = mock_ast_module.create_transpose_node(base_node("a+b", "matrix"))
+        local expected = mock_ast_module.create_superscript_node(base_node("a+b", "matrix"), base_node("T", "variable"))
         assert.are.same(expected, parse_input(input))
 
         test_grammar_table_definition.AtomBase = original_atom_base
@@ -158,15 +158,15 @@ describe("Arithmetic SupSub Rule: tungsten.domains.arithmetic.rules.supersub", f
   end)
 
   describe("Valid Inverse Operations", function()
-    it("should parse MatrixA^{-1} as inverse", function()
+    it("should parse MatrixA^{-1} as superscript", function()
       local input = "MatrixA^{-1}"
-      local expected = mock_ast_module.create_inverse_node(base_node("A", "matrix"))
+      local expected = mock_ast_module.create_superscript_node(base_node("A", "matrix"), base_node(-1, "number"))
       assert.are.same(expected, parse_input(input))
     end)
 
-    it("should parse MatrixB ^ { -1 } as inverse (with spaces)", function()
+    it("should parse MatrixB ^ { -1 } as superscript (with spaces)", function()
       local input = "MatrixB ^ { -1 }"
-      local expected = mock_ast_module.create_inverse_node(base_node("B", "matrix"))
+      local expected = mock_ast_module.create_superscript_node(base_node("B", "matrix"), base_node(-1, "number"))
       assert.are.same(expected, parse_input(input))
     end)
 
@@ -181,7 +181,7 @@ describe("Arithmetic SupSub Rule: tungsten.domains.arithmetic.rules.supersub", f
         compiled_test_grammar = P(test_grammar_table_definition)
 
         local input = "(a+b)^{-1}"
-        local expected = mock_ast_module.create_inverse_node(base_node("a+b", "matrix"))
+        local expected = mock_ast_module.create_superscript_node(base_node("a+b", "matrix"), base_node(-1, "number"))
         assert.are.same(expected, parse_input(input))
 
         test_grammar_table_definition.AtomBase = original_atom_base
@@ -254,10 +254,10 @@ describe("Arithmetic SupSub Rule: tungsten.domains.arithmetic.rules.supersub", f
   end)
 
   describe("Unary integration", function()
-    it("should parse -MatrixA^T as unary minus of transpose",function()
+    it("should parse -MatrixA^T as unary minus of superscript",function()
       local input = "-MatrixA^T"
-      local transpose_node = mock_ast_module.create_transpose_node(base_node("A", "matrix"))
-      local expected = mock_ast_module.create_unary_operation_node("-", transpose_node)
+      local super_node = mock_ast_module.create_superscript_node(base_node("A", "matrix"), base_node("T", "variable"))
+      local expected = mock_ast_module.create_unary_operation_node("-", super_node)
       assert.are.same(expected, parse_input(input))
     end)
 
@@ -276,10 +276,10 @@ describe("Arithmetic SupSub Rule: tungsten.domains.arithmetic.rules.supersub", f
       assert.are.same(expected, parse_input(input))
     end)
 
-    it("should parse vector^T_i (transpose of vector, then subscript) - assuming (vec^T)_i", function()
+    it("should parse vector^T_i (superscript then subscript) - assuming (vec^T)_i", function()
       local input = "\\vec{v}^T_i"
-      local expected_transpose = mock_ast_module.create_transpose_node(base_node("v", "symbolic_vector"))
-      local expected_subscript = mock_ast_module.create_subscript_node(expected_transpose, base_node("i", "variable"))
+      local expected_super = mock_ast_module.create_superscript_node(base_node("v", "symbolic_vector"), base_node("T", "variable"))
+      local expected_subscript = mock_ast_module.create_subscript_node(expected_super, base_node("i", "variable"))
 
       local result = parse_input(input)
       assert.are.same(expected_subscript, result)
