@@ -56,6 +56,10 @@ function M.insert_result(result_text, separator_text, start_pos, end_pos, origin
     end_col_api,
     lines_to_insert
   )
+
+  local tungsten = require('tungsten')
+  tungsten._execute_hook('on_result', result_text)
+  tungsten._emit_result_event(result_text)
 end
 
 return M

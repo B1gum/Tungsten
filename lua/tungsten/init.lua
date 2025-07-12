@@ -5,6 +5,26 @@
 local defaults = require('tungsten.config')
 local M = { config = vim.deepcopy(defaults) }
 
+local function execute_hook(name, ...)
+  local hooks = M.config.hooks or {}
+  local fn = hooks[name]
+  local fn_type = type(fn)
+  if fn_type == 'function' or (fn_type == 'table' and getmetatable(fn) and type(getmetatable(fn).__call) == 'function') then
+    pcall(fn, ...)
+  end
+end
+M._execute_hook = execute_hook
+
+local function emit_result_event(result)
+  if vim and vim.api and vim.api.nvim_exec_autocmds then
+    vim.api.nvim_exec_autocmds('User', {
+      pattern = 'TungstenResult',
+      modeline = false,
+      data = { result = result },
+    })
+  end
+end
+M._emit_result_event = emit_result_event
 
 function M.setup(user_opts)
   if user_opts ~= nil and type(user_opts) ~= 'table' then
@@ -14,6 +34,8 @@ function M.setup(user_opts)
   if user_opts and next(user_opts) then
     M.config = vim.tbl_deep_extend('force', vim.deepcopy(M.config), user_opts)
   end
+
+  M.config.hooks = M.config.hooks or {}
 
   if type(M.config.domains) == 'table' and not vim.tbl_islist(M.config.domains) then
     local registry = require('tungsten.core.registry')

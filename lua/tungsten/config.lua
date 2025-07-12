@@ -22,6 +22,7 @@ local config = {
     arcosh = "ArcCosh", artanh = "ArcTanh", log = "Log", ln = "Log", log10 = "Log10",
     exp = "Exp", u = "HeavisideTheta",
   },
+  hooks = {},
 }
 
 
