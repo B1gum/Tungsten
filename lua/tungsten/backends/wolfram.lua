@@ -45,7 +45,7 @@ local function _process_domain_handlers(domain_name, registry)
     end
 end
 
-local function initialize_handlers()
+local function init_handlers()
     if handlers_initialized then
         return
     end
@@ -90,7 +90,7 @@ end
 
 function M.to_string(ast)
     if not handlers_initialized then
-        initialize_handlers()
+        init_handlers()
     end
 
     if not ast then
@@ -114,12 +114,12 @@ function M.to_string(ast)
 end
 
 
-function M.reset_and_reinit_handlers()
+function M.reload_handlers()
     logger.info("Tungsten Backend", "Wolfram Backend: Resetting and re-initializing handlers...")
     handlerRegistry = {}
     renderableHandlers = {}
     handlers_initialized = false
-    initialize_handlers()
+    init_handlers()
 end
 
 return M

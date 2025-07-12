@@ -299,7 +299,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       mock_domain_handler_definitions["tungsten.domains.arithmetic.wolfram_handlers"] = {
         handlers = { arith_specific_handler_nil_config = function() end }
       }
-      wolfram_backend.reset_and_reinit_handlers()
+      wolfram_backend.reload_handlers()
 
       local found_arithmetic_handler_require = false
       for _, called_module in ipairs(require_calls) do
@@ -317,7 +317,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       mock_domain_handler_definitions["tungsten.domains.arithmetic.wolfram_handlers"] = {
         handlers = { arith_specific_handler_empty_config = function() end }
       }
-      wolfram_backend.reset_and_reinit_handlers()
+      wolfram_backend.reload_handlers()
 
       local found_arithmetic_handler_require = false
       for _, called_module in ipairs(require_calls) do
@@ -343,7 +343,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       mock_domain_handler_definitions["tungsten.domains.arithmetic.wolfram_handlers"] = nil
 
 
-      wolfram_backend.reset_and_reinit_handlers()
+      wolfram_backend.reload_handlers()
 
       local found_custom_handler_require = false
       for _, called_module in ipairs(require_calls) do
@@ -380,7 +380,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       }
       mock_domain_handler_definitions["tungsten.domains.arithmetic.wolfram_handlers"] = nil
 
-      wolfram_backend.reset_and_reinit_handlers()
+      wolfram_backend.reload_handlers()
 
       local require_calls_for_custom_domains = {}
       for _, called_module in ipairs(require_calls) do
@@ -409,7 +409,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
         handlers = { custom_op = function() end }
       }
 
-      wolfram_backend.reset_and_reinit_handlers()
+      wolfram_backend.reload_handlers()
 
       local called_modules_map = {}
       for _, called_module in ipairs(require_calls) do
@@ -450,7 +450,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       }
       mock_domain_handler_definitions["tungsten.domains.arithmetic.wolfram_handlers"] = nil
 
-      wolfram_backend.reset_and_reinit_handlers()
+      wolfram_backend.reload_handlers()
       local result = wolfram_backend.to_string(test_ast)
 
       local override_log_found = false
@@ -499,7 +499,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       }
       mock_domain_handler_definitions["tungsten.domains.arithmetic.wolfram_handlers"] = nil
 
-      wolfram_backend.reset_and_reinit_handlers()
+      wolfram_backend.reload_handlers()
       local result = wolfram_backend.to_string(test_ast)
 
       local not_override_log_found = false
@@ -574,7 +574,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       }
       mock_domain_handler_definitions["tungsten.domains.arithmetic.wolfram_handlers"] = nil
 
-      wolfram_backend.reset_and_reinit_handlers()
+      wolfram_backend.reload_handlers()
       local result = wolfram_backend.to_string(test_ast)
 
       local conflict_log_found = false
@@ -618,7 +618,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       }
       mock_domain_handler_definitions["tungsten.domains.arithmetic.wolfram_handlers"] = nil
 
-      wolfram_backend.reset_and_reinit_handlers()
+      wolfram_backend.reload_handlers()
 
       local found_require = false
       for _, called_module in ipairs(require_calls) do
@@ -681,7 +681,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       mock_domain_handler_definitions["tungsten.domains.arithmetic.wolfram_handlers"] = nil
 
 
-      wolfram_backend.reset_and_reinit_handlers()
+      wolfram_backend.reload_handlers()
 
       local warning_log_found = false
       local simulated_error_fragment = "Simulated error: module '" .. handler_module_path_missing .. "' not found by test override."
@@ -724,7 +724,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       mock_domain_handler_definitions["tungsten.domains.arithmetic.wolfram_handlers"] = nil
 
 
-      wolfram_backend.reset_and_reinit_handlers()
+      wolfram_backend.reload_handlers()
 
       local warning_log_found = false
       local expected_log_message = ("Wolfram Backend: Could not load Wolfram handlers for domain '%s'. module '%s' loaded but it did not return a .handlers table."):format(nohandlers_domain_name, handler_module_path_nohandlers)
@@ -751,7 +751,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       mock_domain_handler_definitions[handler_module_path_nil] = nil
 
 
-      wolfram_backend.reset_and_reinit_handlers()
+      wolfram_backend.reload_handlers()
 
       local warning_log_found = false
       local expected_log_message = ("Wolfram Backend: Could not load Wolfram handlers for domain '%s'. module '%s' loaded but it did not return a .handlers table."):format(nil_domain_name, handler_module_path_nil)
