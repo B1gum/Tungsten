@@ -11,6 +11,12 @@ local M = {
   commands = {},
 }
 
+function M.reset()
+  M.domains_metadata = {}
+  M.grammar_contributions = {}
+  M.commands = {}
+end
+
 function M.register_domain_metadata(name, metadata)
   if M.domains_metadata[name] then
     logger.warn("Tungsten Registry", ("Registry: Domain metadata for '%s' is being re-registered."):format(name))

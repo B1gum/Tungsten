@@ -81,4 +81,15 @@ function M.setup(opts)
   end
 end
 
+function M.reload(opts)
+  registry.reset()
+  require "tungsten.core.parser".reset_grammar()
+  for name, _ in pairs(package.loaded) do
+    if name:match("tungsten%.domains%.") then
+      package.loaded[name] = nil
+    end
+  end
+  M.setup(opts)
+end
+
 return M
