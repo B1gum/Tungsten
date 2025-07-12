@@ -13,6 +13,7 @@ local config = {
   domains = { "arithmetic", "calculus", "linear_algebra", "differential_equations" },
   user_domains_path = nil,
   wolfram_timeout_ms = 30000,
+  max_jobs = 5,
   persistent_variable_assignment_operator = ":=",
   wolfram_function_mappings = {
     sin = "Sin", cos = "Cos", tan = "Tan", arcsin = "ArcSin", arccos = "ArcCos",

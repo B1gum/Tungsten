@@ -7,6 +7,15 @@ local config = require('tungsten.config')
 
 local M = {}
 
+local job_queue = {}
+local process_queue
+
+local function active_job_count()
+  local n = 0
+  for _ in pairs(state.active_jobs) do n = n + 1 end
+  return n
+end
+
 local function spawn_process(cmd, opts)
   opts = opts or {}
   local expr_key = opts.expr_key
@@ -25,6 +34,8 @@ local function spawn_process(cmd, opts)
     if handle and handle.id and state.active_jobs[handle.id] then
       state.active_jobs[handle.id] = nil
     end
+
+    process_queue()
 
     if on_exit then
       on_exit(
@@ -86,7 +97,23 @@ end
   return handle
 end
 
-M.run_job = spawn_process
+process_queue = function()
+  while #job_queue > 0 and active_job_count() < (config.max_jobs or math.huge) do
+    local next_job = table.remove(job_queue, 1)
+    vim.schedule(function()
+      spawn_process(next_job.cmd, next_job.opts)
+    end)
+  end
+end
+
+function M.run_job(cmd, opts)
+  if active_job_count() >= (config.max_jobs or math.huge) then
+    logger.warn("Tungsten", string.format("Maximum of %d jobs reached; queuing job", config.max_jobs))
+    table.insert(job_queue, {cmd=cmd, opts=opts})
+    return nil
+  end
+  return spawn_process(cmd, opts)
+end
 
 function M.cancel_process(handle)
   if handle and handle.cancel then
