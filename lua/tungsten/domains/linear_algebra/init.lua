@@ -1,51 +1,35 @@
 -- lua/tungsten/domains/linear_algebra/init.lua
-local M = {}
-local logger = require "tungsten.util.logger"
-local registry = require "tungsten.core.registry"
-local tokenizer = require "tungsten.core.tokenizer"
-local MatrixRule = require "tungsten.domains.linear_algebra.rules.matrix"
-local VectorRule = require "tungsten.domains.linear_algebra.rules.vector"
-local DeterminantRule = require "tungsten.domains.linear_algebra.rules.determinant"
-local NormRule = require "tungsten.domains.linear_algebra.rules.norm"
-local RankRule = require "tungsten.domains.linear_algebra.rules.rank"
 
-require("tungsten.domains.linear_algebra.commands")
-require("tungsten.domains.linear_algebra.wolfram_handlers")
+local tokenizer = require 'tungsten.core.tokenizer'
+local MatrixRule = require 'tungsten.domains.linear_algebra.rules.matrix'
+local VectorRule = require 'tungsten.domains.linear_algebra.rules.vector'
+local DeterminantRule = require 'tungsten.domains.linear_algebra.rules.determinant'
+local NormRule = require 'tungsten.domains.linear_algebra.rules.norm'
+local RankRule = require 'tungsten.domains.linear_algebra.rules.rank'
 
-M.metadata = {
-  name = "linear_algebra",
+local M = {
+  name = 'linear_algebra',
   priority = 120,
   dependencies = {"arithmetic"},
   overrides = {},
-  provides = {
-    "Matrix",
-    "Vector",
-    "Determinant",
-    "Norm",
-    "LinearIndependentTest",
-    "Rank",
-  }
 }
 
-function M.get_metadata()
-  return M.metadata
+M.grammar = { contributions = {}, extensions = {} }
+local c = M.grammar.contributions
+local prio = M.priority
+c[#c+1] = { name = 'Matrix', pattern = MatrixRule, category = 'Matrix', priority = prio }
+c[#c+1] = { name = 'Vector', pattern = VectorRule, category = 'AtomBaseItem', priority = prio }
+c[#c+1] = { name = 'Determinant', pattern = DeterminantRule, category = 'AtomBaseItem', priority = prio }
+c[#c+1] = { name = 'Norm', pattern = NormRule, category = 'AtomBaseItem', priority = prio }
+c[#c+1] = { name = 'IntercalCommand', pattern = tokenizer.intercal_command, category = 'AtomBaseItem', priority = prio }
+c[#c+1] = { name = 'Rank', pattern = RankRule, category = 'AtomBaseItem', priority = prio }
+
+function M.commands()
+  require 'tungsten.domains.linear_algebra.commands'
 end
 
-function M.init_grammar()
-  logger.debug("Tungsten Debug", "Linear Algebra Domain: Initializing grammar contributions...")
-
-  local domain_name = M.metadata.name
-  local domain_priority = M.metadata.priority
-
-  registry.register_grammar_contribution(domain_name, domain_priority, "Matrix", MatrixRule, "Matrix")
-  registry.register_grammar_contribution(domain_name, domain_priority, "Vector", VectorRule, "AtomBaseItem")
-  registry.register_grammar_contribution(domain_name, domain_priority, "Determinant", DeterminantRule, "AtomBaseItem")
-  registry.register_grammar_contribution(domain_name, domain_priority, "Norm", NormRule, "AtomBaseItem")
-  registry.register_grammar_contribution(domain_name, domain_priority, "IntercalCommand", tokenizer.intercal_command, "AtomBaseItem")
-  registry.register_grammar_contribution(domain_name, domain_priority, "Rank", RankRule, "AtomBaseItem")
-
-    logger.debug("Tungsten Debug", "Linear Algebra Domain: Grammar contributions registered for: " .. table.concat(M.metadata.provides, ", "))
+function M.handlers()
+  require 'tungsten.domains.linear_algebra.wolfram_handlers'
 end
 
 return M
-

@@ -1,69 +1,41 @@
 -- tungsten/lua/tungsten/domains/arithmetic/init.lua
 local lpeg = require "lpeg"
 local V = lpeg.V
-local tokens_mod = require "tungsten.core.tokenizer"
-local ast_utils = require "tungsten.core.ast"
-local registry = require "tungsten.core.registry"
-local logger = require "tungsten.util.logger"
+local tokens_mod = require 'tungsten.core.tokenizer'
+local ast_utils = require 'tungsten.core.ast'
 
-local M = {}
-
-M.metadata = {
-  name = "arithmetic",
+local M = {
+  name = 'arithmetic',
   priority = 100,
   dependencies = {},
   overrides = {},
-  provides = {
-    "EquationRule",
-    "AtomBaseItem",
-    "SupSub",
-    "Unary",
-    "MulDiv",
-    "AddSub",
-    "Fraction",
-    "Sqrt",
-    "SinFunction",
-    "SolveSystemEquationsCapture",
-    "FunctionCall",
-  }
 }
 
+M.grammar = { contributions = {}, extensions = {} }
 
-local standard_equation_pattern = (V("AddSub") * tokens_mod.space * tokens_mod.equals_op * tokens_mod.space * V("AddSub")) / function(lhs, _, rhs)
-  return ast_utils.create_binary_operation_node("=", lhs, rhs)
+local prio = M.priority
+local supersub = require('tungsten.domains.arithmetic.rules.supersub')
+local standard_equation_pattern = (V('AddSub') * tokens_mod.space * tokens_mod.equals_op * tokens_mod.space * V('AddSub')) / function(lhs, _, rhs)
+  return ast_utils.create_binary_operation_node('=', lhs, rhs)
 end
 
-function M.get_metadata()
-  return M.metadata
+local c = M.grammar.contributions
+c[#c+1] = { name = 'Number', pattern = tokens_mod.number, category = 'AtomBaseItem', priority = prio }
+c[#c+1] = { name = 'Variable', pattern = tokens_mod.variable, category = 'AtomBaseItem', priority = prio }
+c[#c+1] = { name = 'Greek', pattern = tokens_mod.Greek, category = 'AtomBaseItem', priority = prio }
+c[#c+1] = { name = 'Fraction', pattern = require('tungsten.domains.arithmetic.rules.fraction'), category = 'AtomBaseItem', priority = prio }
+c[#c+1] = { name = 'Sqrt', pattern = require('tungsten.domains.arithmetic.rules.sqrt'), category = 'AtomBaseItem', priority = prio }
+c[#c+1] = { name = 'FunctionCall', pattern = require('tungsten.domains.arithmetic.rules.function_call'), category = 'AtomBaseItem', priority = prio }
+c[#c+1] = { name = 'SupSub', pattern = supersub.SupSub, category = 'SupSub', priority = prio }
+c[#c+1] = { name = 'Unary', pattern = supersub.Unary, category = 'Unary', priority = prio }
+c[#c+1] = { name = 'MulDiv', pattern = require('tungsten.domains.arithmetic.rules.muldiv'), category = 'MulDiv', priority = prio }
+c[#c+1] = { name = 'AddSub', pattern = require('tungsten.domains.arithmetic.rules.addsub'), category = 'AddSub', priority = prio }
+c[#c+1] = { name = 'SinFunction', pattern = require('tungsten.domains.arithmetic.rules.trig_functions').SinRule, category = 'AtomBaseItem', priority = prio }
+c[#c+1] = { name = 'EquationRule', pattern = standard_equation_pattern, category = 'TopLevelRule', priority = prio + 5 }
+c[#c+1] = { name = 'SolveSystemEquationsCapture', pattern = require('tungsten.domains.arithmetic.rules.solve_system_rule'), category = 'TopLevelRule', priority = prio + 10 }
+
+function M.handlers()
+  require('tungsten.domains.arithmetic.wolfram_handlers')
 end
-
-function M.init_grammar()
-    logger.debug("Tungsten Debug", "Arithmetic Domain: Initializing grammar contributions...")
-
-    local domain_name = M.metadata.name
-    local domain_priority = M.metadata.priority
-
-    local equation_rule_priority = domain_priority + 5
-    local solve_system_priority = domain_priority + 10
-
-    local equation_pattern_to_register = standard_equation_pattern
-
-    registry.register_grammar_contribution(domain_name, domain_priority, "Number", tokens_mod.number, "AtomBaseItem")
-    registry.register_grammar_contribution(domain_name, domain_priority, "Variable", tokens_mod.variable, "AtomBaseItem")
-    registry.register_grammar_contribution(domain_name, domain_priority, "Greek", tokens_mod.Greek, "AtomBaseItem")
-    registry.register_grammar_contribution(domain_name, domain_priority, "Fraction", require("tungsten.domains.arithmetic.rules.fraction"), "AtomBaseItem")
-    registry.register_grammar_contribution(domain_name, domain_priority, "Sqrt", require("tungsten.domains.arithmetic.rules.sqrt"), "AtomBaseItem")
-    registry.register_grammar_contribution(domain_name, domain_priority, "FunctionCall", require("tungsten.domains.arithmetic.rules.function_call"), "AtomBaseItem")
-    registry.register_grammar_contribution(domain_name, domain_priority, "SupSub", require("tungsten.domains.arithmetic.rules.supersub").SupSub, "SupSub")
-    registry.register_grammar_contribution(domain_name, domain_priority, "Unary", require("tungsten.domains.arithmetic.rules.supersub").Unary, "Unary")
-    registry.register_grammar_contribution(domain_name, domain_priority, "MulDiv", require("tungsten.domains.arithmetic.rules.muldiv"), "MulDiv")
-    registry.register_grammar_contribution(domain_name, domain_priority, "AddSub", require("tungsten.domains.arithmetic.rules.addsub"), "AddSub")
-    registry.register_grammar_contribution(domain_name, domain_priority, "SinFunction", require("tungsten.domains.arithmetic.rules.trig_functions").SinRule, "AtomBaseItem")
-    registry.register_grammar_contribution(domain_name, equation_rule_priority, "EquationRule", equation_pattern_to_register, "TopLevelRule")
-    registry.register_grammar_contribution(domain_name, solve_system_priority, "SolveSystemEquationsCapture", require "tungsten.domains.arithmetic.rules.solve_system_rule", "TopLevelRule")
-
-    logger.debug("Tungsten Debug", "Arithmetic Domain: Grammar contributions registered.")
-end
-
 
 return M

@@ -1,51 +1,34 @@
 -- lua/tungsten/domains/differential_equations/init.lua
 -- Differential Equations domain for Tungsten plugin
 
-local M = {}
-local logger = require "tungsten.util.logger"
-local registry = require "tungsten.core.registry"
-local ODERule = require "tungsten.domains.differential_equations.rules.ode"
-local ODESystemRule = require "tungsten.domains.differential_equations.rules.ode_system"
-local WronskianRule = require "tungsten.domains.differential_equations.rules.wronskian"
-local LaplaceRule = require "tungsten.domains.differential_equations.rules.laplace"
-local ConvolutionRule = require "tungsten.domains.differential_equations.rules.convolution"
+local ODERule = require 'tungsten.domains.differential_equations.rules.ode'
+local ODESystemRule = require 'tungsten.domains.differential_equations.rules.ode_system'
+local WronskianRule = require 'tungsten.domains.differential_equations.rules.wronskian'
+local LaplaceRule = require 'tungsten.domains.differential_equations.rules.laplace'
+local ConvolutionRule = require 'tungsten.domains.differential_equations.rules.convolution'
 
-
-M.metadata = {
-  name = "differential_equations",
+local M = {
+  name = 'differential_equations',
   priority = 140,
   dependencies = { "arithmetic", "calculus" },
   overrides = {},
-  provides = {
-    "ODE",
-    "ODESystem",
-    "Wronskian",
-    "LaplaceTransform",
-    "Convolution",
-  },
 }
 
-function M.get_metadata()
-  return M.metadata
+M.grammar = { contributions = {}, extensions = {} }
+local c = M.grammar.contributions
+local prio = M.priority
+c[#c+1] = { name = 'ODE', pattern = ODERule, category = 'TopLevelRule', priority = prio }
+c[#c+1] = { name = 'ODESystem', pattern = ODESystemRule, category = 'TopLevelRule', priority = prio }
+c[#c+1] = { name = 'Wronskian', pattern = WronskianRule, category = 'AtomBaseItem', priority = prio }
+c[#c+1] = { name = 'LaplaceTransform', pattern = LaplaceRule, category = 'AtomBaseItem', priority = prio }
+c[#c+1] = { name = 'Convolution', pattern = ConvolutionRule, category = 'Convolution', priority = prio }
+
+function M.commands()
+  require 'tungsten.domains.differential_equations.commands'
 end
 
-function M.init_grammar()
-  require "tungsten.domains.differential_equations.commands"
-
-  logger.debug("Tungsten Debug", "Differential Equations Domain: Initializing grammar contributions...")
-
-  local domain_name = M.metadata.name
-  local domain_priority = M.metadata.priority
-
-  registry.register_grammar_contribution(domain_name, domain_priority, "ODE", ODERule, "TopLevelRule")
-  registry.register_grammar_contribution(domain_name, domain_priority, "ODESystem", ODESystemRule, "TopLevelRule")
-  registry.register_grammar_contribution(domain_name, domain_priority, "Wronskian", WronskianRule, "AtomBaseItem")
-  registry.register_grammar_contribution(domain_name, domain_priority, "LaplaceTransform", LaplaceRule, "AtomBaseItem")
-  registry.register_grammar_contribution(domain_name, domain_priority, "Convolution", ConvolutionRule, "Convolution")
-
-  logger.debug("Tungsten Debug", "Differential Equations Domain: Grammar contributions registered.")
+function M.handlers()
+  require 'tungsten.domains.differential_equations.wolfram_handlers'
 end
-
 
 return M
-
