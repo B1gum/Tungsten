@@ -8,10 +8,20 @@ local function now()
 end
 
 local function remove(self, node)
-  if node.prev then node.prev.nexr = node.next end
-  if node.next then node.next.prev = node.prev end
-  if self.head == node then self.head = node.next end
-  if self.tail == node then self.tail = node.prev end
+  if node.prev then
+    node.prev.next = node.next
+  end
+  if node.next then
+    node.next.prev = node.prev
+  end
+
+  if self.head == node then
+    self.head = node.next
+  end
+  if self.tail == node then
+    self.tail = node.prev
+  end
+
   self.map[node.key] = nil
   self.size = self.size - 1
 end

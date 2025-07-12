@@ -57,5 +57,21 @@ describe("tungsten.cache", function()
     assert.is_nil(cache["a"])
     assert.are.equal(0, cache:count())
   end)
+
+  it("maintains list integrity when removing a middle entry", function()
+    local cache = cache_module.new(5, nil)
+    cache["a"] = 1
+    cache["b"] = 2
+    cache["c"] = 3
+
+    cache["b"] = 22
+
+    assert.are.equal(3, cache:count())
+    assert.are.equal("b", cache.head.key)
+    assert.are.equal("a", cache.tail.key)
+    assert.are.equal("c", cache.head.next.key)
+    assert.are.same(cache.head, cache.head.next.prev)
+    assert.are.same(cache.head.next, cache.tail.prev)
+  end)
 end)
 
