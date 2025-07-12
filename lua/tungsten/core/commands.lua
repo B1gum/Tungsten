@@ -62,24 +62,13 @@ local function define_persistent_variable_command(_)
     return
   end
 
-  local op_to_use_str = nil
-  local op_start_pos = nil
+  local op_to_use_str = config.persistent_variable_assignment_operator or ":="
+  local op_start_pos = selected_text:find(op_to_use_str, 1, true)
 
-  local op_double_start = selected_text:find(":=", 1, true)
-  local op_single_start = selected_text:find("=", 1, true)
-
-  if op_double_start then
-    op_to_use_str = ":="
-    op_start_pos = op_double_start
-    logger.debug("Tungsten Debug", "Tungsten Debug: Operator ':=' found at pos " .. tostring(op_start_pos))
-  elseif op_single_start then
-    op_to_use_str = "="
-    op_start_pos = op_single_start
-    logger.debug("Tungsten Debug", "Tungsten Debug: Operator '=' found at pos " .. tostring(op_start_pos))
-  end
-
-  if not op_start_pos then
-    error_handler.notify_error("DefineVar", "No assignment operator ('=' or ':=') found in selection.")
+  if op_start_pos then
+    logger.debug("Tungsten Debug", "Tungsten Debug: Operator '" .. op_to_use_str .. "' found at pos " .. tostring(op_start_pos))
+  else
+    error_handler.notify_error("DefineVar", "No assignment operator ('" .. op_to_use_str .. "') found in selection.")
     return
   end
 

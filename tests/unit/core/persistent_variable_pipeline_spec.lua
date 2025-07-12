@@ -277,5 +277,26 @@ describe("Tungsten Persistent Variable Pipeline", function()
 
       mock_config_module.persistent_variable_assignment_operator = ":="
     end)
+
+    it("should respect 'persistent_variable_assignment_operator' from config (':=')", function()
+      mock_config_module.persistent_variable_assignment_operator = ":="
+      package.loaded['tungsten.core.commands'] = nil
+      commands_module = require("tungsten.core.commands")
+
+      current_visual_selection_text = "w := 4"
+      commands_module.define_persistent_variable_command({})
+      assert.are.equal(1, get_visual_selection_call_count); get_visual_selection_call_count = 0
+      assert.are.same("wolfram(4)", mock_state_module.persistent_variables["w"])
+
+      current_visual_selection_text = "w + w"
+      mock_async_run_job_spy:clear()
+      mock_insert_result_insert_result_spy:clear()
+      commands_module.tungsten_eval_command({})
+      assert.are.equal(1, get_visual_selection_call_count); get_visual_selection_call_count = 0
+      local cmd_args = mock_async_run_job_spy.calls[1].vals[1]
+      assert.are.same("ToString[TeXForm[wolfram((wolfram(4)) + (wolfram(4)))], CharacterEncoding -> \"UTF8\"]", cmd_args[3])
+      simulate_wolfram_eval({"8"}, 0)
+      assert.spy(mock_insert_result_insert_result_spy).was.called_with("8")
+    end)
   end)
 end)
