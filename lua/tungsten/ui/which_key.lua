@@ -34,6 +34,9 @@ local mappings = {
   { '<leader>tcc', ':<C-u>TungstenClearCache<CR>', desc = 'Clear Cache' },
   { '<leader>tcv', ':<C-u>TungstenViewActiveJobs<CR>', desc = 'View Active Jobs' },
   { '<leader>tm',  '<cmd>TungstenPalette<cr>', desc = 'Open Command Palette' },
+  { "<leader>tt", group = "Toggle" },
+  { "<leader>ttn", ":<C-u>TungstenToggleNumeric<CR>", desc = "Toggle Numeric Mode" },
+  { "<leader>ttd", ":<C-u>TungstenToggleDebug<CR>", desc = "Toggle Debug Mode" },
 }
 
 wk.register(mappings)

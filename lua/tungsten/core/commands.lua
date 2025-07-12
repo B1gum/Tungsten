@@ -38,6 +38,18 @@ local function tungsten_eval_command(_)
   end)
 end
 
+local function tungsten_toggle_numeric_command(_)
+  config.numeric_mode = not config.numeric_mode
+  local status = config.numeric_mode and "enabled" or "disabled"
+  logger.info("Numeric mode " .. status .. ".")
+end
+
+local function tungsten_toggle_debug_command(_)
+  config.debug = not config.debug
+  local status = config.debug and "enabled" or "disabled"
+  logger.info("Debug mode " .. status .. ".")
+end
+
 local function define_persistent_variable_command(_)
   local selected_text = selection.get_visual_selection()
   if selected_text == "" or selected_text == nil then
@@ -309,6 +321,18 @@ vim.api.nvim_create_user_command(
 )
 
 vim.api.nvim_create_user_command(
+  "TungstenToggleNumeric",
+  tungsten_toggle_numeric_command,
+  { desc = "Toggle Tungsten numeric mode" }
+)
+
+vim.api.nvim_create_user_command(
+  "TungstenToggleDebug",
+  tungsten_toggle_debug_command,
+  { desc = "Toggle Tungsten debug mode" }
+)
+
+vim.api.nvim_create_user_command(
   "TungstenSolve",
   tungsten_solve_command,
   { range = true, desc = "Solve the selected equation for the specified variable (e.g., 'x+y=z; x')" }
@@ -325,4 +349,6 @@ return {
   define_persistent_variable_command = define_persistent_variable_command,
   tungsten_solve_command = tungsten_solve_command,
   tungsten_solve_system_command = tungsten_solve_system_command,
+  tungsten_toggle_numeric_command = tungsten_toggle_numeric_command,
+  tungsten_toggle_debug_command = tungsten_toggle_debug_command,
 }
