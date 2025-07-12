@@ -6,6 +6,8 @@ if not ok then
   return {}
 end
 
+local config = require "tungsten.config"
+
 local mappings = {
   mode = { 'v' },
   { '<leader>t', group = 'Tungsten' },
@@ -39,6 +41,8 @@ local mappings = {
   { "<leader>ttd", ":<C-u>TungstenToggleDebug<CR>", desc = "Toggle Debug Mode" },
 }
 
-wk.register(mappings)
+if config.enable_default_mappings then
+  wk.register(mappings)
+end
 
 return { mappings = mappings }

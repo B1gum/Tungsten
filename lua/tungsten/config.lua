@@ -10,6 +10,7 @@ local config = {
   cache_enabled = true,
   cache_max_entries = 100,
   cache_ttl = 3600,
+  enable_default_mappings = true,
   domains = { "arithmetic", "calculus", "linear_algebra", "differential_equations" },
   user_domains_path = nil,
   wolfram_timeout_ms = 30000,
