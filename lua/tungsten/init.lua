@@ -21,6 +21,7 @@ function M.setup(user_opts)
 
   require('tungsten.core.commands')
   require('tungsten.ui.which_key')
+  require('tungsten.ui.commands')
   require('tungsten.ui')
   require('tungsten.core')
 end
