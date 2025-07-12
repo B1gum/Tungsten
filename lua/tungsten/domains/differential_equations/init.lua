@@ -23,8 +23,9 @@ c[#c+1] = { name = 'Wronskian', pattern = WronskianRule, category = 'AtomBaseIte
 c[#c+1] = { name = 'LaplaceTransform', pattern = LaplaceRule, category = 'AtomBaseItem', priority = prio }
 c[#c+1] = { name = 'Convolution', pattern = ConvolutionRule, category = 'Convolution', priority = prio }
 
-function M.commands()
-  require 'tungsten.domains.differential_equations.commands'
+do
+  local cmds = require 'tungsten.domains.differential_equations.commands'
+  M.commands = cmds.commands
 end
 
 function M.handlers()

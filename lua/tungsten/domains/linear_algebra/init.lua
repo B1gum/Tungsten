@@ -24,8 +24,9 @@ c[#c+1] = { name = 'Norm', pattern = NormRule, category = 'AtomBaseItem', priori
 c[#c+1] = { name = 'IntercalCommand', pattern = tokenizer.intercal_command, category = 'AtomBaseItem', priority = prio }
 c[#c+1] = { name = 'Rank', pattern = RankRule, category = 'AtomBaseItem', priority = prio }
 
-function M.commands()
-  require 'tungsten.domains.linear_algebra.commands'
+do
+  local cmds = require 'tungsten.domains.linear_algebra.commands'
+  M.commands = cmds.commands
 end
 
 function M.handlers()

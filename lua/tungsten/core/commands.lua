@@ -297,68 +297,9 @@ local function tungsten_solve_system_command(_)
   end)
 end
 
-vim.api.nvim_create_user_command(
-  "TungstenEvaluate",
-  tungsten_eval_command,
-  { range = true, desc = "Evaluate selected LaTeX and insert the result" }
-)
+local registry = require "tungsten.core.registry"
 
-vim.api.nvim_create_user_command(
-  "TungstenDefinePersistentVariable",
-  define_persistent_variable_command,
-  { range = true, desc = "Define a persistent variable from the selected LaTeX assignment (e.g., x = 1+1)" }
-)
-
-vim.api.nvim_create_user_command(
-  "TungstenClearCache",
-  function()
-    evaluator.clear_cache()
-  end,
-  { desc = "Clear the Tungsten evaluation cache" }
-)
-
-vim.api.nvim_create_user_command(
-  "TungstenViewActiveJobs",
-  function()
-    evaluator.view_active_jobs()
-  end,
-  { desc = "View active Tungsten evaluation jobs" }
-)
-
-vim.api.nvim_create_user_command(
-  "TungstenStatus",
-  function()
-    local summary = evaluator.get_active_jobs_summary()
-    require('tungsten.util.logger').info('Tungsten', summary)
-  end,
-  { desc = "Show Tungsten job status" }
-)
-
-vim.api.nvim_create_user_command(
-  "TungstenToggleNumeric",
-  tungsten_toggle_numeric_command,
-  { desc = "Toggle Tungsten numeric mode" }
-)
-
-vim.api.nvim_create_user_command(
-  "TungstenToggleDebug",
-  tungsten_toggle_debug_command,
-  { desc = "Toggle Tungsten debug mode" }
-)
-
-vim.api.nvim_create_user_command(
-  "TungstenSolve",
-  tungsten_solve_command,
-  { range = true, desc = "Solve the selected equation for the specified variable (e.g., 'x+y=z; x')" }
-)
-
-vim.api.nvim_create_user_command(
-  "TungstenSolveSystem",
-  tungsten_solve_system_command,
-  { range = true, desc = "Solve a system of visually selected LaTeX equations for specified variables" }
-)
-
-return {
+local M = {
   tungsten_eval_command = tungsten_eval_command,
   define_persistent_variable_command = define_persistent_variable_command,
   tungsten_solve_command = tungsten_solve_command,
@@ -367,3 +308,61 @@ return {
   tungsten_toggle_debug_command = tungsten_toggle_debug_command,
   tungsten_status_command = tungsten_status_command,
 }
+
+M.commands = {
+  {
+    name = "TungstenEvaluate",
+    func = tungsten_eval_command,
+    opts = { range = true, desc = "Evaluate selected LaTeX and insert the result" },
+  },
+  {
+    name = "TungstenDefinePersistentVariable",
+    func = define_persistent_variable_command,
+    opts = { range = true, desc = "Define a persistent variable from the selected LaTeX assignment (e.g., x = 1+1)" },
+  },
+  {
+    name = "TungstenClearCache",
+    func = function() evaluator.clear_cache() end,
+    opts = { desc = "Clear the Tungsten evaluation cache" },
+  },
+  {
+    name = "TungstenViewActiveJobs",
+    func = function() evaluator.view_active_jobs() end,
+    opts = { desc = "View active Tungsten evaluation jobs" },
+  },
+  {
+    name = "TungstenToggleNumeric",
+    func = tungsten_toggle_numeric_command,
+    opts = { desc = "Toggle Tungsten numeric mode" },
+  },
+  {
+    name = "TungstenToggleDebug",
+    func = tungsten_toggle_debug_command,
+    opts = { desc = "Toggle Tungsten debug mode" },
+  },
+  {
+    name = "TungstenSolve",
+    func = tungsten_solve_command,
+    opts = { range = true, desc = "Solve the selected equation for the specified variable (e.g., 'x+y=z; x')" },
+  },
+  {
+    name = "TungstenSolveSystem",
+    func = tungsten_solve_system_command,
+    opts = { range = true, desc = "Solve a system of visually selected LaTeX equations for specified variables" },
+  },
+  {
+    name = "TungstenStatus",
+    func = function()
+      local summary = evaluator.get_active_jobs_summary()
+      require('tungsten.util.logger').info('Tungsten', summary)
+    end,
+    opts = { desc = "Show Tungsten job status" }
+  },
+}
+
+for _, cmd in ipairs(M.commands) do
+  registry.register_command(cmd)
+end
+
+return M
+

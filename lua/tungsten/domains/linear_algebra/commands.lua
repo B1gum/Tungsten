@@ -197,43 +197,7 @@ local function tungsten_eigensystem_command(_)
     end)
 end
 
-vim.api.nvim_create_user_command(
-  "TungstenGaussEliminate",
-  tungsten_gauss_eliminate_command,
-  { range = true, desc = "Perform Gaussian elimination (RowReduce) on the selected matrix" }
-)
-
-vim.api.nvim_create_user_command(
-  "TungstenLinearIndependent",
-  tungsten_linear_independent_command,
-  { range = true, desc = "Test if selected vectors/matrix rows or columns are linearly independent" }
-)
-
-vim.api.nvim_create_user_command(
-  "TungstenRank",
-  tungsten_rank_command,
-  { range = true, desc = "Calculate the rank of the selected LaTeX matrix" }
-)
-
-vim.api.nvim_create_user_command(
-  "TungstenEigenvalue",
-  tungsten_eigenvalue_command,
-  { range = true, desc = "Calculate the eigenvalues of the selected LaTeX matrix" }
-)
-
-vim.api.nvim_create_user_command(
-  "TungstenEigenvector",
-  tungsten_eigenvector_command,
-  { range = true, desc = "Calculate the eigenvectors of the selected LaTeX matrix" }
-)
-
-vim.api.nvim_create_user_command(
-  "TungstenEigensystem",
-  tungsten_eigensystem_command,
-  { range = true, desc = "Calculate the eigensystem (eigenvalues and eigenvectors) of the selected LaTeX matrix" }
-)
-
-return {
+local M = {
   tungsten_gauss_eliminate_command = tungsten_gauss_eliminate_command,
   tungsten_linear_independent_command = tungsten_linear_independent_command,
   tungsten_rank_command = tungsten_rank_command,
@@ -241,3 +205,44 @@ return {
   tungsten_eigenvector_command = tungsten_eigenvector_command,
   tungsten_eigensystem_command = tungsten_eigensystem_command,
 }
+
+M.commands = {
+  {
+    name = "TungstenGaussEliminate",
+    func = tungsten_gauss_eliminate_command,
+    opts = { range = true, desc = "Perform Gaussian elimination (RowReduce) on the selected matrix" },
+  },
+  {
+    name = "TungstenLinearIndependent",
+    func = tungsten_linear_independent_command,
+    opts = { range = true, desc = "Test if selected vectors/matrix rows or columns are linearly independent" },
+  },
+  {
+    name = "TungstenRank",
+    func = tungsten_rank_command,
+    opts = { range = true, desc = "Calculate the rank of the selected LaTeX matrix" },
+  },
+  {
+    name = "TungstenEigenvalue",
+    func = tungsten_eigenvalue_command,
+    opts = { range = true, desc = "Calculate the eigenvalues of the selected LaTeX matrix" },
+  },
+  {
+    name = "TungstenEigenvector",
+    func = tungsten_eigenvector_command,
+    opts = { range = true, desc = "Calculate the eigenvectors of the selected LaTeX matrix" },
+  },
+  {
+    name = "TungstenEigensystem",
+    func = tungsten_eigensystem_command,
+    opts = { range = true, desc = "Calculate the eigensystem (eigenvalues and eigenvectors) of the selected LaTeX matrix" },
+  },
+}
+
+local registry = require "tungsten.core.registry"
+for _, cmd in ipairs(M.commands) do
+  registry.register_command(cmd)
+end
+
+return M
+

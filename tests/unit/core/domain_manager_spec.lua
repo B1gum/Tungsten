@@ -34,7 +34,7 @@ describe("DomainManager", function()
       local ok, err = dm.validate_metadata({
         name = 'demo',
         grammar = { contributions = {}, extensions = {} },
-        commands = function() end,
+        commands = {},
         handlers = function() end,
       })
       assert.is_true(ok)
@@ -63,7 +63,7 @@ describe("DomainManager", function()
       f:write([[return {
         name='dom1', priority=10,
         grammar={ contributions={ {name='Num', pattern='p1', category='AtomBaseItem'} }, extensions={} },
-        commands=function() _G.dom1_commands_called = true end,
+        commands={{ name='Dom1Cmd', func=function() _G.dom1_commands_called = true end, opts={} }},
         handlers=function() _G.dom1_handlers_called = true end,
       }]])
       f:close()
@@ -77,7 +77,7 @@ describe("DomainManager", function()
       f:close()
 
       registry_mock = mock_utils.create_empty_mock_module('tungsten.core.registry', {
-        'register_domain_metadata', 'register_grammar_contribution'
+        'register_domain_metadata', 'register_grammar_contribution', 'register_command'
       })
       logger_mock = { notify = spy.new(function() end), levels = { ERROR = 1 } }
       package.loaded['tungsten.util.logger'] = logger_mock
@@ -101,7 +101,8 @@ describe("DomainManager", function()
       assert.spy(registry_mock.register_domain_metadata).was.called_with('dom2', match._)
       assert.spy(registry_mock.register_grammar_contribution).was.called_with('dom1', 10, 'Num', 'p1', 'AtomBaseItem')
       assert.spy(registry_mock.register_grammar_contribution).was.called_with('dom2', 5, 'Var', 'p2', 'AtomBaseItem')
-      assert.is_true(_G.dom1_commands_called)
+      assert.spy(registry_mock.register_command).was.called_with(match.table { name = 'Dom1Cmd' })
+      assert.is_nil(_G.dom1_commands_called)
       assert.is_true(_G.dom1_handlers_called)
     end)
   end)

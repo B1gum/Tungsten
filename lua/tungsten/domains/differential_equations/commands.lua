@@ -76,47 +76,51 @@ local function convolve_command()
     evaluate_and_insert("TungstenConvolve", function(parsed_ast) return parsed_ast end)
 end
 
-vim.api.nvim_create_user_command(
-  "TungstenSolveODE",
-  solve_ode_command,
-  { range = true, desc = "Solve the selected ODE or ODE system" }
-)
-
-vim.api.nvim_create_user_command(
-  "TungstenSolveODESystem",
-  solve_ode_command,
-  { range = true, desc = "Solve the selected ODE system (alias for TungstenSolveODE)" }
-)
-
-
-vim.api.nvim_create_user_command(
-  "TungstenWronskian",
-  wronskian_command,
-  { range = true, desc = "Calculate the Wronskian of the selected functions" }
-)
-
-vim.api.nvim_create_user_command(
-  "TungstenLaplace",
-  laplace_command,
-  { range = true, desc = "Calculate the Laplace transform of the selected function" }
-)
-
-vim.api.nvim_create_user_command(
-  "TungstenInverseLaplace",
-  inverse_laplace_command,
-  { range = true, desc = "Calculate the inverse Laplace transform of the selected function" }
-)
-
-vim.api.nvim_create_user_command(
-  "TungstenConvolve",
-  convolve_command,
-  { range = true, desc = "Calculate the convolution of the two selected functions" }
-)
-
-return {
+local M = {
     solve_ode_command = solve_ode_command,
     wronskian_command = wronskian_command,
     laplace_command = laplace_command,
     inverse_laplace_command = inverse_laplace_command,
     convolve_command = convolve_command,
 }
+
+M.commands = {
+  {
+    name = "TungstenSolveODE",
+    func = solve_ode_command,
+    opts = { range = true, desc = "Solve the selected ODE or ODE system" },
+  },
+  {
+    name = "TungstenSolveODESystem",
+    func = solve_ode_command,
+    opts = { range = true, desc = "Solve the selected ODE system (alias for TungstenSolveODE)" },
+  },
+  {
+    name = "TungstenWronskian",
+    func = wronskian_command,
+    opts = { range = true, desc = "Calculate the Wronskian of the selected functions" },
+  },
+  {
+    name = "TungstenLaplace",
+    func = laplace_command,
+    opts = { range = true, desc = "Calculate the Laplace transform of the selected function" },
+  },
+  {
+    name = "TungstenInverseLaplace",
+    func = inverse_laplace_command,
+    opts = { range = true, desc = "Calculate the inverse Laplace transform of the selected function" },
+  },
+  {
+    name = "TungstenConvolve",
+    func = convolve_command,
+    opts = { range = true, desc = "Calculate the convolution of the two selected functions" },
+  },
+}
+
+local registry = require "tungsten.core.registry"
+for _, cmd in ipairs(M.commands) do
+  registry.register_command(cmd)
+end
+
+return M
+

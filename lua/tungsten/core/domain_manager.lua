@@ -41,7 +41,7 @@ function M.validate_metadata(meta)
   if type(meta.name) ~= 'string' then return false, 'missing name' end
   if type(meta.grammar) ~= 'table' then return false, 'missing grammar table' end
   if type(meta.grammar.contributions) ~= 'table' then return false, 'grammar.contributions must be table' end
-  if meta.commands ~= nil and type(meta.commands) ~= 'function' then return false, 'commands must be function or nil' end
+  if meta.commands ~= nil and type(meta.commands) ~= 'table' then return false, 'commands must be table or nil' end
   if meta.handlers ~= nil and type(meta.handlers) ~= 'function' then return false, 'handlers must be function or nil' end
   return true
 end
@@ -52,7 +52,13 @@ local function register_domain(meta)
     local prio = contrib.priority or meta.priority or 0
     registry.register_grammar_contribution(meta.name, prio, contrib.name, contrib.pattern, contrib.category)
   end
-  if type(meta.commands) == 'function' then pcall(meta.commands) end
+  if type(meta.commands) == 'table' then
+    for _, cmd in ipairs(meta.commands) do
+      registry.register_command(cmd)
+    end
+  elseif type(meta.commands) == 'function' then
+    pcall(meta.commands)
+  end
   if type(meta.handlers) == 'function' then pcall(meta.handlers) end
 end
 

@@ -24,6 +24,11 @@ function M.setup(user_opts)
   require('tungsten.ui.commands')
   require('tungsten.ui')
   require('tungsten.core')
+
+  local registry = require('tungsten.core.registry')
+  for _, cmd in ipairs(registry.commands) do
+    vim.api.nvim_create_user_command(cmd.name, cmd.func, cmd.opts or { desc = cmd.desc })
+  end
 end
 
 return M

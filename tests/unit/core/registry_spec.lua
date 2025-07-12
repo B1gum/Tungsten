@@ -621,4 +621,13 @@ describe("tungsten.core.registry", function()
       assert.spy(mock_lpeg_P_spy).was.called()
     end)
   end)
+
+  describe("M.register_command(cmd_tbl)", function()
+    it("stores provided command tables", function()
+      local cmd = { name = "TestCmd", func = function() end, desc = "demo" }
+      registry_module.register_command(cmd)
+      assert.are.equal(1, #registry_module.commands)
+      assert.are.same(cmd, registry_module.commands[1])
+    end)
+  end)
 end)

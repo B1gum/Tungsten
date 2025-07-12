@@ -44,5 +44,28 @@ describe("tungsten.setup", function()
   it("throws error for invalid option type", function()
     assert.has_error(function() tungsten.setup(42) end, "tungsten.setup: options table expected")
   end)
+
+  it("creates user commands from registry", function()
+    local mock_registry = {
+      commands = {
+        { name = 'MockCmd', func = function() end, opts = { desc = 'mock' } },
+      },
+      register_command = function(self, cmd) table.insert(self.commands, cmd) end,
+    }
+    package.loaded['tungsten.core.registry'] = mock_registry
+
+    local create_spy = require('luassert.spy').new(function() end)
+    local orig_create = vim.api.nvim_create_user_command
+    vim.api.nvim_create_user_command = create_spy
+
+    tungsten.setup()
+
+    for _, cmd in ipairs(mock_registry.commands) do
+      local expected_opts = cmd.opts or { desc = cmd.desc }
+      assert.spy(create_spy).was.called_with(cmd.name, cmd.func, expected_opts)
+    end
+
+    vim.api.nvim_create_user_command = orig_create
+  end)
 end)
 
