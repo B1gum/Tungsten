@@ -148,7 +148,7 @@ describe("Tungsten core commands", function()
       }
       current_eval_async_config_key = "default_eval"
 
-      commands_module.tungsten_eval_command({})
+      commands_module.tungsten_evaluate_command({})
 
       assert.spy(mock_cmd_utils_parse_selected_latex_spy).was.called_with("expression")
       assert.spy(mock_evaluator_evaluate_async_spy).was.called(1)
@@ -160,7 +160,7 @@ describe("Tungsten core commands", function()
     it("should not proceed if parsing fails (cmd_utils returns nil)", function()
       current_parse_selected_latex_config["expression"] = { ast = nil, text = "" }
 
-      commands_module.tungsten_eval_command({})
+      commands_module.tungsten_evaluate_command({})
 
       assert.spy(mock_cmd_utils_parse_selected_latex_spy).was.called_with("expression")
       assert.spy(mock_evaluator_evaluate_async_spy).was_not.called()
@@ -170,25 +170,25 @@ describe("Tungsten core commands", function()
     it("should not call insert_result if evaluation returns nil", function()
         current_parse_selected_latex_config["expression"] = { ast = { type = "expression" } }
         current_eval_async_config_key = "nil_eval"
-        commands_module.tungsten_eval_command({})
+        commands_module.tungsten_evaluate_command({})
         assert.spy(mock_insert_result_insert_result_spy).was_not.called()
     end)
 
     it("should not call insert_result if evaluation returns empty string", function()
         current_parse_selected_latex_config["expression"] = { ast = { type = "expression" } }
         current_eval_async_config_key = "empty_string_eval"
-        commands_module.tungsten_eval_command({})
+        commands_module.tungsten_evaluate_command({})
         assert.spy(mock_insert_result_insert_result_spy).was_not.called()
     end)
-    
+
     it("should use numeric_mode from config when calling evaluate_async", function()
         vim_test_env.set_plugin_config({'numeric_mode'}, true)
         current_parse_selected_latex_config["expression"] = { ast = { type = "expression", representation = "parsed:\\frac{1+1}{2}" } }
         current_eval_async_config_key = "numeric_eval"
-        
+
         package.loaded['tungsten.core.commands'] = nil
         local temp_commands_module = require("tungsten.core.commands")
-        temp_commands_module.tungsten_eval_command({})
+        temp_commands_module.tungsten_evaluate_command({})
 
         assert.spy(mock_evaluator_evaluate_async_spy).was.called(1)
         local numeric_mode_arg = mock_evaluator_evaluate_async_spy.calls[1].vals[2]
@@ -212,7 +212,7 @@ describe("Tungsten core commands", function()
 
       original_ui_input = vim.ui.input
       vim.ui.input = spy.new(function(opts, on_confirm) on_confirm("x") end)
-      
+
       package.loaded['tungsten.core.parser'].parse = spy.new(function(text)
         if text == "x" then return { type = "variable", name = "x" } end
         return nil
@@ -254,7 +254,7 @@ describe("Tungsten core commands", function()
         on_confirm_callback("x,y")
       end)
       vim.ui.input = mock_vim_ui_input_spy
-      
+
       current_parse_selected_latex_config["system of equations"] = {
           ast = {
               type = "solve_system_equations_capture",
@@ -281,7 +281,7 @@ describe("Tungsten core commands", function()
         assert.is_true(args[3])
         assert.spy(mock_insert_result_insert_result_spy).was.called_with("solution_for_system", " \\rightarrow ", match.is_table(), match.is_table(), "eq1=0 \\\\ eq2=0")
     end)
-    
+
     it("should log error if parsing fails (cmd_utils returns nil)", function()
         current_parse_selected_latex_config["system of equations"] = { ast = nil, text = "" }
         commands_module.tungsten_solve_system_command({})
@@ -289,24 +289,24 @@ describe("Tungsten core commands", function()
     end)
   end)
 
-  describe(":TungstenToggleNumeric", function()
+  describe(":TungstenToggleNumericMode", function()
     it("toggles config.numeric_mode", function()
       local cfg = require('tungsten.config')
       cfg.numeric_mode = false
-      commands_module.tungsten_toggle_numeric_command({})
+      commands_module.tungsten_toggle_numeric_mode_command({})
       assert.is_true(cfg.numeric_mode)
-      commands_module.tungsten_toggle_numeric_command({})
+      commands_module.tungsten_toggle_numeric_mode_command({})
       assert.is_false(cfg.numeric_mode)
     end)
   end)
 
-  describe(":TungstenToggleDebug", function()
+  describe(":TungstenToggleDebugMode", function()
     it("toggles config.debug", function()
       local cfg = require('tungsten.config')
       cfg.debug = false
-      commands_module.tungsten_toggle_debug_command({})
+      commands_module.tungsten_toggle_debug_mode_command({})
       assert.is_true(cfg.debug)
-      commands_module.tungsten_toggle_debug_command({})
+      commands_module.tungsten_toggle_debug_mode_command({})
       assert.is_false(cfg.debug)
     end)
   end)

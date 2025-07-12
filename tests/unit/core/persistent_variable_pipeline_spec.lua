@@ -165,7 +165,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
       )
 
       current_visual_selection_text = "x * 2"
-      commands_module.tungsten_eval_command({})
+      commands_module.tungsten_evaluate_command({})
       assert.are.equal(1, get_visual_selection_call_count); get_visual_selection_call_count = 0
 
       assert.spy(mock_parser_parse_spy).was.called_with("x * 2")
@@ -197,7 +197,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
       current_visual_selection_text = "b * 2"
       mock_async_run_job_spy:clear()
       mock_insert_result_insert_result_spy:clear()
-      commands_module.tungsten_eval_command({})
+      commands_module.tungsten_evaluate_command({})
       assert.are.equal(1, get_visual_selection_call_count); get_visual_selection_call_count = 0
 
       assert.spy(mock_async_run_job_spy).was.called(1)
@@ -218,7 +218,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
 
       current_visual_selection_text = "y + 5"
       mock_async_run_job_spy:clear()
-      commands_module.tungsten_eval_command({})
+      commands_module.tungsten_evaluate_command({})
       assert.are.equal(1, get_visual_selection_call_count); get_visual_selection_call_count = 0
       local cmd_args1 = mock_async_run_job_spy.calls[1].vals[1]
       assert.are.same("ToString[TeXForm[wolfram((wolfram(10)) + 5)], CharacterEncoding -> \"UTF8\"]", cmd_args1[3])
@@ -232,7 +232,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
       current_visual_selection_text = "y + 5"
       mock_async_run_job_spy:clear()
       mock_insert_result_insert_result_spy:clear()
-      commands_module.tungsten_eval_command({})
+      commands_module.tungsten_evaluate_command({})
       assert.are.equal(1, get_visual_selection_call_count); get_visual_selection_call_count = 0
       local cmd_args2 = mock_async_run_job_spy.calls[1].vals[1]
       assert.are.same("ToString[TeXForm[wolfram((wolfram(20)) + 5)], CharacterEncoding -> \"UTF8\"]", cmd_args2[3])
@@ -245,7 +245,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
       current_visual_selection_text = "z / 2"
       mock_async_run_job_spy:clear()
       mock_insert_result_insert_result_spy:clear()
-      commands_module.tungsten_eval_command({})
+      commands_module.tungsten_evaluate_command({})
       assert.are.equal(1, get_visual_selection_call_count); get_visual_selection_call_count = 0
 
       assert.spy(mock_async_run_job_spy).was.called(1)
@@ -268,7 +268,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
       current_visual_selection_text = "v * v"
       mock_async_run_job_spy:clear()
       mock_insert_result_insert_result_spy:clear()
-      commands_module.tungsten_eval_command({})
+      commands_module.tungsten_evaluate_command({})
       assert.are.equal(1, get_visual_selection_call_count); get_visual_selection_call_count = 0
       local cmd_args = mock_async_run_job_spy.calls[1].vals[1]
       assert.are.same("ToString[TeXForm[wolfram((wolfram(3)) * (wolfram(3)))], CharacterEncoding -> \"UTF8\"]", cmd_args[3])
@@ -291,7 +291,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
       current_visual_selection_text = "w + w"
       mock_async_run_job_spy:clear()
       mock_insert_result_insert_result_spy:clear()
-      commands_module.tungsten_eval_command({})
+      commands_module.tungsten_evaluate_command({})
       assert.are.equal(1, get_visual_selection_call_count); get_visual_selection_call_count = 0
       local cmd_args = mock_async_run_job_spy.calls[1].vals[1]
       assert.are.same("ToString[TeXForm[wolfram((wolfram(4)) + (wolfram(4)))], CharacterEncoding -> \"UTF8\"]", cmd_args[3])

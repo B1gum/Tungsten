@@ -37,8 +37,8 @@ local mappings = {
   { '<leader>tcv', ':<C-u>TungstenViewActiveJobs<CR>', desc = 'View Active Jobs' },
   { '<leader>tm',  '<cmd>TungstenPalette<cr>', desc = 'Open Command Palette' },
   { "<leader>tt", group = "Toggle" },
-  { "<leader>ttn", ":<C-u>TungstenToggleNumeric<CR>", desc = "Toggle Numeric Mode" },
-  { "<leader>ttd", ":<C-u>TungstenToggleDebug<CR>", desc = "Toggle Debug Mode" },
+  { "<leader>ttn", ":<C-u>TungstenToggleNumericMode<CR>", desc = "Toggle Numeric Mode" },
+  { "<leader>ttd", ":<C-u>TungstenToggleDebugMode<CR>", desc = "Toggle Debug Mode" },
 }
 
 if config.enable_default_mappings then

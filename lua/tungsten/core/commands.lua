@@ -16,7 +16,7 @@ local vim_inspect = require "vim.inspect"
 local string_util = require "tungsten.util.string"
 local cmd_utils = require "tungsten.util.commands"
 
-local function tungsten_eval_command(_)
+local function tungsten_evaluate_command(_)
   local ast, _, err = cmd_utils.parse_selected_latex("expression")
   if err then
     error_handler.notify_error("Eval", err)
@@ -38,13 +38,13 @@ local function tungsten_eval_command(_)
   end)
 end
 
-local function tungsten_toggle_numeric_command(_)
+local function tungsten_toggle_numeric_mode_command(_)
   config.numeric_mode = not config.numeric_mode
   local status = config.numeric_mode and "enabled" or "disabled"
   logger.info("Numeric mode " .. status .. ".")
 end
 
-local function tungsten_toggle_debug_command(_)
+local function tungsten_toggle_debug_mode_command(_)
   config.debug = not config.debug
   local status = config.debug and "enabled" or "disabled"
   logger.info("Debug mode " .. status .. ".")
@@ -289,19 +289,19 @@ end
 local registry = require "tungsten.core.registry"
 
 local M = {
-  tungsten_eval_command = tungsten_eval_command,
+  tungsten_evaluate_command = tungsten_evaluate_command,
   define_persistent_variable_command = define_persistent_variable_command,
   tungsten_solve_command = tungsten_solve_command,
   tungsten_solve_system_command = tungsten_solve_system_command,
-  tungsten_toggle_numeric_command = tungsten_toggle_numeric_command,
-  tungsten_toggle_debug_command = tungsten_toggle_debug_command,
+  tungsten_toggle_numeric_mode_command = tungsten_toggle_numeric_mode_command,
+  tungsten_toggle_debug_mode_command = tungsten_toggle_debug_mode_command,
   tungsten_status_command = tungsten_status_command,
 }
 
 M.commands = {
   {
     name = "TungstenEvaluate",
-    func = tungsten_eval_command,
+    func = tungsten_evaluate_command,
     opts = { range = true, desc = "Evaluate selected LaTeX and insert the result" },
   },
   {
@@ -320,13 +320,13 @@ M.commands = {
     opts = { desc = "View active Tungsten evaluation jobs" },
   },
   {
-    name = "TungstenToggleNumeric",
-    func = tungsten_toggle_numeric_command,
+    name = "TungstenToggleNumericMode",
+    func = tungsten_toggle_numeric_mode_command,
     opts = { desc = "Toggle Tungsten numeric mode" },
   },
   {
-    name = "TungstenToggleDebug",
-    func = tungsten_toggle_debug_command,
+    name = "TungstenToggleDebugMode",
+    func = tungsten_toggle_debug_mode_command,
     opts = { desc = "Toggle Tungsten debug mode" },
   },
   {
