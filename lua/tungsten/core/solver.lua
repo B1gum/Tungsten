@@ -6,6 +6,7 @@ local logger = require "tungsten.util.logger"
 local state = require "tungsten.state"
 local async = require "tungsten.util.async"
 local solution_helper = require "tungsten.util.wolfram_solution"
+local error_parser = require "tungsten.util.wolfram_error"
 
 local M = {}
 
@@ -39,6 +40,12 @@ function M.solve_equation_async(eq_strs, vars, is_system, callback)
       local result = solution_helper.parse_wolfram_solution(out, vars, is_system)
       if result.ok then callback(result.formatted, nil) else callback(nil, result.reason) end
     else
+      local parsed_err = error_parser.parse_wolfram_error(stderr)
+      if parsed_err then
+        callback(nil, parsed_err)
+        return
+      end
+
       local reason = code == -1 and "Command not found" or code == 0 and "Invalid arguments" or "exited with code " .. tostring(code)
       local err = code < 1 and string.format("TungstenSolve: Failed to start WolframScript job for solving. (Reason: %s)", reason)
         or string.format("TungstenSolve: WolframScript (Job N/A) error. Code: %s\nStderr: %s\nStdout: %s", tostring(code), stderr, stdout)

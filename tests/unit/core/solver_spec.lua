@@ -179,6 +179,24 @@ describe("tungsten.core.solver", function()
             assert.spy(callback_spy).was.called_with(nil, match.is_string())
         end)
 
+        it("formats Wolfram errors from stderr when job fails", function()
+            mock_async_module.run_job = spy.new(function(cmd, opts)
+                if opts.on_exit then opts.on_exit(1, "", "Solve::nsmet: no solution") end
+                return { id = 7, cancel = function() end, is_active = function() return false end }
+            end)
+            solver.solve_equation_async({"bad"}, {"x"}, false, callback_spy)
+            assert.spy(callback_spy).was.called_with(nil, "Solve::nsmet: no solution")
+        end)
+
+        it("formats Wolfram Message errors when exit code is zero", function()
+            mock_async_module.run_job = spy.new(function(cmd, opts)
+                if opts.on_exit then opts.on_exit(0, "", "Solve::nsmet: no solution") end
+                return { id = 8, cancel = function() end, is_active = function() return false end }
+            end)
+            solver.solve_equation_async({"bad"}, {"x"}, false, callback_spy)
+            assert.spy(callback_spy).was.called_with(nil, "Solve::nsmet: no solution")
+        end)
+
         it("should use default timeout if config.wolfram_timeout_ms is nil", function()
             mock_config_module.wolfram_timeout_ms = nil
             

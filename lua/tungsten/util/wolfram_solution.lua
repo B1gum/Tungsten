@@ -2,6 +2,7 @@
 -- Helper for parsing WolframScript Solve[] output
 
 local string_util = require "tungsten.util.string"
+local error_parser = require "tungsten.util.wolfram_error"
 
 local M = {}
 
@@ -19,6 +20,11 @@ function M.parse_wolfram_solution(output_lines, vars, is_system)
 
   if output == "" then
     return { ok = false, reason = "No solution" }
+  end
+
+  local err = error_parser.parse_wolfram_error(output)
+  if err then
+    return { ok = false, reason = err }
   end
 
   local raw = output
