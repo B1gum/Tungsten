@@ -15,6 +15,16 @@ function M.setup(user_opts)
     M.config = vim.tbl_deep_extend('force', vim.deepcopy(M.config), user_opts)
   end
 
+  if type(M.config.domains) == 'table' and not vim.tbl_islist(M.config.domains) then
+    local registry = require('tungsten.core.registry')
+    local domain_names = {}
+    for name, prio in pairs(M.config.domains) do
+      registry.set_domain_priority(name, prio)
+      table.insert(domain_names, name)
+    end
+    M.config.domains = domain_names
+  end
+
   require('tungsten.util.logger').set_level(M.config.log_level or 'INFO')
 
   package.loaded['tungsten.config'] = M.config

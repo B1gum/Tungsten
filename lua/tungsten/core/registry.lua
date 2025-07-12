@@ -33,6 +33,20 @@ function M.get_domain_priority(domain_name)
   return 0
 end
 
+function M.set_domain_priority(domain_name, priority)
+  if not M.domains_metadata[domain_name] then
+    M.domains_metadata[domain_name] = {}
+  end
+  M.domains_metadata[domain_name].priority = priority
+
+  for _, contrib in ipairs(M.grammar_contributions) do
+    if contrib.domain_name == domain_name then
+      contrib.domain_priority = priority
+    end
+  end
+  logger.debug("Tungsten Debug", ("Registry: Domain '%s' priority set to %s."):format(domain_name, tostring(priority)))
+end
+
 function M.register_grammar_contribution(domain_name, domain_priority, rule_name, pattern, category)
   table.insert(M.grammar_contributions, {
     domain_name = domain_name,
