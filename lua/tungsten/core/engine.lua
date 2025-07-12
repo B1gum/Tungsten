@@ -10,49 +10,40 @@ local logger = require "tungsten.util.logger"
 
 local lpeg = require "lpeg"
 
-local P, Cs = lpeg.P, lpeg.Cs
+local P, Cs, C, R, B = lpeg.P, lpeg.Cs, lpeg.C, lpeg.R, lpeg.B
 
 local M = {}
-
-local function build_var_pattern(vars)
-  local names = vim.tbl_keys(vars)
-  table.sort(names, function(a, b)
-    return #a > #b
-  end)
-
-  local patterns = {}
-  local word = lpeg.R("AZ", "az", "09") + P("_")
-
-  for _, name in ipairs(names) do
-    local value = vars[name]
-    local p = (-lpeg.B(word)) * P(name) * -word / ("(" .. value .. ")")
-    table.insert(patterns, p)
-  end
-
-  local combined = patterns[1]
-  for i = 2, #patterns do
-    combined = combined + patterns[i]
-  end
-
-  return combined
-end
 
 function M.substitute_persistent_vars(code_string, variables_map)
   if not variables_map or vim.tbl_isempty(variables_map) then
     return code_string
   end
 
-  local var_pattern = build_var_pattern(variables_map)
-  local replacer = Cs((var_pattern + P(1)) ^ 0)
+  local word = R("AZ", "az", "09") + P("_")
+  local names = vim.tbl_keys(variables_map)
+  table.sort(names, function(a, b)
+    return #a > #b
+  end)
 
-  local changed
-  repeat
-    local replaced = replacer:match(code_string)
-    changed = replaced ~= code_string
-    code_string = replaced
-  until not changed
+  local pattern = P(false)
+  for _, name in ipairs(names) do
+    pattern = pattern + P(name)
+  end
 
-  return code_string
+  local final_pattern
+
+  local function resolve(str)
+    return final_pattern:match(str)
+  end
+
+  local function replace(var)
+    local value = variables_map[var]
+    return "(" .. resolve(value) .. ")"
+  end
+
+  final_pattern = Cs(((-B(word) * C(pattern) * -word) / replace + 1) ^ 0)
+
+  return resolve(code_string)
 end
 
 
