@@ -71,23 +71,23 @@ function M.evaluate_async(ast, numeric, callback)
     logger.debug("Tungsten Debug", "Tungsten Debug: No persistent variable substitutions made.")
   end
 
-  local expr_key = get_cache_key(code_with_vars_substituted, numeric)
+  local cache_key = get_cache_key(code_with_vars_substituted, numeric)
   local use_cache = (config.cache_enabled == nil) or (config.cache_enabled == true)
 
   if use_cache then
-    if state.cache[expr_key] then
+    if state.cache[cache_key] then
       logger.info("Tungsten", "Tungsten: Result from cache.")
-      logger.debug("Tungsten Debug", "Tungsten Debug: Cache hit for key: " .. expr_key)
-      vim.schedule(function() callback(state.cache[expr_key], nil) end)
+      logger.debug("Tungsten Debug", "Tungsten Debug: Cache hit for key: " .. cache_key)
+      vim.schedule(function() callback(state.cache[cache_key], nil) end)
       return
     end
   end
 
   for job_id_running, job_info in pairs(state.active_jobs) do
-    if job_info.expr_key == expr_key then
+    if job_info.cache_key == cache_key then
       local notify_msg = "Tungsten: Evaluation already in progress for this expression."
       logger.info("Tungsten", notify_msg)
-      logger.debug("Tungsten Debug", ("Tungsten: Evaluation already in progress for key: '%s' (Job ID: %s)"):format(expr_key, tostring(job_id_running)))
+      logger.debug("Tungsten Debug", ("Tungsten: Evaluation already in progress for key: '%s' (Job ID: %s)"):format(cache_key, tostring(job_id_running)))
       logger.notify(notify_msg, logger.levels.INFO, { title = "Tungsten" })
       return
     end
@@ -101,15 +101,15 @@ function M.evaluate_async(ast, numeric, callback)
   code_to_execute = "ToString[TeXForm[" .. code_to_execute .. "], CharacterEncoding -> \"UTF8\"]"
 
   async.run_job({ config.wolfram_path, "-code", code_to_execute }, {
-    expr_key = expr_key,
+    cache_key = cache_key,
     on_exit = function(exit_code, final_stdout, final_stderr)
     if exit_code == 0 then
       if final_stderr ~= "" then
         logger.debug("Tungsten Debug", "Tungsten Debug (stderr): " .. final_stderr)
       end
       if use_cache then
-        state.cache[expr_key] = final_stdout
-        logger.info("Tungsten Debug", "Tungsten: Result for key '" .. expr_key .. "' stored in cache.")
+        state.cache[cache_key] = final_stdout
+        logger.info("Tungsten Debug", "Tungsten: Result for key '" .. cache_key .. "' stored in cache.")
       end
       callback(final_stdout, nil)
     else
@@ -129,7 +129,6 @@ function M.evaluate_async(ast, numeric, callback)
   end
   })
 end
-
 
 function M.run_async(input, numeric, callback)
   assert(type(callback) == "function", "run_async expects a callback function")
@@ -166,7 +165,7 @@ function M.get_active_jobs_summary()
     local age_str = string.format("%.1fs", age_ms / 1000)
     table.insert(report, ("- ID: %s, Key: %s, Buf: %s, Age: %s"):format(
       tostring(id),
-      info.expr_key,
+      info.cache_key,
       tostring(info.bufnr),
       age_str
     ))

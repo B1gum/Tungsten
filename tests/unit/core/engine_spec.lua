@@ -150,8 +150,8 @@ describe("tungsten.core.engine", function()
     it("should return cached result immediately if cache is enabled and item exists", function()
       local test_ast = ast_node("cached_expr")
       local callback_spy = spy.new()
-      local expr_key = engine.get_cache_key("wolfram_code(cached_expr)", false)
-      mock_state.cache[expr_key] = "cached_result"
+      local cache_key = engine.get_cache_key("wolfram_code(cached_expr)", false)
+      mock_state.cache[cache_key] = "cached_result"
 
       engine.evaluate_async(test_ast, false, function(...) callback_spy(...) end)
 
@@ -162,27 +162,27 @@ describe("tungsten.core.engine", function()
     it("should start a job and cache the result if cache is enabled and item does not exist (cache miss)", function()
       local test_ast = ast_node("new_expr")
       local callback_spy = spy.new()
-      local expr_key = engine.get_cache_key("wolfram_code(new_expr)", false)
+      local cache_key = engine.get_cache_key("wolfram_code(new_expr)", false)
 
       engine.evaluate_async(test_ast, false, function(...) callback_spy(...) end)
 
       assert.spy(async_run_job_spy).was.called(1)
       assert.spy(callback_spy).was.called_with("mock_result", nil)
-      assert.are.equal("mock_result", mock_state.cache[expr_key])
+      assert.are.equal("mock_result", mock_state.cache[cache_key])
     end)
 
     it("should always start a job and not use/store in cache if cache is disabled", function()
       mock_config.cache_enabled = false
       local test_ast = ast_node("no_cache_expr")
       local callback_spy = spy.new()
-      local expr_key = engine.get_cache_key("wolfram_code(no_cache_expr)", false)
-      mock_state.cache[expr_key] = "should_not_be_used"
+      local cache_key = engine.get_cache_key("wolfram_code(no_cache_expr)", false)
+      mock_state.cache[cache_key] = "should_not_be_used"
 
       engine.evaluate_async(test_ast, false, function(...) callback_spy(...) end)
 
       assert.spy(async_run_job_spy).was.called(1)
       assert.spy(callback_spy).was.called_with("mock_result", nil)
-      assert.are.equal("should_not_be_used", mock_state.cache[expr_key])
+      assert.are.equal("should_not_be_used", mock_state.cache[cache_key])
     end)
 
     it("should invoke callback with error if async.run_job returns a falsy job_id", function()
@@ -197,8 +197,8 @@ describe("tungsten.core.engine", function()
     it("should log a notification and not start a new job if a job for the same expression is already in progress", function()
       local test_ast = ast_node("in_progress_expr")
       local callback_spy = spy.new()
-      local expr_key = engine.get_cache_key("wolfram_code(in_progress_expr)", false)
-      mock_state.active_jobs[999] = { expr_key = expr_key }
+      local cache_key = engine.get_cache_key("wolfram_code(in_progress_expr)", false)
+      mock_state.active_jobs[999] = { cache_key = cache_key }
 
       engine.evaluate_async(test_ast, false, function(...) callback_spy(...) end)
 
@@ -268,8 +268,8 @@ describe("tungsten.core.engine", function()
 
     it("get_active_jobs_summary() should include details for active jobs", function()
       mock_state.active_jobs = {
-        [123] = { bufnr = 1, expr_key = "key1", start_time = vim.loop.now() - 1000 },
-        [456] = { bufnr = 2, expr_key = "key2", start_time = vim.loop.now() - 2000 },
+        [123] = { bufnr = 1, cache_key = "key1", start_time = vim.loop.now() - 1000 },
+        [456] = { bufnr = 2, cache_key = "key2", start_time = vim.loop.now() - 2000 },
       }
       local summary = engine.get_active_jobs_summary()
       assert.truthy(summary:find("Active Tungsten Jobs:"))
@@ -287,8 +287,8 @@ describe("tungsten.core.engine", function()
 
     it("view_active_jobs() should log details of active jobs", function()
       mock_state.active_jobs = {
-        [123] = { bufnr = 1, expr_key = "key1", start_time = vim.loop.now() - 1000 },
-        [456] = { bufnr = 2, expr_key = "key2", start_time = vim.loop.now() - 2000 },
+        [123] = { bufnr = 1, cache_key = "key1", start_time = vim.loop.now() - 1000 },
+        [456] = { bufnr = 2, cache_key = "key2", start_time = vim.loop.now() - 2000 },
       }
       local summary_spy = spy.on(engine, "get_active_jobs_summary")
       engine.view_active_jobs()

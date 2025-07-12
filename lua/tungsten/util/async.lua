@@ -18,7 +18,7 @@ end
 
 local function spawn_process(cmd, opts)
   opts = opts or {}
-  local expr_key = opts.expr_key
+  local cache_key = opts.cache_key
   local on_exit = opts.on_exit or opts.on_complete
   local timeout = opts.timeout or config.wolfram_timeout_ms or 10000
 
@@ -89,7 +89,7 @@ end
 
   state.active_jobs[handle.id] = {
     bufnr = vim.api.nvim_get_current_buf(),
-    expr_key = expr_key,
+    cache_key = cache_key,
     code_sent = table.concat(cmd, ' '),
     start_time = vim.loop.now(),
   }

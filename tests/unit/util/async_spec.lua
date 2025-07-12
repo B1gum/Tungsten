@@ -30,7 +30,7 @@ describe('tungsten.util.async.run_job', function()
   it('runs command successfully and captures stdout', function()
     local result
     local handle = async.run_job({'sh','-c','sleep 0.1; printf ok'}, {
-      expr_key = 'ok',
+      cache_key = 'ok',
       timeout = 1000,
       on_exit = function(code, out, err)
         result = {code=code, out=out, err=err}
@@ -47,7 +47,7 @@ describe('tungsten.util.async.run_job', function()
   it('handles non-zero exit code and stderr', function()
     local result
     local handle = async.run_job({'sh','-c','printf fail 1>&2; exit 3'}, {
-      expr_key = 'fail',
+      cache_key = 'fail',
       timeout = 1000,
       on_exit = function(code, out, err)
         result = {code=code, out=out, err=err}
@@ -63,7 +63,7 @@ describe('tungsten.util.async.run_job', function()
   it('terminates on timeout', function()
     local result
     local handle = async.run_job({'sh','-c','sleep 2'}, {
-      expr_key = 'timeout',
+      cache_key = 'timeout',
       timeout = 100,
       on_exit = function(code,out,err)
         result = {code=code,out=out,err=err}
@@ -77,7 +77,7 @@ describe('tungsten.util.async.run_job', function()
   it('can cancel a running job', function()
     local result
     local handle = async.run_job({'sh','-c','sleep 2'}, {
-      expr_key = 'cancel',
+      cache_key = 'cancel',
       timeout = 1000,
       on_exit = function(code,out,err)
         result = {code=code,out=out,err=err}
@@ -94,7 +94,7 @@ describe('tungsten.util.async.run_job', function()
   it('is_process_active reflects running state', function()
     local done = false
     local handle = async.run_job({'sh','-c','sleep 0.3'}, {
-      expr_key='active',
+      cache_key='active',
       timeout=1000,
       on_exit=function() done = true end,
     })

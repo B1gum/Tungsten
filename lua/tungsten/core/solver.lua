@@ -24,10 +24,10 @@ function M.solve_equation_async(eq_strs, vars, is_system, callback)
   logger.debug("Tungsten Debug", "TungstenSolve: Wolfram command: " .. wolfram_command)
   wolfram_command = "ToString[TeXForm[" .. wolfram_command .. "], CharacterEncoding -> \"UTF8\"]"
 
-  local expr_key = "solve:" .. eq_list .. "_for_" .. var_list
+  local cache_key = "solve:" .. eq_list .. "_for_" .. var_list
 
   async.run_job({ config.wolfram_path, "-code", wolfram_command }, {
-    expr_key = expr_key,
+    cache_key = cache_key,
     on_exit = function(code, stdout, stderr)
     if code == 0 then
       local out = stdout
