@@ -1,5 +1,7 @@
 local M = {}
 
+local config = require('tungsten.config')
+
 local op_attributes = {
   ["+"] = { prec = 1, assoc = "L", wolfram = "+" },
   ["-"] = { prec = 1, assoc = "L", wolfram = "-" },
@@ -120,13 +122,7 @@ M.handlers = {
     end
   end,
   function_call = function(node, recur_render)
-    local func_name_map = {
-      sin = "Sin", cos = "Cos", tan = "Tan", arcsin = "ArcSin", arccos = "ArcCos",
-      arctan = "ArcTan", sinh = "Sinh", cosh = "Cosh", tanh = "Tanh", arsinh = "ArcSinh",
-      arcosh = "ArcCosh", artanh = "ArcTanh", log = "Log", ln = "Log", log10 = "Log10",
-      exp = "Exp",
-      u = "HeavisideTheta",
-    }
+    local func_name_map = config.wolfram_function_mappings or {}
     local func_name_str = (node.name_node and node.name_node.name) or "UnknownFunction"
     local wolfram_func_name = func_name_map[func_name_str:lower()]
 
