@@ -26,6 +26,23 @@ describe('tungsten.util.async.run_job', function()
     clear_active_jobs()
   end)
 
+  it('runs command successfully and captures stdout', function()
+    local result
+    local handle = async.run_job({'sh','-c','sleep 0.1; printf ok'}, {
+      expr_key = 'ok',
+      timeout = 1000,
+      on_exit = function(code, out, err)
+        result = {code=code, out=out, err=err}
+      end,
+    })
+    assert.truthy(state.active_jobs[handle.id])
+    wait_for(function() return result end)
+    assert.are.equal(0, result.code)
+    assert.are.equal('ok', result.out)
+    assert.are.equal('', result.err)
+    assert.falsy(state.active_jobs[handle.id])
+  end)
+
   it('handles non-zero exit code and stderr', function()
     local result
     local handle = async.run_job({'sh','-c','printf fail 1>&2; exit 3'}, {

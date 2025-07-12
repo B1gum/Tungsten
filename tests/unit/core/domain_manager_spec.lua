@@ -105,4 +105,77 @@ describe("DomainManager", function()
       assert.is_true(_G.dom1_handlers_called)
     end)
   end)
+
+  describe("user-defined domains path", function()
+    local registry_mock
+    local logger_mock
+    local orig_scandir
+    local orig_scandir_next
+    local config
+
+    before_each(function()
+      config = require('tungsten.config')
+      config.user_domains_path = '/user/domains'
+
+      registry_mock = mock_utils.create_empty_mock_module('tungsten.core.registry', {
+        'register_domain_metadata', 'register_grammar_contribution'
+      })
+      logger_mock = { notify = spy.new(function() end), levels = { ERROR = 1 } }
+      package.loaded['tungsten.util.logger'] = logger_mock
+
+      orig_scandir = vim.loop.fs_scandir
+      orig_scandir_next = vim.loop.fs_scandir_next
+
+      local handles = {
+        ['/plugin/domains'] = { 'plugdom' },
+        ['/user/domains'] = { 'userdom' }
+      }
+
+      vim.loop.fs_scandir = function(path)
+        if handles[path] then return path end
+        return nil
+      end
+
+      vim.loop.fs_scandir_next = function(handle)
+        local list = handles[handle]
+        if not list or #list == 0 then return nil end
+        return table.remove(list, 1), 'directory'
+      end
+
+      package.loaded['tungsten.core.domain_manager'] = nil
+      dm = require 'tungsten.core.domain_manager'
+    end)
+
+    after_each(function()
+      config.user_domains_path = nil
+      package.loaded['tungsten.core.registry'] = nil
+      package.loaded['tungsten.util.logger'] = nil
+      package.loaded['tungsten.core.domain_manager'] = nil
+      vim.loop.fs_scandir = orig_scandir
+      vim.loop.fs_scandir_next = orig_scandir_next
+    end)
+
+    it("registers domains from plugin and user paths", function()
+      local req_spy = spy.new(function(mod)
+        return { name = mod:match('%.([^%.]+)$'), grammar = { contributions = {} } }
+      end)
+      local orig_require = _G.require
+      _G.require = function(mod)
+        if mod == 'tungsten.core.registry' then return registry_mock end
+        if mod == 'tungsten.util.logger' then return logger_mock end
+        if mod == 'tungsten.config' then return config end
+        if mod == 'tungsten.domains.plugdom' or mod == 'tungsten.domains.userdom' then
+          return req_spy(mod)
+        end
+        if package.loaded[mod] then return package.loaded[mod] end
+        return orig_require(mod)
+      end
+
+      dm.setup({ domains_dir = '/plugin/domains' })
+      _G.require = orig_require
+
+      assert.spy(registry_mock.register_domain_metadata).was.called_with('plugdom', match._)
+      assert.spy(registry_mock.register_domain_metadata).was.called_with('userdom', match._)
+    end)
+  end)
 end)

@@ -1,6 +1,7 @@
 local uv = vim.loop
 local registry = require 'tungsten.core.registry'
 local logger = require 'tungsten.util.logger'
+local config = require 'tungsten.config'
 
 local M = {}
 
@@ -10,16 +11,28 @@ local function default_domains_dir()
   return base and (base .. '/domains') or 'lua/tungsten/domains'
 end
 
-function M.discover_domains(dir)
+function M.discover_domains(dir, user_dir)
   dir = dir or default_domains_dir()
   local domains = {}
-  local handle = uv.fs_scandir(dir)
-  if not handle then return domains end
-  while true do
-    local name, typ = uv.fs_scandir_next(handle)
-    if not name then break end
-    if typ == 'directory' then table.insert(domains, name) end
+  local seen = {}
+
+  local function scan(path)
+    if not path then return end
+    local handle = uv.fs_scandir(path)
+    if not handle then return end
+    while true do
+      local name, typ = uv.fs_scandir_next(handle)
+      if not name then break end
+      if typ == 'directory' and not seen[name] then
+        table.insert(domains, name)
+        seen[name] = true
+      end
+    end
   end
+
+  scan(dir)
+  scan(user_dir)
+
   return domains
 end
 
@@ -46,7 +59,7 @@ end
 function M.setup(opts)
   opts = opts or {}
   local dir = opts.domains_dir or default_domains_dir()
-  local domains = M.discover_domains(dir)
+  local domains = M.discover_domains(dir, config.user_domains_path)
   for _, name in ipairs(domains) do
     local ok, mod = pcall(require, 'tungsten.domains.' .. name)
     if not ok then
