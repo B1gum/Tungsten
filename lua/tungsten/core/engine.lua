@@ -113,7 +113,12 @@ function M.evaluate_async(ast, numeric, callback)
       end
       callback(final_stdout, nil)
     else
-      local err_msg = ("WolframScript exited with code %d"):format(exit_code)
+      local err_msg
+      if exit_code == -1 or exit_code == 127 then
+        err_msg = "WolframScript not found. Check wolfram_path."
+      else
+        err_msg = ("WolframScript exited with code %d"):format(exit_code)
+      end
       if final_stderr ~= "" then
         err_msg = err_msg .. "\nStderr: " .. final_stderr
       elseif final_stdout ~= "" then
