@@ -1,4 +1,4 @@
-local lpeg = require "lpeg"
+local lpeg = require "lpeglabel"
 local Cf, C, S, P, V = lpeg.Cf, lpeg.C, lpeg.S, lpeg.P, lpeg.V
 
 local tk = require "tungsten.core.tokenizer"

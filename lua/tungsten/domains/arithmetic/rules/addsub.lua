@@ -1,4 +1,4 @@
-local lpeg = require "lpeg"
+local lpeg = require "lpeglabel"
 local Cf, S, Ct, C, V = lpeg.Cf, lpeg.S, lpeg.Ct, lpeg.C, lpeg.V
 local space = require "tungsten.core.tokenizer".space
 local create_binary_operation_node = require "tungsten.core.ast".create_binary_operation_node

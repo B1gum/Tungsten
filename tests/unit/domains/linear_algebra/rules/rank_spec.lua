@@ -1,8 +1,8 @@
 -- tungsten/tests/unit/domains/linear_algebra/rules/rank_spec.lua
 package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
-local lpeg = require "lpeg"
-local P, V, C, R, S, Cg, Ct = lpeg.P, lpeg.V, lpeg.C, lpeg.R, lpeg.S, lpeg.Cg, lpeg.Ct
+local lpeg = require "lpeglabel"
+local P, C, R, S = lpeg.P, lpeg.C, lpeg.R, lpeg.S
 
 local RankRule
 

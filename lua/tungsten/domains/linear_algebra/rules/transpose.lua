@@ -1,5 +1,6 @@
 -- tungsten/lua/tungsten/domains/linear_algebra/rules/transpose.lua
-local lpeg = require "lpeg"
+
+local lpeg = require "lpeglabel"
 local V = lpeg.V
 
 local ast = require "tungsten.core.ast"

@@ -2,7 +2,7 @@
 -- Parses input strings based on grammar into an AST
 -----------------------------------------------------
 
-local lpeg     = require "lpeg"
+local lpeg     = require "lpeglabel"
 local registry = require "tungsten.core.registry"
 local space    = require "tungsten.core.tokenizer".space
 local logger = require "tungsten.util.logger"
@@ -27,7 +27,11 @@ end
 
 function M.parse(input)
   local current_grammar = M.get_grammar()
-  return lpeg.match(space * current_grammar * space * -1, input)
+  local result, err_label, err_pos = lpeg.match(space * current_grammar * space * -1, input)
+  if result then
+    return result
+  end
+  return nil, err_label, err_pos
 end
 
 function M.reset_grammar()

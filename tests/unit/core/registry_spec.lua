@@ -51,7 +51,7 @@ describe("tungsten.core.registry", function()
 
   local modules_to_clear_from_cache = {
     'tungsten.core.registry',
-    'lpeg',
+    'lpeglabel',
     'tungsten.core.tokenizer',
     'tungsten.util.logger',
     'tungsten.config',
@@ -79,7 +79,7 @@ describe("tungsten.core.registry", function()
 
     original_require = _G.require
     _G.require = function(module_path)
-      if module_path == 'lpeg' then return mock_lpeg_module end
+      if module_path == 'lpeglabel' then return mock_lpeg_module end
       if module_path == 'tungsten.core.tokenizer' then return mock_tokenizer_module end
       if module_path == 'tungsten.util.logger' then return mock_logger_module end
       if module_path == 'tungsten.config' then return mock_config_module end

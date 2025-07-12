@@ -18,6 +18,7 @@ test_deps:
 	@$(LUAROCKS) install --tree=$(ROCKTREE) luafilesystem
 	@$(LUAROCKS) install --tree=$(ROCKTREE) penlight
 	@$(LUAROCKS) install --tree=$(ROCKTREE) lpeg
+	@$(LUAROCKS) install --tree=$(ROCKTREE) lpeglabel
 	@scripts/install_plenary.sh
 	@echo "✔ All test dependencies installed."
 

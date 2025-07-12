@@ -1,7 +1,7 @@
 -- lua/tungsten/domains/calculus/rules/ordinary_derivatives.lua
 -- Defines the lpeg rule for parsing ordinary derivatives including Leibniz, Lagrange, and Newton notations.
 
-local lpeg = require "lpeg"
+local lpeg = require "lpeglabel"
 local P, V, C, Ct, Cg = lpeg.P, lpeg.V, lpeg.C, lpeg.Ct, lpeg.Cg
 local tk = require "tungsten.core.tokenizer"
 local space = tk.space

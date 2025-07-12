@@ -8,7 +8,7 @@ local state = require "tungsten.state"
 local async = require "tungsten.util.async"
 local logger = require "tungsten.util.logger"
 
-local lpeg = require "lpeg"
+local lpeg = require "lpeglabel"
 
 local P, Cs, C, R, B = lpeg.P, lpeg.Cs, lpeg.C, lpeg.R, lpeg.B
 

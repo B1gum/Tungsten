@@ -1,5 +1,5 @@
 -- tungsten/lua/tungsten/domains/arithmetic/rules/function_call.lua
-local lpeg = require "lpeg"
+local lpeg = require "lpeglabel"
 local P, V, Ct, Cg = lpeg.P, lpeg.V, lpeg.Ct, lpeg.Cg
 
 local tk = require "tungsten.core.tokenizer"

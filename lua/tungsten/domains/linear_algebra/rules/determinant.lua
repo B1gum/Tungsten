@@ -2,7 +2,7 @@
 -- Defines the lpeg rule for parsing determinant expressions like |A| or \det(A).
 --------------------------------------------------------------------------------
 
-local lpeg = require "lpeg"
+local lpeg = require "lpeglabel"
 local V, Cg, Ct = lpeg.V, lpeg.Cg, lpeg.Ct
 
 local tk = require "tungsten.core.tokenizer"

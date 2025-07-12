@@ -3,7 +3,7 @@
 
 package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
-local lpeg = require "lpeg"
+local lpeg = require "lpeglabel"
 local P, V, C, R, S, Ct, Cg, Cf = lpeg.P, lpeg.V, lpeg.C, lpeg.R, lpeg.S, lpeg.Ct, lpeg.Cg, lpeg.Cf
 
 describe("Differential Equations ODE Rule", function()

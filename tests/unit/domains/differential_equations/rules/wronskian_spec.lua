@@ -3,7 +3,7 @@
 
 package.path = "./lua/?.lua;./lua/?/init.lua;" .. package.path
 
-local lpeg = require "lpeg"
+local lpeg = require "lpeglabel"
 local P, V, C, R, S, Ct = lpeg.P, lpeg.V, lpeg.C, lpeg.R, lpeg.S, lpeg.Ct
 
 describe("Differential Equations Wronskian Rule", function()

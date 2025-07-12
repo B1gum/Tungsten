@@ -1,5 +1,5 @@
 -- lua/tungsten/domains/linear_algebra/rules/inverse.lua
-local lpeg = require "lpeg"
+local lpeg = require "lpeglabel"
 local P, V = lpeg.P, lpeg.V
 
 local tk = require "tungsten.core.tokenizer"

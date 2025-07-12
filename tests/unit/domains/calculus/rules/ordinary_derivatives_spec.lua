@@ -3,7 +3,7 @@
 
 package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
-local lpeg = require "lpeg"
+local lpeg = require "lpeglabel"
 local P, V, C, R, S = lpeg.P, lpeg.V, lpeg.C, lpeg.R, lpeg.S
 
 local OrdinaryDerivativeRule
@@ -19,12 +19,7 @@ local modules_to_reset = {
 local test_grammar_table_definition
 local compiled_test_grammar
 
-local function placeholder_node(node_type, val_str, original_type_if_known)
-  return { type = node_type, value_str = val_str, original_type = original_type_if_known or node_type }
-end
-
 describe("Calculus Unified Ordinary Derivative Rule", function()
-
   before_each(function()
     for _, name in ipairs(modules_to_reset) do
       package.loaded[name] = nil

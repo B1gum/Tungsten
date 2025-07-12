@@ -4,7 +4,7 @@
 
 package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
-local lpeg = require "lpeg"
+local lpeg = require "lpeglabel"
 local tokenizer = require "tungsten.core.tokenizer"
 
 describe("tungsten.core.tokenizer", function()

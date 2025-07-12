@@ -1,7 +1,7 @@
 -- lua/tungsten/domains/differential_equations/rules/convolution.lua
 -- Defines the lpeg rule for parsing convolutions.
 
-local lpeg = require "lpeg"
+local lpeg = require "lpeglabel"
 local Cf, V, P, Ct, C = lpeg.Cf, lpeg.V, lpeg.P, lpeg.Ct, lpeg.C
 local space = require("tungsten.core.tokenizer").space
 local ast = require "tungsten.core.ast"

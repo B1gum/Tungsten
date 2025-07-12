@@ -1,9 +1,8 @@
 -- core/tokenizer.lua
 -- Defines fundamental tokens for parser
 ------------------------------------------
-local lpeg = require "lpeg"
-local P,R,S = lpeg.P, lpeg.R, lpeg.S
-local C = lpeg.C
+local lpeg = require "lpeglabel"
+local P, R, S, C = lpeg.P, lpeg.R, lpeg.S, lpeg.C
 
 local space = S(" \t\n\r")^0
 

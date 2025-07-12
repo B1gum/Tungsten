@@ -1,7 +1,7 @@
 -- tungsten/lua/tungsten/core/registry.lua
 
-local lpeg_lib = require "lpeg"
-local P, V = lpeg_lib.P, lpeg_lib.V
+local lpeg = require "lpeglabel"
+local P, V = lpeg.P, lpeg.V
 local tokens_mod = require "tungsten.core.tokenizer"
 local logger = require "tungsten.util.logger"
 
@@ -230,7 +230,7 @@ function M.compile_grammar(atoms, expressions)
     logger.debug("Tungsten Debug", "Registry: Final grammar definition keys: " .. table.concat(keys, ", "))
   end
 
-  local ok, compiled_grammar_or_err = pcall(lpeg_lib.P, grammar_def)
+  local ok, compiled_grammar_or_err = pcall(lpeg.P, grammar_def)
   if not ok then
     logger.error("Tungsten Registry Error", "Registry: Error compiling final grammar table: " .. tostring(compiled_grammar_or_err))
     return nil

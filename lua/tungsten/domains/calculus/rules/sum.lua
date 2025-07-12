@@ -1,7 +1,7 @@
 -- lua/tungsten/domains/calculus/rules/sum.lua
 -- Defines the lpeg rule for parsing sum expressions e.g., \sum_{i=0}^{N} i^2
 
-local lpeg = require "lpeg"
+local lpeg = require "lpeglabel"
 local P, V, Cg, Ct = lpeg.P, lpeg.V, lpeg.Cg, lpeg.Ct
 
 local tk = require "tungsten.core.tokenizer"

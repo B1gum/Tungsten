@@ -1,7 +1,7 @@
 -- tungsten/lua/tungsten/domains/calculus/rules/integral.lua
 -- Defines the lpeg rule for parsing integral expressions, both indefinite and definite.
 
-local lpeg = require "lpeg"
+local lpeg = require "lpeglabel"
 local P, V, Cg, Ct = lpeg.P, lpeg.V, lpeg.Cg, lpeg.Ct
 
 local tk = require "tungsten.core.tokenizer"

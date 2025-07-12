@@ -1,7 +1,7 @@
 -- lua/tungsten/domains/differential_equations/rules/ode_system.lua
 -- Defines the lpeg rule for parsing a system of ODEs.
 
-local lpeg = require "lpeg"
+local lpeg = require "lpeglabel"
 local P, V, Ct = lpeg.P, lpeg.V, lpeg.Ct
 
 local tk = require "tungsten.core.tokenizer"
