@@ -3,7 +3,32 @@
 ---------------------------------------------------------------------
 local logger = require "tungsten.util.logger"
 
+local function matrix_to_vector_str(node, render)
+  if type(node) == "table" and node.type == "matrix" then
+    if #node.rows == 0 then
+      return "{}"
+    end
+
+    if #node.rows == 1 then
+      local elems = {}
+      for _, el in ipairs(node.rows[1]) do
+        elems[#elems + 1] = render(el)
+      end
+      return "{" .. table.concat(elems, ", ") .. "}"
+    elseif node.rows[1] and #node.rows[1] == 1 then
+      local elems = {}
+      for _, row in ipairs(node.rows) do
+        elems[#elems + 1] = render(row[1])
+      end
+      return "{" .. table.concat(elems, ", ") .. "}"
+    end
+  end
+  return render(node)
+end
+
 local M = {}
+
+M.matrix_to_vector_str = matrix_to_vector_str
 
 M.handlers = {
   matrix = function(node, recur_render)
@@ -43,52 +68,14 @@ M.handlers = {
   end,
 
   dot_product = function(node, recur_render)
-    local function matrix_to_vector_str(target)
-      if type(target) == "table" and target.type == "matrix" then
-        if #target.rows == 1 then
-          local elems = {}
-          for _, el in ipairs(target.rows[1]) do
-            table.insert(elems, recur_render(el))
-          end
-          return "{" .. table.concat(elems, ", ") .. "}"
-        elseif target.rows[1] and #target.rows[1] == 1 then
-          local elems = {}
-          for _, row in ipairs(target.rows) do
-            table.insert(elems, recur_render(row[1]))
-          end
-          return "{" .. table.concat(elems, ", ") .. "}"
-        end
-      end
-      return recur_render(target)
-    end
-
-    local left_str = matrix_to_vector_str(node.left)
-    local right_str = matrix_to_vector_str(node.right)
+    local left_str = matrix_to_vector_str(node.left, recur_render)
+    local right_str = matrix_to_vector_str(node.right, recur_render)
     return ("Dot[%s, %s]"):format(left_str, right_str)
   end,
 
   cross_product = function(node, recur_render)
-    local function matrix_to_vector_str(target)
-      if type(target) == "table" and target.type == "matrix" then
-        if #target.rows == 1 then
-          local elems = {}
-          for _, el in ipairs(target.rows[1]) do
-            table.insert(elems, recur_render(el))
-          end
-          return "{" .. table.concat(elems, ", ") .. "}"
-        elseif target.rows[1] and #target.rows[1] == 1 then
-          local elems = {}
-          for _, row in ipairs(target.rows) do
-            table.insert(elems, recur_render(row[1]))
-          end
-          return "{" .. table.concat(elems, ", ") .. "}"
-        end
-      end
-      return recur_render(target)
-    end
-
-    local left_str = matrix_to_vector_str(node.left)
-    local right_str = matrix_to_vector_str(node.right)
+    local left_str = matrix_to_vector_str(node.left, recur_render)
+    local right_str = matrix_to_vector_str(node.right, recur_render)
     return ("Cross[%s, %s]"):format(left_str, right_str)
   end,
 
