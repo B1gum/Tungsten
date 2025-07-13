@@ -103,7 +103,7 @@ local function tungsten_rank_command(_)
       return
     end
     if result == nil or result == "" then
-      error_handler.notify_error("Rank", "No result from evaluation (expected a numner).")
+      error_handler.notify_error("Rank", "No result from evaluation (expected a number).")
       return
     end
     insert_result_util.insert_result(result, " \\rightarrow ")
@@ -171,7 +171,7 @@ end
 local function tungsten_eigensystem_command(_)
     local matrix_ast_node, _, err = cmd_utils.parse_selected_latex("matrix")
     if err then
-      error_handler.notify_error("Eigensysem", err)
+      error_handler.notify_error("Eigensystem", err)
       return
     end
     if not matrix_ast_node then return end
