@@ -2,7 +2,7 @@
 
 local spy = require 'luassert.spy'
 local stub = require 'luassert.stub'
-local wolfram_handlers = require "tungsten.domains.arithmetic.wolfram_handlers"
+local wolfram_handlers = require "tungsten.backends.wolfram.domains.arithmetic"
 local ast = require "tungsten.core.ast"
 
 describe("Tungsten Arithmetic Wolfram Handlers", function()

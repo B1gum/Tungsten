@@ -6,7 +6,7 @@ describe("Differential Equations Wolfram Handlers", function()
   local mock_render
 
   before_each(function()
-    handlers = require "tungsten.domains.differential_equations.wolfram_handlers".handlers
+    handlers = require "tungsten.backends.wolfram.domains.differential_equations".handlers
 
     mock_render = function(node)
       if not node or not node.type then return "" end

@@ -2,7 +2,7 @@
 -- Unit tests for the matrix_to_vector_str helper.
 
 local spy = require 'luassert.spy'
-local wolfram_handlers = require 'tungsten.domains.linear_algebra.wolfram_handlers'
+local wolfram_handlers = require 'tungsten.backends.wolfram.domains.linear_algebra'
 
 local matrix_to_vector_str = wolfram_handlers.matrix_to_vector_str
 

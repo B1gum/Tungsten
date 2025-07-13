@@ -30,7 +30,7 @@ do
 end
 
 function M.handlers()
-  require 'tungsten.domains.linear_algebra.wolfram_handlers'
+  require 'tungsten.backends.wolfram.domains.linear_algebra'
 end
 
 return M

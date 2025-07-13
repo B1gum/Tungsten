@@ -35,20 +35,20 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
   local original_methods = {}
 
   local all_test_domain_module_paths = {
-    "tungsten.domains.arithmetic.wolfram_handlers",
-    "tungsten.domains.custom_domain_one.wolfram_handlers",
-    "tungsten.domains.custom_domain_two.wolfram_handlers",
-    "tungsten.domains.high_prio_domain.wolfram_handlers",
-    "tungsten.domains.low_prio_domain.wolfram_handlers",
-    "tungsten.domains.successful_domain.wolfram_handlers",
-    "tungsten.domains.missing_domain.wolfram_handlers",
-    "tungsten.domains.nohandlers_domain.wolfram_handlers",
-    "tungsten.domains.another_good_domain.wolfram_handlers",
-    "tungsten.domains.invalid_domain_for_no_handler_test.wolfram_handlers",
-    "tungsten.domains.another_good_domain_for_nohandlers_test.wolfram_handlers",
-    "tungsten.domains.nil_return_domain.wolfram_handlers",
-    "tungsten.domains.non_existent_domain_one.wolfram_handlers",
-    "tungsten.domains.non_existent_domain_two.wolfram_handlers",
+    "tungsten.backends.wolfram.domains.arithmetic",
+    "tungsten.backends.wolfram.domains.custom_domain_one",
+    "tungsten.backends.wolfram.domains.custom_domain_two",
+    "tungsten.backends.wolfram.domains.high_prio_domain",
+    "tungsten.backends.wolfram.domains.low_prio_domain",
+    "tungsten.backends.wolfram.domains.successful_domain",
+    "tungsten.backends.wolfram.domains.missing_domain",
+    "tungsten.backends.wolfram.domains.nohandlers_domain",
+    "tungsten.backends.wolfram.domains.another_good_domain",
+    "tungsten.backends.wolfram.domains.invalid_domain_for_no_handler_test",
+    "tungsten.backends.wolfram.domains.another_good_domain_for_nohandlers_test",
+    "tungsten.backends.wolfram.domains.nil_return_domain",
+    "tungsten.backends.wolfram.domains.non_existent_domain_one",
+    "tungsten.backends.wolfram.domains.non_existent_domain_two",
   }
 
   local function clear_tungsten_modules_from_cache()
@@ -236,11 +236,11 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
         return mock_domain_handler_definitions[module_path]
       end
 
-      if module_path == "tungsten.domains.arithmetic.wolfram_handlers" then
+      if module_path == "tungsten.backends.wolfram.domains.arithmetic" then
           return { handlers = { mock_arith_op_handler_fallback = function() end } }
       end
-      if string.find(module_path, "tungsten.domains%.[^%.]+%.wolfram_handlers") then
-        return nil 
+      if string.find(module_path, "tungsten.backends.wolfram.domains%.[^%.]+") then
+        return nil
       end
       return original_require(module_path)
     end
@@ -274,37 +274,37 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
   describe("Default Handler Loading (config.domains is nil or empty)", function()
     it("should attempt to load arithmetic handlers if config.domains is nil", function()
       test_env.set_plugin_config({ 'domains' }, nil)
-      mock_domain_handler_definitions["tungsten.domains.arithmetic.wolfram_handlers"] = {
+      mock_domain_handler_definitions["tungsten.backends.wolfram.domains.arithmetic"] = {
         handlers = { arith_specific_handler_nil_config = function() end }
       }
       wolfram_backend.reload_handlers()
 
       local found_arithmetic_handler_require = false
       for _, called_module in ipairs(require_calls) do
-        if called_module == "tungsten.domains.arithmetic.wolfram_handlers" then
+        if called_module == "tungsten.backends.wolfram.domains.arithmetic" then
           found_arithmetic_handler_require = true
           break
         end
       end
-      assert.is_true(found_arithmetic_handler_require, "Expected _G.require to be called for 'tungsten.domains.arithmetic.wolfram_handlers'")
+      assert.is_true(found_arithmetic_handler_require, "Expected _G.require to be called for 'tungsten.backends.wolfram.domains.arithmetic'")
       assert.spy(get_domain_priority_spy).was.called_with("arithmetic")
     end)
 
     it("should attempt to load arithmetic handlers if config.domains is an empty table", function()
       test_env.set_plugin_config({ 'domains' }, {})
-      mock_domain_handler_definitions["tungsten.domains.arithmetic.wolfram_handlers"] = {
+      mock_domain_handler_definitions["tungsten.backends.wolfram.domains.arithmetic"] = {
         handlers = { arith_specific_handler_empty_config = function() end }
       }
       wolfram_backend.reload_handlers()
 
       local found_arithmetic_handler_require = false
       for _, called_module in ipairs(require_calls) do
-        if called_module == "tungsten.domains.arithmetic.wolfram_handlers" then
+        if called_module == "tungsten.backends.wolfram.domains.arithmetic" then
           found_arithmetic_handler_require = true
           break
         end
       end
-      assert.is_true(found_arithmetic_handler_require, "Expected _G.require to be called for 'tungsten.domains.arithmetic.wolfram_handlers'")
+      assert.is_true(found_arithmetic_handler_require, "Expected _G.require to be called for 'tungsten.backends.wolfram.domains.arithmetic'")
       assert.spy(get_domain_priority_spy).was.called_with("arithmetic")
     end)
   end)
@@ -312,14 +312,14 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
   describe("Custom Domain Handler Loading", function()
     it("should attempt to load handlers from a single domain specified in config.domains", function()
       local domain_name = "custom_domain_one"
-      local handler_module_path = "tungsten.domains." .. domain_name .. ".wolfram_handlers"
+      local handler_module_path = "tungsten.backends.wolfram.domains." .. domain_name
       test_env.set_plugin_config({ 'domains' }, { domain_name })
 
       mock_domain_handler_definitions[handler_module_path] = {
         handlers = { custom_op_one = function() return "custom_one_output" end }
       }
-      mock_domain_handler_definitions["tungsten.domains.arithmetic.wolfram_handlers"] = nil
 
+      mock_domain_handler_definitions["tungsten.backends.wolfram.domains.arithmetic"] = nil
 
       wolfram_backend.reload_handlers()
 
@@ -335,7 +335,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
 
       local found_arithmetic_handler_require = false
       for _, called_module in ipairs(require_calls) do
-        if called_module == "tungsten.domains.arithmetic.wolfram_handlers" then
+        if called_module == "tungsten.backends.wolfram.domains.arithmetic" then
           found_arithmetic_handler_require = true
           break
         end
@@ -347,8 +347,8 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       local domain_names = { "custom_domain_one", "custom_domain_two" }
       test_env.set_plugin_config({ 'domains' }, domain_names)
 
-      local handler_module_path_one = "tungsten.domains.custom_domain_one.wolfram_handlers"
-      local handler_module_path_two = "tungsten.domains.custom_domain_two.wolfram_handlers"
+      local handler_module_path_one = "tungsten.backends.wolfram.domains.custom_domain_one"
+      local handler_module_path_two = "tungsten.backends.wolfram.domains.custom_domain_two"
 
       mock_domain_handler_definitions[handler_module_path_one] = {
         handlers = { custom_op_one = function() end }
@@ -356,7 +356,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       mock_domain_handler_definitions[handler_module_path_two] = {
         handlers = { custom_op_two = function() end }
       }
-      mock_domain_handler_definitions["tungsten.domains.arithmetic.wolfram_handlers"] = nil
+      mock_domain_handler_definitions["tungsten.backends.wolfram.domains.arithmetic"] = nil
 
       wolfram_backend.reload_handlers()
 
@@ -377,8 +377,8 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       test_env.set_plugin_config({ 'domains' }, { "arithmetic", custom_domain })
 
 
-      local arithmetic_handler_module_path = "tungsten.domains.arithmetic.wolfram_handlers"
-      local custom_handler_module_path = "tungsten.domains." .. custom_domain .. ".wolfram_handlers"
+      local arithmetic_handler_module_path = "tungsten.backends.wolfram.domains.arithmetic"
+      local custom_handler_module_path = "tungsten.backends.wolfram.domains." .. custom_domain .. ""
 
       mock_domain_handler_definitions[arithmetic_handler_module_path] = {
         handlers = { arith_op = function() end }
@@ -416,9 +416,8 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
     it("should use handler from higher priority domain (high_prio domain in config AFTER low_prio)", function()
       test_env.set_plugin_config({ 'domains' }, { "low_prio_domain", "high_prio_domain" })
 
-
-      local low_prio_path = "tungsten.domains.low_prio_domain.wolfram_handlers"
-      local high_prio_path = "tungsten.domains.high_prio_domain.wolfram_handlers"
+      local low_prio_path = "tungsten.backends.wolfram.domains.low_prio_domain"
+      local high_prio_path = "tungsten.backends.wolfram.domains.high_prio_domain"
 
       mock_domain_handler_definitions[low_prio_path] = {
         handlers = { [common_node_type] = low_prio_handler_spy_func, unrelated_low = function() end }
@@ -426,7 +425,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       mock_domain_handler_definitions[high_prio_path] = {
         handlers = { [common_node_type] = high_prio_handler_spy_func, unrelated_high = function() end }
       }
-      mock_domain_handler_definitions["tungsten.domains.arithmetic.wolfram_handlers"] = nil
+      mock_domain_handler_definitions["tungsten.backends.wolfram.domains.arithmetic"] = nil
 
       wolfram_backend.reload_handlers()
       local result = wolfram_backend.ast_to_wolfram(test_ast)
@@ -466,8 +465,8 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       test_env.set_plugin_config({ 'debug' }, true)
 
 
-      local low_prio_path = "tungsten.domains.low_prio_domain.wolfram_handlers"
-      local high_prio_path = "tungsten.domains.high_prio_domain.wolfram_handlers"
+      local low_prio_path = "tungsten.backends.wolfram.domains.low_prio_domain"
+      local high_prio_path = "tungsten.backends.wolfram.domains.high_prio_domain"
 
       mock_domain_handler_definitions[low_prio_path] = {
         handlers = { [common_node_type] = low_prio_handler_spy_func }
@@ -475,7 +474,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       mock_domain_handler_definitions[high_prio_path] = {
         handlers = { [common_node_type] = high_prio_handler_spy_func }
       }
-      mock_domain_handler_definitions["tungsten.domains.arithmetic.wolfram_handlers"] = nil
+      mock_domain_handler_definitions["tungsten.backends.wolfram.domains.arithmetic"] = nil
 
       wolfram_backend.reload_handlers()
       local result = wolfram_backend.ast_to_wolfram(test_ast)
@@ -533,9 +532,9 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       local handler_spy_custom_one = spy.new(function() return "custom_one_output" end)
       local handler_spy_high_prio = spy.new(function() return "high_prio_output" end)
 
-      local path_custom_one = "tungsten.domains.custom_domain_one.wolfram_handlers"
-      local path_high_prio = "tungsten.domains.high_prio_domain.wolfram_handlers"
-      local path_custom_two = "tungsten.domains.custom_domain_two.wolfram_handlers"
+      local path_custom_one = "tungsten.backends.wolfram.domains.custom_domain_one"
+      local path_high_prio = "tungsten.backends.wolfram.domains.high_prio_domain"
+      local path_custom_two = "tungsten.backends.wolfram.domains.custom_domain_two"
 
       mock_domain_handler_definitions[path_custom_one] = {
           handlers = { [common_node_type] = handler_spy_custom_one, other_op_one = function() end }
@@ -546,7 +545,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       mock_domain_handler_definitions[path_custom_two] = {
           handlers = { another_op = function() end }
       }
-      mock_domain_handler_definitions["tungsten.domains.arithmetic.wolfram_handlers"] = nil
+      mock_domain_handler_definitions["tungsten.backends.wolfram.domains.arithmetic"] = nil
 
       wolfram_backend.reload_handlers()
       local result = wolfram_backend.ast_to_wolfram(test_ast)
@@ -581,7 +580,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
   describe("Handling of Domain Modules", function()
     it("should successfully load and process handlers from a correctly defined domain module", function()
       local domain_name = "successful_domain"
-      local handler_module_path = "tungsten.domains." .. domain_name .. ".wolfram_handlers"
+      local handler_module_path = "tungsten.backends.wolfram.domains." .. domain_name
       test_env.set_plugin_config({ 'domains' }, { domain_name })
       test_env.set_plugin_config({ 'debug' }, true)
 
@@ -590,7 +589,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       mock_domain_handler_definitions[handler_module_path] = {
         handlers = { specific_op = success_handler_spy_func }
       }
-      mock_domain_handler_definitions["tungsten.domains.arithmetic.wolfram_handlers"] = nil
+      mock_domain_handler_definitions["tungsten.backends.wolfram.domains.arithmetic"] = nil
 
       wolfram_backend.reload_handlers()
 
@@ -624,8 +623,8 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
     it("should log a warning and continue if a domain module is missing (require throws error)", function()
       local missing_domain_name = "missing_domain"
       local another_good_domain_name = "another_good_domain"
-      local handler_module_path_missing = "tungsten.domains." .. missing_domain_name .. ".wolfram_handlers"
-      local handler_module_path_good = "tungsten.domains." .. another_good_domain_name .. ".wolfram_handlers"
+      local handler_module_path_missing = "tungsten.backends.wolfram.domains." .. missing_domain_name
+      local handler_module_path_good = "tungsten.backends.wolfram.domains." .. another_good_domain_name
 
       test_env.set_plugin_config({ 'domains' }, { missing_domain_name, another_good_domain_name })
 
@@ -652,8 +651,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       mock_domain_handler_definitions[handler_module_path_good] = {
         handlers = { good_op = good_handler_spy_func }
       }
-      mock_domain_handler_definitions["tungsten.domains.arithmetic.wolfram_handlers"] = nil
-
+      mock_domain_handler_definitions["tungsten.backends.wolfram.domains.arithmetic"] = nil
 
       wolfram_backend.reload_handlers()
 
@@ -686,8 +684,8 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       local another_good_domain_name = "another_good_domain_for_nohandlers_test"
       test_env.set_plugin_config({ 'domains' }, { nohandlers_domain_name, another_good_domain_name })
 
-      local handler_module_path_nohandlers = "tungsten.domains." .. nohandlers_domain_name .. ".wolfram_handlers"
-      local handler_module_path_good = "tungsten.domains." .. another_good_domain_name .. ".wolfram_handlers"
+      local handler_module_path_nohandlers = "tungsten.backends.wolfram.domains." .. nohandlers_domain_name
+      local handler_module_path_good = "tungsten.backends.wolfram.domains." .. another_good_domain_name
 
       mock_domain_handler_definitions[handler_module_path_nohandlers] = { not_handlers = "some_data" }
 
@@ -695,8 +693,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       mock_domain_handler_definitions[handler_module_path_good] = {
         handlers = { good_op_for_this_test = good_handler_spy_func }
       }
-      mock_domain_handler_definitions["tungsten.domains.arithmetic.wolfram_handlers"] = nil
-
+      mock_domain_handler_definitions["tungsten.backends.wolfram.domains.arithmetic"] = nil
 
       wolfram_backend.reload_handlers()
 
@@ -720,7 +717,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
     it("should log a warning if a domain module loads as nil (e.g. require returns true, nil via mock_domain_handler_definitions)", function()
       local nil_domain_name = "nil_return_domain"
       test_env.set_plugin_config({ 'domains' }, { nil_domain_name })
-      local handler_module_path_nil = "tungsten.domains." .. nil_domain_name .. ".wolfram_handlers"
+        local handler_module_path_nil = "tungsten.backends.wolfram.domains." .. nil_domain_name
 
       mock_domain_handler_definitions[handler_module_path_nil] = nil
 

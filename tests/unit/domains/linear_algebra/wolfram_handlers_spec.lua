@@ -15,8 +15,8 @@ describe("Tungsten Linear Algebra Domain Wolfram Handlers", function()
   end
 
   before_each(function()
-    package.loaded["tungsten.domains.linear_algebra.wolfram_handlers"] = nil
-    linear_algebra_wolfram_handlers = require("tungsten.domains.linear_algebra.wolfram_handlers")
+    package.loaded["tungsten.backends.wolfram.domains.linear_algebra"] = nil
+    linear_algebra_wolfram_handlers = require("tungsten.backends.wolfram.domains.linear_algebra")
     handlers = linear_algebra_wolfram_handlers.handlers
 
     mock_recur_render = spy.new(function(child_node)

@@ -24,7 +24,7 @@ c[#c+1] = { name = 'PartialDerivative', pattern = PartialDerivativeRule, categor
 c[#c+1] = { name = 'Summation', pattern = SumRule, category = 'AtomBaseItem', priority = prio }
 
 function M.handlers()
-  require('tungsten.domains.calculus.wolfram_handlers')
+  require('tungsten.backends.wolfram.domains.calculus')
 end
 
 return M

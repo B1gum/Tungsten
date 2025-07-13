@@ -11,7 +11,7 @@ local renderableHandlers = {}
 local handlers_initialized = false
 
 local function _process_domain_handlers(domain_name, registry)
-    local handler_module_path = "tungsten.domains." .. domain_name .. ".wolfram_handlers"
+    local handler_module_path = "tungsten.backends.wolfram.domains." .. domain_name
     local ok, domain_module = pcall(require, handler_module_path)
 
     if ok and domain_module and domain_module.handlers then

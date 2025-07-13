@@ -15,8 +15,9 @@ describe("Tungsten Calculus Domain Wolfram Handlers", function()
   end
 
   before_each(function()
-    package.loaded["tungsten.domains.calculus.wolfram_handlers"] = nil
-    calculus_wolfram_handlers = require("tungsten.domains.calculus.wolfram_handlers")
+    package.loaded["tungsten.backends.wolfram.domains.calculus"] = nil
+    calculus_wolfram_handlers = require("tungsten.backends.wolfram.domains.calculus")
+
     handlers = calculus_wolfram_handlers.handlers
 
     mock_recur_render = spy.new(function(child_node)

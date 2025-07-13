@@ -35,7 +35,7 @@ c[#c+1] = { name = 'EquationRule', pattern = standard_equation_pattern, category
 c[#c+1] = { name = 'SolveSystemEquationsCapture', pattern = require('tungsten.domains.arithmetic.rules.solve_system_rule'), category = 'TopLevelRule', priority = prio + 10 }
 
 function M.handlers()
-  require('tungsten.domains.arithmetic.wolfram_handlers')
+  require('tungsten.backends.wolfram.domains.arithmetic')
 end
 
 return M
