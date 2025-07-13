@@ -3,6 +3,7 @@
 --------------------------------------------
 
 local defaults = require('tungsten.config')
+local domain_manager = require('tungsten.core.domain_manager')
 local M = { config = vim.deepcopy(defaults) }
 
 local function execute_hook(name, ...)
@@ -61,6 +62,10 @@ function M.setup(user_opts)
   for _, cmd in ipairs(registry.commands) do
     vim.api.nvim_create_user_command(cmd.name, cmd.func, cmd.opts or { desc = cmd.desc })
   end
+end
+
+function M.register_domain(name)
+  return domain_manager.register_domain(name)
 end
 
 return M

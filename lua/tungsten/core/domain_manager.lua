@@ -62,22 +62,29 @@ local function register_domain(meta)
   if type(meta.handlers) == 'function' then pcall(meta.handlers) end
 end
 
+function M.register_domain(name)
+  local ok, mod = pcall(require, 'tungsten.domains.' .. name)
+  if not ok then
+    logger.notify('DomainManager: failed to load domain ' .. name .. ': ' .. tostring(mod),
+                  logger.levels.ERROR, { title = 'Tungsten DomainManager' })
+    return nil, mod
+  end
+  local valid, err = M.validate_metadata(mod)
+  if not valid then
+    logger.notify('DomainManager: invalid domain ' .. name .. ': ' .. tostring(err),
+                  logger.levels.ERROR, { title = 'Tungsten DomainManager' })
+    return nil, err
+  end
+  register_domain(mod)
+  return mod
+end
+
 function M.setup(opts)
   opts = opts or {}
   local dir = opts.domains_dir or default_domains_dir()
   local domains = M.discover_domains(dir, config.user_domains_path)
   for _, name in ipairs(domains) do
-    local ok, mod = pcall(require, 'tungsten.domains.' .. name)
-    if not ok then
-      logger.notify('DomainManager: failed to load domain ' .. name .. ': ' .. tostring(mod), logger.levels.ERROR, {title='Tungsten DomainManager'})
-    else
-      local valid, err = M.validate_metadata(mod)
-      if not valid then
-        logger.notify('DomainManager: invalid domain ' .. name .. ': ' .. tostring(err), logger.levels.ERROR, {title='Tungsten DomainManager'})
-      else
-        register_domain(mod)
-      end
-    end
+    M.register_domain(name)
   end
 end
 
