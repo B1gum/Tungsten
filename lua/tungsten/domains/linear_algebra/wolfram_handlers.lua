@@ -113,25 +113,8 @@ M.handlers = {
   vector_list = function(node, recur_render)
     local rendered_vectors = {}
     for _, vector_node_in_list in ipairs(node.vectors) do
-        if vector_node_in_list.type == "matrix" then
-            local rows_as_vectors = {}
-            for _, row in ipairs(vector_node_in_list.rows) do
-                local rendered_row_elements = {}
-                for _, el in ipairs(row) do
-                    table.insert(rendered_row_elements, recur_render(el))
-                end
-                if #row == 1 then
-                     table.insert(rows_as_vectors, "{" .. table.concat(rendered_row_elements, ", ") .. "}")
-                else
-                    table.insert(rows_as_vectors, "{" .. table.concat(rendered_row_elements, ", ") .. "}")
-                    break
-                end
-            end
-            table.insert(rendered_vectors, recur_render(vector_node_in_list))
-
-        else
-            table.insert(rendered_vectors, recur_render(vector_node_in_list))
-        end
+      local vector_str = matrix_to_vector_str(vector_node_in_list, recur_render)
+      table.insert(rendered_vectors, vector_str)
     end
     return "{" .. table.concat(rendered_vectors, ", ") .. "}"
   end,
