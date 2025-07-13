@@ -1,9 +1,9 @@
 -- tests/unit/util/async_job_limit_spec.lua
 -- Verifies that async.run_job respects config.max_jobs
 
-local async = require 'tungsten.util.async'
-local state = require 'tungsten.state'
-local config = require 'tungsten.config'
+local async = require "tungsten.util.async"
+local state = require "tungsten.state"
+local config = require "tungsten.config"
 
 local function clear_active_jobs()
   for k in pairs(state.active_jobs) do
@@ -11,13 +11,7 @@ local function clear_active_jobs()
   end
 end
 
-local function wait_for(fn, timeout)
-  timeout = timeout or 2000
-  local start = vim.loop.now()
-  vim.wait(timeout, function()
-    return fn() or vim.loop.now() - start > timeout
-  end, 10)
-end
+local wait_for = require "tests.helpers.wait".wait_for
 
 local function count(tbl)
   local n = 0
