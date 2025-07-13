@@ -56,7 +56,7 @@ function M.evaluate_async(ast, numeric, callback)
   assert(type(callback) == "function", "evaluate_async expects a callback function")
 
   local initial_wolfram_code
-  local pcall_ok, pcall_result = pcall(wolfram_codegen.to_string, ast)
+  local pcall_ok, pcall_result = pcall(wolfram_codegen.ast_to_wolfram, ast)
   if not pcall_ok or pcall_result == nil then
     local err_msg = "Error converting AST to Wolfram code: " .. tostring(pcall_result)
     callback(nil, err_msg)

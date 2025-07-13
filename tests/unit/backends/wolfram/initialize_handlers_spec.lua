@@ -429,7 +429,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       mock_domain_handler_definitions["tungsten.domains.arithmetic.wolfram_handlers"] = nil
 
       wolfram_backend.reload_handlers()
-      local result = wolfram_backend.to_string(test_ast)
+      local result = wolfram_backend.ast_to_wolfram(test_ast)
 
       local override_log_found = false
       local expected_log_message = ("Wolfram Backend: Handler for node type '%s': high_prio_domain (Prio 200) overrides low_prio_domain (Prio 50)."):format(common_node_type)
@@ -478,7 +478,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       mock_domain_handler_definitions["tungsten.domains.arithmetic.wolfram_handlers"] = nil
 
       wolfram_backend.reload_handlers()
-      local result = wolfram_backend.to_string(test_ast)
+      local result = wolfram_backend.ast_to_wolfram(test_ast)
 
       local not_override_log_found = false
       local expected_log_message = ("Wolfram Backend: Handler for node type '%s' from low_prio_domain (Prio 50) NOT overriding existing from high_prio_domain (Prio 200)."):format(common_node_type)
@@ -549,7 +549,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       mock_domain_handler_definitions["tungsten.domains.arithmetic.wolfram_handlers"] = nil
 
       wolfram_backend.reload_handlers()
-      local result = wolfram_backend.to_string(test_ast)
+      local result = wolfram_backend.ast_to_wolfram(test_ast)
 
       local conflict_log_found = false
       local expected_log_message = ("Wolfram Backend: Handler for node type '%s': CONFLICT - %s and %s have same priority (%d). '%s' takes precedence (due to processing order). Consider adjusting priorities."):format(
@@ -616,7 +616,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       assert.is_true(success_log_found, "Expected debug log for successful handler loading not found. Logged: " .. simple_inspect(logger_notify_spy.calls))
 
       local test_ast = { type = "specific_op" }
-      local result = wolfram_backend.to_string(test_ast)
+      local result = wolfram_backend.ast_to_wolfram(test_ast)
       assert.spy(success_handler_spy_func).was.called(1)
       assert.are.equal("success_domain_output", result)
     end)
@@ -674,7 +674,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       assert.is_true(warning_log_found, "Expected WARN log for missing domain module (erroring require) not found or incorrect. Logged: " .. simple_inspect(logger_notify_spy.calls))
 
       local test_ast = { type = "good_op" }
-      local result = wolfram_backend.to_string(test_ast)
+      local result = wolfram_backend.ast_to_wolfram(test_ast)
       assert.spy(good_handler_spy_func).was.called(1)
       assert.are.equal("good_output", result)
 
@@ -712,7 +712,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
       assert.is_true(warning_log_found, "Expected WARN log for domain module without .handlers table not found. Logged: " .. simple_inspect(logger_notify_spy.calls))
 
       local test_ast = { type = "good_op_for_this_test" }
-      local result = wolfram_backend.to_string(test_ast)
+      local result = wolfram_backend.ast_to_wolfram(test_ast)
       assert.spy(good_handler_spy_func).was.called(1)
       assert.are.equal("good_output_nohandlers_test", result)
     end)

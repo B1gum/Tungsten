@@ -107,7 +107,7 @@ local function define_persistent_variable_command(_)
 
   logger.debug("Tungsten Debug", "Tungsten Debug: AST for '" ..var_name_str.. "' before to_string: " .. vim_inspect(definition_ast))
 
-  local conversion_ok, wolfram_definition_str_or_err = pcall(wolfram_backend.to_string, definition_ast)
+  local conversion_ok, wolfram_definition_str_or_err = pcall(wolfram_backend.ast_to_wolfram, definition_ast)
 
   logger.debug("Tungsten Debug", "Tungsten Debug: pcall result for to_string: conversion_ok=" .. tostring(conversion_ok) .. ", returned_value=" .. vim_inspect(wolfram_definition_str_or_err))
 
@@ -183,12 +183,12 @@ local function tungsten_solve_command(_)
       return
     end
 
-    local eq_wolfram_ok, eq_wolfram_str = pcall(wolfram_backend.to_string, eq_ast)
+    local eq_wolfram_ok, eq_wolfram_str = pcall(wolfram_backend.ast_to_wolfram, eq_ast)
     if not eq_wolfram_ok or not eq_wolfram_str then
       error_handler.notify_error("Solve", "Failed to convert equation.")
       return
     end
-    local var_wolfram_ok, var_wolfram_str = pcall(wolfram_backend.to_string, var_ast)
+    local var_wolfram_ok, var_wolfram_str = pcall(wolfram_backend.ast_to_wolfram, var_ast)
     if not var_wolfram_ok or not var_wolfram_str then
       error_handler.notify_error("Solve", "Failed to convert variable.")
       return
@@ -256,7 +256,7 @@ local function tungsten_solve_system_command(_)
 
     local eq_wolfram_strs = {}
     for _, eq_ast_node in ipairs(captured_equation_asts) do
-        local ok, str = pcall(wolfram_backend.to_string, eq_ast_node)
+        local ok, str = pcall(wolfram_backend.ast_to_wolfram, eq_ast_node)
         if not ok then
           error_handler.notify_error("SolveSystem", "Failed to convert an equation to Wolfram string: " .. tostring(str))
           return
@@ -266,7 +266,7 @@ local function tungsten_solve_system_command(_)
 
     local var_wolfram_strs = {}
     for _, var_ast_node in ipairs(variable_asts) do
-        local ok, str = pcall(wolfram_backend.to_string, var_ast_node)
+        local ok, str = pcall(wolfram_backend.ast_to_wolfram, var_ast_node)
          if not ok then
             error_handler.notify_error("SolveSystem", "Failed to convert a varianle to Wolfram string: " .. tostring(str))
             return

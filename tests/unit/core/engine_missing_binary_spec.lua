@@ -30,7 +30,7 @@ describe("engine missing binary feedback", function()
   end
 
   before_each(function()
-    mock_wolfram_codegen = { to_string = function() return 'wolfram_code' end }
+    mock_wolfram_codegen = { ast_to_wolfram = function() return 'wolfram_code' end }
     mock_config = {
       wolfram_path = 'mock_wolframscript',
       numeric_mode = false,

@@ -88,7 +88,7 @@ local function init_handlers()
     logger.debug("Tungsten Backend", "Wolfram Backend: Handlers initialized successfully.")
 end
 
-function M.to_string(ast)
+function M.ast_to_wolfram(ast)
     if not handlers_initialized then
         init_handlers()
     end

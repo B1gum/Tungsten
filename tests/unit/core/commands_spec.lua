@@ -123,7 +123,7 @@ describe("Tungsten core commands", function()
     end)
     mock_solver_module.solve_equation_async = mock_solver_solve_equation_async_spy
 
-    mock_wolfram_backend_module.to_string = spy.new(function(ast) return "wolfram(".. (ast.name or ast.id) ..")" end)
+    mock_wolfram_backend_module.ast_to_wolfram = spy.new(function(ast) return "wolfram(".. (ast.name or ast.id) ..")" end)
 
 
     commands_module = require("tungsten.core.commands")

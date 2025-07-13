@@ -14,10 +14,10 @@ describe("wolfram.reload_handlers", function()
   it("can be called multiple times without altering output", function()
     wolfram_backend.reload_handlers()
     local ast = { type = "number", value = 42 }
-    local first = wolfram_backend.to_string(ast)
+    local first = wolfram_backend.ast_to_wolfram(ast)
 
     wolfram_backend.reload_handlers()
-    local second = wolfram_backend.to_string(ast)
+    local second = wolfram_backend.ast_to_wolfram(ast)
 
     assert.are.equal(first, second)
   end)

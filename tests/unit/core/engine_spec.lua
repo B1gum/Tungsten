@@ -15,7 +15,7 @@ describe("tungsten.core.engine", function()
   local mock_async
   local mock_logger
 
-  local wolfram_to_string_spy
+  local ast_to_wolfram_spy
   local async_run_job_spy
   local logger_notify_spy
 
@@ -36,7 +36,7 @@ describe("tungsten.core.engine", function()
   end
 
   before_each(function()
-    mock_wolfram_codegen = { to_string = function() end }
+    mock_wolfram_codegen = { ast_to_wolfram = function() end }
     mock_config = {
       wolfram_path = "mock_wolframscript",
       numeric_mode = false,
@@ -60,13 +60,13 @@ describe("tungsten.core.engine", function()
     mock_logger.error = function(t,m) mock_logger.notify(m, mock_logger.levels.ERROR, { title = t }) end
 
 
-    wolfram_to_string_spy = spy.new(function(ast)
+    ast_to_wolfram_spy = spy.new(function(ast)
       if ast and ast.id == "error_ast" then
         return nil, "mock codegen error"
       end
       return "wolfram_code(" .. (ast.id or "nil") .. ")"
     end)
-    mock_wolfram_codegen.to_string = wolfram_to_string_spy
+    mock_wolfram_codegen.ast_to_wolfram = ast_to_wolfram_spy
 
     async_run_job_spy = spy.new(function(cmd, opts)
       if opts.on_exit then

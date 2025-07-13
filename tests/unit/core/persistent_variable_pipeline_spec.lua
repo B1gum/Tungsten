@@ -17,7 +17,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
   local mock_state_module
 
   local mock_parser_parse_spy
-  local mock_wolfram_to_string_spy
+  local mock_ast_to_wolfram_spy
   local mock_selection_get_visual_selection_spy
   local mock_insert_result_insert_result_spy
   local mock_logger_notify_spy
@@ -83,11 +83,11 @@ describe("Tungsten Persistent Variable Pipeline", function()
     end)
     mock_parser_module.parse = mock_parser_parse_spy
 
-    mock_wolfram_to_string_spy = spy.new(function(ast)
+    mock_ast_to_wolfram_spy = spy.new(function(ast)
       if not ast then return "Error: nil AST" end
       return "wolfram(" .. (ast.latex or ast.id or "unknown_ast") .. ")"
     end)
-    mock_wolfram_backend_module.to_string = mock_wolfram_to_string_spy
+    mock_wolfram_backend_module.ast_to_wolfram = mock_ast_to_wolfram_spy
 
     current_visual_selection_text = ""
     get_visual_selection_call_count = 0
@@ -123,7 +123,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
     _G.require = original_require
 
     if mock_parser_parse_spy and mock_parser_parse_spy.clear then mock_parser_parse_spy:clear() end
-    if mock_wolfram_to_string_spy and mock_wolfram_to_string_spy.clear then mock_wolfram_to_string_spy:clear() end
+    if mock_ast_to_wolfram_spy and mock_ast_to_wolfram_spy.clear then mock_ast_to_wolfram_spy:clear() end
     if mock_selection_get_visual_selection_spy and mock_selection_get_visual_selection_spy.clear then mock_selection_get_visual_selection_spy:clear() end
     if mock_insert_result_insert_result_spy and mock_insert_result_insert_result_spy.clear then mock_insert_result_insert_result_spy:clear() end
     if mock_logger_notify_spy and mock_logger_notify_spy.clear then mock_logger_notify_spy:clear() end
@@ -163,7 +163,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
 
       assert.spy(mock_parser_parse_spy).was.called_with("x * 2")
       local ast_for_eval = { type = "expression", latex = "x * 2", id = "ast_for_" .. ("x * 2"):gsub("%W", "") }
-      assert.spy(mock_wolfram_to_string_spy).was.called_with(ast_for_eval)
+      assert.spy(mock_ast_to_wolfram_spy).was.called_with(ast_for_eval)
 
       assert.spy(mock_async_run_job_spy).was.called(1)
       local cmd_args = mock_async_run_job_spy.calls[1].vals[1]
