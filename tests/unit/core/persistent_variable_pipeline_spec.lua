@@ -52,7 +52,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
       debug = false,
       cache_enabled = false,
       persistent_variable_assignment_operator = ":=",
-      wolfram_timeout_ms = 1000
+      process_timeout_ms = 1000
     }
     mock_state_module = {
       persistent_variables = {},

@@ -37,10 +37,10 @@ describe("tungsten.setup", function()
 
   it("overrides defaults with user options", function()
     local snapshot = vim.deepcopy(defaults)
-    tungsten.setup({ debug = true, wolfram_timeout_ms = 10 })
+    tungsten.setup({ debug = true, process_timeout_ms = 10 })
     local cfg = require('tungsten.config')
     assert.is_true(cfg.debug)
-    assert.are.equal(10, cfg.wolfram_timeout_ms)
+    assert.are.equal(10, cfg.process_timeout_ms)
     assert.are.same(snapshot, defaults)
   end)
 

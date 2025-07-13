@@ -37,7 +37,7 @@ describe("tungsten.core.solver", function()
         mock_config_module = {
             wolfram_path = "mock_wolframscript_path",
             debug = false,
-            wolfram_timeout_ms = 5000,
+            process_timeout_ms = 5000,
         }
         mock_logger_module = {
             levels = { ERROR = 1, WARN = 2, INFO = 3, DEBUG = 4 },
@@ -189,12 +189,12 @@ describe("tungsten.core.solver", function()
             assert.spy(callback_spy).was.called_with(nil, "Solve::nsmet: no solution")
         end)
 
-        it("should use default timeout if config.wolfram_timeout_ms is nil", function()
-            mock_config_module.wolfram_timeout_ms = nil
-            
+        it("should use default timeout if config.process_timeout_ms is nil", function()
+            mock_config_module.process_timeout_ms = nil
+
             package.loaded['tungsten.util.async'] = nil
             local reloaded_async = require('tungsten.util.async')
-            
+
             reloaded_async.run_job = spy.new(function(cmd, opts)
                 if opts.on_exit then opts.on_exit(0, "{{x -> 1}}", "") end
                 return { id = 6, cancel = function() end, is_active = function() return false end }
@@ -204,7 +204,7 @@ describe("tungsten.core.solver", function()
 
             reloaded_solver.solve_equation_async({"def_timeout==1"}, {"def_timeout"}, false, callback_spy)
 
-            assert.is_nil(mock_config_module.wolfram_timeout_ms)
+            assert.is_nil(mock_config_module.process_timeout_ms)
             assert.spy(callback_spy).was.called()
         end)
     end)

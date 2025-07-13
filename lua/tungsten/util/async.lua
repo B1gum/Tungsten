@@ -20,7 +20,7 @@ local function spawn_process(cmd, opts)
   opts = opts or {}
   local cache_key = opts.cache_key
   local on_exit = opts.on_exit or opts.on_complete
-  local timeout = opts.timeout or config.wolfram_timeout_ms or 10000
+  local timeout = opts.timeout or config.process_timeout_ms or 10000
 
   local stdout_chunks, stderr_chunks = {}, {}
 
@@ -81,7 +81,7 @@ end
   if timeout then
     vim.defer_fn(function()
       if not completed then
-        logger.warn("Tungsten", string.format("Tungsten: Wolframscript job %d timed out after %d ms.", handle.id, timeout))
+        logger.warn("Tungsten", string.format("Tungsten: job %d timed out after %d ms.", handle.id, timeout))
         handle.cancel()
       end
     end, timeout)

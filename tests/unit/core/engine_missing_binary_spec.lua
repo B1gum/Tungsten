@@ -36,7 +36,7 @@ describe("engine missing binary feedback", function()
       numeric_mode = false,
       debug = false,
       cache_enabled = false,
-      wolfram_timeout_ms = 5000,
+      process_timeout_ms = 5000,
     }
     mock_state = { cache = {}, active_jobs = {}, persistent_variables = {} }
     mock_logger = { notify = function() end, levels = { ERROR=1, WARN=2, INFO=3, DEBUG=4 } }

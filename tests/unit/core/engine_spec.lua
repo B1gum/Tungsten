@@ -42,7 +42,7 @@ describe("tungsten.core.engine", function()
       numeric_mode = false,
       debug = false,
       cache_enabled = true,
-      wolfram_timeout_ms = 5000,
+      process_timeout_ms = 5000,
     }
     mock_state = {
       cache = require "tungsten.cache".new(100, nil),
