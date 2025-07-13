@@ -26,7 +26,6 @@ function M.mock_jobstart()
       end
     end
 
-    print("Warning: Unhandled vim.fn.jobstart call in mock: " .. cmd_str)
     if opts and opts.on_exit then
       vim.schedule(function()
         opts.on_exit(0, 1, "exit")
@@ -148,7 +147,6 @@ end
 function M.set_plugin_config(config_path, value)
   local config_module = require('tungsten.config')
   if not config_module then
-    print("Error: tungsten.config module not found.")
     return
   end
 
@@ -158,7 +156,6 @@ function M.set_plugin_config(config_path, value)
   local temp_table_for_original = config_module
   for i = 1, #config_path - 1 do
     if temp_table_for_original[config_path[i]] == nil then
-      print("Error: Invalid config path for storing original: " .. original_key_path)
       return
     end
     temp_table_for_original = temp_table_for_original[config_path[i]]
@@ -169,7 +166,6 @@ function M.set_plugin_config(config_path, value)
 
   for i = 1, #config_path - 1 do
     if current_table[config_path[i]] == nil then
-      print("Error: Invalid config path for setting value: " .. original_key_path)
       return
     end
     current_table = current_table[config_path[i]]
@@ -215,13 +211,5 @@ function M.cleanup(bufnr_to_delete)
   end
 
 end
-
-function M.inspect_table(tbl, msg)
-  if msg then
-    print(msg)
-  end
-  print(vim.inspect(tbl))
-end
-M.inspect = vim.inspect
 
 return M

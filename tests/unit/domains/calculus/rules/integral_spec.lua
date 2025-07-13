@@ -167,11 +167,6 @@ describe("Calculus Integral Rule: tungsten.domains.calculus.rules.integral", fun
               upper_bound = upper_b
             }
             local parsed = parse_input(input_str)
-            if not require("luassert.match").equals(expected_ast, parsed) then
-                print("DEBUG: Test may fail. Input:", input_str)
-                print("DEBUG: Expected AST:", vim.inspect(expected_ast))
-                print("DEBUG: Parsed AST:", vim.inspect(parsed))
-            end
             assert.are.same(expected_ast, parsed)
           end)
         end

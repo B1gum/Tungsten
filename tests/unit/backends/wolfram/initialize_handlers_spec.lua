@@ -94,17 +94,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
              if mt then
                 local mt_keys = {}
                 for k, v_type in pairs(mt) do table.insert(mt_keys, k .. " (type: " .. type(v_type) .. ")") end
-             else
-                print("DIAGNOSTIC: get_domain_priority_spy is a function with no metatable.")
              end
-        end
-
-        if spy.is_spy and type(spy.is_spy) == "function" then
-            if not spy.is_spy(get_domain_priority_spy) then
-                print("DIAGNOSTIC: spy.is_spy(get_domain_priority_spy) returned FALSE!")
-            end
-        elseif not spy.is_spy or type(spy.is_spy) ~= "function" then
-             print("DIAGNOSTIC: spy.is_spy function itself is not available or not a function (type: " .. type(spy.is_spy) .. ").")
         end
 
         tungsten_registry_module.get_domain_priority = get_domain_priority_spy
@@ -205,33 +195,18 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
             simple_inspect(render_render_spy)))
     end
    render_render_spy:callback(function(ast_node, handlers_table)
-     print("\n[[[[[ render_render_spy CALLBACK START ]]]]]")
      if ast_node and ast_node.type then
-       print(string.format("    RENDER_SPY: ast_node.type = %s", ast_node.type))
        if handlers_table then
          local handler_func_from_table = handlers_table[ast_node.type]
-         print(string.format("    RENDER_SPY: handlers_table['%s'] is type %s, value: %s", ast_node.type, type(handler_func_from_table), tostring(handler_func_from_table)))
 
          if handler_func_from_table then
            local actual_handler_to_call = handler_func_from_table
-           local spy_name = "unknown_function_or_not_a_direct_test_spy"
-
-           print(string.format("    RENDER_SPY: Attempting to call handler. Identified (best effort) as: %s", spy_name))
 
            local result = actual_handler_to_call(ast_node, function() return "dummy_recursive_call_output" end)
-           print(string.format("    RENDER_SPY: Handler returned: %s", tostring(result)))
-           print("[[[[[ render_render_spy CALLBACK END (handler called) ]]]]]")
            return result
-         else
-           print(string.format("    RENDER_SPY: No handler in handlers_table for type '%s'", ast_node.type))
          end
-       else
-         print("    RENDER_SPY: handlers_table is nil")
        end
-     else
-       print("    RENDER_SPY: ast_node or ast_node.type is nil")
      end
-     print("[[[[[ render_render_spy CALLBACK END (FALLBACK) ]]]]]")
      return "mock_render_FALLBACK_NO_HANDLER_FOR_TYPE"
    end)
 
@@ -535,8 +510,6 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
 
       get_domain_priority_spy:callback(function(domain_name)
         local received_domain_name_str = tostring(domain_name)
-        print("[[[[[ CONFLICT TEST SPY_CALLBACK START for get_domain_priority ]]]]]")
-        print(string.format("    CONFLICT_TEST_CALLBACK: Received domain_name = '%s' (type: %s)", received_domain_name_str, type(domain_name)))
 
         local priority
 
@@ -546,10 +519,8 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
         elseif received_domain_name_str == "arithmetic" then priority = 100
         else
             priority = 0
-            print(string.format("    CONFLICT_TEST_CALLBACK: Domain '%s' not listed, defaulting to 0.", received_domain_name_str))
         end
-        print(string.format("    CONFLICT_TEST_CALLBACK: For '%s', returning %s", received_domain_name_str, tostring(priority)))
-        print("[[[[[ CONFLICT TEST SPY_CALLBACK END for get_domain_priority ]]]]]")
+
         return priority
       end)
 

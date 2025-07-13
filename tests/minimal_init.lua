@@ -13,7 +13,6 @@ end
 
 local home = os.getenv("HOME")
 if not home then
-  print("Error: HOME environment variable not set.")
   return
 end
 
@@ -30,8 +29,6 @@ local project_root = vim.fn.getcwd()
 if project_root and project_root ~= "" then
   package.path = package.path .. ";" .. project_root .. "/lua/?.lua"
   package.path = package.path .. ";" .. project_root .. "/lua/?/init.lua"
-else
-  print("Error: Could not determine project root.")
 end
 
 local plenary_path = home .. "/.local/share/nvim/lazy/plenary.nvim"
