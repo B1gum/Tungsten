@@ -4,7 +4,7 @@
 local mock_utils = require "tests.helpers.mock_utils"
 
 describe("tungsten.setup", function()
-  local tungsten
+  local tungsten = require "tungsten"
   local defaults
 
   local function reload_modules()
@@ -49,13 +49,14 @@ describe("tungsten.setup", function()
   end)
 
   it("creates user commands from registry", function()
-  it("creates user commands from registry", function()
     local mock_registry = {
       commands = {
         { name = 'MockCmd', func = function() end, opts = { desc = 'mock' } },
-      },
-      register_command = function(self, cmd) table.insert(self.commands, cmd) end,
+      }
     }
+    function mock_registry.register_command(cmd)
+      table.insert(mock_registry.commands, cmd)
+    end
 
     package.loaded['tungsten.core.registry'] = mock_registry
 
