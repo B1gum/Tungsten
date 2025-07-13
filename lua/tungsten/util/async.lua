@@ -38,11 +38,11 @@ local function spawn_process(cmd, opts)
     process_queue()
 
     if on_exit then
-      on_exit(
-        code,
-        table.concat(stdout_chunks, '\n'):gsub('^%s*(.-)%s*$', '%1'),
-        table.concat(stderr_chunks, '\n'):gsub('^%s*(.-)%s*$', '%1')
-      )
+      local stdout = table.concat(stdout_chunks, '\n'):gsub('^%s*(.-)%s*$', '%1')
+      local stderr = table.concat(stderr_chunks, '\n'):gsub('^%s*(.-)%s*$', '%1')
+      vim.schedule(function()
+        on_exit(code, stdout, stderr)
+      end)
     end
 end
 

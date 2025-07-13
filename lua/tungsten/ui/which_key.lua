@@ -42,7 +42,7 @@ local mappings = {
 }
 
 if config.enable_default_mappings then
-  wk.register(mappings)
+  wk.add(mappings)
 end
 
 return { mappings = mappings }

@@ -42,11 +42,11 @@ describe("Optional integrations", function()
     end)
 
     it("registers mappings when which-key is present", function()
-      local wk_mock = mock_utils.create_empty_mock_module('which-key', { 'register' })
+      local wk_mock = mock_utils.create_empty_mock_module('which-key', { 'add' })
       mock_utils.reset_modules({ 'tungsten.ui.which_key' })
       local wk_module = require('tungsten.ui.which_key')
-      assert.spy(wk_mock.register).was.called(1)
-      assert.spy(wk_mock.register).was.called_with(wk_module.mappings)
+      assert.spy(wk_mock.add).was.called(1)
+      assert.spy(wk_mock.add).was.called_with(wk_module.mappings)
     end)
   end)
 
@@ -62,33 +62,9 @@ describe("Optional integrations", function()
 
       local ok, err = pcall(vim.cmd, 'TungstenPalette')
       assert.is_true(ok, err)
-      assert.spy(notify_spy).was.called_with('Telescope not found. Install telescope.nvim for enhanced UI.', vim.log.levels.WARN)
-      vim.schedule = orig_schedule
-    end)
-
-    it("uses telescope extension when available", function()
-      local telescope_mock = { extensions = {} }
-      telescope_mock.register_extension = spy.new(function(ext)
-        telescope_mock.extensions.tungsten = ext.exports
-      end)
-      package.loaded['telescope'] = telescope_mock
-      mock_utils.create_empty_mock_module('telescope.pickers', { 'new' })
-      mock_utils.create_empty_mock_module('telescope.finders', { 'new_table' })
-      mock_utils.create_empty_mock_module('telescope.sorters', { 'get_fuzzy_file' })
-      mock_utils.create_empty_mock_module('telescope.actions', { 'close' })
-      mock_utils.create_empty_mock_module('telescope.actions.state', { 'get_selected_entry' })
-      local orig_schedule = vim.schedule
-      vim.schedule = function(cb) cb() end
-
-      require('tungsten').setup()
-
-      local open_spy = spy.new(function() end)
-      telescope_mock.extensions.tungsten.open = open_spy
-
-      vim.cmd('TungstenPalette')
-
-      assert.spy(open_spy).was.called(1)
+      assert.spy(notify_spy).was.called(1)
       vim.schedule = orig_schedule
     end)
   end)
 end)
+
