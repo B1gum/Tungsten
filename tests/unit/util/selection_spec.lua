@@ -1,8 +1,9 @@
 -- tests/unit/util/selection_spec.lua
 -- Unit tests for the selection utility module.
 
-local spy = require 'luassert.spy'
-local vim_test_env = require 'tests.helpers.vim_test_env'
+local spy = require "luassert.spy"
+local vim_test_env = require "tests.helpers.vim_test_env"
+local mock_utils = require "tests.helpers.mock_utils"
 
 describe("tungsten.util.selection", function()
   local selection_module
@@ -13,12 +14,6 @@ describe("tungsten.util.selection", function()
   local modules_to_clear_from_cache = {
     'tungsten.util.selection',
   }
-
-  local function clear_modules_from_cache_func()
-    for _, name in ipairs(modules_to_clear_from_cache) do
-      package.loaded[name] = nil
-    end
-  end
 
   before_each(function()
     _G.vim = _G.vim or {}
@@ -38,7 +33,7 @@ describe("tungsten.util.selection", function()
       return {}
     end)
 
-    clear_modules_from_cache_func()
+    mock_utils.reset_modules(modules_to_clear_from_cache)
     selection_module = require("tungsten.util.selection")
   end)
 
@@ -53,7 +48,7 @@ describe("tungsten.util.selection", function()
     _G.vim.fn.getpos = original_vim_fn_getpos
     _G.vim.api.nvim_buf_get_text = original_vim_api_nvim_buf_get_text
 
-    clear_modules_from_cache_func()
+    mock_utils.reset_modules(modules_to_clear_from_cache)
 
     if vim_test_env and vim_test_env.teardown then
       vim_test_env.teardown()

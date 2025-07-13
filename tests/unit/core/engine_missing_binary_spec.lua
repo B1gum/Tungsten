@@ -1,5 +1,6 @@
 
-local spy = require 'luassert.spy'
+local spy = require "luassert.spy"
+local mock_utils = require "tests.helpers.mock_utils"
 
 describe("engine missing binary feedback", function()
   local engine
@@ -15,7 +16,7 @@ describe("engine missing binary feedback", function()
   local original_require
   local original_vim_schedule
 
-  local modules_to_clear = {
+  local modules_to_clear_from_cache = {
     'tungsten.core.engine',
     'tungsten.backends.wolfram',
     'tungsten.config',
@@ -23,12 +24,6 @@ describe("engine missing binary feedback", function()
     'tungsten.util.async',
     'tungsten.util.logger',
   }
-
-  local function clear_modules()
-    for _, name in ipairs(modules_to_clear) do
-      package.loaded[name] = nil
-    end
-  end
 
   local function ast()
     return { type = 'expression', id = 'test_ast' }
@@ -70,14 +65,14 @@ describe("engine missing binary feedback", function()
     original_vim_schedule = vim.schedule
     vim.schedule = function(fn) fn() end
 
-    clear_modules()
+    mock_utils.reset_modules(modules_to_clear_from_cache)
     engine = require('tungsten.core.engine')
   end)
 
   after_each(function()
     _G.require = original_require
     vim.schedule = original_vim_schedule
-    clear_modules()
+    mock_utils.reset_modules(modules_to_clear_from_cache)
   end)
 
   local function run_with_code(code)

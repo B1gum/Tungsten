@@ -2,15 +2,12 @@
 
 local logger_module
 local vim_notify_spy
-local spy = require 'luassert.spy'
-
-local function clear_modules()
-  package.loaded['tungsten.util.logger'] = nil
-end
+local spy = require "luassert.spy"
+local mock_utils = require "tests.helpers.mock_utils"
 
 describe("util.logger", function()
   before_each(function()
-    clear_modules()
+    mock_utils.reset_modules({ "tungsten.util.logger" })
     vim_notify_spy = spy.new(function() end)
     _G.vim = _G.vim or {}
     _G.vim.notify = vim_notify_spy

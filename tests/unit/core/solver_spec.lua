@@ -1,9 +1,9 @@
 -- tests/unit/core/solver_spec.lua
 -- Unit tests for the Tungsten equation solver.
----------------------------------------------------------------------
 
-local spy = require 'luassert.spy'
-local match = require 'luassert.match'
+local spy = require "luassert.spy"
+local match = require "luassert.match"
+local mock_utils = require "tests.helpers.mock_utils"
 
 local solver
 local solution_helper
@@ -23,17 +23,11 @@ local modules_to_clear_from_cache = {
     'tungsten.util.logger',
 }
 
-local function clear_modules_from_cache_func()
-    for _, name in ipairs(modules_to_clear_from_cache) do
-        package.loaded[name] = nil
-    end
-end
-
 describe("tungsten.core.solver", function()
     local original_require
 
     before_each(function()
-        clear_modules_from_cache_func()
+        mock_utils.reset_modules(modules_to_clear_from_cache)
 
         mock_evaluator_module = {
             substitute_persistent_vars = spy.new(function(wolfram_str)
@@ -74,14 +68,14 @@ describe("tungsten.core.solver", function()
             if package.loaded[module_path] then return package.loaded[module_path] end
             return original_require(module_path)
         end
-        
+
         solver = require("tungsten.core.solver")
         solution_helper = require("tungsten.util.wolfram_solution")
     end)
 
     after_each(function()
         _G.require = original_require
-        clear_modules_from_cache_func()
+        mock_utils.reset_modules(modules_to_clear_from_cache)
     end)
 
       describe("parse_wolfram_solution", function()

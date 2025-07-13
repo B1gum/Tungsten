@@ -1,8 +1,9 @@
 local wolfram_backend
+local mock_utils = require "tests.helpers.mock_utils"
 
 local function clear_module()
-  package.loaded['tungsten.backends.wolfram'] = nil
-  wolfram_backend = require 'tungsten.backends.wolfram'
+  mock_utils.reset_modules({"tungsten.backends.wolfram"})
+  wolfram_backend = require "tungsten.backends.wolfram"
 end
 
 describe("wolfram.reload_handlers", function()

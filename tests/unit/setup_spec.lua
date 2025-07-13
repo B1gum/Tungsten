@@ -1,19 +1,22 @@
 -- tests/unit/setup_spec.lua
 -- Tests for the Tungsten setup function
 
+local mock_utils = require "tests.helpers.mock_utils"
+
 describe("tungsten.setup", function()
   local tungsten
   local defaults
 
   local function reload_modules()
-    package.loaded['tungsten'] = nil
-    package.loaded['tungsten.config'] = nil
-    package.loaded['tungsten.core.commands'] = {}
-    package.loaded['tungsten.ui.which_key'] = {}
-    package.loaded['tungsten.ui'] = {}
-    package.loaded['tungsten.core'] = {}
-    defaults = require('tungsten.config')
-    tungsten = require('tungsten')
+    mock_utils.reset_modules({
+      'tungsten',
+      'tungsten.config',
+      'tungsten.core.commands',
+      'tungsten.core.registry',
+      'tungsten.ui.which_key',
+      'tungsten.ui',
+      'tungsten.core',
+    })
   end
 
   before_each(reload_modules)
@@ -46,12 +49,14 @@ describe("tungsten.setup", function()
   end)
 
   it("creates user commands from registry", function()
+  it("creates user commands from registry", function()
     local mock_registry = {
       commands = {
         { name = 'MockCmd', func = function() end, opts = { desc = 'mock' } },
       },
       register_command = function(self, cmd) table.insert(self.commands, cmd) end,
     }
+
     package.loaded['tungsten.core.registry'] = mock_registry
 
     local create_spy = require('luassert.spy').new(function() end)

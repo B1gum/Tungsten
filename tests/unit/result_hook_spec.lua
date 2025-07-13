@@ -1,7 +1,8 @@
 -- tests/unit/result_hook_spec.lua
 
 
-local spy = require 'luassert.spy'
+local spy = require "luassert.spy"
+local mock_utils = require "tests.helpers.mock_utils"
 
 describe("result hook", function()
   local insert_result
@@ -11,9 +12,7 @@ describe("result hook", function()
   local orig = {}
 
   before_each(function()
-    for _,mod in ipairs({'tungsten.util.insert_result','tungsten'}) do
-      package.loaded[mod] = nil
-    end
+    mock_utils.reset_modules({ "tungsten.util.insert_result", "tungsten" })
 
     _G.vim = _G.vim or {}
     _G.vim.fn = _G.vim.fn or {}

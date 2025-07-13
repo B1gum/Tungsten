@@ -1,8 +1,9 @@
 -- tests/unit/util/insert_result_spec.lua
 -- Unit tests for the insert_result utility function.
 
-local spy = require 'luassert.spy'
-local vim_test_env = require 'tests.helpers.vim_test_env'
+local spy = require "luassert.spy"
+local vim_test_env = require "tests.helpers.vim_test_env"
+local mock_utils = require "tests.helpers.mock_utils"
 
 describe("tungsten.util.insert_result", function()
   local insert_result
@@ -13,12 +14,6 @@ describe("tungsten.util.insert_result", function()
   local modules_to_clear_from_cache = {
     'tungsten.util.insert_result',
   }
-
-  local function clear_modules_from_cache_func()
-    for _, name in ipairs(modules_to_clear_from_cache) do
-      package.loaded[name] = nil
-    end
-  end
 
   before_each(function()
     _G.vim = _G.vim or {}
@@ -66,7 +61,7 @@ describe("tungsten.util.insert_result", function()
       return original_vim_fn_mode and original_vim_fn_mode(idx) or 'n'
     end)
 
-    clear_modules_from_cache_func()
+    mock_utils.reset_modules(modules_to_clear_from_cache)
     insert_result = require("tungsten.util.insert_result")
   end)
 
@@ -83,7 +78,7 @@ describe("tungsten.util.insert_result", function()
     _G.vim.fn.mode = original_vim_fn_mode
     _G.vim.api.nvim_buf_get_lines = original_vim_api_nvim_buf_get_lines
 
-    clear_modules_from_cache_func()
+    mock_utils.reset_modules(modules_to_clear_from_cache)
 
     if vim_test_env and vim_test_env.teardown then
       vim_test_env.teardown()

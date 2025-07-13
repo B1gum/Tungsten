@@ -1,8 +1,9 @@
 -- tungsten/tests/unit/core/commands_spec.lua
 
-local spy = require 'luassert.spy'
-local vim_test_env = require 'tests.helpers.vim_test_env'
-local match = require 'luassert.match'
+local spy = require "luassert.spy"
+local vim_test_env = require "tests.helpers.vim_test_env"
+local match = require "luassert.match"
+local mock_utils = require "tests.helpers.mock_utils"
 
 describe("Tungsten core commands", function()
   local commands_module
@@ -42,12 +43,6 @@ describe("Tungsten core commands", function()
     'tungsten.backends.wolfram'
   }
 
-  local function clear_modules_from_cache()
-    for _, name in ipairs(modules_to_clear_from_cache) do
-      package.loaded[name] = nil
-    end
-  end
-
   before_each(function()
     mock_config_module = {
       numeric_mode = false,
@@ -77,7 +72,7 @@ describe("Tungsten core commands", function()
       return original_require(module_path)
     end
 
-    clear_modules_from_cache()
+    mock_utils.reset_modules(modules_to_clear_from_cache)
 
     vim_test_env.set_plugin_config({'numeric_mode'}, false)
 
@@ -137,7 +132,7 @@ describe("Tungsten core commands", function()
   after_each(function()
     _G.require = original_require
     vim_test_env.cleanup()
-    clear_modules_from_cache()
+    mock_utils.reset_modules(modules_to_clear_from_cache)
   end)
 
   describe(":TungstenEvaluate", function()

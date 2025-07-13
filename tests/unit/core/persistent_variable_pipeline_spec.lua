@@ -1,9 +1,9 @@
 -- tungsten/tests/unit/core/persistent_variable_pipeline_spec.lua
 -- Unit tests for the persistent variable definition and evaluation pipeline.
--------------------------------------------------------------------------------
 
-local spy = require 'luassert.spy'
-local match = require 'luassert.match'
+local spy = require "luassert.spy"
+local match = require "luassert.match"
+local mock_utils = require "tests.helpers.mock_utils"
 
 describe("Tungsten Persistent Variable Pipeline", function()
   local commands_module
@@ -40,12 +40,6 @@ describe("Tungsten Persistent Variable Pipeline", function()
     'tungsten.util.logger',
   }
 
-  local function clear_modules_from_cache()
-    for _, name in ipairs(modules_to_clear_from_cache) do
-      package.loaded[name] = nil
-    end
-  end
-
   before_each(function()
     mock_parser_module = {}
     mock_wolfram_backend_module = {}
@@ -81,7 +75,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
       return original_require(module_path)
     end
 
-    clear_modules_from_cache()
+    mock_utils.reset_modules(modules_to_clear_from_cache)
 
     mock_parser_parse_spy = spy.new(function(latex_str)
       if string.find(latex_str, "error") then return nil end
@@ -127,7 +121,6 @@ describe("Tungsten Persistent Variable Pipeline", function()
 
   after_each(function()
     _G.require = original_require
-    package.loaded['tungsten.util.async'] = nil
 
     if mock_parser_parse_spy and mock_parser_parse_spy.clear then mock_parser_parse_spy:clear() end
     if mock_wolfram_to_string_spy and mock_wolfram_to_string_spy.clear then mock_wolfram_to_string_spy:clear() end
@@ -136,7 +129,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
     if mock_logger_notify_spy and mock_logger_notify_spy.clear then mock_logger_notify_spy:clear() end
     if mock_async_run_job_spy and mock_async_run_job_spy.clear then mock_async_run_job_spy:clear() end
 
-    clear_modules_from_cache()
+    mock_utils.reset_modules(modules_to_clear_from_cache)
   end)
 
   local function simulate_wolfram_eval(stdout_lines, exit_code)

@@ -1,7 +1,8 @@
 -- tungsten/tests/unit/backends/wolfram/initialize_handlers_spec.lua
 
-local spy = require('luassert.spy')
-local test_env = require('tests.helpers.vim_test_env')
+local spy = require "luassert.spy"
+local test_env = require "tests.helpers.vim_test_env"
+local mock_utils = require "tests.helpers.mock_utils"
 
 local function simple_inspect(tbl)
   if type(tbl) ~= "table" then
@@ -51,18 +52,20 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
   }
 
   local function clear_tungsten_modules_from_cache()
-    package.loaded['tungsten.backends.wolfram'] = nil
-    package.loaded['tungsten.config'] = nil
-    package.loaded['tungsten.core.registry'] = nil
-    package.loaded['tungsten.util.logger'] = nil
-    package.loaded['tungsten.core.render'] = nil
+    mock_utils.reset_modules({
+      'tungsten.backends.wolfram',
+      'tungsten.config',
+      'tungsten.core.registry',
+      'tungsten.util.logger',
+      'tungsten.core.render',
+    })
     for _, path in ipairs(all_test_domain_module_paths) do
       package.loaded[path] = nil
     end
     if mock_domain_handler_definitions then
-        for path, _ in pairs(mock_domain_handler_definitions) do
-            package.loaded[path] = nil
-        end
+      for path, _ in pairs(mock_domain_handler_definitions) do
+        package.loaded[path] = nil
+      end
     end
   end
 

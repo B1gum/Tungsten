@@ -1,9 +1,10 @@
 -- tests/unit/core/engine_spec.lua
 -- Unit tests for the core evaluation engine of Tungsten.
 
-local spy = require 'luassert.spy'
-local match = require 'luassert.match'
-local vim_test_env = require 'tests.helpers.vim_test_env'
+local spy = require "luassert.spy"
+local match = require "luassert.match"
+local vim_test_env = require "tests.helpers.vim_test_env"
+local mock_utils = require "tests.helpers.mock_utils"
 
 describe("tungsten.core.engine", function()
   local engine
@@ -29,12 +30,6 @@ describe("tungsten.core.engine", function()
     'tungsten.util.async',
     'tungsten.util.logger',
   }
-
-  local function clear_modules_from_cache()
-    for _, name in ipairs(modules_to_clear_from_cache) do
-      package.loaded[name] = nil
-    end
-  end
 
   local function ast_node(id)
     return { type = "expression", id = id or "test_ast" }
@@ -100,14 +95,14 @@ describe("tungsten.core.engine", function()
       callback()
     end
 
-    clear_modules_from_cache()
+    mock_utils.reset_modules(modules_to_clear_from_cache)
     engine = require("tungsten.core.engine")
   end)
 
   after_each(function()
     _G.require = original_require
     vim.schedule = original_vim_schedule
-    clear_modules_from_cache()
+    mock_utils.reset_modules(modules_to_clear_from_cache)
     vim_test_env.cleanup()
   end)
 

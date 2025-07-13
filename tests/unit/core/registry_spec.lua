@@ -1,9 +1,9 @@
 -- tests/unit/core/registry_spec.lua
 -- Unit tests for the Tungsten grammar and domain registry.
----------------------------------------------------------------------
 
-local spy = require 'luassert.spy'
-local match = require 'luassert.match'
+local spy = require "luassert.spy"
+local match = require "luassert.match"
+local mock_utils = require "tests.helpers.mock_utils"
 
 local mock_pattern_mt = {}
 local function create_mock_pattern(name)
@@ -57,12 +57,6 @@ describe("tungsten.core.registry", function()
     'tungsten.config',
   }
 
-  local function clear_modules_from_cache()
-    for _, name in ipairs(modules_to_clear_from_cache) do
-      package.loaded[name] = nil
-    end
-  end
-
   local function reset_registry_state_in_module()
     if registry_module then
       registry_module.domains_metadata = {}
@@ -88,7 +82,7 @@ describe("tungsten.core.registry", function()
       return original_require(module_path)
     end
 
-    clear_modules_from_cache()
+    mock_utils.reset_modules(modules_to_clear_from_cache)
 
     mock_lpeg_P_spy = spy.new(function(arg)
       if type(arg) == "table" and arg[1] == "Expression" then
@@ -131,7 +125,7 @@ describe("tungsten.core.registry", function()
     if mock_lpeg_V_spy and mock_lpeg_V_spy.clear then mock_lpeg_V_spy:clear() end
     if mock_logger_notify_spy and mock_logger_notify_spy.clear then mock_logger_notify_spy:clear() end
 
-    clear_modules_from_cache()
+    mock_utils.reset_modules(modules_to_clear_from_cache)
   end)
 
   describe("M.register_domain_metadata(name, metadata)", function()
