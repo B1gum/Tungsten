@@ -51,6 +51,8 @@ local function tungsten_toggle_debug_mode_command(_)
 end
 
 local function tungsten_status_command(_)
+  local status_window = require "tungsten.ui.status_window"
+  status_window.open()
   local summary = evaluator.get_active_jobs_summary()
   logger.info("Tungsten", summary)
 end
@@ -341,10 +343,7 @@ M.commands = {
   },
   {
     name = "TungstenStatus",
-    func = function()
-      local summary = evaluator.get_active_jobs_summary()
-      require('tungsten.util.logger').info('Tungsten', summary)
-    end,
+    func = tungsten_status_command,
     opts = { desc = "Show Tungsten job status" }
   },
 }
