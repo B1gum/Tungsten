@@ -1,4 +1,3 @@
-package.path = "./lua/?.lua;./lua/?/init.lua;" .. package.path
 
 local lpeg = require "lpeglabel"
 local P, V, C, R, S = lpeg.P, lpeg.V, lpeg.C, lpeg.R, lpeg.S

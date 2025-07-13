@@ -1,5 +1,4 @@
 -- tests/unit/core/semantic_pass_spec.lua
-package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
 local ast = require 'tungsten.core.ast'
 local semantic = require 'tungsten.core.semantic_pass'

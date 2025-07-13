@@ -1,8 +1,6 @@
 -- tests/unit/domains/differential_equations/wolfram_handlers_spec.lua
 -- Busted tests for the differential equations Wolfram handlers.
 
-package.path = "./lua/?.lua;./lua/?/init.lua;" .. package.path
-
 describe("Differential Equations Wolfram Handlers", function()
   local handlers
   local mock_render

@@ -2,8 +2,6 @@
 -- Unit tests for the Tungsten equation solver.
 ---------------------------------------------------------------------
 
-local vim_test_env = require 'tests.helpers.vim_test_env'
-
 local spy = require 'luassert.spy'
 local match = require 'luassert.match'
 

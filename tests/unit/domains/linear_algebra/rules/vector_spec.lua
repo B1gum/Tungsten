@@ -1,7 +1,5 @@
 -- tungsten/tests/unit/domains/linear_algebra/rules/vector_spec.lua
 
-package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
-
 local lpeg = require "lpeglabel"
 local P, C = lpeg.P, lpeg.C
 

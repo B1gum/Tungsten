@@ -1,7 +1,7 @@
 -- tests/unit/domains/differential_equations/commands_spec.lua
+
 local spy = require 'luassert.spy'
 local match = require 'luassert.match'
-local vim_test_env = require 'tests.helpers.vim_test_env'
 
 describe("Tungsten Differential Equations Commands", function()
     local de_commands

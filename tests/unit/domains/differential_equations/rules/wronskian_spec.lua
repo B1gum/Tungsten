@@ -1,8 +1,6 @@
 -- tests/unit/domains/differential_equations/rules/wronskian_spec.lua
 -- Busted tests for the Wronskian parsing rule.
 
-package.path = "./lua/?.lua;./lua/?/init.lua;" .. package.path
-
 local lpeg = require "lpeglabel"
 local P, V, C, R, S, Ct = lpeg.P, lpeg.V, lpeg.C, lpeg.R, lpeg.S, lpeg.Ct
 

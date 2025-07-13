@@ -1,5 +1,4 @@
 -- tests/unit/domains/linear_algebra/rules/inverse_spec.lua
-package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
 local lpeg = require "lpeglabel"
 local P, C, R, S = lpeg.P, lpeg.C, lpeg.R, lpeg.S

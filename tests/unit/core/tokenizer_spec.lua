@@ -1,8 +1,6 @@
 -- tests/unit/core/tokenizer_spec.lua
 -- Unit tests for the tokenizer module
----------------------------------------------------------------------
 
-package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
 local lpeg = require "lpeglabel"
 local tokenizer = require "tungsten.core.tokenizer"

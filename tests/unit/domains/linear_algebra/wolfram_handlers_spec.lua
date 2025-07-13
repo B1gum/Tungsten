@@ -1,8 +1,5 @@
 -- tests/unit/domains/linear_algebra/wolfram_handlers_spec.lua
 -- Unit tests for the Wolfram handlers in the linear algebra domain.
----------------------------------------------------------------------
-
-package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
 local spy = require 'luassert.spy'
 local linear_algebra_wolfram_handlers

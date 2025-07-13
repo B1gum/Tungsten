@@ -1,8 +1,5 @@
 -- tests/unit/core/engine_spec.lua
 -- Unit tests for the core evaluation engine of Tungsten.
-----------------------------------------------------------
-
-package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
 local spy = require 'luassert.spy'
 local match = require 'luassert.match'

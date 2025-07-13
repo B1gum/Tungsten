@@ -1,8 +1,5 @@
 -- tungsten/tests/unit/domains/linear_algebra/rules/determinant_spec.lua
 -- Unit tests for the determinant parsing rule.
------------------------------------------------------------------------
-
-package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
 local lpeg = require "lpeglabel"
 local P, C, R, S = lpeg.P, lpeg.C, lpeg.R, lpeg.S

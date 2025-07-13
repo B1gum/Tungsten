@@ -1,8 +1,6 @@
 -- tests/unit/util/async_job_limit_spec.lua
 -- Verifies that async.run_job respects config.max_jobs
 
-package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
-
 local async = require 'tungsten.util.async'
 local state = require 'tungsten.state'
 local config = require 'tungsten.config'

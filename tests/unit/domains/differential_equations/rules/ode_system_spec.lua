@@ -1,8 +1,6 @@
 -- tests/unit/domains/differential_equations/rules/ode_system_spec.lua
 -- Busted tests for the ODE system parsing rule.
 
-package.path = "./lua/?.lua;./lua/?/init.lua;" .. package.path
-
 local lpeg = require "lpeglabel"
 local P, V, C, R, S, Ct = lpeg.P, lpeg.V, lpeg.C, lpeg.R, lpeg.S, lpeg.Ct
 

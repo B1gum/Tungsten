@@ -1,8 +1,6 @@
 -- tests/unit/util/async_spec.lua
 -- Unit tests for tungsten.util.async.run_job
 
-package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
-
 local async = require 'tungsten.util.async'
 local state = require 'tungsten.state'
 local config = require 'tungsten.config'

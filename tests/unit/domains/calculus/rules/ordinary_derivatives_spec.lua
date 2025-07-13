@@ -1,8 +1,6 @@
 -- tungsten/tests/unit/domains/calculus/rules/ordinary_derivatives_spec.lua
 -- Unit tests for the unified ordinary derivative parsing rule.
 
-package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
-
 local lpeg = require "lpeglabel"
 local P, V, C, R, S = lpeg.P, lpeg.V, lpeg.C, lpeg.R, lpeg.S
 

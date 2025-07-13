@@ -1,8 +1,5 @@
 -- tests/unit/util/insert_result_spec.lua
 -- Unit tests for the insert_result utility function.
----------------------------------------------------------------------
-
-package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
 local spy = require 'luassert.spy'
 local vim_test_env = require 'tests.helpers.vim_test_env'

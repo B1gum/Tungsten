@@ -1,8 +1,6 @@
 -- tests/unit/domains/linear_algebra/matrix_to_vector_str_spec.lua
 -- Unit tests for the matrix_to_vector_str helper.
 
-package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
-
 local spy = require 'luassert.spy'
 local wolfram_handlers = require 'tungsten.domains.linear_algebra.wolfram_handlers'
 

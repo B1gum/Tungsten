@@ -1,8 +1,5 @@
 -- tungsten/tests/unit/domains/arithmetic/rules/solve_system_rule_spec.lua
 -- Unit tests for the solve_system_rule parsing rule.
----------------------------------------------------------------------
-
-package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
 local lpeg = require "lpeglabel"
 local P, C, R, S, Ct = lpeg.P, lpeg.C, lpeg.R, lpeg.S, lpeg.Ct

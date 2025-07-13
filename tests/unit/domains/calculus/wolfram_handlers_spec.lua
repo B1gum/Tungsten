@@ -1,8 +1,5 @@
 -- tests/unit/domains/calculus/wolfram_handlers_spec.lua
 -- Unit tests for the Wolfram handlers in the calculus domain.
----------------------------------------------------------------------
-
-package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
 local spy = require 'luassert.spy'
 local calculus_wolfram_handlers

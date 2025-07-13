@@ -1,8 +1,5 @@
 -- tests/unit/domains/linear_algebra/rules/cross_product_spec.lua
 -- Unit tests for the cross product parsing rule.
------------------------------------------------------------------------
-
-package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
 local lpeg = require "lpeglabel"
 local P, C, R, S = lpeg.P, lpeg.C, lpeg.R, lpeg.S

@@ -1,5 +1,4 @@
 -- tungsten/tests/unit/domains/arithmetic/rules/supersub_spec.lua
-package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
 local lpeg = require "lpeglabel"
 local P, V, C, R, S = lpeg.P, lpeg.V, lpeg.C, lpeg.R, lpeg.S

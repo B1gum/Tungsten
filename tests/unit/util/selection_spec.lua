@@ -1,8 +1,5 @@
 -- tests/unit/util/selection_spec.lua
 -- Unit tests for the selection utility module.
----------------------------------------------------------------------
-
-package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
 local spy = require 'luassert.spy'
 local vim_test_env = require 'tests.helpers.vim_test_env'

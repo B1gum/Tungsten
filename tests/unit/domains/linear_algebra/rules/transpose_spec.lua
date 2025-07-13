@@ -1,5 +1,4 @@
 -- tungsten/tests/unit/domains/linear_algebra/rules/transpose_spec.lua
-package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
 local lpeg = require "lpeglabel"
 local P, V, C, R, S, Cf = lpeg.P, lpeg.V, lpeg.C, lpeg.R, lpeg.S, lpeg.Cf

@@ -1,8 +1,6 @@
 -- tests/unit/domains/linear_algebra/rules/norm_spec.lua
 -- Unit tests for the norm parsing rule.
------------------------------------------------------------------------
 
-package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
 local lpeg = require "lpeglabel"
 local P, C, R, S = lpeg.P, lpeg.C, lpeg.R, lpeg.S
