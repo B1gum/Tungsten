@@ -5,8 +5,8 @@ local config = require "tungsten.config"
 local logger = require "tungsten.util.logger"
 local state = require "tungsten.state"
 local async = require "tungsten.util.async"
-local solution_helper = require "tungsten.util.wolfram_solution"
-local error_parser = require "tungsten.util.wolfram_error"
+local solution_helper = require "tungsten.backends.wolfram.wolfram_solution"
+local error_parser = require "tungsten.backends.wolfram.wolfram_error"
 
 local M = {}
 

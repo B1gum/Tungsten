@@ -1,4 +1,4 @@
--- lua/tungsten/util/wolfram_error.lua
+-- lua/tungsten/backends/wolfram/wolfram_error.lua
 -- Helper for parsing WolframScript error messages
 
 local M = {}

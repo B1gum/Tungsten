@@ -70,7 +70,7 @@ describe("tungsten.core.solver", function()
         end
 
         solver = require("tungsten.core.solver")
-        solution_helper = require("tungsten.util.wolfram_solution")
+        solution_helper = require("tungsten.backends.wolfram.wolfram_solution")
     end)
 
     after_each(function()

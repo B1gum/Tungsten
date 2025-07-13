@@ -1,7 +1,7 @@
--- tests/unit/util/wolfram_error_spec.lua
+-- tests/unit/backends/wolfram/wolfram_error_spec.lua
 -- Unit tests for tungsten.util.wolfram_error.parse_wolfram_error
 
-local error_parser = require 'tungsten.util.wolfram_error'
+local error_parser = require 'tungsten.backends.wolfram.wolfram_error'
 
 describe("util.wolfram_error.parse_wolfram_error", function()
   it("recognizes Name::tag style errors", function()

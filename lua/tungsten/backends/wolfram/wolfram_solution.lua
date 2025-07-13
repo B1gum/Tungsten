@@ -1,8 +1,8 @@
--- lua/tungsten/util/wolfram_solution.lua
+-- lua/tungsten/backends/wolfram/wolfram_solution.lua
 -- Helper for parsing WolframScript Solve[] output
 
 local string_util = require "tungsten.util.string"
-local error_parser = require "tungsten.util.wolfram_error"
+local error_parser = require "tungsten.backends.wolfram.wolfram_error"
 
 local M = {}
 
