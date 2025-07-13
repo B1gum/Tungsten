@@ -62,16 +62,16 @@ function M.register_command(cmd_tbl)
   M.commands[#M.commands+1] = cmd_tbl
 end
 
-local function copy_contributions(contribustions)
+local function copy_contributions(contributions)
   local out = {}
-  for i, c in ipairs(contribustions or {}) do
+  for i, c in ipairs(contributions or {}) do
     out[i] = c
   end
   return out
 end
 
-function M.sort_contributions(contribustions)
-  local sorted = copy_contributions(contribustions)
+function M.sort_contributions(contributions)
+  local sorted = copy_contributions(contributions)
   table.sort(sorted, function(a, b)
     if a.category ~= b.category then
       return a.category < b.category
@@ -83,7 +83,7 @@ function M.sort_contributions(contribustions)
   end)
 
   logger.debug("Tungsten Debug", "Registry: Sorted Grammar Contributions:")
-  for i, contrib in ipairs(M.grammar_contributions) do
+  for i, contrib in ipairs(sorted) do
       logger.debug("Tungsten Debug", ("%d. %s (%s) from %s (Prio: %d)"):format(i, contrib.name, contrib.category, contrib.domain_name, contrib.domain_priority))
   end
 
