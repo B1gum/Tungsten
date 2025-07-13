@@ -47,7 +47,8 @@ describe("Tungsten core commands", function()
     mock_config_module = {
       numeric_mode = false,
       debug = false,
-      persistent_variable_assignment_operator = ":="
+      persistent_variable_assignment_operator = ":=",
+      log_level = "INFO"
     }
     mock_evaluator_module = {}
     mock_insert_result_util_module = {}
@@ -113,7 +114,8 @@ describe("Tungsten core commands", function()
     mock_logger_notify_spy = spy.new(function () end)
     mock_logger_module.notify = mock_logger_notify_spy
     mock_logger_module.levels = { ERROR = 1, WARN = 2, INFO = 3, DEBUG = 4 }
-        mock_logger_module.debug = function(title,msg) mock_logger_notify_spy(msg, mock_logger_module.levels.DEBUG, { title = title }) end
+    mock_logger_module.set_level = spy.new(function() end)
+    mock_logger_module.debug = function(title,msg) mock_logger_notify_spy(msg, mock_logger_module.levels.DEBUG, { title = title }) end
     mock_logger_module.info = function(title,msg) mock_logger_notify_spy(msg, mock_logger_module.levels.INFO, { title = title }) end
     mock_logger_module.warn = function(title,msg) mock_logger_notify_spy(msg, mock_logger_module.levels.WARN, { title = title }) end
     mock_logger_module.error = function(title,msg) mock_logger_notify_spy(msg, mock_logger_module.levels.ERROR, { title = title }) end
@@ -296,13 +298,17 @@ describe("Tungsten core commands", function()
   end)
 
   describe(":TungstenToggleDebugMode", function()
-    it("toggles config.debug", function()
+    it("toggles config.debug and adjusts logger level", function()
       local cfg = require('tungsten.config')
       cfg.debug = false
+      cfg.log_level = "INFO"
       commands_module.tungsten_toggle_debug_mode_command({})
       assert.is_true(cfg.debug)
+      assert.spy(mock_logger_module.set_level).was.called_with('DEBUG')
       commands_module.tungsten_toggle_debug_mode_command({})
       assert.is_false(cfg.debug)
+      assert.spy(mock_logger_module.set_level).was.called_with('INFO')
+      assert.spy(mock_logger_module.set_level).was.called(2)
     end)
   end)
 

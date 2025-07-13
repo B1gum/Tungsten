@@ -46,6 +46,11 @@ end
 
 local function tungsten_toggle_debug_mode_command(_)
   config.debug = not config.debug
+  if config.debug then
+    logger.set_level('DEBUG')
+  else
+    logger.set_level(config.log_level or 'INFO')
+  end
   local status = config.debug and "enabled" or "disabled"
   logger.info("Debug mode " .. status .. ".")
 end
