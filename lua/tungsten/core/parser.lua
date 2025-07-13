@@ -31,7 +31,7 @@ function M.parse(input)
   if result then
     return result
   end
-  return nil, err_label, err_pos
+  return nil, err_label, err_pos, input
 end
 
 function M.reset_grammar()
