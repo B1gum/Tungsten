@@ -8,13 +8,30 @@ local tk = require "tungsten.core.tokenizer"
 local ast = require "tungsten.core.ast"
 local space = tk.space
 
-local has_derivative_heuristic = Cmt(P(1)^0, function(s)
-  return (string.find(s, "d", 1, true) or string.find(s, "'", 1, true)) ~= nil
-end)
-
-local ODERule = has_derivative_heuristic * Ct(Cg(V("ExpressionContent"), "lhs") * space * P"=" * space * Cg(V("ExpressionContent"), "rhs")) /
-function(captures)
-  return ast.create_ode_node(captures.lhs, captures.rhs)
+local function contains_derivative(node)
+  if type(node) ~= "table" then
+    return false
+  end
+  if node.type == "ordinary_derivative" then
+    return true
+  end
+  for _, v in pairs(node) do
+    if contains_derivative(v) then
+      return true
+    end
+  end
+  return false
 end
+
+local main_rule = Ct(
+  Cg(V("ExpressionContent"), "lhs") * space * P"=" * space * Cg(V("ExpressionContent"), "rhs")
+)
+
+local ODERule = Cmt(main_rule, function(_, pos, captures)
+  if contains_derivative(captures.lhs) or contains_derivative(captures.rhs) then
+    return pos, ast.create_ode_node(captures.lhs, captures.rhs)
+  end
+  return false
+end)
 
 return ODERule
