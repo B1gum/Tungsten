@@ -2,31 +2,23 @@
 -- Defines the lpeg rule for parsing determinant expressions like |A| or \det(A).
 --------------------------------------------------------------------------------
 
-local lpeg = require "lpeglabel"
+local lpeg = require("lpeglabel")
 local V, Cg, Ct = lpeg.V, lpeg.Cg, lpeg.Ct
 
-local tk = require "tungsten.core.tokenizer"
-local ast = require "tungsten.core.ast"
+local tk = require("tungsten.core.tokenizer")
+local ast = require("tungsten.core.ast")
 local space = tk.space
 
-local DetCommandRule =
-  Ct(
-    tk.det_command * space *
-    tk.lparen * space *
-    Cg(V("Expression"), "expr_content") * space *
-    tk.rparen
-  ) / function(captures_table)
-    return ast.create_determinant_node(captures_table.expr_content)
-  end
+local DetCommandRule = Ct(
+	tk.det_command * space * tk.lparen * space * Cg(V("Expression"), "expr_content") * space * tk.rparen
+) / function(captures_table)
+	return ast.create_determinant_node(captures_table.expr_content)
+end
 
-local VerticalBarRule =
-  Ct(
-    tk.vbar * space *
-    Cg(V("Expression"), "expr_content") * space *
-    tk.vbar
-  ) / function(captures_table)
-    return ast.create_determinant_node(captures_table.expr_content)
-  end
+local VerticalBarRule = Ct(tk.vbar * space * Cg(V("Expression"), "expr_content") * space * tk.vbar)
+	/ function(captures_table)
+		return ast.create_determinant_node(captures_table.expr_content)
+	end
 
 local DeterminantRule = DetCommandRule + VerticalBarRule
 
