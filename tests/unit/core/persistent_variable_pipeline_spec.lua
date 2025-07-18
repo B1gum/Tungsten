@@ -43,7 +43,11 @@ describe("Tungsten Persistent Variable Pipeline", function()
 	before_each(function()
 		mock_parser_module = {}
 		mock_wolfram_backend_module = {}
-		mock_selection_module = {}
+		mock_selection_module = {
+			create_selection_extmarks = function()
+				return 0, 1, 2, "v"
+			end,
+		}
 		mock_insert_result_util_module = {}
 		mock_logger_module = {}
 		mock_config_module = {
@@ -224,7 +228,9 @@ describe("Tungsten Persistent Variable Pipeline", function()
 
 			local wolfram_result = "ComputedResultFromX*2"
 			simulate_wolfram_eval({ wolfram_result }, 0)
-			assert.spy(mock_insert_result_insert_result_spy).was.called_with(wolfram_result)
+			assert
+				.spy(mock_insert_result_insert_result_spy).was
+				.called_with(wolfram_result, nil, match.is_number(), match.is_number(), match.is_string(), match.is_string())
 		end)
 
 		it("should define multiple variables and use them in a dependent evaluation", function()
@@ -255,7 +261,9 @@ describe("Tungsten Persistent Variable Pipeline", function()
 
 			local wolfram_result = "ComputedResultFromB*2"
 			simulate_wolfram_eval({ wolfram_result }, 0)
-			assert.spy(mock_insert_result_insert_result_spy).was.called_with(wolfram_result)
+			assert
+				.spy(mock_insert_result_insert_result_spy).was
+				.called_with(wolfram_result, nil, match.is_number(), match.is_number(), match.is_string(), match.is_string())
 		end)
 
 		it("should use the latest definition if a variable is redefined", function()
@@ -289,7 +297,9 @@ describe("Tungsten Persistent Variable Pipeline", function()
 			local cmd_args2 = mock_async_run_job_spy.calls[1].vals[1]
 			assert.are.same('ToString[TeXForm[wolfram((wolfram(20)) + 5)], CharacterEncoding -> "UTF8"]', cmd_args2[3])
 			simulate_wolfram_eval({ "25" }, 0)
-			assert.spy(mock_insert_result_insert_result_spy).was.called_with("25")
+			assert
+				.spy(mock_insert_result_insert_result_spy).was
+				.called_with("25", nil, match.is_number(), match.is_number(), match.is_string(), match.is_string())
 		end)
 
 		it("should evaluate an expression without substitution if variable is not defined", function()
@@ -305,7 +315,9 @@ describe("Tungsten Persistent Variable Pipeline", function()
 			local cmd_args = mock_async_run_job_spy.calls[1].vals[1]
 			assert.are.same('ToString[TeXForm[wolfram(z / 2)], CharacterEncoding -> "UTF8"]', cmd_args[3])
 			simulate_wolfram_eval({ "ResultFromZ/2" }, 0)
-			assert.spy(mock_insert_result_insert_result_spy).was.called_with("ResultFromZ/2")
+			assert
+				.spy(mock_insert_result_insert_result_spy).was
+				.called_with("ResultFromZ/2", nil, match.is_number(), match.is_number(), match.is_string(), match.is_string())
 		end)
 
 		it("should respect 'persistent_variable_assignment_operator' from config ('=')", function()
@@ -331,7 +343,9 @@ describe("Tungsten Persistent Variable Pipeline", function()
 				cmd_args[3]
 			)
 			simulate_wolfram_eval({ "9" }, 0)
-			assert.spy(mock_insert_result_insert_result_spy).was.called_with("9")
+			assert
+				.spy(mock_insert_result_insert_result_spy).was
+				.called_with("9", nil, match.is_number(), match.is_number(), match.is_string(), match.is_string())
 
 			mock_config_module.persistent_variable_assignment_operator = ":="
 		end)
@@ -359,7 +373,9 @@ describe("Tungsten Persistent Variable Pipeline", function()
 				cmd_args[3]
 			)
 			simulate_wolfram_eval({ "8" }, 0)
-			assert.spy(mock_insert_result_insert_result_spy).was.called_with("8")
+			assert
+				.spy(mock_insert_result_insert_result_spy).was
+				.called_with("8", nil, match.is_number(), match.is_number(), match.is_string(), match.is_string())
 		end)
 	end)
 end)

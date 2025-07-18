@@ -44,6 +44,16 @@ describe("Tungsten core commands", function()
 	}
 
 	before_each(function()
+		vim_test_env.setup_buffer({ "line1", "line2" })
+		_G.vim.fn = _G.vim.fn or {}
+		_G.vim.fn.mode = function()
+			return "v"
+		end
+		mock_selection_module = {
+			create_selection_extmarks = function()
+				return 0, 1, 2, "v"
+			end,
+		}
 		mock_config_module = {
 			numeric_mode = false,
 			debug = false,
@@ -68,6 +78,9 @@ describe("Tungsten core commands", function()
 			end
 			if module_path == "tungsten.util.insert_result" then
 				return mock_insert_result_util_module
+			end
+			if module_path == "tungsten.util.selection" then
+				return mock_selection_module
 			end
 			if module_path == "tungsten.util.logger" then
 				return mock_logger_module
@@ -185,17 +198,22 @@ describe("Tungsten core commands", function()
 			}
 			current_eval_async_config_key = "default_eval"
 
+			vim_test_env.set_visual_selection(1, 1, 1, 5)
+
 			commands_module.tungsten_evaluate_command({})
 
 			assert.spy(mock_cmd_utils_parse_selected_latex_spy).was.called_with("expression")
 			assert.spy(mock_evaluator_evaluate_async_spy).was.called(1)
 			local ast_arg = mock_evaluator_evaluate_async_spy.calls[1].vals[1]
 			assert.are.same({ type = "expression", representation = "parsed:\\frac{1+1}{2}" }, ast_arg)
-			assert.spy(mock_insert_result_insert_result_spy).was.called_with("1")
+			assert
+				.spy(mock_insert_result_insert_result_spy).was
+				.called_with("1", nil, match.is_number(), match.is_number(), "\\frac{1+1}{2}", match.is_string())
 		end)
 
 		it("should not proceed if parsing fails (cmd_utils returns nil)", function()
 			current_parse_selected_latex_config["expression"] = { ast = nil, text = "" }
+			vim_test_env.set_visual_selection(1, 1, 1, 1)
 
 			commands_module.tungsten_evaluate_command({})
 
@@ -207,6 +225,7 @@ describe("Tungsten core commands", function()
 		it("should not call insert_result if evaluation returns nil", function()
 			current_parse_selected_latex_config["expression"] = { ast = { type = "expression" } }
 			current_eval_async_config_key = "nil_eval"
+			vim_test_env.set_visual_selection(1, 1, 1, 1)
 			commands_module.tungsten_evaluate_command({})
 			assert.spy(mock_insert_result_insert_result_spy).was_not.called()
 		end)
@@ -214,6 +233,7 @@ describe("Tungsten core commands", function()
 		it("should not call insert_result if evaluation returns empty string", function()
 			current_parse_selected_latex_config["expression"] = { ast = { type = "expression" } }
 			current_eval_async_config_key = "empty_string_eval"
+			vim_test_env.set_visual_selection(1, 1, 1, 1)
 			commands_module.tungsten_evaluate_command({})
 			assert.spy(mock_insert_result_insert_result_spy).was_not.called()
 		end)
@@ -224,6 +244,8 @@ describe("Tungsten core commands", function()
 				{ ast = { type = "expression", representation = "parsed:\\frac{1+1}{2}" } }
 			current_eval_async_config_key = "numeric_eval"
 
+			vim_test_env.set_visual_selection(1, 1, 1, 5)
+
 			package.loaded["tungsten.core.commands"] = nil
 			local temp_commands_module = require("tungsten.core.commands")
 			temp_commands_module.tungsten_evaluate_command({})
@@ -231,7 +253,9 @@ describe("Tungsten core commands", function()
 			assert.spy(mock_evaluator_evaluate_async_spy).was.called(1)
 			local numeric_mode_arg = mock_evaluator_evaluate_async_spy.calls[1].vals[2]
 			assert.is_true(numeric_mode_arg)
-			assert.spy(mock_insert_result_insert_result_spy).was.called_with("1.0")
+			assert
+				.spy(mock_insert_result_insert_result_spy).was
+				.called_with("1.0", nil, match.is_number(), match.is_number(), nil, match.is_string())
 
 			vim_test_env.set_plugin_config({ "numeric_mode" }, false)
 		end)
@@ -284,7 +308,7 @@ describe("Tungsten core commands", function()
 			assert.spy(mock_insert_result_insert_result_spy).was.called(1)
 			assert
 				.spy(mock_insert_result_insert_result_spy).was
-				.called_with("some_solution", " \\rightarrow ", match.is_table(), match.is_table(), "a*x^2+b*x+c=0")
+				.called_with("some_solution", " \\rightarrow ", match.is_number(), match.is_number(), "a*x^2+b*x+c=0", match.is_string())
 		end)
 	end)
 
@@ -310,6 +334,7 @@ describe("Tungsten core commands", function()
 				text = "eq1=0 \\\\ eq2=0",
 			}
 			current_solve_equation_config = { result = "solution_for_system", err = nil }
+			vim_test_env.set_visual_selection(1, 1, 2, 1)
 		end)
 
 		after_each(function()
@@ -323,9 +348,14 @@ describe("Tungsten core commands", function()
 			local args = mock_solver_solve_equation_async_spy.calls[1].vals
 			assert.are.same({ "wolfram(eq1_ast)", "wolfram(eq2_ast)" }, args[1])
 			assert.is_true(args[3])
-			assert
-				.spy(mock_insert_result_insert_result_spy).was
-				.called_with("solution_for_system", " \\rightarrow ", match.is_table(), match.is_table(), "eq1=0 \\\\ eq2=0")
+			assert.spy(mock_insert_result_insert_result_spy).was.called_with(
+				"solution_for_system",
+				" \\rightarrow ",
+				match.is_number(),
+				match.is_number(),
+				"eq1=0 \\\\ eq2=0",
+				match.is_string()
+			)
 		end)
 
 		it("should log error if parsing fails (cmd_utils returns nil)", function()

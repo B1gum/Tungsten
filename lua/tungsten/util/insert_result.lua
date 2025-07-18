@@ -3,8 +3,9 @@
 local M = {}
 
 local config = require("tungsten.config")
+local state = require("tungsten.state")
 
-function M.insert_result(result_text, separator_text, start_pos, end_pos, original_selection_text)
+function M.insert_result(result_text, separator_text, start_pos, end_pos, original_selection_text, selection_mode)
 	local selection_util = require("tungsten.util.selection")
 
 	local o_text = original_selection_text
@@ -12,8 +13,27 @@ function M.insert_result(result_text, separator_text, start_pos, end_pos, origin
 		o_text = selection_util.get_visual_selection()
 	end
 
-	local s_pos = start_pos or vim.fn.getpos("'<")
-	local e_pos = end_pos or vim.fn.getpos("'>")
+	local s_pos, e_pos
+	local extmark_start, extmark_end
+
+	if type(start_pos) == "number" and type(end_pos) == "number" then
+		extmark_start = start_pos
+		extmark_end = end_pos
+		local s = vim.api.nvim_buf_get_extmark_by_id(0, state.ns, extmark_start, {})
+		local e = vim.api.nvim_buf_get_extmark_by_id(0, state.ns, extmark_end, {})
+		if not s or not e then
+			return
+		end
+		s_pos = { 0, s[1] + 1, s[2] + 1, 0 }
+		if selection_mode == "V" then
+			e_pos = { 0, e[1], 0, 0 }
+		else
+			e_pos = { 0, e[1] + 1, e[2], 0 }
+		end
+	else
+		s_pos = start_pos or vim.fn.getpos("'<")
+		e_pos = end_pos or vim.fn.getpos("'>")
+	end
 
 	local current_separator = separator_text or config.result_separator or " = "
 
@@ -33,7 +53,7 @@ function M.insert_result(result_text, separator_text, start_pos, end_pos, origin
 	end
 
 	local bufnr = s_pos[1]
-	local current_mode = vim.fn.mode(1)
+	local current_mode = selection_mode or vim.fn.mode(1)
 
 	local start_line_api = s_pos[2] - 1
 	local end_line_api = e_pos[2] - 1
@@ -60,6 +80,11 @@ function M.insert_result(result_text, separator_text, start_pos, end_pos, origin
 	local lines_to_insert = vim.fn.split(final_text_to_insert, "\n")
 
 	vim.api.nvim_buf_set_text(bufnr, start_line_api, start_col_api, end_line_api, end_col_api, lines_to_insert)
+
+	if extmark_start and extmark_end then
+		pcall(vim.api.nvim_buf_del_extmark, bufnr, state.ns, extmark_start)
+		pcall(vim.api.nvim_buf_del_extmark, bufnr, state.ns, extmark_end)
+	end
 
 	local tungsten = require("tungsten")
 	tungsten._execute_hook("on_result", result_text)

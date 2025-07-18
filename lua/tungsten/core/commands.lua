@@ -17,7 +17,7 @@ local string_util = require("tungsten.util.string")
 local cmd_utils = require("tungsten.util.commands")
 
 local function tungsten_evaluate_command(_)
-	local ast, _, err = cmd_utils.parse_selected_latex("expression")
+	local ast, selection_text, err = cmd_utils.parse_selected_latex("expression")
 	if err then
 		error_handler.notify_error("Eval", err)
 		return
@@ -25,6 +25,8 @@ local function tungsten_evaluate_command(_)
 	if not ast then
 		return
 	end
+
+	local bufnr, start_mark, end_mark, mode = selection.create_selection_extmarks()
 
 	local use_numeric_mode = config.numeric_mode
 
@@ -36,7 +38,7 @@ local function tungsten_evaluate_command(_)
 		if result == nil or result == "" then
 			return
 		end
-		insert_result_util.insert_result(result)
+		insert_result_util.insert_result(result, nil, start_mark, end_mark, selection_text, mode)
 	end)
 end
 
@@ -181,18 +183,7 @@ local function define_persistent_variable_command(_)
 end
 
 local function tungsten_solve_command(_)
-	local initial_start_pos = vim.fn.getpos("'<")
-	local initial_end_pos = vim.fn.getpos("'>")
-
-	if
-		initial_start_pos[2] == 0
-		and initial_start_pos[3] == 0
-		and initial_end_pos[2] == 0
-		and initial_end_pos[3] == 0
-	then
-		error_handler.notify_error("Solve", "No equation selected.")
-		return
-	end
+	local _, initial_start_extmark, initial_end_extmark, mode = selection.create_selection_extmarks()
 
 	local parsed_ast_top, equation_text, parse_err = cmd_utils.parse_selected_latex("equation")
 	if parse_err then
@@ -270,14 +261,20 @@ local function tungsten_solve_command(_)
 				error_handler.notify_error("Solve", "No solution found.")
 				return
 			end
-			insert_result_util.insert_result(solution, " \\rightarrow ", initial_start_pos, initial_end_pos, equation_text)
+			insert_result_util.insert_result(
+				solution,
+				" \\rightarrow ",
+				initial_start_extmark,
+				initial_end_extmark,
+				equation_text,
+				mode
+			)
 		end)
 	end)
 end
 
 local function tungsten_solve_system_command(_)
-	local initial_start_pos = vim.fn.getpos("'<")
-	local initial_end_pos = vim.fn.getpos("'>")
+	local _, initial_start_extmark, initial_end_extmark, mode = selection.create_selection_extmarks()
 
 	local equations_capture_ast_or_err, visual_selection_text, parse_err =
 		cmd_utils.parse_selected_latex("system of equations")
@@ -354,9 +351,10 @@ local function tungsten_solve_system_command(_)
 			insert_result_util.insert_result(
 				result,
 				" \\rightarrow ",
-				initial_start_pos,
-				initial_end_pos,
-				visual_selection_text
+				initial_start_extmark,
+				initial_end_extmark,
+				visual_selection_text,
+				mode
 			)
 		end)
 	end)

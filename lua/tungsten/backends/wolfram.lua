@@ -93,7 +93,8 @@ local function init_handlers()
 
 	logger.debug("Tungsten Backend", "Wolfram Backend: Lazily initializing handlers...")
 
-  local target_domains_for_handlers = (type(config.domains) == "table" and #config.domains > 0) and config.domains or { "arithmetic" }
+	local target_domains_for_handlers = (type(config.domains) == "table" and #config.domains > 0) and config.domains
+		or { "arithmetic" }
 
 	logger.info(
 		"Tungsten Backend",

@@ -74,7 +74,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
 		clear_tungsten_modules_from_cache()
 		original_methods = {}
 
-    require("tungsten").setup({ debug = false, domains = nil })
+		require("tungsten").setup({ debug = false, domains = nil })
 
 		tungsten_config_module = require("tungsten.config")
 		tungsten_registry_module = require("tungsten.core.registry")
