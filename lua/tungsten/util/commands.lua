@@ -10,9 +10,9 @@ function M.parse_selected_latex(expected_desc)
 		return nil, nil, "No " .. expected_desc .. " selected."
 	end
 
-	local ok, ast = pcall(parser.parse, text)
+	local ok, ast, err_msg = pcall(parser.parse, text)
 	if not ok or not ast then
-		return nil, nil, "Parse error for selected " .. expected_desc .. " – " .. tostring(ast)
+		return nil, nil, err_msg or tostring(ast)
 	end
 
 	return ast, text, nil

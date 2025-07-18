@@ -26,7 +26,7 @@ local function tungsten_evaluate_command(_)
 		return
 	end
 
-	local bufnr, start_mark, end_mark, mode = selection.create_selection_extmarks()
+	local _, start_mark, end_mark, mode = selection.create_selection_extmarks()
 
 	local use_numeric_mode = config.numeric_mode
 
@@ -131,11 +131,11 @@ local function define_persistent_variable_command(_)
 		"Tungsten Debug: Defining variable '" .. var_name_str .. "' with LaTeX RHS: '" .. rhs_latex_str .. "'"
 	)
 
-	local parse_ok, definition_ast_or_err = pcall(parser.parse, rhs_latex_str)
+	local parse_ok, definition_ast_or_err, err_msg = pcall(parser.parse, rhs_latex_str)
 	if not parse_ok or not definition_ast_or_err then
 		error_handler.notify_error(
 			"DefineVar",
-			"Failed to parse LaTeX definition for '" .. var_name_str .. "': " .. tostring(definition_ast_or_err)
+			"Failed to parse LaTeX definition for '" .. var_name_str .. "': " .. tostring(err_msg or definition_ast_or_err)
 		)
 		return
 	end
@@ -235,9 +235,9 @@ local function tungsten_solve_command(_)
 			return
 		end
 
-		local var_parse_ok, var_ast = pcall(parser.parse, trimmed_var_name)
+		local var_parse_ok, var_ast, err_msg = pcall(parser.parse, trimmed_var_name)
 		if not var_parse_ok or not var_ast or var_ast.type ~= "variable" then
-			error_handler.notify_error("Solve", "Invalid variable: '" .. trimmed_var_name .. "'.")
+			error_handler.notify_error("Solve", "Invalid variable: '" .. trimmed_var_name .. "'. " .. tostring(err_msg or ""))
 			return
 		end
 

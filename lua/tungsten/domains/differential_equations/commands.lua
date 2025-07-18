@@ -16,9 +16,9 @@ local function evaluate_and_insert(command_name, ast_producer)
 		return
 	end
 
-	local parse_ok, parsed_ast = pcall(parser.parse, visual_selection_text)
+	local parse_ok, parsed_ast, err_msg = pcall(parser.parse, visual_selection_text)
 	if not parse_ok or not parsed_ast then
-		error_handler.notify_error(command_name, "Parse error – " .. tostring(parsed_ast or "nil"))
+		error_handler.notify_error(command_name, err_msg or "Parse error")
 		return
 	end
 

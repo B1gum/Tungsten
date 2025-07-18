@@ -6,6 +6,7 @@ local lpeg = require("lpeglabel")
 local registry = require("tungsten.core.registry")
 local space = require("tungsten.core.tokenizer").space
 local logger = require("tungsten.util.logger")
+local error_handler = require("tungsten.util.error_handler")
 
 local M = {}
 
@@ -25,13 +26,23 @@ function M.get_grammar()
 	return compiled_grammar
 end
 
+local label_messages = {
+	extra_input = "unexpected text after expression",
+	fail = "syntax error",
+}
+
 function M.parse(input)
 	local current_grammar = M.get_grammar()
-	local result, err_label, err_pos = lpeg.match(space * current_grammar * space * -1, input)
+	local pattern = space * current_grammar * (space * -1 + lpeg.T("extra_input"))
+	local result, err_label, err_pos = lpeg.match(pattern, input)
 	if result then
 		return result
 	end
-	return nil, err_label, err_pos, input
+	local msg = label_messages[err_label] or tostring(err_label)
+	if err_pos then
+		msg = msg .. " at " .. error_handler.format_line_col(input, err_pos)
+	end
+	return nil, msg, err_pos, input
 end
 
 function M.reset_grammar()

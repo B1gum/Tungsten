@@ -144,9 +144,9 @@ function M.run_async(input, numeric, callback)
 	assert(type(callback) == "function", "run_async expects a callback function")
 	local parser_module = require("tungsten.core.parser")
 
-	local ok, ast = pcall(parser_module.parse, input)
+	local ok, ast, err_msg = pcall(parser_module.parse, input)
 	if not ok or ast == nil then
-		local err_msg = "Parse error: " .. tostring(ast or "nil AST")
+		err_msg = "Parse error: " .. tostring(err_msg or ast)
 		callback(nil, err_msg)
 		return
 	end
