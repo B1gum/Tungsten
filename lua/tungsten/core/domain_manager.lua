@@ -109,31 +109,31 @@ function M.setup(opts)
 	opts = opts or {}
 	local dir = opts.domains_dir or default_domains_dir()
 
-  local registered = {}
+	local registered = {}
 
-  local function register_if_new(name)
-    if not registered[name] then
-      registered[name] = true
-      M.register_domain(name)
-    end
-  end
+	local function register_if_new(name)
+		if not registered[name] then
+			registered[name] = true
+			M.register_domain(name)
+		end
+	end
 
-  if type(config.domains) == 'table' and #config.domains > 0 then
-    for _, name in ipairs(config.domains) do
-      register_if_new(name)
-    end
-  else
-    local discovered = M.discover_domains(dir, nil)
-    for _, name in ipairs(discovered) do
-      register_if_new(name)
-    end
-  end
+	if type(config.domains) == "table" and #config.domains > 0 then
+		for _, name in ipairs(config.domains) do
+			register_if_new(name)
+		end
+	else
+		local discovered = M.discover_domains(dir, nil)
+		for _, name in ipairs(discovered) do
+			register_if_new(name)
+		end
+	end
 
-  if config.user_domains_path then
-    local user_domains = M.discover_domains(nil, config.user_domains_path)
-    for _, name in ipairs(user_domains) do
-      register_if_new(name)
-    end
+	if config.user_domains_path then
+		local user_domains = M.discover_domains(nil, config.user_domains_path)
+		for _, name in ipairs(user_domains) do
+			register_if_new(name)
+		end
 	end
 end
 

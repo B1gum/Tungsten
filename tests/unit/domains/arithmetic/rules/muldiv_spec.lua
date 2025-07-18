@@ -270,41 +270,32 @@ describe("Arithmetic MulDiv Rule (Context-Aware & Differentials)", function()
 	describe("Standard Multiplication, Division, and Implicit (Regression Tests)", function()
 		it("should still parse 2*var as binary multiplication", function()
 			local ast = parse_input_muldiv("2*var")
-			assert.are.same(
-				{
-					type = "binary",
-					operator = "*",
-					left = { type = "number", value = 2 },
-					right = { type = "variable", name = "var" },
-				},
-				ast
-			)
+			assert.are.same({
+				type = "binary",
+				operator = "*",
+				left = { type = "number", value = 2 },
+				right = { type = "variable", name = "var" },
+			}, ast)
 		end)
 
 		it("should still parse varOne/varTwo as binary division", function()
 			local ast = parse_input_muldiv("varOne/varTwo")
-			assert.are.same(
-				{
-					type = "binary",
-					operator = "/",
-					left = { type = "variable", name = "varOne" },
-					right = { type = "variable", name = "varTwo" },
-				},
-				ast
-			)
+			assert.are.same({
+				type = "binary",
+				operator = "/",
+				left = { type = "variable", name = "varOne" },
+				right = { type = "variable", name = "varTwo" },
+			}, ast)
 		end)
 
 		it("should still parse 2x (implicit) as 2*x", function()
 			local ast = parse_input_muldiv("2x")
-			assert.are.same(
-				{
-					type = "binary",
-					operator = "*",
-					left = { type = "number", value = 2 },
-					right = { type = "variable", name = "x" },
-				},
-				ast
-			)
+			assert.are.same({
+				type = "binary",
+				operator = "*",
+				left = { type = "number", value = 2 },
+				right = { type = "variable", name = "x" },
+			}, ast)
 		end)
 		it("should still parse (a)(b) (implicit) as a*b", function()
 			local ast = parse_input_muldiv("(a)(b)")

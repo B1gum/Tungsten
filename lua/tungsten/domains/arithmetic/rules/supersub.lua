@@ -37,11 +37,9 @@ M.SupSub = Cf(V("AtomBase") * (space * PostfixOperator) ^ 0, function(accumulato
 	return accumulator_ast
 end)
 
-M.Unary = (C(S("+-")) * space * M.SupSub)
-		/ function(op, expr)
-			return ast.create_unary_operation_node(op, expr)
-		end
-	+ M.SupSub
+M.Unary = (C(S("+-")) * space * M.SupSub) / function(op, expr)
+	return ast.create_unary_operation_node(op, expr)
+end + M.SupSub
 
 return {
 	SupSub = M.SupSub,

@@ -934,8 +934,20 @@ describe("tungsten.core.registry", function()
 					pattern = create_mock_pattern("num"),
 					category = "AtomBaseItem",
 				},
-				{ domain_name = "low", domain_priority = 10, name = "RuleX", pattern = create_mock_pattern("low"), category = "Op" },
-				{ domain_name = "high", domain_priority = 20, name = "RuleX", pattern = create_mock_pattern("high"), category = "Op" },
+				{
+					domain_name = "low",
+					domain_priority = 10,
+					name = "RuleX",
+					pattern = create_mock_pattern("low"),
+					category = "Op",
+				},
+				{
+					domain_name = "high",
+					domain_priority = 20,
+					name = "RuleX",
+					pattern = create_mock_pattern("high"),
+					category = "Op",
+				},
 				{
 					domain_name = "core",
 					domain_priority = 0,
@@ -951,10 +963,13 @@ describe("tungsten.core.registry", function()
 		end)
 
 		it("choose_expression_content selects AddSub", function()
-			local atoms =
-				{ AddSub = create_mock_pattern("add"), AtomBase = create_mock_pattern("atom"), _top_level_rule_names = {
+			local atoms = {
+				AddSub = create_mock_pattern("add"),
+				AtomBase = create_mock_pattern("atom"),
+				_top_level_rule_names = {
 					"Equation",
-				} }
+				},
+			}
 			local exprs = registry_module.choose_expression_content(atoms, {})
 			assert.are.same(create_mock_pattern("V(AddSub)"), exprs.ExpressionContent)
 			assert.is_table(exprs.Expression)

@@ -152,14 +152,11 @@ describe("tungsten.core.solver", function()
 			solver.solve_equation_async({ "x+y==3", "x-y==1" }, { "x", "y" }, true, callback_spy)
 			assert.spy(mock_async_module.run_job).was.called(1)
 			local job_args = mock_async_module.run_job.calls[1].vals[1]
-			assert.are.same(
-				{
-					"mock_wolframscript_path",
-					"-code",
-					'ToString[TeXForm[Solve[{x+y==3, x-y==1}, {x, y}]], CharacterEncoding -> "UTF8"]',
-				},
-				job_args
-			)
+			assert.are.same({
+				"mock_wolframscript_path",
+				"-code",
+				'ToString[TeXForm[Solve[{x+y==3, x-y==1}, {x, y}]], CharacterEncoding -> "UTF8"]',
+			}, job_args)
 		end)
 
 		it("should log Wolfram command if debug is true", function()

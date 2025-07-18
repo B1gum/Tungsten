@@ -415,10 +415,14 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
 		it("should render Power[base,exponent] for complex base (e.g. fraction)", function()
 			local node = {
 				type = "superscript",
-				base = { type = "fraction", numerator = { type = "variable", name = "a" }, denominator = {
-					type = "variable",
-					name = "b",
-				} },
+				base = {
+					type = "fraction",
+					numerator = { type = "variable", name = "a" },
+					denominator = {
+						type = "variable",
+						name = "b",
+					},
+				},
 				exponent = { type = "variable", name = "x" },
 			}
 			assert.are.equal("Power[mock_rendered(fraction), x]", handlers.superscript(node, mock_recur_render))
@@ -477,10 +481,14 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
 			local node = {
 				type = "unary",
 				operator = "-",
-				value = { type = "fraction", numerator = { type = "number", value = 1 }, denominator = {
-					type = "number",
-					value = 2,
-				} },
+				value = {
+					type = "fraction",
+					numerator = { type = "number", value = 1 },
+					denominator = {
+						type = "number",
+						value = 2,
+					},
+				},
 			}
 			assert.are.equal("(-mock_rendered(fraction))", handlers.unary(node, mock_recur_render))
 		end)

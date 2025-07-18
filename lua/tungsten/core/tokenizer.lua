@@ -9,9 +9,10 @@ local space = S(" \t\n\r") ^ 0
 local digit = R("09")
 local letter = R("az", "AZ")
 
-local number = C(digit ^ 1 * (P(".") * digit ^ 1) ^ -1) / function(n)
-	return { type = "number", value = tonumber(n) }
-end
+local number = C(digit ^ 1 * (P(".") * digit ^ 1) ^ -1)
+	/ function(n)
+		return { type = "number", value = tonumber(n) }
+	end
 local variable = C(letter * (letter + digit) ^ 0) * -P("\\") / function(v)
 	return { type = "variable", name = v }
 end
