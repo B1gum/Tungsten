@@ -270,9 +270,4 @@ M.commands = {
 	},
 }
 
-local registry = require("tungsten.core.registry")
-for _, cmd in ipairs(M.commands) do
-	registry.register_command(cmd)
-end
-
 return M
