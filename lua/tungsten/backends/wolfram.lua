@@ -93,19 +93,7 @@ local function init_handlers()
 
 	logger.debug("Tungsten Backend", "Wolfram Backend: Lazily initializing handlers...")
 
-	local target_domains_for_handlers
-	if type(config.domains) == "table" and not vim.tbl_islist(config.domains) then
-		target_domains_for_handlers = {}
-		for name, prio in pairs(config.domains) do
-			table.insert(target_domains_for_handlers, name)
-			registry.set_domain_priority(name, prio)
-		end
-		if #target_domains_for_handlers == 0 then
-			target_domains_for_handlers = { "arithmetic" }
-		end
-	else
-		target_domains_for_handlers = (config.domains and #config.domains > 0) and config.domains or { "arithmetic" }
-	end
+  local target_domains_for_handlers = (type(config.domains) == "table" and #config.domains > 0) and config.domains or { "arithmetic" }
 
 	logger.info(
 		"Tungsten Backend",

@@ -74,13 +74,12 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
 		clear_tungsten_modules_from_cache()
 		original_methods = {}
 
+    require("tungsten").setup({ debug = false, domains = nil })
+
 		tungsten_config_module = require("tungsten.config")
 		tungsten_registry_module = require("tungsten.core.registry")
 		tungsten_logger_module = require("tungsten.util.logger")
 		tungsten_render_module = require("tungsten.core.render")
-
-		test_env.set_plugin_config({ "debug" }, false)
-		test_env.set_plugin_config({ "domains" }, nil)
 
 		if tungsten_registry_module then
 			original_methods.get_domain_priority = tungsten_registry_module.get_domain_priority

@@ -18,6 +18,8 @@ describe("Registry priority override", function()
 		package.loaded["tungsten.util.logger"] = nil
 		package.loaded["tungsten.core.render"] = nil
 
+    require('tungsten').setup({ domains = { low_domain = 200, high_domain = 50 } })
+
 		config = require("tungsten.config")
 		registry = require("tungsten.core.registry")
 		logger = require("tungsten.util.logger")
@@ -74,8 +76,6 @@ describe("Registry priority override", function()
 			end
 			return original_require(module_path)
 		end
-
-		test_env.set_plugin_config({ "domains" }, { low_domain = 200, high_domain = 50 })
 
 		wolfram_backend = require("tungsten.backends.wolfram")
 	end)
