@@ -8,6 +8,7 @@ describe("DomainManager.reload", function()
 	local tmp_dir
 	local registry_mock
 	local logger_mock
+  local orig_domain
 
 	before_each(function()
 		tmp_dir = vim.loop.fs_mkdtemp("tungsten_dm_reloadXXXXXX")
@@ -33,6 +34,9 @@ describe("DomainManager.reload", function()
 		}
 		package.loaded["tungsten.util.logger"] = logger_mock
 		package.path = tmp_dir .. "/?.lua;" .. tmp_dir .. "/?/init.lua;" .. package.path
+    local cfg = require 'tungsten.config'
+    orig_domains = cfg.domains
+    cfg.domains = nil
 		package.loaded["tungsten.core.domain_manager"] = nil
 		dm = require("tungsten.core.domain_manager")
 	end)
@@ -41,6 +45,7 @@ describe("DomainManager.reload", function()
 		package.loaded["tungsten.core.registry"] = nil
 		package.loaded["tungsten.util.logger"] = nil
 		package.loaded["tungsten.core.domain_manager"] = nil
+    require('tungsten.config').domains = orig_domains
 		os.execute("rm -rf " .. tmp_dir)
 	end)
 

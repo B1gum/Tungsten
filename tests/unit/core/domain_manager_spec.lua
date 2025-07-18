@@ -54,6 +54,7 @@ describe("DomainManager", function()
 		local tmp_dir
 		local registry_mock
 		local logger_mock
+    local orig_domains
 		before_each(function()
 			tmp_dir = vim.loop.fs_mkdtemp("tungsten_dm_integXXXXXX")
 			lfs.mkdir(tmp_dir .. "/tungsten")
@@ -83,6 +84,9 @@ describe("DomainManager", function()
 			})
 			logger_mock = { notify = spy.new(function() end), levels = { ERROR = 1 } }
 			package.loaded["tungsten.util.logger"] = logger_mock
+      local cfg = require 'tungsten.config'
+      orig_domains = cfg.domains
+      cfg.domains = nil
 			package.path = tmp_dir .. "/?.lua;" .. tmp_dir .. "/?/init.lua;" .. package.path
 			package.loaded["tungsten.core.domain_manager"] = nil
 			dm = require("tungsten.core.domain_manager")
@@ -93,6 +97,7 @@ describe("DomainManager", function()
 			package.loaded["tungsten.util.logger"] = nil
 			package.loaded["tungsten.core.domain_manager"] = nil
 			os.execute("rm -rf " .. tmp_dir)
+      require('tungsten.config').domains = orig_domains
 			_G.dom1_commands_called = nil
 			_G.dom1_handlers_called = nil
 		end)
@@ -115,10 +120,13 @@ describe("DomainManager", function()
 		local orig_scandir
 		local orig_scandir_next
 		local config
+    local orig_domain
 
 		before_each(function()
 			config = require("tungsten.config")
 			config.user_domains_path = "/user/domains"
+      orig_domains = config.domains
+      config.domains = nil
 
 			registry_mock = mock_utils.create_empty_mock_module("tungsten.core.registry", {
 				"register_domain_metadata",
@@ -156,6 +164,7 @@ describe("DomainManager", function()
 
 		after_each(function()
 			config.user_domains_path = nil
+      config.domains = orig_domains
 			package.loaded["tungsten.core.registry"] = nil
 			package.loaded["tungsten.util.logger"] = nil
 			package.loaded["tungsten.core.domain_manager"] = nil
