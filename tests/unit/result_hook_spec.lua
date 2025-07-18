@@ -54,5 +54,17 @@ describe("result hook", function()
     assert.spy(hook_spy).was.called_with("42")
     assert.spy(exec_autocmd_spy).was.called()
   end)
+
+  it("uses floating result when configured", function()
+    require('tungsten.config').result_display = 'float'
+    local float_mod = { show = spy.new(function() end) }
+    package.loaded['tungsten.ui.float_result'] = float_mod
+
+    insert_result.insert_result("42", " = ", {0,1,1,0}, {0,1,1,0}, "x")
+
+    assert.spy(float_mod.show).was.called_with("x = 42")
+    assert.spy(hook_spy).was.called_with("42")
+    assert.spy(exec_autocmd_spy).was.called()
+  end)
 end)
 

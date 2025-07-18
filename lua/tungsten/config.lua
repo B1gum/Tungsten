@@ -15,6 +15,7 @@ local config = {
   user_domains_path = nil,
   process_timeout= 30000,
   result_separator = " = ",
+  result_display = "insert",
   max_jobs = 5,
   persistent_variable_assignment_operator = ":=",
   wolfram_function_mappings = {

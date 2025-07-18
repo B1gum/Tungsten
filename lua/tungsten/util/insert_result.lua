@@ -23,6 +23,15 @@ function M.insert_result(result_text, separator_text, start_pos, end_pos, origin
     return
   end
 
+  if config.result_display == "float" then
+    local float_result = require "tungsten.ui.float_result"
+    float_result.show(final_text_to_insert)
+    local tungsten = require "tungsten"
+    tungsten._execute_hook("on_result", result_text)
+    tungsten._emit_result_event(result_text)
+    return
+  end
+
   local bufnr = s_pos[1]
   local current_mode = vim.fn.mode(1)
 
