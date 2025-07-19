@@ -378,11 +378,13 @@ describe("Tungsten Persistent Variable Pipeline", function()
 				.called_with("8", nil, match.is_number(), match.is_number(), match.is_string(), match.is_string())
 		end)
 
-    it("should clear stored persistent variables", function()
-      mock_state_module.persistent_variables = { x = "1", y = "2" }
-      commands_module.tungsten_clear_persistent_vars_command({})
-      assert.are.same({}, mock_state_module.persistent_variables)
-      assert.spy(mock_logger_notify_spy).was.called_with( "Persistent variables cleared.", mock_logger_module.levels.INFO, match.is_table())
-    end)
+		it("should clear stored persistent variables", function()
+			mock_state_module.persistent_variables = { x = "1", y = "2" }
+			commands_module.tungsten_clear_persistent_vars_command({})
+			assert.are.same({}, mock_state_module.persistent_variables)
+			assert
+				.spy(mock_logger_notify_spy).was
+				.called_with("Persistent variables cleared.", mock_logger_module.levels.INFO, match.is_table())
+		end)
 	end)
 end)
