@@ -106,41 +106,7 @@ function Cache.new(max_entries, ttl)
 		tail = nil,
 		size = 0,
 	}
-	return setmetatable(self, {
-		__index = function(tbl, key)
-			if Cache[key] then
-				return Cache[key]
-			end
-			return Cache.get(tbl, key)
-		end,
-		__newindex = function(tbl, key, value)
-			if
-				Cache[key]
-				or key == "map"
-				or key == "head"
-				or key == "tail"
-				or key == "size"
-				or key == "max_entries"
-				or key == "ttl"
-			then
-				rawset(tbl, key, value)
-			else
-				Cache.set(tbl, key, value)
-			end
-		end,
-		__pairs = function(tbl)
-			local function iter(_, k)
-				local next_key, node = next(tbl.map, k)
-				if next_key then
-					return next_key, node.value
-				end
-			end
-			return iter, nil, nil
-		end,
-		__len = function(tbl)
-			return tbl.size
-		end,
-	})
+	return setmetatable(self, { __index = Cache })
 end
 
 return Cache

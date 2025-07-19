@@ -22,51 +22,51 @@ describe("tungsten.cache", function()
 
 	it("stores entries without eviction under limit", function()
 		local cache = cache_module.new(5, nil)
-		cache["a"] = 1
-		cache["b"] = 2
-		cache["c"] = 3
+		cache:set("a", 1)
+		cache:set("b", 2)
+		cache:set("c", 3)
 		assert.are.equal(3, cache:count())
-		assert.are.equal(1, cache["a"])
-		assert.are.equal(2, cache["b"])
-		assert.are.equal(3, cache["c"])
+		assert.are.equal(1, cache:get("a"))
+		assert.are.equal(2, cache:get("b"))
+		assert.are.equal(3, cache:get("c"))
 	end)
 
 	it("evicts least recently used when capacity exceeded", function()
 		local cache = cache_module.new(2, nil)
-		cache["a"] = "A"
-		cache["b"] = "B"
-		cache["c"] = "C"
-		assert.is_nil(cache["a"])
-		assert.are.equal("B", cache["b"])
-		assert.are.equal("C", cache["c"])
+		cache:set("a", "A")
+		cache:set("b", "B")
+		cache:set("c", "C")
+		assert.is_nil(cache:get("a"))
+		assert.are.equal("B", cache:get("b"))
+		assert.are.equal("C", cache:get("c"))
 	end)
 
 	it("updates LRU on access", function()
 		local cache = cache_module.new(2, nil)
-		cache["a"] = "A"
-		cache["b"] = "B"
-		local _ = cache["a"]
-		cache["c"] = "C"
-		assert.is_nil(cache["b"])
-		assert.are.equal("A", cache["a"])
-		assert.are.equal("C", cache["c"])
+		cache:set("a", "A")
+		cache:set("b", "B")
+		local _ = cache:get("a")
+		cache:set("c", "C")
+		assert.is_nil(cache:get("b"))
+		assert.are.equal("A", cache:get("a"))
+		assert.are.equal("C", cache:get("c"))
 	end)
 
 	it("expires entries older than ttl", function()
 		local cache = cache_module.new(2, 5)
-		cache["a"] = "A"
+		cache:set("a", "A")
 		set_now(6000)
-		assert.is_nil(cache["a"])
+		assert.is_nil(cache:get("a"))
 		assert.are.equal(0, cache:count())
 	end)
 
 	it("maintains list integrity when removing a middle entry", function()
 		local cache = cache_module.new(5, nil)
-		cache["a"] = 1
-		cache["b"] = 2
-		cache["c"] = 3
+		cache:set("a", 1)
+		cache:set("b", 2)
+		cache:set("c", 3)
 
-		cache["b"] = 22
+		cache:set("b", 22)
 
 		assert.are.equal(3, cache:count())
 		assert.are.equal("b", cache.head.key)

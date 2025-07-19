@@ -184,7 +184,7 @@ describe("tungsten.core.engine", function()
 			local test_ast = ast_node("cached_expr")
 			local callback_spy = spy.new()
 			local cache_key = engine.get_cache_key("wolfram_code(cached_expr)", false)
-			mock_state.cache[cache_key] = "cached_result"
+			mock_state.cache:set(cache_key, "cached_result")
 
 			engine.evaluate_async(test_ast, false, function(...)
 				callback_spy(...)
@@ -205,7 +205,7 @@ describe("tungsten.core.engine", function()
 
 			assert.spy(async_run_job_spy).was.called(1)
 			assert.spy(callback_spy).was.called_with("mock_result", nil)
-			assert.are.equal("mock_result", mock_state.cache[cache_key])
+			assert.are.equal("mock_result", mock_state.cache:get(cache_key))
 		end)
 
 		it("should always start a job and not use/store in cache if cache is disabled", function()
@@ -213,7 +213,7 @@ describe("tungsten.core.engine", function()
 			local test_ast = ast_node("no_cache_expr")
 			local callback_spy = spy.new()
 			local cache_key = engine.get_cache_key("wolfram_code(no_cache_expr)", false)
-			mock_state.cache[cache_key] = "should_not_be_used"
+			mock_state.cache:set(cache_key, "should_not_be_used")
 
 			engine.evaluate_async(test_ast, false, function(...)
 				callback_spy(...)
@@ -221,7 +221,7 @@ describe("tungsten.core.engine", function()
 
 			assert.spy(async_run_job_spy).was.called(1)
 			assert.spy(callback_spy).was.called_with("mock_result", nil)
-			assert.are.equal("should_not_be_used", mock_state.cache[cache_key])
+			assert.are.equal("should_not_be_used", mock_state.cache:get(cache_key))
 		end)
 
 		it("should invoke callback with error if async.run_job returns a falsy job_id", function()
@@ -364,7 +364,7 @@ describe("tungsten.core.engine", function()
 
 	describe("Cache Management", function()
 		it("clear_cache() should empty the cache and log", function()
-			mock_state.cache["key1"] = "val1"
+			mock_state.cache:set("key1", "val1")
 			engine.clear_cache()
 			assert.are_equal(0, mock_state.cache:count())
 			assert
@@ -373,8 +373,8 @@ describe("tungsten.core.engine", function()
 		end)
 
 		it("get_cache_size() should return the correct number of entries and log", function()
-			mock_state.cache["key1"] = "val1"
-			mock_state.cache["key2"] = "val2"
+			mock_state.cache:set("key1", "val1")
+			mock_state.cache:set("key2", "val2")
 			local size = engine.get_cache_size()
 			assert.are.equal(2, size)
 			assert

@@ -96,11 +96,12 @@ function M.evaluate_async(ast, numeric, callback)
 	local use_cache = (config.cache_enabled == nil) or (config.cache_enabled == true)
 
 	if use_cache then
-		if state.cache[cache_key] then
+		local cached = state.cache:get(cache_key)
+		if cached then
 			logger.info("Tungsten", "Tungsten: Result from cache.")
 			logger.debug("Tungsten Debug", "Tungsten Debug: Cache hit for key: " .. cache_key)
 			vim.schedule(function()
-				callback(state.cache[cache_key], nil)
+				callback(cached, nil)
 			end)
 			return
 		end
@@ -137,7 +138,7 @@ function M.evaluate_async(ast, numeric, callback)
 					logger.debug("Tungsten Debug", "Tungsten Debug (stderr): " .. final_stderr)
 				end
 				if use_cache then
-					state.cache[cache_key] = final_stdout
+					state.cache:set(cache_key, final_stdout)
 					logger.info("Tungsten Debug", "Tungsten: Result for key '" .. cache_key .. "' stored in cache.")
 				end
 				callback(final_stdout, nil)
