@@ -117,10 +117,8 @@ describe("DomainManager", function()
 	describe("user-defined domains path", function()
 		local registry_mock
 		local logger_mock
-		local orig_scandir
-		local orig_scandir_next
+		local orig_fs_dir
 		local config
-		local orig_domain
 
 		before_each(function()
 			config = require("tungsten.config")
@@ -135,27 +133,21 @@ describe("DomainManager", function()
 			logger_mock = { notify = spy.new(function() end), levels = { ERROR = 1 } }
 			package.loaded["tungsten.util.logger"] = logger_mock
 
-			orig_scandir = vim.loop.fs_scandir
-			orig_scandir_next = vim.loop.fs_scandir_next
+			orig_fs_dir = vim.fs.dir
 
 			local handles = {
 				["/plugin/domains"] = { "plugdom" },
 				["/user/domains"] = { "userdom" },
 			}
 
-			vim.loop.fs_scandir = function(path)
-				if handles[path] then
-					return path
+			vim.fs.dir = function(path)
+				local list = handles[path]
+				return function()
+					if not list or #list == 0 then
+						return nil
+					end
+					return table.remove(list, 1), "directory"
 				end
-				return nil
-			end
-
-			vim.loop.fs_scandir_next = function(handle)
-				local list = handles[handle]
-				if not list or #list == 0 then
-					return nil
-				end
-				return table.remove(list, 1), "directory"
 			end
 
 			package.loaded["tungsten.core.domain_manager"] = nil
@@ -168,8 +160,7 @@ describe("DomainManager", function()
 			package.loaded["tungsten.core.registry"] = nil
 			package.loaded["tungsten.util.logger"] = nil
 			package.loaded["tungsten.core.domain_manager"] = nil
-			vim.loop.fs_scandir = orig_scandir
-			vim.loop.fs_scandir_next = orig_scandir_next
+			vim.fs.dir = orig_fs_dir
 		end)
 
 		it("registers domains from plugin and user paths", function()

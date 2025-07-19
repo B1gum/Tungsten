@@ -20,15 +20,8 @@ function M.discover_domains(dir, user_dir)
 		if not path then
 			return
 		end
-		local handle = uv.fs_scandir(path)
-		if not handle then
-			return
-		end
-		while true do
-			local name, typ = uv.fs_scandir_next(handle)
-			if not name then
-				break
-			end
+
+		for name, typ in vim.fs.dir(path) do
 			if typ == "directory" and not seen[name] then
 				table.insert(domains, name)
 				seen[name] = true
