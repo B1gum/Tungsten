@@ -7,7 +7,7 @@ function M.trim(str)
 	if type(str) ~= "string" then
 		return str
 	end
-	return str:match("^%s*(.-)%s*$")
+  return vim.trim(str)
 end
 
 return M
