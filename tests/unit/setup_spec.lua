@@ -11,8 +11,8 @@ describe("tungsten.setup", function()
 		mock_utils.reset_modules({
 			"tungsten",
 			"tungsten.config",
-      "tungsten.state",
-      "tungsten.cache",
+			"tungsten.state",
+			"tungsten.cache",
 			"tungsten.core.commands",
 			"tungsten.core.registry",
 			"tungsten.ui.which_key",
@@ -78,22 +78,22 @@ describe("tungsten.setup", function()
 		vim.api.nvim_create_user_command = orig_create
 	end)
 
-  it("initializes cache with user options", function()
-    local tungsten = require('tungsten')
-    tungsten.setup({ cache_max_entries = 42, cache_ttl = 17 })
-    local state = require('tungsten.state')
-    assert.are.equal(42, state.cache.max_entries)
-    assert.are.equal(17, state.cache.ttl)
-  end)
+	it("initializes cache with user options", function()
+		local tungsten = require("tungsten")
+		tungsten.setup({ cache_max_entries = 42, cache_ttl = 17 })
+		local state = require("tungsten.state")
+		assert.are.equal(42, state.cache.max_entries)
+		assert.are.equal(17, state.cache.ttl)
+	end)
 
-  it("recreates cache when setup is called again", function()
-    local tungsten = require('tungsten')
-    tungsten.setup({ cache_max_entries = 10, cache_ttl = 5 })
-    local state = require('tungsten.state')
-    local first_cache = state.cache
-    tungsten.setup({ cache_max_entries = 20, cache_ttl = 15 })
-    assert.are_not.equal(first_cache, state.cache)
-    assert.are.equal(20, state.cache.max_entries)
-    assert.are.equal(15, state.cache.ttl)
-  end)
+	it("recreates cache when setup is called again", function()
+		local tungsten = require("tungsten")
+		tungsten.setup({ cache_max_entries = 10, cache_ttl = 5 })
+		local state = require("tungsten.state")
+		local first_cache = state.cache
+		tungsten.setup({ cache_max_entries = 20, cache_ttl = 15 })
+		assert.are_not.equal(first_cache, state.cache)
+		assert.are.equal(20, state.cache.max_entries)
+		assert.are.equal(15, state.cache.ttl)
+	end)
 end)

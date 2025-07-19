@@ -60,4 +60,16 @@ describe("substitute_persistent_vars", function()
 		local result = engine.substitute_persistent_vars("x + y", nil)
 		assert.are.equal("x + y", result)
 	end)
+
+	it("handles self-referential variables without infinite recursion", function()
+		local vars = { x = "x" }
+		local result = engine.substitute_persistent_vars("x", vars)
+		assert.are.equal("(x)", result)
+	end)
+
+	it("handles simple cyclic references", function()
+		local vars = { x = "y", y = "x" }
+		local result = engine.substitute_persistent_vars("x", vars)
+		assert.are.equal("((y))", result)
+	end)
 end)

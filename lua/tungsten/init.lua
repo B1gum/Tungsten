@@ -54,9 +54,9 @@ function M.setup(user_opts)
 
 	package.loaded["tungsten.config"] = M.config
 
-  local state = require("tungsten.state")
-  local Cache = require("tungsten.cache")
-  state.cache = Cache.new(M.config.cache_max_entries, M.config.cache_ttl)
+	local state = require("tungsten.state")
+	local Cache = require("tungsten.cache")
+	state.cache = Cache.new(M.config.cache_max_entries, M.config.cache_ttl)
 
 	require("tungsten.core.commands")
 	require("tungsten.ui.which_key")

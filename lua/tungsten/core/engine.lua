@@ -30,19 +30,39 @@ function M.substitute_persistent_vars(code_string, variables_map)
 	end
 
 	local final_pattern
+	local current_depth, current_stack
+	local max_depth = #names + 10
 
-	local function resolve(str)
-		return final_pattern:match(str)
+	local function resolve(str, depth, stack)
+		if depth >= max_depth then
+			return str
+		end
+
+		local prev_depth, prev_stack = current_depth, current_stack
+		current_depth, current_stack = depth, stack
+		local result = final_pattern:match(str)
+		current_depth, current_stack = prev_depth, prev_stack
+
+		return result
 	end
 
 	local function replace(var)
+		if current_stack[var] then
+			return variables_map[var]
+		end
+
+		current_stack[var] = true
+
 		local value = variables_map[var]
-		return "(" .. resolve(value) .. ")"
+		local result = "(" .. resolve(value, current_depth + 1, current_stack) .. ")"
+		current_stack[var] = nil
+
+		return result
 	end
 
 	final_pattern = Cs(((-B(word) * C(pattern) * -word) / replace + 1) ^ 0)
 
-	return resolve(code_string)
+	return resolve(code_string, 0, {})
 end
 
 local function get_cache_key(code_string, numeric)
