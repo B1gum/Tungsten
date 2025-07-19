@@ -21,6 +21,25 @@ local function is_matrix_or_vector(node)
 	return false
 end
 
+local function is_vector_like(node)
+	if type(node) ~= "table" then
+		return false
+	end
+	if node.type == "vector" or node.type == "symbolic_vector" then
+		return true
+	end
+	if node.type == "unary" and node.value then
+		return is_vector_like(node.value)
+	end
+	if node.type == "subscript" and node.base then
+		return is_vector_like(node.base)
+	end
+	if node.type == "superscript" and node.base then
+		return is_vector_like(node.base)
+	end
+	return false
+end
+
 local function walk(node)
 	if type(node) ~= "table" then
 		return node
@@ -66,6 +85,20 @@ local function walk(node)
 				and exp.value.value == 1
 			then
 				return ast.create_inverse_node(base)
+			end
+		end
+	end
+
+	if node.type == "binary" then
+		local left = node.left
+		local right = node.right
+		if node.operator == "\\times" then
+			if is_vector_like(left) and is_vector_like(right) then
+				return ast.create_cross_product_node(left, right)
+			end
+		elseif node.operator == "*" then
+			if is_vector_like(left) and is_vector_like(right) then
+				return ast.create_dot_product_node(left, right)
 			end
 		end
 	end

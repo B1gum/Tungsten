@@ -23,4 +23,22 @@ describe("semantic pass", function()
 		local result = semantic.apply(input)
 		assert.are.same(input, result)
 	end)
+
+	it("converts vector multiplication to dot product", function()
+		local left = { type = "vector", elements = {} }
+		local right = { type = "vector", elements = {} }
+		local input = ast.create_binary_operation_node("*", left, right)
+		local result = semantic.apply(input)
+		local expected = ast.create_dot_product_node(left, right)
+		assert.are.same(expected, result)
+	end)
+
+	it("converts vector \times multiplication to cross product", function()
+		local left = { type = "vector", elements = {} }
+		local right = { type = "vector", elements = {} }
+		local input = ast.create_binary_operation_node("\\times", left, right)
+		local result = semantic.apply(input)
+		local expected = ast.create_cross_product_node(left, right)
+		assert.are.same(expected, result)
+	end)
 end)
