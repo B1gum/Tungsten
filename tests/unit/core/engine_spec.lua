@@ -14,6 +14,8 @@ describe("tungsten.core.engine", function()
 	local mock_state
 	local mock_async
 	local mock_logger
+	local mock_parser_module
+	local mock_semantic_module
 
 	local ast_to_wolfram_spy
 	local async_run_job_spy
@@ -29,6 +31,8 @@ describe("tungsten.core.engine", function()
 		"tungsten.state",
 		"tungsten.util.async",
 		"tungsten.util.logger",
+		"tungsten.core.parser",
+		"tungsten.core.semantic_pass",
 	}
 
 	local function ast_node(id)
@@ -54,6 +58,8 @@ describe("tungsten.core.engine", function()
 			notify = function() end,
 			levels = { ERROR = 1, WARN = 2, INFO = 3, DEBUG = 4 },
 		}
+		mock_parser_module = {}
+		mock_semantic_module = {}
 		mock_logger.debug = function(t, m)
 			mock_logger.notify(m, mock_logger.levels.DEBUG, { title = t })
 		end
@@ -108,6 +114,12 @@ describe("tungsten.core.engine", function()
 			end
 			if module_path == "tungsten.util.logger" then
 				return mock_logger
+			end
+			if module_path == "tungsten.core.parser" then
+				return mock_parser_module
+			end
+			if module_path == "tungsten.core.semantic_pass" then
+				return mock_semantic_module
 			end
 			if package.loaded[module_path] then
 				return package.loaded[module_path]
@@ -243,6 +255,79 @@ describe("tungsten.core.engine", function()
 					.called_with("Tungsten: Evaluation already in progress for this expression.", mock_logger.levels.INFO, match.is_table())
 			end
 		)
+	end)
+
+	describe("run_async(input, numeric, callback)", function()
+		it("parses input, applies semantic pass, and evaluates", function()
+			local parsed_ast = { type = "expression", id = "parsed" }
+			local sem_ast = { type = "expression", id = "sem" }
+			local callback_spy = spy.new()
+
+			mock_parser_module.parse = spy.new(function()
+				return parsed_ast
+			end)
+			mock_semantic_module.apply = spy.new(function(ast)
+				return sem_ast
+			end)
+
+			local eval_spy = spy.new(function(ast, numeric, cb)
+				cb("ok", nil)
+			end)
+			engine.evaluate_async = eval_spy
+
+			engine.run_async("1+1", true, function(...)
+				callback_spy(...)
+			end)
+
+			assert.spy(mock_parser_module.parse).was.called_with("1+1")
+			assert.spy(mock_semantic_module.apply).was.called_with(parsed_ast)
+			assert.spy(eval_spy).was.called_with(sem_ast, true, match.is_function())
+			assert.spy(callback_spy).was.called_with("ok", nil)
+		end)
+
+		it("returns error when semantic pass fails", function()
+			local parsed_ast = { type = "expression", id = "parsed" }
+			mock_parser_module.parse = spy.new(function()
+				return parsed_ast
+			end)
+			mock_semantic_module.apply = spy.new(function()
+				error("boom")
+			end)
+
+			local eval_spy = spy.new(function() end)
+			engine.evaluate_async = eval_spy
+			local cb_spy = spy.new()
+
+			engine.run_async("bad", false, function(...)
+				cb_spy(...)
+			end)
+
+			assert.spy(eval_spy).was_not.called()
+			assert.spy(cb_spy).was.called()
+			local err = cb_spy.calls[1].vals[2]
+			assert.truthy(err:find("Semantic pass error"))
+		end)
+
+		it("returns error when parsing fails", function()
+			mock_parser_module.parse = spy.new(function()
+				error("no parse")
+			end)
+			mock_semantic_module.apply = spy.new(function(ast)
+				return ast
+			end)
+			local eval_spy = spy.new(function() end)
+			engine.evaluate_async = eval_spy
+			local cb_spy = spy.new()
+
+			engine.run_async("oops", false, function(...)
+				cb_spy(...)
+			end)
+
+			assert.spy(eval_spy).was_not.called()
+			assert.spy(cb_spy).was.called()
+			local err = cb_spy.calls[1].vals[2]
+			assert.truthy(err:find("Parse error"))
+		end)
 	end)
 
 	describe("Persistent Variable Substitution", function()

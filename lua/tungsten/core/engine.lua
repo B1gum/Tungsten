@@ -1,6 +1,5 @@
 -- engine.lua
 -- Manages the interaction with the Wolfram Engine via wolframscript
-----------------------------------------------------------------------------------
 
 local wolfram_codegen = require("tungsten.backends.wolfram")
 local config = require("tungsten.config")
@@ -143,6 +142,7 @@ end
 function M.run_async(input, numeric, callback)
 	assert(type(callback) == "function", "run_async expects a callback function")
 	local parser_module = require("tungsten.core.parser")
+	local semantic_pass = require("tungsten.core.semantic_pass")
 
 	local ok, ast, err_msg = pcall(parser_module.parse, input)
 	if not ok or ast == nil then
@@ -150,7 +150,14 @@ function M.run_async(input, numeric, callback)
 		callback(nil, err_msg)
 		return
 	end
-	M.evaluate_async(ast, numeric, callback)
+	local sem_ok, processed_ast = pcall(semantic_pass.apply, ast)
+	if not sem_ok or processed_ast == nil then
+		err_msg = "Semantic pass error: " .. tostring(processed_ast)
+		callback(nil, err_msg)
+		return
+	end
+
+	M.evaluate_async(processed_ast, numeric, callback)
 end
 
 M.parse = function(...)
