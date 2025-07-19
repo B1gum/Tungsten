@@ -13,7 +13,7 @@ local config = {
 	enable_default_mappings = true,
 	domains = { "arithmetic", "calculus", "linear_algebra", "differential_equations" },
 	user_domains_path = nil,
-	process_timeout = 30000,
+	process_timeout_ms = 30000,
 	result_separator = " = ",
 	result_display = "insert",
 	max_jobs = 5,
