@@ -115,6 +115,12 @@ process_queue = function()
 end
 
 function M.run_job(cmd, opts)
+	local ok, _ = pcall(require, "plenary.job")
+	if not ok then
+		local msg = "async.run_job: plenary.nvim is required. Install https://github.com/nvim-lua/plenary.nvim."
+		logger.error("Tungsten", msg)
+		error(msg)
+	end
 	if active_job_count() >= (config.max_jobs or math.huge) then
 		logger.warn("Tungsten", string.format("Maximum of %d jobs reached; queuing job", config.max_jobs))
 		table.insert(job_queue, { cmd = cmd, opts = opts })
