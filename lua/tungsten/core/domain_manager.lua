@@ -1,4 +1,3 @@
-local uv = vim.loop
 local registry = require("tungsten.core.registry")
 local logger = require("tungsten.util.logger")
 local config = require("tungsten.config")
