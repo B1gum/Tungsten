@@ -293,27 +293,31 @@ describe("tungsten.util.selection", function()
 				assert.are.equal("", selection_module.get_visual_selection())
 			end)
 
-      it("should handle reversed line selection", function()
-        _G.vim.fn.getpos = spy.new(function(marker)
-            if marker == "'<" then return { 0, 3, 1, 0 } end
-            if marker == "'>" then return { 0, 1, 5, 0 } end
-            return {0,0,0,0}
-        end)
-        _G.vim.api.nvim_buf_get_text = spy.new(function()
-            return {}
-        end)
-        assert.are.equal("", selection_module.get_visual_selection())
-      end)
+			it("should handle reversed line selection", function()
+				_G.vim.fn.getpos = spy.new(function(marker)
+					if marker == "'<" then
+						return { 0, 3, 1, 0 }
+					end
+					if marker == "'>" then
+						return { 0, 1, 5, 0 }
+					end
+					return { 0, 0, 0, 0 }
+				end)
+				_G.vim.api.nvim_buf_get_text = spy.new(function()
+					return {}
+				end)
+				assert.are.equal("", selection_module.get_visual_selection())
+			end)
 
-      it("should return an empty string when marks are unset", function()
-        _G.vim.fn.getpos = spy.new(function()
-            return {0,0,0,0}
-        end)
-        _G.vim.api.nvim_buf_get_text = spy.new(function()
-            return {}
-        end)
-        assert.are.equal("", selection_module.get_visual_selection())
-      end)
+			it("should return an empty string when marks are unset", function()
+				_G.vim.fn.getpos = spy.new(function()
+					return { 0, 0, 0, 0 }
+				end)
+				_G.vim.api.nvim_buf_get_text = spy.new(function()
+					return {}
+				end)
+				assert.are.equal("", selection_module.get_visual_selection())
+			end)
 		end)
 	end)
 end)

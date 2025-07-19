@@ -108,4 +108,22 @@ describe("tungsten.util.async.run_job", function()
 		end, 1000)
 		assert.is_false(async.is_process_active(handle))
 	end)
+
+	it("cancel_all_jobs terminates running jobs", function()
+		local done = false
+		local handle = async.run_job({ "sh", "-c", "sleep 2" }, {
+			cache_key = "bulk",
+			timeout = 1000,
+			on_exit = function()
+				done = true
+			end,
+		})
+		vim.defer_fn(function()
+			async.cancel_all_jobs()
+		end, 100)
+		wait_for(function()
+			return done
+		end, 1000)
+		assert.falsy(state.active_jobs[handle.id])
+	end)
 end)

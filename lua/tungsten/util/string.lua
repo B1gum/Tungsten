@@ -7,7 +7,7 @@ function M.trim(str)
 	if type(str) ~= "string" then
 		return str
 	end
-  return vim.trim(str)
+	return vim.trim(str)
 end
 
 return M

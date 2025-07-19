@@ -64,10 +64,24 @@ function M.setup(user_opts)
 	for _, cmd in ipairs(registry.commands) do
 		vim.api.nvim_create_user_command(cmd.name, cmd.func, cmd.opts or { desc = cmd.desc })
 	end
+
+	local augroup = vim.api.nvim_create_augroup("TungstenUnload", { clear = true })
+	vim.api.nvim_create_autocmd("VimLeavePre", {
+		group = augroup,
+		callback = function()
+			require("tungsten").teardown()
+		end,
+	})
 end
 
 function M.register_domain(name)
 	return domain_manager.register_domain(name)
+end
+
+function M.teardown()
+	local async = require("tungsten.util.async")
+	async.cancel_all_jobs()
+	execute_hook("teardown")
 end
 
 return M
