@@ -45,6 +45,9 @@ describe("Arithmetic Solve System Rule: tungsten.domains.arithmetic.rules.solve_
 			create_binary_operation_node = function(op, left, right)
 				return { type = "binary", operator = op, left = left, right = right }
 			end,
+			create_solve_system_equations_capture_node = function(eqs)
+				return { type = "solve_system_equations_capture", equations = eqs }
+			end,
 		}
 		package.loaded["tungsten.core.ast"] = mock_ast_module
 

@@ -12,9 +12,11 @@ local EquationList = Ct(SingleEquation * (EquationSeparator * SingleEquation) ^ 
 
 local SolveSystemEquationsPattern = EquationList
 
+local ast = require("tungsten.core.ast")
+
 local SolveSystemRule = SolveSystemEquationsPattern
 	/ function(captured_equations_table)
-		return { type = "solve_system_equations_capture", equations = captured_equations_table }
+		return ast.create_solve_system_equations_capture_node(captured_equations_table)
 	end
 
 return SolveSystemRule

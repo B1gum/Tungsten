@@ -70,18 +70,15 @@ local lagrange_infix_notation = Ct(Cg(func_identifier, "func_name") * Cg(primes,
 		local order = #captures.primes
 		local expression = ast.create_function_call_node(captures.func_name, { captures.arg })
 		local variable = captures.arg
-		return ast.create_ordinary_derivative_node(expression, variable, { type = "number", value = order })
+		return ast.create_ordinary_derivative_node(expression, variable, ast.create_number_node(order))
 	end
 
 local lagrange_postfix_notation = Ct(tk.variable * C(P("'") ^ 1))
 	/ function(t)
 		local var_name = t[1]
 		local order = #t[2]
-		local derivative_node = ast.create_ordinary_derivative_node(
-			var_name,
-			{ type = "variable", name = "x" },
-			{ type = "number", value = order }
-		)
+		local derivative_node =
+			ast.create_ordinary_derivative_node(var_name, ast.create_variable_node("x"), ast.create_number_node(order))
 		return derivative_node
 	end
 
@@ -96,11 +93,7 @@ local newton_notation = Ct(newton_dot * ((tk.lbrace * space * V("AtomBase") * sp
 	/ function(captures)
 		local order = captures[1]
 		local base_expr = captures[2]
-		return ast.create_ordinary_derivative_node(
-			base_expr,
-			{ type = "variable", name = "t" },
-			{ type = "number", value = order }
-		)
+		return ast.create_ordinary_derivative_node(base_expr, ast.create_variable_node("t"), ast.create_number_node(order))
 	end
 
 local OrdinaryDerivative = LeibnizNotation + LagrangeNotation + newton_notation

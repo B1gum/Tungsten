@@ -61,6 +61,9 @@ describe("Calculus Partial Derivative Rule: tungsten.domains.calculus.rules.part
 					variables = variables_list,
 				}
 			end,
+			create_number_node = function(val)
+				return { type = "number", value = val }
+			end,
 		}
 		package.loaded["tungsten.core.ast"] = mock_ast_module
 		PartialDerivativeRule = require("tungsten.domains.calculus.rules.partial_derivatives")

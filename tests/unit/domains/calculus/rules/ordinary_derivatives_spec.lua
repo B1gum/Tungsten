@@ -50,6 +50,12 @@ describe("Calculus Unified Ordinary Derivative Rule", function()
 			create_function_call_node = function(name_node, args_table)
 				return { type = "function_call", name_node = name_node, args = args_table }
 			end,
+			create_variable_node = function(name)
+				return { type = "variable", name = name }
+			end,
+			create_number_node = function(val)
+				return { type = "number", value = val }
+			end,
 		}
 		package.loaded["tungsten.core.ast"] = mock_ast_module
 

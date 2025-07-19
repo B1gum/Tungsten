@@ -10,6 +10,22 @@ local function node(t, fields)
 	return fields
 end
 
+function M.create_number_node(value)
+	return node("number", { value = value })
+end
+
+function M.create_variable_node(name)
+	return node("variable", { name = name })
+end
+
+function M.create_greek_node(name)
+	return node("greek", { name = name })
+end
+
+function M.create_solve_system_equations_capture_node(equations)
+	return node("solve_system_equations_capture", { equations = equations })
+end
+
 function M.create_binary_operation_node(op, left, right)
 	if op == "\\cdot" then
 		op = "*"

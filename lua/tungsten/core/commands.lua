@@ -15,6 +15,7 @@ local wolfram_backend = require("tungsten.backends.wolfram")
 local vim_inspect = require("vim.inspect")
 local string_util = require("tungsten.util.string")
 local cmd_utils = require("tungsten.util.commands")
+local ast_creator = require("tungsten.core.ast")
 
 local function tungsten_evaluate_command(_)
 	local ast, selection_text, err = cmd_utils.parse_selected_latex("expression")
@@ -315,7 +316,7 @@ local function tungsten_solve_system_command(_)
 		for _, var_name in ipairs(variable_names_str) do
 			local trimmed_var_name = var_name:match("^%s*(.-)%s*$")
 			if trimmed_var_name ~= "" then
-				table.insert(variable_asts, { type = "variable", name = trimmed_var_name })
+				table.insert(variable_asts, ast_creator.create_variable_node(trimmed_var_name))
 			end
 		end
 
