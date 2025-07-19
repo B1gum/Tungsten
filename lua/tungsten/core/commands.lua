@@ -182,6 +182,11 @@ local function define_persistent_variable_command(_)
 	)
 end
 
+local function tungsten_clear_persistent_vars_command(_)
+  state.persistent_variables = {}
+  logger.info("Tungsten", "Persistent variables cleared.")
+end
+
 local function tungsten_solve_command(_)
 	local _, initial_start_extmark, initial_end_extmark, mode = selection.create_selection_extmarks()
 
@@ -369,6 +374,7 @@ local M = {
 	tungsten_solve_system_command = tungsten_solve_system_command,
 	tungsten_toggle_numeric_mode_command = tungsten_toggle_numeric_mode_command,
 	tungsten_toggle_debug_mode_command = tungsten_toggle_debug_mode_command,
+  tungsten_clear_persistent_vars_command = tungsten_clear_persistent_vars_command,
 	tungsten_status_command = tungsten_status_command,
 }
 
@@ -390,6 +396,11 @@ M.commands = {
 		end,
 		opts = { desc = "Clear the Tungsten evaluation cache" },
 	},
+  {
+    name = "TungstenClearPersistentVars",
+    func = tungsten_clear_persistent_vars_command,
+    opts = { desc = "Clear Tungsten persistent variables" },
+  },
 	{
 		name = "TungstenViewActiveJobs",
 		func = function()

@@ -34,6 +34,7 @@ local mappings = {
 	{ "<leader>tdc", ":<C-u>TungstenConvolve<CR>", desc = "Convolution" },
 	{ "<leader>tc", group = "Cache" },
 	{ "<leader>tcc", ":<C-u>TungstenClearCache<CR>", desc = "Clear Cache" },
+  { "<leader>tcp", ":<C-u>TungstenClearPersistentVars<CR>", desc = "Clear Persistent Vars" },
 	{ "<leader>tcv", ":<C-u>TungstenViewActiveJobs<CR>", desc = "View Active Jobs" },
 	{ "<leader>tm", "<cmd>TungstenPalette<cr>", desc = "Open Command Palette" },
 	{ "<leader>tt", group = "Toggle" },
