@@ -67,6 +67,21 @@ local function tungsten_status_command(_)
 	logger.info("Tungsten", summary)
 end
 
+local function tungsten_show_ast_command(_)
+	local ast, _, err = cmd_utils.parse_selected_latex("expression")
+	if err then
+		error_handler.notify_error("AST", err)
+		return
+	end
+	if not ast then
+		return
+	end
+
+	local formatter = require("tungsten.util.ast_format")
+	local float = require("tungsten.ui.float_result")
+	float.show(formatter.format(ast))
+end
+
 local function define_persistent_variable_command(_)
 	local selected_text = selection.get_visual_selection()
 	if selected_text == "" or selected_text == nil then
@@ -377,6 +392,7 @@ local M = {
 	tungsten_toggle_debug_mode_command = tungsten_toggle_debug_mode_command,
 	tungsten_clear_persistent_vars_command = tungsten_clear_persistent_vars_command,
 	tungsten_status_command = tungsten_status_command,
+	tungsten_show_ast_command = tungsten_show_ast_command,
 }
 
 M.commands = {
@@ -433,6 +449,11 @@ M.commands = {
 		name = "TungstenStatus",
 		func = tungsten_status_command,
 		opts = { desc = "Show Tungsten job status" },
+	},
+	{
+		name = "TungstenShowAST",
+		func = tungsten_show_ast_command,
+		opts = { range = true, desc = "Display AST of selected expression" },
 	},
 }
 
