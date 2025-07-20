@@ -85,4 +85,16 @@ describe("result hook", function()
 		assert.spy(hook_spy).was.called_with("42")
 		assert.spy(exec_autocmd_spy).was.called()
 	end)
+
+	it("uses virtual result when configured", function()
+		require("tungsten.config").result_display = "virtual"
+		local virtual_mod = { show = spy.new(function() end) }
+		package.loaded["tungsten.ui.virtual_result"] = virtual_mod
+
+		insert_result.insert_result("42", " = ", { 0, 1, 1, 0 }, { 0, 1, 1, 0 }, "x")
+
+		assert.spy(virtual_mod.show).was.called_with("x = 42")
+		assert.spy(hook_spy).was.called_with("42")
+		assert.spy(exec_autocmd_spy).was.called()
+	end)
 end)

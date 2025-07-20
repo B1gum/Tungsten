@@ -50,6 +50,13 @@ function M.insert_result(result_text, separator_text, start_pos, end_pos, origin
 		tungsten._execute_hook("on_result", result_text)
 		tungsten._emit_result_event(result_text)
 		return
+	elseif config.result_display == "virtual" then
+		local virtual_result = require("tungsten.ui.virtual_result")
+		virtual_result.show(final_text_to_insert)
+		local tungsten = require("tungsten")
+		tungsten._execute_hook("on_result", result_text)
+		tungsten._emit_result_event(result_text)
+		return
 	end
 
 	local bufnr = s_pos[1]
