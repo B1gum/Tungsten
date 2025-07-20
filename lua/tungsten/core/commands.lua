@@ -43,6 +43,63 @@ local function tungsten_evaluate_command(_)
 	end)
 end
 
+local function tungsten_simplify_command(_)
+	local ast, selection_text, err = cmd_utils.parse_selected_latex("expression")
+	if err then
+		error_handler.notify_error("Simplify", err)
+		return
+	end
+	if not ast then
+		return
+	end
+
+	local simplify_ast = ast_creator.create_function_call_node(ast_creator.create_variable_node("Simplify"), { ast })
+
+	local _, start_mark, end_mark, mode = selection.create_selection_extmarks()
+
+	local use_numeric_mode = config.numeric_mode
+
+	evaluator.evaluate_async(simplify_ast, use_numeric_mode, function(result, err2)
+		if err2 then
+			error_handler.notify_error("Simplify", err2)
+			return
+		end
+		if result == nil or result == "" then
+			return
+		end
+		insert_result_util.insert_result(result, nil, start_mark, end_mark, selection_text, mode)
+	end)
+end
+
+local function tungsten_factor_command(_)
+	local ast, selection_text, err = cmd_utils.parse_selected_latex("expression")
+	if err then
+		error_handler.notify_error("Factor", err)
+		return
+	end
+	if not ast then
+		return
+	end
+
+	local factor_ast = ast_creator.create_function_call_node(ast_creator.create_variable_node("Factor"), { ast })
+
+	local _, start_mark, end_mark, mode = selection.create_selection_extmarks()
+
+	local use_numeric_mode = config.numeric_mode
+
+	evaluator.evaluate_async(factor_ast, use_numeric_mode, function(result, err2)
+		if err2 then
+			error_handler.notify_error("Factor", err2)
+			return
+		end
+		if result == nil or result == "" then
+			return
+		end
+
+		insert_result_util.insert_result(result, nil, start_mark, end_mark, selection_text, mode)
+	end)
+end
+
 local function tungsten_toggle_numeric_mode_command(_)
 	config.numeric_mode = not config.numeric_mode
 	local status = config.numeric_mode and "enabled" or "disabled"
@@ -385,6 +442,8 @@ local registry = require("tungsten.core.registry")
 
 local M = {
 	tungsten_evaluate_command = tungsten_evaluate_command,
+	tungsten_simplify_command = tungsten_simplify_command,
+	tungsten_factor_command = tungsten_factor_command,
 	define_persistent_variable_command = define_persistent_variable_command,
 	tungsten_solve_command = tungsten_solve_command,
 	tungsten_solve_system_command = tungsten_solve_system_command,
@@ -400,6 +459,16 @@ M.commands = {
 		name = "TungstenEvaluate",
 		func = tungsten_evaluate_command,
 		opts = { range = true, desc = "Evaluate selected LaTeX and insert the result" },
+	},
+	{
+		name = "TungstenSimplify",
+		func = tungsten_simplify_command,
+		opts = { range = true, desc = "Simplify the selected LaTeX expression" },
+	},
+	{
+		name = "TungstenFactor",
+		func = tungsten_factor_command,
+		opts = { range = true, desc = "Factor the selected LaTeX expression" },
 	},
 	{
 		name = "TungstenDefinePersistentVariable",

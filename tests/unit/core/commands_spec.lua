@@ -261,6 +261,96 @@ describe("Tungsten core commands", function()
 		end)
 	end)
 
+	describe(":TungstenSimplify", function()
+		it("wraps selection with Simplify and evaluates", function()
+			current_parse_selected_latex_config["expression"] = {
+				ast = { type = "expression", representation = "parsed:\\frac{1+1}{2}" },
+				text = "\\frac{1+1}{2}",
+			}
+			eval_async_behaviors.default_eval = function(_, _, cb)
+				cb("simp")
+			end
+			current_eval_async_config_key = "default_eval"
+
+			vim_test_env.set_visual_selection(1, 1, 1, 5)
+
+			commands_module.tungsten_simplify_command({})
+
+			assert.spy(mock_cmd_utils_parse_selected_latex_spy).was.called_with("expression")
+			assert.spy(mock_evaluator_evaluate_async_spy).was.called(1)
+			local ast_arg = mock_evaluator_evaluate_async_spy.calls[1].vals[1]
+			assert.are.equal("function_call", ast_arg.type)
+			assert.are.equal("Simplify", ast_arg.name_node.name)
+			assert.are.same({ type = "expression", representation = "parsed:\\frac{1+1}{2}" }, ast_arg.args[1])
+			assert.spy(mock_insert_result_insert_result_spy).was.called(1)
+		end)
+
+		it("does nothing on parse failure", function()
+			current_parse_selected_latex_config["expression"] = { ast = nil, text = "" }
+			vim_test_env.set_visual_selection(1, 1, 1, 1)
+
+			commands_module.tungsten_simplify_command({})
+
+			assert.spy(mock_evaluator_evaluate_async_spy).was_not.called()
+			assert.spy(mock_insert_result_insert_result_spy).was_not.called()
+		end)
+
+		it("does not insert result when evaluation returns nil", function()
+			current_parse_selected_latex_config["expression"] = { ast = { type = "expression" } }
+			current_eval_async_config_key = "nil_eval"
+			vim_test_env.set_visual_selection(1, 1, 1, 1)
+
+			commands_module.tungsten_simplify_command({})
+
+			assert.spy(mock_insert_result_insert_result_spy).was_not.called()
+		end)
+	end)
+
+	describe(":TungstenFactor", function()
+		it("wraps selection with Factor and evaluates", function()
+			current_parse_selected_latex_config["expression"] = {
+				ast = { type = "expression", representation = "parsed:\\frac{1+1}{2}" },
+				text = "\\frac{1+1}{2}",
+			}
+			eval_async_behaviors.default_eval = function(_, _, cb)
+				cb("fact")
+			end
+			current_eval_async_config_key = "default_eval"
+
+			vim_test_env.set_visual_selection(1, 1, 1, 5)
+
+			commands_module.tungsten_factor_command({})
+
+			assert.spy(mock_cmd_utils_parse_selected_latex_spy).was.called_with("expression")
+			assert.spy(mock_evaluator_evaluate_async_spy).was.called(1)
+			local ast_arg = mock_evaluator_evaluate_async_spy.calls[1].vals[1]
+			assert.are.equal("function_call", ast_arg.type)
+			assert.are.equal("Factor", ast_arg.name_node.name)
+			assert.are.same({ type = "expression", representation = "parsed:\\frac{1+1}{2}" }, ast_arg.args[1])
+			assert.spy(mock_insert_result_insert_result_spy).was.called(1)
+		end)
+
+		it("does nothing on parse failure", function()
+			current_parse_selected_latex_config["expression"] = { ast = nil, text = "" }
+			vim_test_env.set_visual_selection(1, 1, 1, 1)
+
+			commands_module.tungsten_factor_command({})
+
+			assert.spy(mock_evaluator_evaluate_async_spy).was_not.called()
+			assert.spy(mock_insert_result_insert_result_spy).was_not.called()
+		end)
+
+		it("does not insert result when evaluation returns nil", function()
+			current_parse_selected_latex_config["expression"] = { ast = { type = "expression" } }
+			current_eval_async_config_key = "nil_eval"
+			vim_test_env.set_visual_selection(1, 1, 1, 1)
+
+			commands_module.tungsten_factor_command({})
+
+			assert.spy(mock_insert_result_insert_result_spy).was_not.called()
+		end)
+	end)
+
 	describe(":TungstenSolve", function()
 		local original_ui_input
 

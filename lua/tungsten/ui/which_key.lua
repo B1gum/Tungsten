@@ -16,6 +16,8 @@ local mappings = {
 	{ "<leader>tee", ":<C-u>TungstenEvaluate<CR>", desc = "Evaluate Expression" },
 	{ "<leader>ted", ":<C-u>TungstenDefinePersistentVariable<CR>", desc = "Define Persistent Variable" },
 	{ "<leader>tea", ":<C-u>TungstenShowAST<CR>", desc = "Show AST" },
+	{ "<leader>tes", ":<C-u>TungstenSimplify<CR>", desc = "Simplify Expression" },
+	{ "<leader>tef", ":<C-u>TungstenFactor<CR>", desc = "Factor Expression" },
 
 	{ "<leader>ts", group = "Solve" },
 	{ "<leader>tss", ":<C-u>TungstenSolve<CR>", desc = "Solve Equation" },
