@@ -16,8 +16,9 @@ function M.show(text)
 	local lines = vim.split(text, "\n")
 	local width = 0
 	for _, l in ipairs(lines) do
-		if #l > width then
-			width = #l
+		local w = vim.fn.strdisplaywidth(l)
+		if w > width then
+			width = w
 		end
 	end
 	local buf = vim.api.nvim_create_buf(false, true)

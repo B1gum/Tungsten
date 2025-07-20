@@ -116,4 +116,48 @@ describe("Optional integrations", function()
 			vim_test_env.cleanup({ bufnr, 42 })
 		end)
 	end)
+
+	it("computes width based on display width", function()
+		local bufnr = vim_test_env.setup_buffer({ "" })
+		local api = vim.api
+		local orig_create_buf = api.nvim_create_buf
+		local orig_set_lines = api.nvim_buf_set_lines
+		local orig_open_win = api.nvim_open_win
+		local orig_set_option = api.nvim_buf_set_option
+
+		local create_buf_spy = spy.new(function()
+			return 42
+		end)
+		local set_lines_spy = spy.new(function() end)
+		local open_win_spy = spy.new(function()
+			return 10
+		end)
+		local set_option_spy = spy.new(function() end)
+
+		api.nvim_create_buf = create_buf_spy
+		api.nvim_buf_set_lines = set_lines_spy
+		api.nvim_open_win = open_win_spy
+		api.nvim_buf_set_option = set_option_spy
+
+		local summary = "αβγδ\nxy"
+		mock_utils.mock_module("tungsten.core.engine", {
+			get_active_jobs_summary = function()
+				return summary
+			end,
+		})
+
+		require("tungsten").setup()
+
+		vim.cmd("TungstenStatus")
+
+		local opts = open_win_spy.calls[1].vals[3]
+		local expected = math.max(vim.fn.strdisplaywidth("αβγδ"), vim.fn.strdisplaywidth("xy"), 20)
+		assert.are.equal(expected, opts.width)
+
+		api.nvim_create_buf = orig_create_buf
+		api.nvim_buf_set_lines = orig_set_lines
+		api.nvim_open_win = orig_open_win
+		api.nvim_buf_set_option = orig_set_option
+		vim_test_env.cleanup({ bufnr, 42 })
+	end)
 end)

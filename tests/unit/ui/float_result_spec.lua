@@ -63,4 +63,10 @@ describe("tungsten.ui.float_result", function()
 		assert.are.equal(float_result.close, args[3])
 		assert.are.equal("table", type(args[4]))
 	end)
+
+	it("calculates width correctly for multibyte text", function()
+		float_result.show("αβγδ")
+		local opts = api.nvim_open_win.calls[1].vals[3]
+		assert.are.equal(vim.fn.strdisplaywidth("αβγδ"), opts.width)
+	end)
 end)

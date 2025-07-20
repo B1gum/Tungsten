@@ -11,7 +11,7 @@ function M.open(summary)
 
 	local width = 0
 	for _, line in ipairs(lines) do
-		width = math.max(width, #line)
+		width = math.max(width, vim.fn.strdisplaywidth(line))
 	end
 	width = math.max(width, 20)
 	local height = #lines
