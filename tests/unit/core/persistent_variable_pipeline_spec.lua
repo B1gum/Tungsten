@@ -11,7 +11,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
 	local mock_parser_module
 	local mock_wolfram_backend_module
 	local mock_selection_module
-	local mock_insert_result_util_module
+	local mock_event_bus_module
 	local mock_logger_module
 	local mock_config_module
 	local mock_state_module
@@ -19,7 +19,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
 	local mock_parser_parse_spy
 	local mock_ast_to_wolfram_spy
 	local mock_selection_get_visual_selection_spy
-	local mock_insert_result_insert_result_spy
+	local mock_event_bus_emit_spy
 	local mock_logger_notify_spy
 	local mock_async_run_job_spy
 
@@ -34,7 +34,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
 		"tungsten.core.parser",
 		"tungsten.backends.wolfram",
 		"tungsten.util.selection",
-		"tungsten.util.insert_result",
+		"tungsten.event_bus",
 		"tungsten.config",
 		"tungsten.state",
 		"tungsten.util.logger",
@@ -48,7 +48,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
 				return 0, 1, 2, "v"
 			end,
 		}
-		mock_insert_result_util_module = {}
+		mock_event_bus_module = {}
 		mock_logger_module = {}
 		mock_config_module = {
 			wolfram_path = "mock_wolframscript",
@@ -76,8 +76,8 @@ describe("Tungsten Persistent Variable Pipeline", function()
 			if module_path == "tungsten.util.selection" then
 				return mock_selection_module
 			end
-			if module_path == "tungsten.util.insert_result" then
-				return mock_insert_result_util_module
+			if module_path == "tungsten.event_bus" then
+				return mock_event_bus_module
 			end
 			if module_path == "tungsten.util.logger" then
 				return mock_logger_module
@@ -121,8 +121,8 @@ describe("Tungsten Persistent Variable Pipeline", function()
 		end)
 		mock_selection_module.get_visual_selection = mock_selection_get_visual_selection_spy
 
-		mock_insert_result_insert_result_spy = spy.new(function() end)
-		mock_insert_result_util_module.insert_result = mock_insert_result_insert_result_spy
+		mock_event_bus_emit_spy = spy.new(function() end)
+		mock_event_bus_module.emit = mock_event_bus_emit_spy
 
 		mock_logger_notify_spy = spy.new(function() end)
 		mock_logger_module.notify = mock_logger_notify_spy
@@ -171,8 +171,8 @@ describe("Tungsten Persistent Variable Pipeline", function()
 		if mock_selection_get_visual_selection_spy and mock_selection_get_visual_selection_spy.clear then
 			mock_selection_get_visual_selection_spy:clear()
 		end
-		if mock_insert_result_insert_result_spy and mock_insert_result_insert_result_spy.clear then
-			mock_insert_result_insert_result_spy:clear()
+		if mock_event_bus_emit_spy and mock_event_bus_emit_spy.clear then
+			mock_event_bus_emit_spy:clear()
 		end
 		if mock_logger_notify_spy and mock_logger_notify_spy.clear then
 			mock_logger_notify_spy:clear()
@@ -228,9 +228,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
 
 			local wolfram_result = "ComputedResultFromX*2"
 			simulate_wolfram_eval({ wolfram_result }, 0)
-			assert
-				.spy(mock_insert_result_insert_result_spy).was
-				.called_with(wolfram_result, nil, match.is_number(), match.is_number(), match.is_string(), match.is_string())
+			assert.spy(mock_event_bus_emit_spy).was.called_with("result_ready", match.is_table())
 		end)
 
 		it("should define multiple variables and use them in a dependent evaluation", function()
@@ -248,7 +246,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
 
 			current_visual_selection_text = "b * 2"
 			mock_async_run_job_spy:clear()
-			mock_insert_result_insert_result_spy:clear()
+			mock_event_bus_emit_spy:clear()
 			commands_module.tungsten_evaluate_command({})
 			assert.are.equal(1, get_visual_selection_call_count)
 			get_visual_selection_call_count = 0
@@ -261,9 +259,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
 
 			local wolfram_result = "ComputedResultFromB*2"
 			simulate_wolfram_eval({ wolfram_result }, 0)
-			assert
-				.spy(mock_insert_result_insert_result_spy).was
-				.called_with(wolfram_result, nil, match.is_number(), match.is_number(), match.is_string(), match.is_string())
+			assert.spy(mock_event_bus_emit_spy).was.called_with("result_ready", match.is_table())
 		end)
 
 		it("should use the latest definition if a variable is redefined", function()
@@ -290,23 +286,21 @@ describe("Tungsten Persistent Variable Pipeline", function()
 
 			current_visual_selection_text = "y + 5"
 			mock_async_run_job_spy:clear()
-			mock_insert_result_insert_result_spy:clear()
+			mock_event_bus_emit_spy:clear()
 			commands_module.tungsten_evaluate_command({})
 			assert.are.equal(1, get_visual_selection_call_count)
 			get_visual_selection_call_count = 0
 			local cmd_args2 = mock_async_run_job_spy.calls[1].vals[1]
 			assert.are.same('ToString[TeXForm[wolfram((wolfram(20)) + 5)], CharacterEncoding -> "UTF8"]', cmd_args2[3])
 			simulate_wolfram_eval({ "25" }, 0)
-			assert
-				.spy(mock_insert_result_insert_result_spy).was
-				.called_with("25", nil, match.is_number(), match.is_number(), match.is_string(), match.is_string())
+			assert.spy(mock_event_bus_emit_spy).was.called_with("result_ready", match.is_table())
 		end)
 
 		it("should evaluate an expression without substitution if variable is not defined", function()
 			mock_state_module.persistent_variables = {}
 			current_visual_selection_text = "z / 2"
 			mock_async_run_job_spy:clear()
-			mock_insert_result_insert_result_spy:clear()
+			mock_event_bus_emit_spy:clear()
 			commands_module.tungsten_evaluate_command({})
 			assert.are.equal(1, get_visual_selection_call_count)
 			get_visual_selection_call_count = 0
@@ -315,9 +309,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
 			local cmd_args = mock_async_run_job_spy.calls[1].vals[1]
 			assert.are.same('ToString[TeXForm[wolfram(z / 2)], CharacterEncoding -> "UTF8"]', cmd_args[3])
 			simulate_wolfram_eval({ "ResultFromZ/2" }, 0)
-			assert
-				.spy(mock_insert_result_insert_result_spy).was
-				.called_with("ResultFromZ/2", nil, match.is_number(), match.is_number(), match.is_string(), match.is_string())
+			assert.spy(mock_event_bus_emit_spy).was.called_with("result_ready", match.is_table())
 		end)
 
 		it("should respect 'persistent_variable_assignment_operator' from config ('=')", function()
@@ -333,7 +325,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
 
 			current_visual_selection_text = "v * v"
 			mock_async_run_job_spy:clear()
-			mock_insert_result_insert_result_spy:clear()
+			mock_event_bus_emit_spy:clear()
 			commands_module.tungsten_evaluate_command({})
 			assert.are.equal(1, get_visual_selection_call_count)
 			get_visual_selection_call_count = 0
@@ -343,9 +335,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
 				cmd_args[3]
 			)
 			simulate_wolfram_eval({ "9" }, 0)
-			assert
-				.spy(mock_insert_result_insert_result_spy).was
-				.called_with("9", nil, match.is_number(), match.is_number(), match.is_string(), match.is_string())
+			assert.spy(mock_event_bus_emit_spy).was.called_with("result_ready", match.is_table())
 
 			mock_config_module.persistent_variable_assignment_operator = ":="
 		end)
@@ -363,7 +353,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
 
 			current_visual_selection_text = "w + w"
 			mock_async_run_job_spy:clear()
-			mock_insert_result_insert_result_spy:clear()
+			mock_event_bus_emit_spy:clear()
 			commands_module.tungsten_evaluate_command({})
 			assert.are.equal(1, get_visual_selection_call_count)
 			get_visual_selection_call_count = 0
@@ -373,9 +363,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
 				cmd_args[3]
 			)
 			simulate_wolfram_eval({ "8" }, 0)
-			assert
-				.spy(mock_insert_result_insert_result_spy).was
-				.called_with("8", nil, match.is_number(), match.is_number(), match.is_string(), match.is_string())
+			assert.spy(mock_event_bus_emit_spy).was.called_with("result_ready", match.is_table())
 		end)
 
 		it("should clear stored persistent variables", function()

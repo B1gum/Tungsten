@@ -1,6 +1,8 @@
 local picker = require("tungsten.ui.picker")
 local mappings = require("tungsten.ui.mappings")
 local logger = require("tungsten.util.logger")
+local event_bus = require("tungsten.event_bus")
+local insert_result = require("tungsten.util.insert_result")
 
 local M = {}
 
@@ -48,5 +50,12 @@ local ok, telescope = pcall(require, "telescope")
 if ok then
 	telescope.register_extension({ exports = { open = open_picker } })
 end
+
+event_bus.subscribe("result_ready", function(data)
+	if not data then
+		return
+	end
+	insert_result.insert_result(data.result, nil, data.start_mark, data.end_mark, data.selection_text, data.mode)
+end)
 
 return M

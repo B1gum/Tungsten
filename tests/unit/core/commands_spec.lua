@@ -9,13 +9,13 @@ describe("Tungsten core commands", function()
 	local commands_module
 
 	local mock_evaluator_evaluate_async_spy
-	local mock_insert_result_insert_result_spy
+	local mock_event_bus_emit_spy
 	local mock_logger_notify_spy
 	local mock_solver_solve_equation_async_spy
 	local mock_cmd_utils_parse_selected_latex_spy
 
 	local mock_evaluator_module
-	local mock_insert_result_util_module
+	local mock_event_bus_module
 	local mock_logger_module
 	local mock_solver_module
 	local mock_config_module
@@ -35,7 +35,7 @@ describe("Tungsten core commands", function()
 		"tungsten.core.commands",
 		"tungsten.core.engine",
 		"tungsten.core.solver",
-		"tungsten.util.insert_result",
+		"tungsten.event_bus",
 		"tungsten.config",
 		"tungsten.util.logger",
 		"tungsten.util.commands",
@@ -61,7 +61,7 @@ describe("Tungsten core commands", function()
 			log_level = "INFO",
 		}
 		mock_evaluator_module = {}
-		mock_insert_result_util_module = {}
+		mock_event_bus_module = {}
 		mock_logger_module = {}
 		mock_solver_module = {}
 		mock_cmd_utils_module = {}
@@ -76,8 +76,8 @@ describe("Tungsten core commands", function()
 			if module_path == "tungsten.core.engine" then
 				return mock_evaluator_module
 			end
-			if module_path == "tungsten.util.insert_result" then
-				return mock_insert_result_util_module
+			if module_path == "tungsten.event_bus" then
+				return mock_event_bus_module
 			end
 			if module_path == "tungsten.util.selection" then
 				return mock_selection_module
@@ -152,8 +152,8 @@ describe("Tungsten core commands", function()
 		end)
 		mock_evaluator_module.evaluate_async = mock_evaluator_evaluate_async_spy
 
-		mock_insert_result_insert_result_spy = spy.new(function(_) end)
-		mock_insert_result_util_module.insert_result = mock_insert_result_insert_result_spy
+		mock_event_bus_emit_spy = spy.new(function() end)
+		mock_event_bus_module.emit = mock_event_bus_emit_spy
 
 		mock_logger_notify_spy = spy.new(function() end)
 		mock_logger_module.notify = mock_logger_notify_spy
@@ -206,9 +206,7 @@ describe("Tungsten core commands", function()
 			assert.spy(mock_evaluator_evaluate_async_spy).was.called(1)
 			local ast_arg = mock_evaluator_evaluate_async_spy.calls[1].vals[1]
 			assert.are.same({ type = "expression", representation = "parsed:\\frac{1+1}{2}" }, ast_arg)
-			assert
-				.spy(mock_insert_result_insert_result_spy).was
-				.called_with("1", nil, match.is_number(), match.is_number(), "\\frac{1+1}{2}", match.is_string())
+			assert.spy(mock_event_bus_emit_spy).was.called_with("result_ready", match.is_table())
 		end)
 
 		it("should not proceed if parsing fails (cmd_utils returns nil)", function()
@@ -219,7 +217,7 @@ describe("Tungsten core commands", function()
 
 			assert.spy(mock_cmd_utils_parse_selected_latex_spy).was.called_with("expression")
 			assert.spy(mock_evaluator_evaluate_async_spy).was_not.called()
-			assert.spy(mock_insert_result_insert_result_spy).was_not.called()
+			assert.spy(mock_event_bus_emit_spy).was_not.called()
 		end)
 
 		it("should not call insert_result if evaluation returns nil", function()
@@ -227,7 +225,7 @@ describe("Tungsten core commands", function()
 			current_eval_async_config_key = "nil_eval"
 			vim_test_env.set_visual_selection(1, 1, 1, 1)
 			commands_module.tungsten_evaluate_command({})
-			assert.spy(mock_insert_result_insert_result_spy).was_not.called()
+			assert.spy(mock_event_bus_emit_spy).was_not.called()
 		end)
 
 		it("should not call insert_result if evaluation returns empty string", function()
@@ -235,7 +233,7 @@ describe("Tungsten core commands", function()
 			current_eval_async_config_key = "empty_string_eval"
 			vim_test_env.set_visual_selection(1, 1, 1, 1)
 			commands_module.tungsten_evaluate_command({})
-			assert.spy(mock_insert_result_insert_result_spy).was_not.called()
+			assert.spy(mock_event_bus_emit_spy).was_not.called()
 		end)
 
 		it("should use numeric_mode from config when calling evaluate_async", function()
@@ -253,10 +251,7 @@ describe("Tungsten core commands", function()
 			assert.spy(mock_evaluator_evaluate_async_spy).was.called(1)
 			local numeric_mode_arg = mock_evaluator_evaluate_async_spy.calls[1].vals[2]
 			assert.is_true(numeric_mode_arg)
-			assert
-				.spy(mock_insert_result_insert_result_spy).was
-				.called_with("1.0", nil, match.is_number(), match.is_number(), nil, match.is_string())
-
+			assert.spy(mock_event_bus_emit_spy).was.called_with("result_ready", match.is_table())
 			vim_test_env.set_plugin_config({ "numeric_mode" }, false)
 		end)
 	end)
@@ -282,7 +277,7 @@ describe("Tungsten core commands", function()
 			assert.are.equal("function_call", ast_arg.type)
 			assert.are.equal("Simplify", ast_arg.name_node.name)
 			assert.are.same({ type = "expression", representation = "parsed:\\frac{1+1}{2}" }, ast_arg.args[1])
-			assert.spy(mock_insert_result_insert_result_spy).was.called(1)
+			assert.spy(mock_event_bus_emit_spy).was.called_with("result_ready", match.is_table())
 		end)
 
 		it("does nothing on parse failure", function()
@@ -292,7 +287,7 @@ describe("Tungsten core commands", function()
 			commands_module.tungsten_simplify_command({})
 
 			assert.spy(mock_evaluator_evaluate_async_spy).was_not.called()
-			assert.spy(mock_insert_result_insert_result_spy).was_not.called()
+			assert.spy(mock_event_bus_emit_spy).was_not.called()
 		end)
 
 		it("does not insert result when evaluation returns nil", function()
@@ -302,7 +297,7 @@ describe("Tungsten core commands", function()
 
 			commands_module.tungsten_simplify_command({})
 
-			assert.spy(mock_insert_result_insert_result_spy).was_not.called()
+			assert.spy(mock_event_bus_emit_spy).was_not.called()
 		end)
 	end)
 
@@ -327,7 +322,7 @@ describe("Tungsten core commands", function()
 			assert.are.equal("function_call", ast_arg.type)
 			assert.are.equal("Factor", ast_arg.name_node.name)
 			assert.are.same({ type = "expression", representation = "parsed:\\frac{1+1}{2}" }, ast_arg.args[1])
-			assert.spy(mock_insert_result_insert_result_spy).was.called(1)
+			assert.spy(mock_event_bus_emit_spy).was.called_with("result_ready", match.is_table())
 		end)
 
 		it("does nothing on parse failure", function()
@@ -337,7 +332,7 @@ describe("Tungsten core commands", function()
 			commands_module.tungsten_factor_command({})
 
 			assert.spy(mock_evaluator_evaluate_async_spy).was_not.called()
-			assert.spy(mock_insert_result_insert_result_spy).was_not.called()
+			assert.spy(mock_event_bus_emit_spy).was_not.called()
 		end)
 
 		it("does not insert result when evaluation returns nil", function()
@@ -347,7 +342,7 @@ describe("Tungsten core commands", function()
 
 			commands_module.tungsten_factor_command({})
 
-			assert.spy(mock_insert_result_insert_result_spy).was_not.called()
+			assert.spy(mock_event_bus_emit_spy).was_not.called()
 		end)
 	end)
 
@@ -395,10 +390,7 @@ describe("Tungsten core commands", function()
 
 		it("should call insert_result when solver callback provides a solution", function()
 			commands_module.tungsten_solve_command({})
-			assert.spy(mock_insert_result_insert_result_spy).was.called(1)
-			assert
-				.spy(mock_insert_result_insert_result_spy).was
-				.called_with("some_solution", " \\rightarrow ", match.is_number(), match.is_number(), "a*x^2+b*x+c=0", match.is_string())
+			assert.spy(mock_event_bus_emit_spy).was.called_with("result_ready", match.is_table())
 		end)
 	end)
 
@@ -438,14 +430,7 @@ describe("Tungsten core commands", function()
 			local args = mock_solver_solve_equation_async_spy.calls[1].vals
 			assert.are.same({ "wolfram(eq1_ast)", "wolfram(eq2_ast)" }, args[1])
 			assert.is_true(args[3])
-			assert.spy(mock_insert_result_insert_result_spy).was.called_with(
-				"solution_for_system",
-				" \\rightarrow ",
-				match.is_number(),
-				match.is_number(),
-				"eq1=0 \\\\ eq2=0",
-				match.is_string()
-			)
+			assert.spy(mock_event_bus_emit_spy).was.called_with("result_ready", match.is_table())
 		end)
 
 		it("should log error if parsing fails (cmd_utils returns nil)", function()

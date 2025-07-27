@@ -1,6 +1,6 @@
 local error_handler = require("tungsten.util.error_handler")
 local evaluator = require("tungsten.core.engine")
-local insert_result_util = require("tungsten.util.insert_result")
+local event_bus = require("tungsten.event_bus")
 local config = require("tungsten.config")
 local ast = require("tungsten.core.ast")
 local cmd_utils = require("tungsten.util.commands")
@@ -33,7 +33,7 @@ local function tungsten_gauss_eliminate_command(_)
 			error_handler.notify_error("GaussEliminate", "No result from evaluation.")
 			return
 		end
-		insert_result_util.insert_result(result, " \\rightarrow ")
+		event_bus.emit("result_ready", { result = result, separator = " \\rightarrow " })
 	end)
 end
 
@@ -88,7 +88,7 @@ local function tungsten_linear_independent_command(_)
 			final_display_result = "Undetermined (" .. tostring(result) .. ")"
 		end
 
-		insert_result_util.insert_result(final_display_result)
+		event_bus.emit("result_ready", { result = final_display_result })
 	end)
 end
 
@@ -119,7 +119,7 @@ local function tungsten_rank_command(_)
 			error_handler.notify_error("Rank", "No result from evaluation (expected a number).")
 			return
 		end
-		insert_result_util.insert_result(result, " \\rightarrow ")
+		event_bus.emit("result_ready", { result = result, separator = " \\rightarrow " })
 	end)
 end
 
@@ -153,7 +153,7 @@ local function tungsten_eigenvalue_command(_)
 			error_handler.notify_error("Eigenvalue", "No result from evaluation.")
 			return
 		end
-		insert_result_util.insert_result(result, " \\rightarrow ")
+		event_bus.emit("result_ready", { result = result, separator = " \\rightarrow " })
 	end)
 end
 
@@ -187,7 +187,7 @@ local function tungsten_eigenvector_command(_)
 			error_handler.notify_error("Eigenvector", "No result from evaluation.")
 			return
 		end
-		insert_result_util.insert_result(result, " \\rightarrow ")
+		event_bus.emit("result_ready", { result = result, separator = " \\rightarrow " })
 	end)
 end
 
@@ -221,7 +221,7 @@ local function tungsten_eigensystem_command(_)
 			error_handler.notify_error("Eigensystem", "No result from evaluation.")
 			return
 		end
-		insert_result_util.insert_result(result, " \\rightarrow ")
+		event_bus.emit("result_ready", { result = result, separator = " \\rightarrow " })
 	end)
 end
 

@@ -11,7 +11,7 @@ describe("Tungsten Differential Equations Commands", function()
 	local mock_logger
 	local mock_parser
 	local mock_evaluator
-	local mock_insert_result
+	local mock_event_bus
 	local mock_config
 	local mock_ast
 
@@ -26,7 +26,7 @@ describe("Tungsten Differential Equations Commands", function()
 		mock_logger = { levels = { ERROR = 1, WARN = 2 } }
 		mock_parser = {}
 		mock_evaluator = {}
-		mock_insert_result = {}
+		mock_event_bus = {}
 		mock_config = { numeric_mode = false }
 		mock_ast = {}
 
@@ -44,7 +44,7 @@ describe("Tungsten Differential Equations Commands", function()
 		mock_evaluator.evaluate_async = spy.new(function(ast, numeric, cb)
 			cb(current_eval_result, nil)
 		end)
-		mock_insert_result.insert_result = spy.new(function() end)
+		mock_event_bus.emit = spy.new(function() end)
 
 		mock_ast.create_ode_node = spy.new(function(lhs, rhs)
 			return { type = "ode", lhs = lhs, rhs = rhs }
@@ -73,8 +73,8 @@ describe("Tungsten Differential Equations Commands", function()
 			if module_path == "tungsten.core.engine" then
 				return mock_evaluator
 			end
-			if module_path == "tungsten.util.insert_result" then
-				return mock_insert_result
+			if module_path == "tungsten.event_bus" then
+				return mock_event_bus
 			end
 			if module_path == "tungsten.config" then
 				return mock_config
@@ -104,7 +104,7 @@ describe("Tungsten Differential Equations Commands", function()
 			assert.spy(mock_parser.parse).was.called_with(selection_text)
 			local final_ast = final_ast_producer(parsed_ast)
 			assert.spy(mock_evaluator.evaluate_async).was.called_with(final_ast, false, match.is_function())
-			assert.spy(mock_insert_result.insert_result).was.called_with("evaluated_result", " \\rightarrow ")
+			assert.spy(mock_event_bus.emit).was.called_with("result_ready", match.is_table())
 		end)
 	end
 

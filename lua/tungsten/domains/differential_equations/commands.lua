@@ -5,7 +5,7 @@ local selection = require("tungsten.util.selection")
 local error_handler = require("tungsten.util.error_handler")
 local parser = require("tungsten.core.parser")
 local evaluator = require("tungsten.core.engine")
-local insert_result_util = require("tungsten.util.insert_result")
+local event_bus = require("tungsten.event_bus")
 local config = require("tungsten.config")
 local ast = require("tungsten.core.ast")
 
@@ -37,7 +37,7 @@ local function evaluate_and_insert(command_name, ast_producer)
 			error_handler.notify_error(command_name, "No result from evaluation.")
 			return
 		end
-		insert_result_util.insert_result(result, " \\rightarrow ")
+		event_bus.emit("result_ready", { result = result, separator = " \\rightarrow " })
 	end)
 end
 

@@ -6,7 +6,7 @@ local parser = require("tungsten.core.parser")
 local solver = require("tungsten.core.solver")
 local evaluator = require("tungsten.core.engine")
 local selection = require("tungsten.util.selection")
-local insert_result_util = require("tungsten.util.insert_result")
+local event_bus = require("tungsten.event_bus")
 local config = require("tungsten.config")
 local logger = require("tungsten.util.logger")
 local error_handler = require("tungsten.util.error_handler")
@@ -39,7 +39,10 @@ local function tungsten_evaluate_command(_)
 		if result == nil or result == "" then
 			return
 		end
-		insert_result_util.insert_result(result, nil, start_mark, end_mark, selection_text, mode)
+		event_bus.emit(
+			"result_ready",
+			{ result = result, start_mark = start_mark, end_mark = end_mark, selection_text = selection_text, mode = mode }
+		)
 	end)
 end
 
@@ -67,7 +70,10 @@ local function tungsten_simplify_command(_)
 		if result == nil or result == "" then
 			return
 		end
-		insert_result_util.insert_result(result, nil, start_mark, end_mark, selection_text, mode)
+		event_bus.emit(
+			"result_ready",
+			{ result = result, start_mark = start_mark, end_mark = end_mark, selection_text = selection_text, mode = mode }
+		)
 	end)
 end
 
@@ -96,7 +102,10 @@ local function tungsten_factor_command(_)
 			return
 		end
 
-		insert_result_util.insert_result(result, nil, start_mark, end_mark, selection_text, mode)
+		event_bus.emit(
+			"result_ready",
+			{ result = result, start_mark = start_mark, end_mark = end_mark, selection_text = selection_text, mode = mode }
+		)
 	end)
 end
 
@@ -339,14 +348,14 @@ local function tungsten_solve_command(_)
 				error_handler.notify_error("Solve", "No solution found.")
 				return
 			end
-			insert_result_util.insert_result(
-				solution,
-				" \\rightarrow ",
-				initial_start_extmark,
-				initial_end_extmark,
-				equation_text,
-				mode
-			)
+			event_bus.emit("result_ready", {
+				result = solution,
+				start_mark = initial_start_extmark,
+				end_mark = initial_end_extmark,
+				selection_text = equation_text,
+				mode = mode,
+				separator = " \\rightarrow ",
+			})
 		end)
 	end)
 end
@@ -426,14 +435,14 @@ local function tungsten_solve_system_command(_)
 				error_handler.notify_error("SolveSystem", "No solution found or an issue occurred.")
 				return
 			end
-			insert_result_util.insert_result(
-				result,
-				" \\rightarrow ",
-				initial_start_extmark,
-				initial_end_extmark,
-				visual_selection_text,
-				mode
-			)
+			event_bus.emit("result_ready", {
+				result = result,
+				start_mark = initial_start_extmark,
+				end_mark = initial_end_extmark,
+				selection_text = visual_selection_text,
+				mode = mode,
+				separator = " \\rightarrow ",
+			})
 		end)
 	end)
 end
