@@ -44,7 +44,7 @@ local VectorListRule = Ct(VectorListItem * (P(";") * VectorListItem) ^ 0)
 		elseif #vector_asts == 1 and vector_asts[1].type == "matrix" then
 			return vector_asts[1]
 		end
-		return ast.node("vector_list", { vectors = vector_asts })
+		return ast.create_vector_list_node(vector_asts)
 	end
 
 local FinalVectorRule = VectorListRule + SingleSymbolicVectorRule + ConcreteVectorRule

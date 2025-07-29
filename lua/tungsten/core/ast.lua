@@ -126,6 +126,10 @@ function M.create_symbolic_vector_node(name_expression, command)
 	return node("symbolic_vector", { name_expr = name_expression, command = command })
 end
 
+function M.create_vector_list_node(vectors)
+	return node("vector_list", { vectors = vectors })
+end
+
 function M.create_determinant_node(expression)
 	return node("determinant", { expression = expression })
 end
