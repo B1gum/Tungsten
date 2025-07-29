@@ -94,10 +94,7 @@ function M.register_domain(name)
 	return mod
 end
 
-function M.setup(opts)
-	opts = opts or {}
-	local dir = opts.domains_dir or default_domains_dir()
-
+function M.setup()
 	local registered = {}
 
 	local function register_if_new(name)
@@ -107,22 +104,68 @@ function M.setup(opts)
 		end
 	end
 
-	if type(config.domains) == "table" and #config.domains > 0 then
-		for _, name in ipairs(config.domains) do
-			register_if_new(name)
-		end
-	else
-		local discovered = M.discover_domains(dir, nil)
-		for _, name in ipairs(discovered) do
-			register_if_new(name)
+	local names = {}
+	if type(config.domains) == "table" then
+		for _, n in ipairs(config.domains) do
+			table.insert(names, n)
 		end
 	end
 
-	if config.user_domains_path then
-		local user_domains = M.discover_domains(nil, config.user_domains_path)
-		for _, name in ipairs(user_domains) do
-			register_if_new(name)
+	local loaded = {}
+	local function load_metadata(name)
+		if loaded[name] ~= nil then
+			return loaded[name]
 		end
+		local ok, mod = pcall(require, "tungsten.domains." .. name)
+		if not ok then
+			logger.notify(
+				"DomainManager: failed to load domain " .. name .. ": " .. tostring(mod),
+				logger.levels.ERROR,
+				{ title = "Tungsten DomainManager" }
+			)
+			loaded[name] = false
+			return nil
+		end
+		loaded[name] = mod
+		return mod
+	end
+
+	local ordered = {}
+	local visiting = {}
+	local visited = {}
+
+	local function visit(name)
+		if visited[name] then
+			return
+		end
+		if visiting[name] then
+			logger.notify(
+				"DomainManager: cyclic dependency involving " .. name,
+				logger.levels.ERROR,
+				{ title = "Tungsten DomainManager" }
+			)
+			return
+		end
+		visiting[name] = true
+		local meta = load_metadata(name)
+		if meta and type(meta.dependencies) == "table" then
+			for _, dep in ipairs(meta.dependencies) do
+				if not visited[dep] then
+					visit(dep)
+				end
+			end
+		end
+		visiting[name] = nil
+		visited[name] = true
+		table.insert(ordered, name)
+	end
+
+	for _, name in ipairs(names) do
+		visit(name)
+	end
+
+	for _, name in ipairs(ordered) do
+		register_if_new(name)
 	end
 end
 

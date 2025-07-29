@@ -86,7 +86,7 @@ describe("DomainManager", function()
 			package.loaded["tungsten.util.logger"] = logger_mock
 			local cfg = require("tungsten.config")
 			orig_domains = cfg.domains
-			cfg.domains = nil
+			cfg.domains = { "dom1", "dom2" }
 			package.path = tmp_dir .. "/?.lua;" .. tmp_dir .. "/?/init.lua;" .. package.path
 			package.loaded["tungsten.core.domain_manager"] = nil
 			dm = require("tungsten.core.domain_manager")
@@ -103,7 +103,7 @@ describe("DomainManager", function()
 		end)
 
 		it("registers grammar and loads hooks", function()
-			dm.setup({ domains_dir = tmp_dir .. "/tungsten/domains" })
+			dm.setup()
 			assert.spy(registry_mock.register_domain_metadata).was.called_with("dom1", match._)
 			assert.spy(registry_mock.register_domain_metadata).was.called_with("dom2", match._)
 			assert.spy(registry_mock.register_grammar_contribution).was.called_with("dom1", 10, "Num", "p1", "AtomBaseItem")
@@ -117,14 +117,13 @@ describe("DomainManager", function()
 	describe("user-defined domains path", function()
 		local registry_mock
 		local logger_mock
-		local orig_fs_dir
 		local config
 
 		before_each(function()
 			config = require("tungsten.config")
 			config.user_domains_path = "/user/domains"
 			orig_domains = config.domains
-			config.domains = nil
+			config.domains = { "plugdom", "userdom" }
 
 			registry_mock = mock_utils.create_empty_mock_module("tungsten.core.registry", {
 				"register_domain_metadata",
@@ -133,34 +132,15 @@ describe("DomainManager", function()
 			logger_mock = { notify = spy.new(function() end), levels = { ERROR = 1 } }
 			package.loaded["tungsten.util.logger"] = logger_mock
 
-			orig_fs_dir = vim.fs.dir
-
-			local handles = {
-				["/plugin/domains"] = { "plugdom" },
-				["/user/domains"] = { "userdom" },
-			}
-
-			vim.fs.dir = function(path)
-				local list = handles[path]
-				return function()
-					if not list or #list == 0 then
-						return nil
-					end
-					return table.remove(list, 1), "directory"
-				end
-			end
-
 			package.loaded["tungsten.core.domain_manager"] = nil
 			dm = require("tungsten.core.domain_manager")
 		end)
 
 		after_each(function()
-			config.user_domains_path = nil
 			config.domains = orig_domains
 			package.loaded["tungsten.core.registry"] = nil
 			package.loaded["tungsten.util.logger"] = nil
 			package.loaded["tungsten.core.domain_manager"] = nil
-			vim.fs.dir = orig_fs_dir
 		end)
 
 		it("registers domains from plugin and user paths", function()
@@ -187,7 +167,7 @@ describe("DomainManager", function()
 				return orig_require(mod)
 			end
 
-			dm.setup({ domains_dir = "/plugin/domains" })
+			dm.setup()
 			_G.require = orig_require
 
 			assert.spy(registry_mock.register_domain_metadata).was.called_with("plugdom", match._)
