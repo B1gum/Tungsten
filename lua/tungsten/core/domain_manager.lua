@@ -69,9 +69,6 @@ local function register_domain(meta)
 	elseif type(meta.commands) == "function" then
 		pcall(meta.commands)
 	end
-	if type(meta.handlers) == "function" then
-		pcall(meta.handlers)
-	end
 end
 
 function M.register_domain(name)

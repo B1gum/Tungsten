@@ -110,7 +110,7 @@ describe("DomainManager", function()
 			assert.spy(registry_mock.register_grammar_contribution).was.called_with("dom2", 5, "Var", "p2", "AtomBaseItem")
 			assert.spy(registry_mock.register_command).was.called_with(match.table({ name = "Dom1Cmd" }))
 			assert.is_nil(_G.dom1_commands_called)
-			assert.is_true(_G.dom1_handlers_called)
+			assert.is_nil(_G.dom1_handlers_called)
 		end)
 	end)
 

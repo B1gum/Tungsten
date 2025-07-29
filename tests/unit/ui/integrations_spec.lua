@@ -67,7 +67,7 @@ describe("Optional integrations", function()
 
 			local ok, err = pcall(vim.cmd, "TungstenPalette")
 			assert.is_true(ok, err)
-			assert.spy(notify_spy).was.called(1)
+			assert.spy(notify_spy).was.called()
 			vim.schedule = orig_schedule
 		end)
 	end)

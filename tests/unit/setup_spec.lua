@@ -57,6 +57,9 @@ describe("tungsten.setup", function()
 			commands = {
 				{ name = "MockCmd", func = function() end, opts = { desc = "mock" } },
 			},
+			get_domain_priority = function()
+				return 0
+			end,
 		}
 		function mock_registry.register_command(cmd)
 			table.insert(mock_registry.commands, cmd)
