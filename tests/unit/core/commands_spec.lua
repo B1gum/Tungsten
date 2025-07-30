@@ -42,6 +42,7 @@ describe("Tungsten core commands", function()
 		"tungsten.util.logger",
 		"tungsten.util.commands",
 		"tungsten.state",
+		"tungsten.core.persistent_vars",
 		"tungsten.backends.wolfram",
 	}
 
