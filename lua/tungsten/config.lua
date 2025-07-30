@@ -12,7 +12,6 @@ local config = {
 	cache_ttl = 3600,
 	enable_default_mappings = true,
 	domains = { "arithmetic", "calculus", "linear_algebra", "differential_equations" },
-	user_domains_path = nil,
 	process_timeout_ms = 30000,
 	result_separator = " = ",
 	result_display = "insert",

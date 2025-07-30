@@ -311,10 +311,7 @@ describe("tungsten.core.tokenizer", function()
 		local commands_to_test = {
 			{ name = "det", token_name = "det_command", pattern = tokenizer.det_command },
 			{ name = "vec", token_name = "vec_command", pattern = tokenizer.vec_command },
-			{ name = "mathbf", token_name = "mathbf_command", pattern = tokenizer.mathbf_command },
-			{ name = "mathbb", token_name = "mathbb_command", pattern = tokenizer.mathbb_command },
 			{ name = "intercal", token_name = "intercal_command", pattern = tokenizer.intercal_command },
-			{ name = "mathsf", token_name = "mathsf_command", pattern = tokenizer.mathsf_command },
 			{ name = "times", token_name = "times_command", pattern = tokenizer.times_command },
 			{ name = "\\|", token_name = "norm_delimiter_cmd", pattern = tokenizer.norm_delimiter_cmd, is_raw_name = true },
 		}

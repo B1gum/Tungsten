@@ -86,10 +86,7 @@ end
 
 local det_command = create_cmd_token("det", "det_command")
 local vec_command = create_cmd_token("vec", "vec_command")
-local mathbf_command = create_cmd_token("mathbf", "mathbf_command")
-local mathbb_command = create_cmd_token("mathbb", "mathbb_command")
 local intercal_command = create_cmd_token("intercal", "intercal_command")
-local mathsf_command = create_cmd_token("mathsf", "mathsf_command")
 local times_command = create_cmd_token("times", "times_command")
 
 local norm_delimiter_cmd = P("\\|") * -letter / function()
@@ -131,10 +128,7 @@ return {
 	equals_op = equals_op,
 	det_command = det_command,
 	vec_command = vec_command,
-	mathbf_command = mathbf_command,
-	mathbb_command = mathbb_command,
 	intercal_command = intercal_command,
-	mathsf_command = mathsf_command,
 	times_command = times_command,
 	norm_delimiter_cmd = norm_delimiter_cmd,
 	double_pipe_norm = double_pipe_norm,
