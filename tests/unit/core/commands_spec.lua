@@ -11,7 +11,7 @@ describe("Tungsten core commands", function()
 	local mock_evaluator_evaluate_async_spy
 	local mock_event_bus_emit_spy
 	local mock_logger_notify_spy
-	local mock_solver_solve_equation_async_spy
+	local mock_solver_solve_asts_async_spy
 	local mock_cmd_utils_parse_selected_latex_spy
 
 	local mock_evaluator_module
@@ -175,10 +175,10 @@ describe("Tungsten core commands", function()
 			mock_logger_notify_spy(msg, mock_logger_module.levels.ERROR, { title = title })
 		end
 
-		mock_solver_solve_equation_async_spy = spy.new(function(eqs, vars, is_system, callback)
+		mock_solver_solve_asts_async_spy = spy.new(function(eqs, vars, is_system, callback)
 			callback(current_solve_equation_config.result, current_solve_equation_config.err)
 		end)
-		mock_solver_module.solve_equation_async = mock_solver_solve_equation_async_spy
+		mock_solver_module.solve_asts_async = mock_solver_solve_asts_async_spy
 
 		mock_wolfram_backend_module.ast_to_wolfram = spy.new(function(ast)
 			return "wolfram(" .. (ast.name or ast.id) .. ")"
@@ -382,12 +382,12 @@ describe("Tungsten core commands", function()
 			assert.spy(mock_cmd_utils_parse_selected_latex_spy).was.called_with("equation")
 		end)
 
-		it("should call solver.solve_equation_async with processed ASTs and a callback", function()
+		it("should call solver.solve_asts_async with processed ASTs and a callback", function()
 			commands_module.tungsten_solve_command({})
-			assert.spy(mock_solver_solve_equation_async_spy).was.called(1)
-			local args = mock_solver_solve_equation_async_spy.calls[1].vals
-			assert.are.same({ "wolfram(quadratic_eq)" }, args[1])
-			assert.are.same({ "wolfram(x)" }, args[2])
+			assert.spy(mock_solver_solve_asts_async_spy).was.called(1)
+			local args = mock_solver_solve_asts_async_spy.calls[1].vals
+			assert.are.same({ { type = "equation", name = "quadratic_eq" } }, args[1])
+			assert.are.same({ { type = "variable", name = "x" } }, args[2])
 			assert.is_false(args[3])
 		end)
 
@@ -429,9 +429,9 @@ describe("Tungsten core commands", function()
 		it("should process selection, prompt for vars, evaluate system, and insert result", function()
 			commands_module.tungsten_solve_system_command({})
 			assert.spy(mock_cmd_utils_parse_selected_latex_spy).was.called_with("system of equations")
-			assert.spy(mock_solver_solve_equation_async_spy).was.called(1)
-			local args = mock_solver_solve_equation_async_spy.calls[1].vals
-			assert.are.same({ "wolfram(eq1_ast)", "wolfram(eq2_ast)" }, args[1])
+			assert.spy(mock_solver_solve_asts_async_spy).was.called(1)
+			local args = mock_solver_solve_asts_async_spy.calls[1].vals
+			assert.are.same({ { type = "equation", id = "eq1_ast" }, { type = "equation", id = "eq2_ast" } }, args[1])
 			assert.is_true(args[3])
 			assert.spy(mock_event_bus_emit_spy).was.called_with("result_ready", match.is_table())
 		end)
@@ -439,7 +439,7 @@ describe("Tungsten core commands", function()
 		it("should log error if parsing fails (cmd_utils returns nil)", function()
 			current_parse_selected_latex_config["system of equations"] = { ast = nil, text = "" }
 			commands_module.tungsten_solve_system_command({})
-			assert.spy(mock_solver_solve_equation_async_spy).was_not.called()
+			assert.spy(mock_solver_solve_asts_async_spy).was_not.called()
 		end)
 	end)
 

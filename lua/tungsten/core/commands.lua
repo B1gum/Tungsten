@@ -11,7 +11,6 @@ local config = require("tungsten.config")
 local logger = require("tungsten.util.logger")
 local error_handler = require("tungsten.util.error_handler")
 local state = require("tungsten.state")
-local wolfram_backend = require("tungsten.backends.wolfram")
 local string_util = require("tungsten.util.string")
 local cmd_utils = require("tungsten.util.commands")
 local persistent_vars = require("tungsten.core.persistent_vars")
@@ -97,8 +96,29 @@ local function tungsten_clear_persistent_vars_command(_)
 	logger.info("Tungsten", "Persistent variables cleared.")
 end
 
+local function make_solver_callback(cmd_name, start_mark, end_mark, text, mode)
+	return function(result, err)
+		if err then
+			error_handler.notify_error(cmd_name, err)
+			return
+		end
+		if result == nil or result == "" then
+			error_handler.notify_error(cmd_name, "No solution found or an issue occurred.")
+			return
+		end
+		event_bus.emit("result_ready", {
+			result = result,
+			start_mark = start_mark,
+			end_mark = end_mark,
+			selection_text = text,
+			mode = mode,
+			separator = " \\rightarrow ",
+		})
+	end
+end
+
 local function tungsten_solve_command(_)
-	local _, initial_start_extmark, initial_end_extmark, mode = selection.create_selection_extmarks()
+	local _, start_mark, end_mark, mode = selection.create_selection_extmarks()
 
 	local parsed_ast_top, equation_text, parse_err = cmd_utils.parse_selected_latex("equation")
 	if parse_err then
@@ -122,156 +142,90 @@ local function tungsten_solve_command(_)
 		eq_ast = parsed_ast_top
 	end
 
-	local is_valid_equation_structure = false
-	if
-		eq_ast
+	local valid_structure = eq_ast
 		and (
 			(eq_ast.type == "binary" and eq_ast.operator == "=")
 			or eq_ast.type == "EquationRule"
 			or eq_ast.type == "equation"
 		)
-	then
-		is_valid_equation_structure = true
-	end
 
-	if not is_valid_equation_structure then
+	if not valid_structure then
 		error_handler.notify_error("Solve", "Selected text is not a valid single equation.")
 		return
 	end
 
-	vim.ui.input({ prompt = "Enter variable to solve for (e.g., x):" }, function(var_input_str)
-		if var_input_str == nil or var_input_str == "" then
+	vim.ui.input({ prompt = "Enter variable to solve for (e.g., x):" }, function(var_input)
+		if not var_input or var_input == "" then
 			error_handler.notify_error("Solve", "No variable entered.")
 			return
 		end
-		local trimmed_var_name = string_util.trim(var_input_str)
-		if trimmed_var_name == "" then
+		local trimmed = string_util.trim(var_input)
+		if trimmed == "" then
 			error_handler.notify_error("Solve", "Variable cannot be empty.")
 			return
 		end
 
-		local var_parse_ok, var_ast, err_msg = pcall(parser.parse, trimmed_var_name)
-		if not var_parse_ok or not var_ast or var_ast.type ~= "variable" then
-			error_handler.notify_error("Solve", "Invalid variable: '" .. trimmed_var_name .. "'. " .. tostring(err_msg or ""))
+		local ok, var_ast = pcall(parser.parse, trimmed)
+		if not ok or not var_ast or var_ast.type ~= "variable" then
+			error_handler.notify_error("Solve", "Invalid variable: '" .. trimmed .. "'. " .. tostring(var_ast or ""))
 			return
 		end
 
-		local eq_wolfram_ok, eq_wolfram_str = pcall(wolfram_backend.ast_to_wolfram, eq_ast)
-		if not eq_wolfram_ok or not eq_wolfram_str then
-			error_handler.notify_error("Solve", "Failed to convert equation.")
-			return
-		end
-		local var_wolfram_ok, var_wolfram_str = pcall(wolfram_backend.ast_to_wolfram, var_ast)
-		if not var_wolfram_ok or not var_wolfram_str then
-			error_handler.notify_error("Solve", "Failed to convert variable.")
-			return
-		end
-
-		solver.solve_equation_async({ eq_wolfram_str }, { var_wolfram_str }, false, function(solution, err)
-			if err then
-				error_handler.notify_error("Solve", err)
-				return
-			end
-			if solution == nil or solution == "" then
-				error_handler.notify_error("Solve", "No solution found.")
-				return
-			end
-			event_bus.emit("result_ready", {
-				result = solution,
-				start_mark = initial_start_extmark,
-				end_mark = initial_end_extmark,
-				selection_text = equation_text,
-				mode = mode,
-				separator = " \\rightarrow ",
-			})
-		end)
+		solver.solve_asts_async(
+			{ eq_ast },
+			{ var_ast },
+			false,
+			make_solver_callback("Solve", start_mark, end_mark, equation_text, mode)
+		)
 	end)
 end
 
 local function tungsten_solve_system_command(_)
-	local _, initial_start_extmark, initial_end_extmark, mode = selection.create_selection_extmarks()
+	local _, start_mark, end_mark, mode = selection.create_selection_extmarks()
 
-	local equations_capture_ast_or_err, visual_selection_text, parse_err =
-		cmd_utils.parse_selected_latex("system of equations")
+	local capture_ast, selection_text, parse_err = cmd_utils.parse_selected_latex("system of equations")
 	if parse_err then
 		error_handler.notify_error("SolveSystem", parse_err)
 		return
 	end
-	if not equations_capture_ast_or_err then
+	if not capture_ast then
 		return
 	end
 
-	if not equations_capture_ast_or_err or equations_capture_ast_or_err.type ~= "solve_system_equations_capture" then
+	if capture_ast.type ~= "solve_system_equations_capture" then
 		error_handler.notify_error("SolveSystem", "Selected text does not form a valid system of equations.")
 		return
 	end
 
-	local captured_equation_asts = equations_capture_ast_or_err.equations
+	local equations = capture_ast.equations
 
 	vim.ui.input({ prompt = "Enter variables (e.g., x, y or x; y):" }, function(input_vars_str)
-		if input_vars_str == nil or input_vars_str:match("^%s*$") then
+		if not input_vars_str or input_vars_str:match("^%s*$") then
 			error_handler.notify_error("SolveSystem", "No variables entered.")
 			return
 		end
 
-		local variable_names_str
-		if input_vars_str:find(";") then
-			variable_names_str = vim.split(input_vars_str, ";%s*")
-		else
-			variable_names_str = vim.split(input_vars_str, ",%s*")
-		end
-
-		local variable_asts = {}
-		for _, var_name in ipairs(variable_names_str) do
-			local trimmed_var_name = var_name:match("^%s*(.-)%s*$")
-			if trimmed_var_name ~= "" then
-				table.insert(variable_asts, ast_creator.create_variable_node(trimmed_var_name))
+		local var_names = input_vars_str:find(";") and vim.split(input_vars_str, ";%s*")
+			or vim.split(input_vars_str, ",%s*")
+		local var_asts = {}
+		for _, name in ipairs(var_names) do
+			local trimmed = name:match("^%s*(.-)%s*$")
+			if trimmed ~= "" then
+				table.insert(var_asts, ast_creator.create_variable_node(trimmed))
 			end
 		end
 
-		if #variable_asts == 0 then
+		if #var_asts == 0 then
 			error_handler.notify_error("SolveSystem", "No valid variables parsed from input.")
 			return
 		end
 
-		local eq_wolfram_strs = {}
-		for _, eq_ast_node in ipairs(captured_equation_asts) do
-			local ok, str = pcall(wolfram_backend.ast_to_wolfram, eq_ast_node)
-			if not ok then
-				error_handler.notify_error("SolveSystem", "Failed to convert an equation to Wolfram string: " .. tostring(str))
-				return
-			end
-			table.insert(eq_wolfram_strs, str)
-		end
-
-		local var_wolfram_strs = {}
-		for _, var_ast_node in ipairs(variable_asts) do
-			local ok, str = pcall(wolfram_backend.ast_to_wolfram, var_ast_node)
-			if not ok then
-				error_handler.notify_error("SolveSystem", "Failed to convert a varianle to Wolfram string: " .. tostring(str))
-				return
-			end
-			table.insert(var_wolfram_strs, str)
-		end
-
-		solver.solve_equation_async(eq_wolfram_strs, var_wolfram_strs, true, function(result, err)
-			if err then
-				error_handler.notify_error("SolveSystem", err)
-				return
-			end
-			if result == nil or result == "" then
-				error_handler.notify_error("SolveSystem", "No solution found or an issue occurred.")
-				return
-			end
-			event_bus.emit("result_ready", {
-				result = result,
-				start_mark = initial_start_extmark,
-				end_mark = initial_end_extmark,
-				selection_text = visual_selection_text,
-				mode = mode,
-				separator = " \\rightarrow ",
-			})
-		end)
+		solver.solve_asts_async(
+			equations,
+			var_asts,
+			true,
+			make_solver_callback("SolveSystem", start_mark, end_mark, selection_text, mode)
+		)
 	end)
 end
 
