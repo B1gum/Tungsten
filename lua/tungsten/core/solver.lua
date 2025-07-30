@@ -7,6 +7,7 @@ local state = require("tungsten.state")
 local async = require("tungsten.util.async")
 local solution_helper = require("tungsten.backends.wolfram.wolfram_solution")
 local error_parser = require("tungsten.backends.wolfram.wolfram_error")
+local wolfram_backend = require("tungsten.backends.wolfram")
 
 local M = {}
 
@@ -86,6 +87,35 @@ function M.solve_equation_async(eq_strs, vars, is_system, callback)
 			callback(result, err)
 		end,
 	})
+end
+
+function M.solve_asts_async(eq_asts, var_asts, is_system, callback)
+	assert(
+		callback and type(eq_asts) == "table" and type(var_asts) == "table",
+		"solve_asts_async expects tables and a callback"
+	)
+
+	local eq_strs = {}
+	for _, ast_node in ipairs(eq_asts) do
+		local ok, str = pcall(wolfram_backend.ast_to_wolfram, ast_node)
+		if not ok then
+			callback(nil, "Failed to convert an equation to Wolfram string: " .. tostring(str))
+			return
+		end
+		table.insert(eq_strs, str)
+	end
+
+	local var_strs = {}
+	for _, var_node in ipairs(var_asts) do
+		local ok, str = pcall(wolfram_backend.ast_to_wolfram, var_node)
+		if not ok then
+			callback(nil, "Failed to convert a variable to Wolfram string: " .. tostring(str))
+			return
+		end
+		table.insert(var_strs, str)
+	end
+
+	M.solve_equation_async(eq_strs, var_strs, is_system, callback)
 end
 
 return M
