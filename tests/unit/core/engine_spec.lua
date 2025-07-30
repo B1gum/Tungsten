@@ -257,79 +257,6 @@ describe("tungsten.core.engine", function()
 		)
 	end)
 
-	describe("run_async(input, numeric, callback)", function()
-		it("parses input, applies semantic pass, and evaluates", function()
-			local parsed_ast = { type = "expression", id = "parsed" }
-			local sem_ast = { type = "expression", id = "sem" }
-			local callback_spy = spy.new()
-
-			mock_parser_module.parse = spy.new(function()
-				return parsed_ast
-			end)
-			mock_semantic_module.apply = spy.new(function(ast)
-				return sem_ast
-			end)
-
-			local eval_spy = spy.new(function(ast, numeric, cb)
-				cb("ok", nil)
-			end)
-			engine.evaluate_async = eval_spy
-
-			engine.run_async("1+1", true, function(...)
-				callback_spy(...)
-			end)
-
-			assert.spy(mock_parser_module.parse).was.called_with("1+1")
-			assert.spy(mock_semantic_module.apply).was.called_with(parsed_ast)
-			assert.spy(eval_spy).was.called_with(sem_ast, true, match.is_function())
-			assert.spy(callback_spy).was.called_with("ok", nil)
-		end)
-
-		it("returns error when semantic pass fails", function()
-			local parsed_ast = { type = "expression", id = "parsed" }
-			mock_parser_module.parse = spy.new(function()
-				return parsed_ast
-			end)
-			mock_semantic_module.apply = spy.new(function()
-				error("boom")
-			end)
-
-			local eval_spy = spy.new(function() end)
-			engine.evaluate_async = eval_spy
-			local cb_spy = spy.new()
-
-			engine.run_async("bad", false, function(...)
-				cb_spy(...)
-			end)
-
-			assert.spy(eval_spy).was_not.called()
-			assert.spy(cb_spy).was.called()
-			local err = cb_spy.calls[1].vals[2]
-			assert.truthy(err:find("Semantic pass error"))
-		end)
-
-		it("returns error when parsing fails", function()
-			mock_parser_module.parse = spy.new(function()
-				error("no parse")
-			end)
-			mock_semantic_module.apply = spy.new(function(ast)
-				return ast
-			end)
-			local eval_spy = spy.new(function() end)
-			engine.evaluate_async = eval_spy
-			local cb_spy = spy.new()
-
-			engine.run_async("oops", false, function(...)
-				cb_spy(...)
-			end)
-
-			assert.spy(eval_spy).was_not.called()
-			assert.spy(cb_spy).was.called()
-			local err = cb_spy.calls[1].vals[2]
-			assert.truthy(err:find("Parse error"))
-		end)
-	end)
-
 	describe("Persistent Variable Substitution", function()
 		it("should substitute a single persistent variable", function()
 			mock_state.persistent_variables["x"] = "5"
@@ -370,16 +297,6 @@ describe("tungsten.core.engine", function()
 			assert
 				.spy(logger_notify_spy).was
 				.called_with("Tungsten: Cache cleared.", mock_logger.levels.INFO, match.is_table())
-		end)
-
-		it("get_cache_size() should return the correct number of entries and log", function()
-			mock_state.cache:set("key1", "val1")
-			mock_state.cache:set("key2", "val2")
-			local size = engine.get_cache_size()
-			assert.are.equal(2, size)
-			assert
-				.spy(logger_notify_spy).was
-				.called_with("Tungsten: Cache size: 2 entries.", mock_logger.levels.INFO, match.is_table())
 		end)
 	end)
 

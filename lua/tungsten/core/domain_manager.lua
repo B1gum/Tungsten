@@ -4,36 +4,6 @@ local config = require("tungsten.config")
 
 local M = {}
 
-local function default_domains_dir()
-	local source = debug.getinfo(1, "S").source:sub(2)
-	local base = source:match("(.+)/core/domain_manager%.lua$")
-	return base and (base .. "/domains") or "lua/tungsten/domains"
-end
-
-function M.discover_domains(dir, user_dir)
-	dir = dir or default_domains_dir()
-	local domains = {}
-	local seen = {}
-
-	local function scan(path)
-		if not path then
-			return
-		end
-
-		for name, typ in vim.fs.dir(path) do
-			if typ == "directory" and not seen[name] then
-				table.insert(domains, name)
-				seen[name] = true
-			end
-		end
-	end
-
-	scan(dir)
-	scan(user_dir)
-
-	return domains
-end
-
 function M.validate_metadata(meta)
 	if type(meta) ~= "table" then
 		return false, "domain module must return a table"
@@ -167,17 +137,6 @@ function M.setup()
 	for _, name in ipairs(ordered) do
 		register_if_new(name)
 	end
-end
-
-function M.reload(opts)
-	registry.reset()
-	require("tungsten.core.parser").reset_grammar()
-	for name, _ in pairs(package.loaded) do
-		if name:match("tungsten%.domains%.") then
-			package.loaded[name] = nil
-		end
-	end
-	M.setup(opts)
 end
 
 return M

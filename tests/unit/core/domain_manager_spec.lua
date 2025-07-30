@@ -9,26 +9,6 @@ describe("DomainManager", function()
 		dm = require("tungsten.core.domain_manager")
 	end)
 
-	describe("when discovering domains", function()
-		local tmp_dir
-		before_each(function()
-			tmp_dir = vim.loop.fs_mkdtemp("tungsten_dm_testXXXXXX")
-			lfs.mkdir(tmp_dir .. "/domA")
-			lfs.mkdir(tmp_dir .. "/domB")
-		end)
-		after_each(function()
-			if tmp_dir then
-				os.execute("rm -rf " .. tmp_dir)
-			end
-		end)
-
-		it("finds all subdirectories", function()
-			local names = dm.discover_domains(tmp_dir)
-			table.sort(names)
-			assert.are.same({ "domA", "domB" }, names)
-		end)
-	end)
-
 	describe("when validating metadata", function()
 		it("accepts valid metadata", function()
 			local ok, err = dm.validate_metadata({

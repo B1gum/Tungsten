@@ -160,31 +160,6 @@ function M.evaluate_async(ast, numeric, callback)
 	})
 end
 
-function M.run_async(input, numeric, callback)
-	assert(type(callback) == "function", "run_async expects a callback function")
-	local parser_module = require("tungsten.core.parser")
-	local semantic_pass = require("tungsten.core.semantic_pass")
-
-	local ok, ast, err_msg = pcall(parser_module.parse, input)
-	if not ok or ast == nil then
-		err_msg = "Parse error: " .. tostring(err_msg or ast)
-		callback(nil, err_msg)
-		return
-	end
-	local sem_ok, processed_ast = pcall(semantic_pass.apply, ast)
-	if not sem_ok or processed_ast == nil then
-		err_msg = "Semantic pass error: " .. tostring(processed_ast)
-		callback(nil, err_msg)
-		return
-	end
-
-	M.evaluate_async(processed_ast, numeric, callback)
-end
-
-M.parse = function(...)
-	return require("tungsten.core.parser").parse(...)
-end
-
 function M.clear_cache()
 	state.cache:clear()
 	logger.info("Tungsten", "Tungsten: Cache cleared.")
@@ -212,12 +187,6 @@ end
 function M.view_active_jobs()
 	local summary = M.get_active_jobs_summary()
 	logger.info("Tungsten", summary)
-end
-
-function M.get_cache_size()
-	local count = state.cache:count()
-	logger.info("Tungsten", "Tungsten: Cache size: " .. count .. " entries.")
-	return count
 end
 
 return M

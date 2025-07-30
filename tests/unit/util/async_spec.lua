@@ -71,44 +71,6 @@ describe("tungsten.util.async.run_job", function()
 		assert.falsy(state.active_jobs[handle.id])
 	end)
 
-	it("can cancel a running job", function()
-		local result
-		local handle = async.run_job({ "sh", "-c", "sleep 2" }, {
-			cache_key = "cancel",
-			timeout = 1000,
-			on_exit = function(code, out, err)
-				result = { code = code, out = out, err = err }
-			end,
-		})
-		vim.defer_fn(function()
-			async.cancel_process(handle)
-		end, 100)
-		wait_for(function()
-			return result
-		end, 1000)
-		assert.is_true(result.code ~= 0)
-		assert.falsy(state.active_jobs[handle.id])
-	end)
-
-	it("is_process_active reflects running state", function()
-		local done = false
-		local handle = async.run_job({ "sh", "-c", "sleep 0.3" }, {
-			cache_key = "active",
-			timeout = 1000,
-			on_exit = function()
-				done = true
-			end,
-		})
-		assert.is_true(async.is_process_active(handle))
-		vim.defer_fn(function() end, 50)
-		vim.wait(50)
-		assert.is_true(async.is_process_active(handle))
-		wait_for(function()
-			return done
-		end, 1000)
-		assert.is_false(async.is_process_active(handle))
-	end)
-
 	it("cancel_all_jobs terminates running jobs", function()
 		local done = false
 		local handle = async.run_job({ "sh", "-c", "sleep 2" }, {

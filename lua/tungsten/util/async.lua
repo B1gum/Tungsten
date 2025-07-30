@@ -130,22 +130,12 @@ function M.run_job(cmd, opts)
 	return spawn_process(cmd, opts)
 end
 
-function M.cancel_process(handle)
-	if handle and handle.cancel then
-		handle.cancel()
-	end
-end
-
 function M.cancel_all_jobs()
 	for _, info in pairs(state.active_jobs) do
 		if info.handle and info.handle.cancel then
 			info.handle.cancel()
 		end
 	end
-end
-
-function M.is_process_active(handle)
-	return handle and handle.is_active and handle.is_active() or false
 end
 
 return M
