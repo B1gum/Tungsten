@@ -6,7 +6,6 @@ local match = require("luassert.match")
 describe("Tungsten Differential Equations Commands", function()
 	local de_commands
 
-	-- Mocks
 	local mock_selection
 	local mock_logger
 	local mock_parser
@@ -16,6 +15,17 @@ describe("Tungsten Differential Equations Commands", function()
 	local mock_ast
 
 	local original_require
+
+	local modules_to_clear_from_cache = {
+		"tungsten.domains.differential_equations.commands",
+		"tungsten.domains.differential_equations.command_definitions",
+		"tungsten.core.workflow",
+		"tungsten.util.selection",
+		"tungsten.util.commands",
+		"tungsten.core.parser",
+		"tungsten.core.engine",
+		"tungsten.event_bus",
+	}
 
 	local current_selection_text
 	local current_parsed_ast
@@ -37,6 +47,9 @@ describe("Tungsten Differential Equations Commands", function()
 		mock_selection.get_visual_selection = spy.new(function()
 			return current_selection_text
 		end)
+		mock_selection.create_selection_extmarks = function()
+			return 0, 1, 2, "v"
+		end
 		mock_logger.notify = spy.new(function() end)
 		mock_parser.parse = spy.new(function(text)
 			return current_parsed_ast
@@ -85,12 +98,13 @@ describe("Tungsten Differential Equations Commands", function()
 			return original_require(module_path)
 		end
 
-		package.loaded["tungsten.domains.differential_equations.commands"] = nil
+		require("tests.helpers.mock_utils").reset_modules(modules_to_clear_from_cache)
 		de_commands = require("tungsten.domains.differential_equations.commands")
 	end)
 
 	after_each(function()
 		_G.require = original_require
+		require("tests.helpers.mock_utils").reset_modules(modules_to_clear_from_cache)
 	end)
 
 	local function test_command(command_fn, command_name, selection_text, parsed_ast, final_ast_producer)
