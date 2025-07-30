@@ -30,6 +30,8 @@ describe("Tungsten Persistent Variable Pipeline", function()
 
 	local modules_to_clear_from_cache = {
 		"tungsten.core.commands",
+		"tungsten.core.workflow",
+		"tungsten.core.command_definitions",
 		"tungsten.core.engine",
 		"tungsten.core.parser",
 		"tungsten.backends.wolfram",

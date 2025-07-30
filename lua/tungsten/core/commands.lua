@@ -16,97 +16,19 @@ local vim_inspect = require("vim.inspect")
 local string_util = require("tungsten.util.string")
 local cmd_utils = require("tungsten.util.commands")
 local ast_creator = require("tungsten.core.ast")
+local workflow = require("tungsten.core.workflow")
+local definitions = require("tungsten.core.command_definitions")
 
 local function tungsten_evaluate_command(_)
-	local ast, selection_text, err = cmd_utils.parse_selected_latex("expression")
-	if err then
-		error_handler.notify_error("Eval", err)
-		return
-	end
-	if not ast then
-		return
-	end
-
-	local _, start_mark, end_mark, mode = selection.create_selection_extmarks()
-
-	local use_numeric_mode = config.numeric_mode
-
-	evaluator.evaluate_async(ast, use_numeric_mode, function(result, err2)
-		if err2 then
-			error_handler.notify_error("Eval", err2)
-			return
-		end
-		if result == nil or result == "" then
-			return
-		end
-		event_bus.emit(
-			"result_ready",
-			{ result = result, start_mark = start_mark, end_mark = end_mark, selection_text = selection_text, mode = mode }
-		)
-	end)
+	workflow.run(definitions.TungstenEvaluate)
 end
 
 local function tungsten_simplify_command(_)
-	local ast, selection_text, err = cmd_utils.parse_selected_latex("expression")
-	if err then
-		error_handler.notify_error("Simplify", err)
-		return
-	end
-	if not ast then
-		return
-	end
-
-	local simplify_ast = ast_creator.create_function_call_node(ast_creator.create_variable_node("Simplify"), { ast })
-
-	local _, start_mark, end_mark, mode = selection.create_selection_extmarks()
-
-	local use_numeric_mode = config.numeric_mode
-
-	evaluator.evaluate_async(simplify_ast, use_numeric_mode, function(result, err2)
-		if err2 then
-			error_handler.notify_error("Simplify", err2)
-			return
-		end
-		if result == nil or result == "" then
-			return
-		end
-		event_bus.emit(
-			"result_ready",
-			{ result = result, start_mark = start_mark, end_mark = end_mark, selection_text = selection_text, mode = mode }
-		)
-	end)
+	workflow.run(definitions.TungstenSimplify)
 end
 
 local function tungsten_factor_command(_)
-	local ast, selection_text, err = cmd_utils.parse_selected_latex("expression")
-	if err then
-		error_handler.notify_error("Factor", err)
-		return
-	end
-	if not ast then
-		return
-	end
-
-	local factor_ast = ast_creator.create_function_call_node(ast_creator.create_variable_node("Factor"), { ast })
-
-	local _, start_mark, end_mark, mode = selection.create_selection_extmarks()
-
-	local use_numeric_mode = config.numeric_mode
-
-	evaluator.evaluate_async(factor_ast, use_numeric_mode, function(result, err2)
-		if err2 then
-			error_handler.notify_error("Factor", err2)
-			return
-		end
-		if result == nil or result == "" then
-			return
-		end
-
-		event_bus.emit(
-			"result_ready",
-			{ result = result, start_mark = start_mark, end_mark = end_mark, selection_text = selection_text, mode = mode }
-		)
-	end)
+	workflow.run(definitions.TungstenFactor)
 end
 
 local function tungsten_toggle_numeric_mode_command(_)

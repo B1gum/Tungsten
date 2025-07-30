@@ -33,6 +33,8 @@ describe("Tungsten core commands", function()
 
 	local modules_to_clear_from_cache = {
 		"tungsten.core.commands",
+		"tungsten.core.workflow",
+		"tungsten.core.command_definitions",
 		"tungsten.core.engine",
 		"tungsten.core.solver",
 		"tungsten.event_bus",
