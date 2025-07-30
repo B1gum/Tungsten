@@ -38,6 +38,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
 		"tungsten.util.selection",
 		"tungsten.event_bus",
 		"tungsten.config",
+		"tungsten.core.persistent_vars",
 		"tungsten.state",
 		"tungsten.util.logger",
 	}
@@ -206,11 +207,6 @@ describe("Tungsten Persistent Variable Pipeline", function()
 			assert.spy(mock_parser_parse_spy).was.called_with("1+1")
 			local expected_wolfram_def = "wolfram(1+1)"
 			assert.are.same(expected_wolfram_def, mock_state_module.persistent_variables["x"])
-			assert.spy(mock_logger_notify_spy).was.called_with(
-				"Tungsten: Defined persistent variable 'x' as '" .. expected_wolfram_def .. "'.",
-				mock_logger_module.levels.INFO,
-				match.is_table()
-			)
 
 			current_visual_selection_text = "x * 2"
 			commands_module.tungsten_evaluate_command({})

@@ -12,9 +12,9 @@ local logger = require("tungsten.util.logger")
 local error_handler = require("tungsten.util.error_handler")
 local state = require("tungsten.state")
 local wolfram_backend = require("tungsten.backends.wolfram")
-local vim_inspect = require("vim.inspect")
 local string_util = require("tungsten.util.string")
 local cmd_utils = require("tungsten.util.commands")
+local persistent_vars = require("tungsten.core.persistent_vars")
 local ast_creator = require("tungsten.core.ast")
 local workflow = require("tungsten.core.workflow")
 local definitions = require("tungsten.core.command_definitions")
@@ -71,119 +71,25 @@ local function tungsten_show_ast_command(_)
 end
 
 local function define_persistent_variable_command(_)
-	local selected_text = selection.get_visual_selection()
-	if selected_text == "" or selected_text == nil then
-		error_handler.notify_error("DefineVar", "No text selected for variable definition.")
+	local selection_text = selection.get_visual_selection()
+	local name, rhs, parse_err = persistent_vars.parse_definition(selection_text)
+	if parse_err then
+		error_handler.notify_error("DefineVar", parse_err)
+	end
+
+	logger.debug("Tungsten Debug", "Defining variables '" .. name .. "' with LaTeX RHS: '" .. rhs .. "'")
+
+	local wolfram_def, conversion_err = persistent_vars.latex_to_wolfram(name, rhs)
+	if conversion_err then
+		error_handler.notify_error("DefineVar", conversion_err)
 		return
 	end
 
-	local op_to_use_str = config.persistent_variable_assignment_operator or ":="
-	local op_start_pos = selected_text:find(op_to_use_str, 1, true)
+	logger.debug("Tungsten Debug", "Storing variable '" .. name .. "' with Wolfram string: '" .. wolfram_def .. "'")
 
-	if op_start_pos then
-		logger.debug(
-			"Tungsten Debug",
-			"Tungsten Debug: Operator '" .. op_to_use_str .. "' found at pos " .. tostring(op_start_pos)
-		)
-	else
-		error_handler.notify_error("DefineVar", "No assignment operator ('" .. op_to_use_str .. "') found in selection.")
-		return
-	end
+	persistent_vars.store(name, wolfram_def)
 
-	local var_name_end_index = op_start_pos - 1
-	if var_name_end_index < 0 then
-		var_name_end_index = 0
-	end
-
-	local raw_part1 = selected_text:sub(1, var_name_end_index)
-	logger.debug(
-		"Tungsten Debug",
-		"Tungsten Debug: Raw parts[1] before trim: '"
-			.. raw_part1
-			.. "' (op_start_pos was "
-			.. tostring(op_start_pos)
-			.. ")"
-	)
-	local var_name_str = string_util.trim(raw_part1)
-
-	local rhs_start_index = op_start_pos + #op_to_use_str
-	local raw_part2 = selected_text:sub(rhs_start_index)
-	logger.debug(
-		"Tungsten Debug",
-		"Tungsten Debug: Raw parts[2] before trim: '"
-			.. raw_part2
-			.. "' (rhs_start_index was "
-			.. tostring(rhs_start_index)
-			.. ", operator was '"
-			.. op_to_use_str
-			.. "')"
-	)
-	local rhs_latex_str = string_util.trim(raw_part2)
-
-	if var_name_str == "" then
-		error_handler.notify_error("DefineVar", "Variable name cannot be empty.")
-		return
-	end
-
-	if rhs_latex_str == "" then
-		error_handler.notify_error("DefineVar", "Variable definition (LaTeX) cannot be empty.")
-		return
-	end
-
-	logger.debug(
-		"Tungsten Debug",
-		"Tungsten Debug: Defining variable '" .. var_name_str .. "' with LaTeX RHS: '" .. rhs_latex_str .. "'"
-	)
-
-	local parse_ok, definition_ast_or_err, err_msg = pcall(parser.parse, rhs_latex_str)
-	if not parse_ok or not definition_ast_or_err then
-		error_handler.notify_error(
-			"DefineVar",
-			"Failed to parse LaTeX definition for '" .. var_name_str .. "': " .. tostring(err_msg or definition_ast_or_err)
-		)
-		return
-	end
-	local definition_ast = definition_ast_or_err
-
-	logger.debug(
-		"Tungsten Debug",
-		"Tungsten Debug: AST for '" .. var_name_str .. "' before to_string: " .. vim_inspect(definition_ast)
-	)
-
-	local conversion_ok, wolfram_definition_str_or_err = pcall(wolfram_backend.ast_to_wolfram, definition_ast)
-
-	logger.debug(
-		"Tungsten Debug",
-		"Tungsten Debug: pcall result for to_string: conversion_ok="
-			.. tostring(conversion_ok)
-			.. ", returned_value="
-			.. vim_inspect(wolfram_definition_str_or_err)
-	)
-
-	if not conversion_ok or not wolfram_definition_str_or_err or type(wolfram_definition_str_or_err) ~= "string" then
-		error_handler.notify_error(
-			"DefineVar",
-			"Failed to convert definition AST to wolfram string for '"
-				.. var_name_str
-				.. "': "
-				.. tostring(wolfram_definition_str_or_err)
-		)
-		return
-	end
-	local wolfram_definition_str = wolfram_definition_str_or_err
-
-	logger.debug(
-		"Tungsten Debug",
-		"Tungsten Debug: Storing variable '" .. var_name_str .. "' with Wolfram string: '" .. wolfram_definition_str .. "'"
-	)
-
-	state.persistent_variables = state.persistent_variables or {}
-	state.persistent_variables[var_name_str] = wolfram_definition_str
-
-	logger.info(
-		"Tungsten",
-		"Tungsten: Defined persistent variable '" .. var_name_str .. "' as '" .. wolfram_definition_str .. "'."
-	)
+	logger.info("Tungsten", "Defined persistent variable '" .. name .. "' as '" .. wolfram_def .. "'.")
 end
 
 local function tungsten_clear_persistent_vars_command(_)
