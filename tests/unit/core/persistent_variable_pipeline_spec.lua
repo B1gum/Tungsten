@@ -123,6 +123,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
 			return "wolfram(" .. (ast.latex or ast.id or "unknown_ast") .. ")"
 		end)
 		mock_wolfram_backend_module.ast_to_wolfram = mock_ast_to_wolfram_spy
+		mock_wolfram_backend_module.ast_to_code = mock_ast_to_wolfram_spy
 		mock_wolfram_backend_module.evaluate_async = function(_, opts, cb)
 			local code = opts.code or ""
 			if mock_config_module.numeric_mode or opts.numeric then

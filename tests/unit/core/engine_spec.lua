@@ -119,7 +119,11 @@ describe("tungsten.core.engine", function()
 		original_require = _G.require
 		_G.require = function(module_path)
 			if module_path == "tungsten.backends.manager" then
-				return mock_wolfram_codegen
+				return {
+					current = function()
+						return mock_backend
+					end,
+				}
 			end
 			if module_path == "tungsten.config" then
 				return mock_config

@@ -2,18 +2,18 @@
 -- Unit tests for the Tungsten equation solver.
 
 local spy = require("luassert.spy")
+local match = require("luassert.match")
 local mock_utils = require("tests.helpers.mock_utils")
 
 local solver
 local solution_helper
 
-local mock_evaluator_module
-local mock_wolfram_backend
+local mock_backend_manager_module
+local mock_backend_module
 
 local modules_to_clear_from_cache = {
 	"tungsten.core.solver",
-	"tungsten.core.engine",
-	"tungsten.backends.wolfram",
+	"tungsten.backends.manager",
 }
 
 describe("tungsten.core.solver", function()
@@ -22,27 +22,23 @@ describe("tungsten.core.solver", function()
 	before_each(function()
 		mock_utils.reset_modules(modules_to_clear_from_cache)
 
-		mock_evaluator_module = {
-			solve_async = spy.new(function(ast_node, opts, cb)
-				if cb then
-					cb("{{x -> 1}}", nil)
-				end
-			end),
-		}
-
-		mock_wolfram_backend = {
-			ast_to_wolfram = spy.new(function(node)
-				return node.name or node.id or ""
-			end),
+		mock_backend_module = {}
+		function mock_backend_module.solve_async(_, node, opts, cb)
+			mock_backend_module.called_with = { node, opts, cb }
+			if cb then
+				cb("solution", nil)
+			end
+		end
+		mock_backend_manager_module = {
+			current = function()
+				return mock_backend_module
+			end,
 		}
 
 		original_require = _G.require
 		_G.require = function(module_path)
-			if module_path == "tungsten.core.engine" then
-				return mock_evaluator_module
-			end
-			if module_path == "tungsten.backends.wolfram" then
-				return mock_wolfram_backend
+			if module_path == "tungsten.backends.manager" then
+				return mock_backend_manager_module
 			end
 			if package.loaded[module_path] then
 				return package.loaded[module_path]
@@ -71,39 +67,35 @@ describe("tungsten.core.solver", function()
 			assert.is_true(res.ok)
 			assert.are.equal("x = 1, y = -3", res.formatted)
 		end)
+
+		it("returns no solution when output empty", function()
+			local res = solution_helper.parse_wolfram_solution("", { "x" }, false)
+			assert.is_false(res.ok)
+			assert.are.equal("No solution", res.reason)
+		end)
+
+		it("handles timeout-like nil output", function()
+			local res = solution_helper.parse_wolfram_solution(nil, { "x" }, false)
+			assert.is_false(res.ok)
+		end)
 	end)
 
 	describe("solve_asts_async", function()
-		local callback_spy
+		it("invokes backend solve_async with constructed AST", function()
+			local callback_spy = spy.new(function() end)
 
-		before_each(function()
-			callback_spy = spy.new(function() end)
-		end)
+			local eq1 = { type = "equation", id = "eq1" }
+			local var1 = { type = "variable", id = "v1" }
 
-		it("calls engine.solve_async with constructed solve AST and parses result", function()
-			local eq_ast = { type = "equation", id = "eq" }
-			local var_ast = { type = "variable", name = "x" }
+			solver.solve_asts_async({ eq1 }, { var1 }, false, callback_spy)
 
-			solver.solve_asts_async({ eq_ast }, { var_ast }, false, callback_spy)
-
-			assert.spy(mock_evaluator_module.solve_async).was.called(1)
-			local passed_ast = mock_evaluator_module.solve_async.calls[1].vals[1]
-			assert.are.equal("solve_system", passed_ast.type)
-			assert.are.same({ eq_ast }, passed_ast.equations)
-			assert.are.same({ var_ast }, passed_ast.variables)
-			assert.spy(callback_spy).was.called_with("x = 1", nil)
-		end)
-
-		it("propagates errors from engine.solve_async", function()
-			mock_evaluator_module.solve_async = spy.new(function(_, _, cb)
-				cb(nil, "fail")
-			end)
-
-			local eq_ast = { type = "equation", id = "eq" }
-			local var_ast = { type = "variable", name = "x" }
-
-			solver.solve_asts_async({ eq_ast }, { var_ast }, false, callback_spy)
-			assert.spy(callback_spy).was.called_with(nil, "fail")
+			assert.is_table(mock_backend_module.called_with)
+			local node_arg, opts_arg, cb_arg = unpack(mock_backend_module.called_with)
+			assert.are.equal("solve_system", node_arg.type)
+			assert.are.equal(eq1, node_arg.equations[1])
+			assert.are.equal(var1, node_arg.variables[1])
+			assert.are.same({ is_system = false }, opts_arg)
+			assert.are.equal(callback_spy, cb_arg)
 		end)
 	end)
 end)
