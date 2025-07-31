@@ -17,6 +17,8 @@ local config = {
 	result_display = "insert",
 	max_jobs = 5,
 	persistent_variable_assignment_operator = ":=",
+	backend = "wolfram",
+	backend_opts = {},
 	wolfram_function_mappings = {
 		sin = "Sin",
 		cos = "Cos",

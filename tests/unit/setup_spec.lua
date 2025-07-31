@@ -99,4 +99,14 @@ describe("tungsten.setup", function()
 		assert.are.equal(20, state.cache.max_entries)
 		assert.are.equal(15, state.cache.ttl)
 	end)
+
+	it("activates configured backend with options", function()
+		local tungsten = require("tungsten")
+		local mock_manager = mock_utils.create_empty_mock_module("tungsten.backends.manager", { "activate" })
+		tungsten.setup({
+			backend = "demo",
+			backend_opts = { demo = { foo = 1 } },
+		})
+		assert.spy(mock_manager.activate).was.called_with("demo", { foo = 1 })
+	end)
 end)
