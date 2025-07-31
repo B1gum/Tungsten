@@ -4,6 +4,8 @@
 local render = require("tungsten.core.render")
 local config = require("tungsten.config")
 local logger = require("tungsten.util.logger")
+local async = require("tungsten.util.async")
+local manager = require("tungsten.backends.manager")
 
 local M = {}
 local handlerRegistry = {}
@@ -147,6 +149,60 @@ function M.ast_to_wolfram(ast)
 	return rendered_result
 end
 
+-- Alias for generic backend interface TODO: Refactor to use same name
+function M.ast_to_code(ast)
+	return M.ast_to_wolfram(ast)
+end
+
+function M.evaluate_async(ast, opts, callback)
+	assert(type(callback) == "function", "evaluate_async expects callback")
+
+	opts = opts or {}
+	local numeric = opts.numeric
+	local cache_key = opts.cache_key
+
+	local ok, code = pcall(M.ast_to_wolfram, ast)
+	if not ok or not code then
+		callback(nil, "Error converting AST to Wolfram code: " .. tostring(code))
+		return
+	end
+
+	if opts.code then
+		code = opts.code
+	end
+
+	if config.numeric_mode or numeric then
+		code = "N[" .. code .. "]"
+	end
+
+	code = "ToString[TeXForm[" .. code .. '], CharacterEncoding -> "UTF8"]'
+
+	async.run_job({ config.wolfram_path, "-code", code }, {
+		cache_key = cache_key,
+		on_exit = function(exit_code, stdout, stderr)
+			if exit_code == 0 then
+				if stderr ~= "" then
+					logger.debug("Tungsten Debug", "Tungsten Debug (stderr): " .. stderr)
+				end
+				callback(stdout, nil)
+			else
+				local err_msg
+				if exit_code == -1 or exit_code == 127 then
+					err_msg = "WolframScript not found. Check wolfram_path."
+				else
+					err_msg = ("WolframScript exited with code %d"):format(exit_code)
+				end
+				if stderr ~= "" then
+					err_msg = err_msg .. "\nStderr: " .. stderr
+				elseif stdout ~= "" then
+					err_msg = err_msg .. "\nStdout (potentially error): " .. stdout
+				end
+				callback(nil, err_msg)
+			end
+		end,
+	})
+end
+
 function M.reload_handlers()
 	logger.info("Tungsten Backend", "Wolfram Backend: Resetting and re-initializing handlers...")
 	handlerRegistry = {}
@@ -154,5 +210,7 @@ function M.reload_handlers()
 	handlers_initialized = false
 	init_handlers()
 end
+
+manager.register("Wolfram", M)
 
 return M

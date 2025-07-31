@@ -3,7 +3,7 @@ local mock_utils = require("tests.helpers.mock_utils")
 
 describe("engine missing binary feedback", function()
 	local engine
-	local mock_wolfram_codegen
+	local mock_backend
 	local mock_config
 	local mock_state
 	local mock_async
@@ -17,7 +17,7 @@ describe("engine missing binary feedback", function()
 
 	local modules_to_clear_from_cache = {
 		"tungsten.core.engine",
-		"tungsten.backends.wolfram",
+		"tungsten.backends.manager",
 		"tungsten.config",
 		"tungsten.state",
 		"tungsten.util.async",
@@ -29,11 +29,10 @@ describe("engine missing binary feedback", function()
 	end
 
 	before_each(function()
-		mock_wolfram_codegen = {
-			ast_to_wolfram = function()
-				return "wolfram_code"
-			end,
-		}
+		mock_backend = {}
+		mock_backend.ast_to_code = function()
+			return "wolfram_code"
+		end
 		mock_config = {
 			wolfram_path = "mock_wolframscript",
 			numeric_mode = false,
@@ -69,10 +68,30 @@ describe("engine missing binary feedback", function()
 			}
 		end)
 		mock_async = { run_job = async_run_job_spy }
+		mock_backend.evaluate_async = function(_, opts, cb)
+			mock_async.run_job({ mock_config.wolfram_path, "-code", opts.code or "" }, {
+				cache_key = opts.cache_key,
+				on_exit = function(code, out, err)
+					if cb then
+						if code == 0 then
+							cb(out, nil)
+						else
+							local err_msg
+							if code == -1 or code == 127 then
+								err_msg = "WolframScript not found. Check wolfram_path."
+							else
+								err_msg = string.format("WolframScript exited with code %d", code)
+							end
+							cb(nil, err_msg)
+						end
+					end
+				end,
+			})
+		end
 
 		original_require = _G.require
 		_G.require = function(module_path)
-			if module_path == "tungsten.backends.wolfram" then
+			if module_path == "tungsten.backends.manager" then
 				return mock_wolfram_codegen
 			end
 			if module_path == "tungsten.config" then

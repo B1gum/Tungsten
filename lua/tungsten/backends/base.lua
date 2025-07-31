@@ -8,7 +8,7 @@ function BaseBackend.ast_to_string(ast)
 	error("Not implemented")
 end
 
-function BaseBackend.evaluate_async(ast, numeric, callback)
+function BaseBackend.evaluate_async(ast, opts, callback)
 	error("Not implemented")
 end
 
