@@ -4,7 +4,6 @@
 local manager = require("tungsten.backends.manager")
 local config = require("tungsten.config")
 local state = require("tungsten.state")
-local async = require("tungsten.util.async")
 local logger = require("tungsten.util.logger")
 
 local lpeg = require("lpeglabel")
