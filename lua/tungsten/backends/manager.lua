@@ -41,7 +41,6 @@ function M.activate(name, opts)
 	end
 
 	active_instance = instance
-
 	return instance
 end
 
