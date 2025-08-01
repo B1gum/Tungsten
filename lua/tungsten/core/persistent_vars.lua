@@ -3,7 +3,6 @@
 
 local parser = require("tungsten.core.parser")
 local manager = require("tungsten.backends.manager")
-local wolfram_backend = require("tungsten.backends.wolfram")
 local string_util = require("tungsten.util.string")
 local config = require("tungsten.config")
 local state = require("tungsten.state")
@@ -34,20 +33,25 @@ function M.parse_definition(text)
 	return variable_name, rhs, nil
 end
 
-function M.latex_to_wolfram(variable_name, rhs_latex)
+function M.latex_to_backend_code(variable_name, rhs_latex)
 	local ok, ast_or_err, err_msg = pcall(parser.parse, rhs_latex)
 	if not ok or not ast_or_err then
 		return nil, "Failed to parse LaTeX definition for '" .. variable_name .. "': " .. tostring(err_msg or ast_or_err)
 	end
 	local ast = ast_or_err
 
-	local conversion_ok, wolfram_or_err = pcall(wolfram_backend.ast_to_wolfram, ast)
-	if not conversion_ok or not wolfram_or_err or type(wolfram_or_err) ~= "string" then
-		return nil,
-			"Failed to convert definition AST to wolfram string for '" .. variable_name .. "': " .. tostring(wolfram_or_err)
+	local backend = manager.current()
+	if not backend or not backend.ast_to_code then
+		return nil, "No active backend"
 	end
 
-	return wolfram_or_err, nil
+	local conversion_ok, code_or_err = pcall(backend.ast_to_code, ast)
+	if not conversion_ok or not code_or_err or type(code_or_err) ~= "string" then
+		return nil,
+			"Failed to convert definition AST to backend code for '" .. variable_name .. ": " .. tostring(code_or_err)
+	end
+
+	return code_or_err, nil
 end
 
 local function get_backend()

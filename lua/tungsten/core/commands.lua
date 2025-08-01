@@ -78,17 +78,17 @@ local function define_persistent_variable_command(_)
 
 	logger.debug("Tungsten Debug", "Defining variables '" .. name .. "' with LaTeX RHS: '" .. rhs .. "'")
 
-	local wolfram_def, conversion_err = persistent_vars.latex_to_wolfram(name, rhs)
+	local backend_def, conversion_err = persistent_vars.latex_to_backend_code(name, rhs)
 	if conversion_err then
 		error_handler.notify_error("DefineVar", conversion_err)
 		return
 	end
 
-	logger.debug("Tungsten Debug", "Storing variable '" .. name .. "' with Wolfram string: '" .. wolfram_def .. "'")
+	logger.debug("Tungsten Debug", "Storing variable '" .. name .. "' with string: '" .. backend_def .. "'")
 
-	persistent_vars.store(name, wolfram_def)
+	persistent_vars.store(name, backend_def)
 
-	logger.info("Tungsten", "Defined persistent variable '" .. name .. "' as '" .. wolfram_def .. "'.")
+	logger.info("Tungsten", "Defined persistent variable '" .. name .. "' as '" .. backend_def .. "'.")
 end
 
 local function tungsten_clear_persistent_vars_command(_)

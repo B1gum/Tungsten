@@ -230,8 +230,8 @@ describe("Tungsten Persistent Variable Pipeline", function()
 			get_visual_selection_call_count = 0
 
 			assert.spy(mock_parser_parse_spy).was.called_with("1+1")
-			local expected_wolfram_def = "wolfram(1+1)"
-			assert.are.same(expected_wolfram_def, mock_state_module.persistent_variables["x"])
+			local expected_code = "wolfram(1+1)"
+			assert.are.same(expected_code, mock_state_module.persistent_variables["x"])
 
 			current_visual_selection_text = "x * 2"
 			commands_module.tungsten_evaluate_command({})
