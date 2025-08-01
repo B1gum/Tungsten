@@ -86,22 +86,25 @@ local function _process_domain_handlers(domain_name, registry)
 	end
 end
 
-local function init_handlers()
+local function init_handlers(domains, registry)
 	if handlers_initialized then
 		return
 	end
 
-	local registry = require("tungsten.core.registry")
+	registry = registry or require("tungsten.core.registry")
 
 	logger.debug("Tungsten Backend", "Wolfram Backend: Lazily initializing handlers...")
 
-	local target_domains_for_handlers = (type(config.domains) == "table" and #config.domains > 0) and config.domains
+	local target_domains_for_handlers = domains
+		or (type(config.domains) == "table" and #config.domains > 0) and config.domains
 		or { "arithmetic" }
 
 	logger.info(
 		"Tungsten Backend",
 		"Wolfram Backend: Loading Wolfram handlers for domains: " .. table.concat(target_domains_for_handlers, ", ")
 	)
+
+	registry.reset_handlers()
 
 	for _, domain_name in ipairs(target_domains_for_handlers) do
 		_process_domain_handlers(domain_name, registry)
@@ -119,6 +122,8 @@ local function init_handlers()
 		renderableHandlers[node_type] = handler_info.func
 	end
 
+	registry.register_handlers(renderableHandlers)
+
 	handlers_initialized = true
 
 	logger.debug("Tungsten Backend", "Wolfram Backend: Handlers initialized successfully.")
@@ -126,17 +131,19 @@ end
 
 function M.ast_to_wolfram(ast)
 	if not handlers_initialized then
-		init_handlers()
+		init_handlers(nil, nil)
 	end
 
 	if not ast then
 		return "Error: AST is nil"
 	end
+	local registry = require("tungsten.core.registry")
+	local handlers = registry.get_handlers()
 	if next(renderableHandlers) == nil then
 		return "Error: No Wolfram handlers loaded for AST conversion."
 	end
 
-	local rendered_result = render.render(ast, renderableHandlers)
+	local rendered_result = render.render(ast, handlers)
 
 	if type(rendered_result) == "table" and rendered_result.error then
 		local error_message = rendered_result.message
@@ -203,12 +210,16 @@ function M.evaluate_async(ast, opts, callback)
 	})
 end
 
-function M.reload_handlers()
-	logger.info("Tungsten Backend", "Wolfram Backend: Resetting and re-initializing handlers...")
+function M.load_handlers(domains, registry_obj)
+	logger.info("Tungsten Backend", "Wolfram Backend: Resetting and loading handlers...")
 	handlerRegistry = {}
 	renderableHandlers = {}
 	handlers_initialized = false
-	init_handlers()
+	init_handlers(domains, registry_obj)
+end
+
+function M.reload_handlers()
+	M.load_handlers(nil, nil)
 end
 
 manager.register("Wolfram", M)

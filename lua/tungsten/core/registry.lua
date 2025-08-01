@@ -9,12 +9,14 @@ local M = {
 	domains_metadata = {},
 	grammar_contributions = {},
 	commands = {},
+	handlers = {},
 }
 
 function M.reset()
 	M.domains_metadata = {}
 	M.grammar_contributions = {}
 	M.commands = {}
+	M.handlers = {}
 end
 
 function M.register_domain_metadata(name, metadata)
@@ -327,6 +329,24 @@ function M.get_combined_grammar(contributions, opts)
 	local atom_base = M.build_atom_base(sorted)
 	local exprs = M.choose_expression_content(atom_base, opts)
 	return M.compile_grammar(atom_base, exprs)
+end
+
+function M.reset_handlers()
+	M.handlers = {}
+end
+
+function M.register_handler(node_type, handler_fn)
+	M.handlers[node_type] = handler_fn
+end
+
+function M.register_handlers(handler_map)
+	for node_type, fn in pairs(handler_map or {}) do
+		M.handlers[node_type] = fn
+	end
+end
+
+function M.get_handlers()
+	return M.handlers
 end
 
 return M

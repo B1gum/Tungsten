@@ -16,7 +16,7 @@ function BaseBackend.solve_async(eq_asts, var_asts, is_system, callback)
 	error("Not implemented")
 end
 
-function BaseBackend.load_handlers()
+function BaseBackend.load_handlers(_domains, _registry)
 	error("Not implemented")
 end
 
