@@ -2,6 +2,7 @@
 -- Utilities for parsing and storing persistent variable definitions
 
 local parser = require("tungsten.core.parser")
+local manager = require("tungsten.backends.manager")
 local wolfram_backend = require("tungsten.backends.wolfram")
 local string_util = require("tungsten.util.string")
 local config = require("tungsten.config")
@@ -49,9 +50,45 @@ function M.latex_to_wolfram(variable_name, rhs_latex)
 	return wolfram_or_err, nil
 end
 
-function M.store(name, wolfram_def)
+local function get_backend()
+	local backend = manager.current()
+	if backend == nil then
+		return nil
+	end
+	return backend
+end
+
+function M.write_async(name, wolfram_def, callback)
+	local backend = get_backend()
+	if backend and type(backend.persistent_write_async) == "function" then
+		backend.persistent_write_async(name, wolfram_def, callback)
+		return
+	end
+	local code = string.format("%s %s %s", tostring(name), config.persistent_variable_assignment_operator, wolfram_def)
+	if backend and type(backend.evaluate_async) == "function" then
+		backend.evaluate_async(nil, { code = code }, callback)
+	elseif callback then
+		callback(nil, "No active backend")
+	end
+end
+
+function M.read_async(name, callback)
+	local backend = get_backend()
+	if backend and type(backend.persistent_read_async) == "function" then
+		backend.persistent_read_async(name, callback)
+		return
+	end
+	if backend and type(backend.evaluate_async) == "function" then
+		backend.evaluate_async(nil, { code = tostring(name) }, callback)
+	elseif callback then
+		callback(nil, "No active backend")
+	end
+end
+
+function M.store(name, wolfram_def, callback)
 	state.persistent_variables = state.persistent_variables or {}
 	state.persistent_variables[name] = wolfram_def
+	M.write_async(name, wolfram_def, callback)
 end
 
 return M

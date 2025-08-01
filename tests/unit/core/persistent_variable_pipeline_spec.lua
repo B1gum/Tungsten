@@ -242,8 +242,8 @@ describe("Tungsten Persistent Variable Pipeline", function()
 			local ast_for_eval = { type = "expression", latex = "x * 2", id = "ast_for_" .. ("x * 2"):gsub("%W", "") }
 			assert.spy(mock_ast_to_wolfram_spy).was.called_with(ast_for_eval)
 
-			assert.spy(mock_async_run_job_spy).was.called(1)
-			local cmd_args = mock_async_run_job_spy.calls[1].vals[1]
+			assert.spy(mock_async_run_job_spy).was.called(2)
+			local cmd_args = mock_async_run_job_spy.calls[2].vals[1]
 			local expected_code_after_substitution =
 				'ToString[TeXForm[wolfram((wolfram(1+1)) * 2)], CharacterEncoding -> "UTF8"]'
 			assert.are.same(mock_config_module.wolfram_path, cmd_args[1])
