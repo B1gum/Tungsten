@@ -28,8 +28,4 @@ do
 	M.commands = cmds.commands
 end
 
-function M.handlers()
-	require("tungsten.backends.wolfram.domains.differential_equations")
-end
-
 return M

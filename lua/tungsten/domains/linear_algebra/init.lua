@@ -30,8 +30,4 @@ do
 	M.commands = cmds.commands
 end
 
-function M.handlers()
-	require("tungsten.backends.wolfram.domains.linear_algebra")
-end
-
 return M
