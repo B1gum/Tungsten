@@ -501,7 +501,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
 			mock_domain_handler_definitions["tungsten.backends.wolfram.domains.arithmetic"] = nil
 
 			wolfram_backend.reload_handlers()
-			local result = wolfram_backend.ast_to_wolfram(test_ast)
+			local result = wolfram_backend.ast_to_code(test_ast)
 
 			local override_log_found = false
 			local expected_log_message = ("Wolfram Backend: Handler for node type '%s': high_prio_domain (Prio 200) overrides low_prio_domain (Prio 50)."):format(
@@ -562,7 +562,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
 				mock_domain_handler_definitions["tungsten.backends.wolfram.domains.arithmetic"] = nil
 
 				wolfram_backend.reload_handlers()
-				local result = wolfram_backend.ast_to_wolfram(test_ast)
+				local result = wolfram_backend.ast_to_code(test_ast)
 
 				local not_override_log_found = false
 				local expected_log_message = ("Wolfram Backend: Handler for node type '%s' from low_prio_domain (Prio 50) NOT overriding existing from high_prio_domain (Prio 200)."):format(
@@ -655,7 +655,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
 			mock_domain_handler_definitions["tungsten.backends.wolfram.domains.arithmetic"] = nil
 
 			wolfram_backend.reload_handlers()
-			local result = wolfram_backend.ast_to_wolfram(test_ast)
+			local result = wolfram_backend.ast_to_code(test_ast)
 
 			local conflict_log_found = false
 			local expected_log_message = ("Wolfram Backend: Handler for node type '%s': CONFLICT - %s and %s have same priority (%d). '%s' takes precedence (due to processing order). Consider adjusting priorities."):format(
@@ -746,7 +746,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
 			)
 
 			local test_ast = { type = "specific_op" }
-			local result = wolfram_backend.ast_to_wolfram(test_ast)
+			local result = wolfram_backend.ast_to_code(test_ast)
 			assert.spy(success_handler_spy_func).was.called(1)
 			assert.are.equal("success_domain_output", result)
 		end)
@@ -818,7 +818,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
 			)
 
 			local test_ast = { type = "good_op" }
-			local result = wolfram_backend.ast_to_wolfram(test_ast)
+			local result = wolfram_backend.ast_to_code(test_ast)
 			assert.spy(good_handler_spy_func).was.called(1)
 			assert.are.equal("good_output", result)
 
@@ -869,7 +869,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
 			)
 
 			local test_ast = { type = "good_op_for_this_test" }
-			local result = wolfram_backend.ast_to_wolfram(test_ast)
+			local result = wolfram_backend.ast_to_code(test_ast)
 			assert.spy(good_handler_spy_func).was.called(1)
 			assert.are.equal("good_output_nohandlers_test", result)
 		end)

@@ -129,7 +129,7 @@ local function init_handlers(domains, registry)
 	logger.debug("Tungsten Backend", "Wolfram Backend: Handlers initialized successfully.")
 end
 
-function M.ast_to_wolfram(ast)
+function M.ast_to_code(ast)
 	if not handlers_initialized then
 		init_handlers(nil, nil)
 	end
@@ -156,11 +156,6 @@ function M.ast_to_wolfram(ast)
 	return rendered_result
 end
 
--- Alias for generic backend interface TODO: Refactor to use same name
-function M.ast_to_code(ast)
-	return M.ast_to_wolfram(ast)
-end
-
 function M.evaluate_async(ast, opts, callback)
 	assert(type(callback) == "function", "evaluate_async expects callback")
 
@@ -168,7 +163,7 @@ function M.evaluate_async(ast, opts, callback)
 	local numeric = opts.numeric
 	local cache_key = opts.cache_key
 
-	local ok, code = pcall(M.ast_to_wolfram, ast)
+	local ok, code = pcall(M.ast_to_code, ast)
 	if not ok or not code then
 		callback(nil, "Error converting AST to Wolfram code: " .. tostring(code))
 		return
@@ -208,6 +203,38 @@ function M.evaluate_async(ast, opts, callback)
 			end
 		end,
 	})
+end
+
+function M.solve_async(solve_ast, opts, callback)
+  assert(type(callback) == "function", "solve_async expects callback")
+
+  opts = opts or {}
+  local code_ok, code = pcall(M.ast_to_code, solve_ast)
+  if not code_ok or not code then
+    callback(nil, "Error converting AST to Wolfram code: " .. tostring(code))
+    return
+  end
+
+  local variables = {}
+  for _, v in ipairs(solve_ast.variables or {}) do
+    local ok, name = pcall(M.ast_to_code, v)
+    table.insert(variables, ok and name or tostring(v.name or ""))
+  end
+
+  M.evaluate_async(nil, { code = code, cache_key = opts.cache_key }, function(result, err)
+    if err then
+      callback(nil, err)
+      return
+    end
+
+    local parser = require("tungsten.backends.wolfram.wolfram_solution")
+    local parsed = parser.parse_wolfram_solution(result, variables, opts.is_system)
+    if parsed.ok then
+      callback(parsed.formatted, nil)
+    else
+      callback(nil, parsed.reason or "No solution")
+    end
+  end)
 end
 
 function M.load_handlers(domains, registry_obj)

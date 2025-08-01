@@ -87,7 +87,7 @@ describe("Registry priority override", function()
 
 	it("uses handler from domain with higher user priority", function()
 		wolfram_backend.reload_handlers()
-		local result = wolfram_backend.ast_to_wolfram({ type = "op" })
+		local result = wolfram_backend.ast_to_code({ type = "op" })
 		local low_spy = mock_modules["tungsten.backends.wolfram.domains.low_domain"].handlers.op
 		local high_spy = mock_modules["tungsten.backends.wolfram.domains.high_domain"].handlers.op
 		assert.spy(low_spy).was.called(1)
