@@ -127,7 +127,8 @@ M.handlers = {
 		end
 	end,
 	function_call = function(node, recur_render)
-		local func_name_map = config.wolfram_function_mappings or {}
+		local wolfram_opts = (config.backend_opts and config.backend_opts.wolfram) or {}
+		local func_name_map = wolfram_opts.function_mappings or {}
 		local func_name_str = (node.name_node and node.name_node.name) or "UnknownFunction"
 		local wolfram_func_name = func_name_map[func_name_str:lower()]
 

@@ -24,8 +24,4 @@ c[#c + 1] =
 c[#c + 1] = { name = "PartialDerivative", pattern = PartialDerivativeRule, category = "AtomBaseItem", priority = prio }
 c[#c + 1] = { name = "Summation", pattern = SumRule, category = "AtomBaseItem", priority = prio }
 
-function M.handlers()
-	require("tungsten.backends.wolfram.domains.calculus")
-end
-
 return M

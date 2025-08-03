@@ -76,8 +76,4 @@ c[#c + 1] = {
 	priority = prio + 10,
 }
 
-function M.handlers()
-	require("tungsten.backends.wolfram.domains.arithmetic")
-end
-
 return M

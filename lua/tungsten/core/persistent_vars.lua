@@ -2,7 +2,7 @@
 -- Utilities for parsing and storing persistent variable definitions
 
 local parser = require("tungsten.core.parser")
-local wolfram_backend = require("tungsten.backends.wolfram")
+local manager = require("tungsten.backends.manager")
 local string_util = require("tungsten.util.string")
 local config = require("tungsten.config")
 local state = require("tungsten.state")
@@ -33,25 +33,66 @@ function M.parse_definition(text)
 	return variable_name, rhs, nil
 end
 
-function M.latex_to_wolfram(variable_name, rhs_latex)
+function M.latex_to_backend_code(variable_name, rhs_latex)
 	local ok, ast_or_err, err_msg = pcall(parser.parse, rhs_latex)
 	if not ok or not ast_or_err then
 		return nil, "Failed to parse LaTeX definition for '" .. variable_name .. "': " .. tostring(err_msg or ast_or_err)
 	end
 	local ast = ast_or_err
 
-	local conversion_ok, wolfram_or_err = pcall(wolfram_backend.ast_to_wolfram, ast)
-	if not conversion_ok or not wolfram_or_err or type(wolfram_or_err) ~= "string" then
-		return nil,
-			"Failed to convert definition AST to wolfram string for '" .. variable_name .. "': " .. tostring(wolfram_or_err)
+	local backend = manager.current()
+	if not backend or not backend.ast_to_code then
+		return nil, "No active backend"
 	end
 
-	return wolfram_or_err, nil
+	local conversion_ok, code_or_err = pcall(backend.ast_to_code, ast)
+	if not conversion_ok or not code_or_err or type(code_or_err) ~= "string" then
+		return nil,
+			"Failed to convert definition AST to backend code for '" .. variable_name .. ": " .. tostring(code_or_err)
+	end
+
+	return code_or_err, nil
 end
 
-function M.store(name, wolfram_def)
+local function get_backend()
+	local backend = manager.current()
+	if backend == nil then
+		return nil
+	end
+	return backend
+end
+
+function M.write_async(name, backend_def, callback)
+	local backend = get_backend()
+	if backend and type(backend.persistent_write_async) == "function" then
+		backend.persistent_write_async(name, backend_def, callback)
+		return
+	end
+	local code = string.format("%s %s %s", tostring(name), config.persistent_variable_assignment_operator, backend_def)
+	if backend and type(backend.evaluate_async) == "function" then
+		backend.evaluate_async(nil, { code = code }, callback)
+	elseif callback then
+		callback(nil, "No active backend")
+	end
+end
+
+function M.read_async(name, callback)
+	local backend = get_backend()
+	if backend and type(backend.persistent_read_async) == "function" then
+		backend.persistent_read_async(name, callback)
+		return
+	end
+	if backend and type(backend.evaluate_async) == "function" then
+		backend.evaluate_async(nil, { code = tostring(name) }, callback)
+	elseif callback then
+		callback(nil, "No active backend")
+	end
+end
+
+function M.store(name, backend_def, callback)
 	state.persistent_variables = state.persistent_variables or {}
-	state.persistent_variables[name] = wolfram_def
+	state.persistent_variables[name] = backend_def
+	M.write_async(name, backend_def, callback)
 end
 
 return M

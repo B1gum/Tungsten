@@ -1,9 +1,7 @@
 -- config.lua
 -- Defines default user configurations
-----------------------------------------------------------------------------------
 
 local config = {
-	wolfram_path = "wolframscript",
 	numeric_mode = false,
 	debug = false,
 	log_level = "INFO",
@@ -17,24 +15,30 @@ local config = {
 	result_display = "insert",
 	max_jobs = 5,
 	persistent_variable_assignment_operator = ":=",
-	wolfram_function_mappings = {
-		sin = "Sin",
-		cos = "Cos",
-		tan = "Tan",
-		arcsin = "ArcSin",
-		arccos = "ArcCos",
-		arctan = "ArcTan",
-		sinh = "Sinh",
-		cosh = "Cosh",
-		tanh = "Tanh",
-		arsinh = "ArcSinh",
-		arcosh = "ArcCosh",
-		artanh = "ArcTanh",
-		log = "Log",
-		ln = "Log",
-		log10 = "Log10",
-		exp = "Exp",
-		u = "HeavisideTheta",
+	backend = "wolfram",
+	backend_opts = {
+		wolfram = {
+			wolfram_path = "wolframscript",
+			function_mappings = {
+				sin = "Sin",
+				cos = "Cos",
+				tan = "Tan",
+				arcsin = "ArcSin",
+				arccos = "ArcCos",
+				arctan = "ArcTan",
+				sinh = "Sinh",
+				cosh = "Cosh",
+				tanh = "Tanh",
+				arsinh = "ArcSinh",
+				arcosh = "ArcCosh",
+				artanh = "ArcTanh",
+				log = "Log",
+				ln = "Log",
+				log10 = "Log10",
+				exp = "Exp",
+				u = "HeavisideTheta",
+			},
+		},
 	},
 	hooks = {},
 }

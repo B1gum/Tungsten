@@ -35,6 +35,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
 		"tungsten.core.engine",
 		"tungsten.core.parser",
 		"tungsten.backends.wolfram",
+		"tungsten.backends.manager",
 		"tungsten.util.selection",
 		"tungsten.event_bus",
 		"tungsten.config",
@@ -54,12 +55,16 @@ describe("Tungsten Persistent Variable Pipeline", function()
 		mock_event_bus_module = {}
 		mock_logger_module = {}
 		mock_config_module = {
-			wolfram_path = "mock_wolframscript",
 			numeric_mode = false,
 			debug = false,
 			cache_enabled = false,
 			persistent_variable_assignment_operator = ":=",
 			process_timeout_ms = 1000,
+			backend_opts = {
+				wolfram = {
+					wolfram_path = "mock_wolframscript",
+				},
+			},
 		}
 		mock_state_module = {
 			persistent_variables = {},
@@ -75,6 +80,13 @@ describe("Tungsten Persistent Variable Pipeline", function()
 			end
 			if module_path == "tungsten.backends.wolfram" then
 				return mock_wolfram_backend_module
+			end
+			if module_path == "tungsten.backends.manager" then
+				return {
+					current = function()
+						return mock_wolfram_backend_module
+					end,
+				}
 			end
 			if module_path == "tungsten.util.selection" then
 				return mock_selection_module
@@ -115,6 +127,26 @@ describe("Tungsten Persistent Variable Pipeline", function()
 			return "wolfram(" .. (ast.latex or ast.id or "unknown_ast") .. ")"
 		end)
 		mock_wolfram_backend_module.ast_to_wolfram = mock_ast_to_wolfram_spy
+		mock_wolfram_backend_module.ast_to_code = mock_ast_to_wolfram_spy
+		mock_wolfram_backend_module.evaluate_async = function(_, opts, cb)
+			local code = opts.code or ""
+			if mock_config_module.numeric_mode or opts.numeric then
+				code = "N[" .. code .. "]"
+			end
+			code = "ToString[TeXForm[" .. code .. '], CharacterEncoding -> "UTF8"]'
+			mock_async_run_job_spy({ mock_config_module.backend_opts.wolfram.wolfram_path, "-code", code }, {
+				cache_key = opts.cache_key,
+				on_exit = function(code_, out, err)
+					if cb then
+						if code_ == 0 then
+							cb(out, nil)
+						else
+							cb(nil, string.format("WolframScript exited with code %d", code_))
+						end
+					end
+				end,
+			})
+		end
 
 		current_visual_selection_text = ""
 		get_visual_selection_call_count = 0
@@ -144,9 +176,6 @@ describe("Tungsten Persistent Variable Pipeline", function()
 		end
 
 		mock_async_run_job_spy = spy.new(function(cmd, opts)
-			if opts.on_exit then
-				opts.on_exit(1, "result", "")
-			end
 			return {
 				id = 1,
 				cancel = function() end,
@@ -205,8 +234,8 @@ describe("Tungsten Persistent Variable Pipeline", function()
 			get_visual_selection_call_count = 0
 
 			assert.spy(mock_parser_parse_spy).was.called_with("1+1")
-			local expected_wolfram_def = "wolfram(1+1)"
-			assert.are.same(expected_wolfram_def, mock_state_module.persistent_variables["x"])
+			local expected_code = "wolfram(1+1)"
+			assert.are.same(expected_code, mock_state_module.persistent_variables["x"])
 
 			current_visual_selection_text = "x * 2"
 			commands_module.tungsten_evaluate_command({})
@@ -217,11 +246,11 @@ describe("Tungsten Persistent Variable Pipeline", function()
 			local ast_for_eval = { type = "expression", latex = "x * 2", id = "ast_for_" .. ("x * 2"):gsub("%W", "") }
 			assert.spy(mock_ast_to_wolfram_spy).was.called_with(ast_for_eval)
 
-			assert.spy(mock_async_run_job_spy).was.called(1)
-			local cmd_args = mock_async_run_job_spy.calls[1].vals[1]
+			assert.spy(mock_async_run_job_spy).was.called(2)
+			local cmd_args = mock_async_run_job_spy.calls[2].vals[1]
 			local expected_code_after_substitution =
 				'ToString[TeXForm[wolfram((wolfram(1+1)) * 2)], CharacterEncoding -> "UTF8"]'
-			assert.are.same(mock_config_module.wolfram_path, cmd_args[1])
+			assert.are.same(mock_config_module.backend_opts.wolfram.wolfram_path, cmd_args[1])
 			assert.are.same(expected_code_after_substitution, cmd_args[3])
 
 			local wolfram_result = "ComputedResultFromX*2"

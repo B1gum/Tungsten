@@ -543,10 +543,10 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
 
 		it("respects custom mappings from config", function()
 			local config = require("tungsten.config")
-			local original = vim.deepcopy(config.wolfram_function_mappings)
+			local original = vim.deepcopy(config.backend_opts.wolfram.function_mappings)
 
-			config.wolfram_function_mappings.sin = "SineCustom"
-			config.wolfram_function_mappings.custom = "CustomFunc"
+			config.backend_opts.wolfram.function_mappings.sin = "SineCustom"
+			config.backend_opts.wolfram.function_mappings.custom = "CustomFunc"
 
 			local node1 = ast.create_function_call_node(ast.create_symbol_node("sin"), { ast.create_symbol_node("x") })
 			local node2 = ast.create_function_call_node(ast.create_symbol_node("custom"), { ast.create_symbol_node("y") })
@@ -554,7 +554,7 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
 			assert.are.same("SineCustom[x]", render_node_for_function_call(node1))
 			assert.are.same("CustomFunc[y]", render_node_for_function_call(node2))
 
-			config.wolfram_function_mappings = original
+			config.backend_opts.wolfram.function_mappings = original
 		end)
 	end)
 

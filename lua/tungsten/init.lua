@@ -54,6 +54,9 @@ function M.setup(user_opts)
 
 	package.loaded["tungsten.config"] = M.config
 
+	local backend_manager = require("tungsten.backends.manager")
+	backend_manager.activate(M.config.backend, (M.config.backend_opts)[M.config.backend])
+
 	local state = require("tungsten.state")
 	local Cache = require("tungsten.cache")
 	state.cache = Cache.new(M.config.cache_max_entries, M.config.cache_ttl)

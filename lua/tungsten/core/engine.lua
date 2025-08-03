@@ -1,10 +1,9 @@
 -- engine.lua
--- Manages the interaction with the Wolfram Engine via wolframscript
+-- Manages evaluation through the active backend
 
-local wolfram_codegen = require("tungsten.backends.wolfram")
+local manager = require("tungsten.backends.manager")
 local config = require("tungsten.config")
 local state = require("tungsten.state")
-local async = require("tungsten.util.async")
 local logger = require("tungsten.util.logger")
 
 local lpeg = require("lpeglabel")
@@ -73,23 +72,27 @@ M.get_cache_key = get_cache_key
 function M.evaluate_async(ast, numeric, callback)
 	assert(type(callback) == "function", "evaluate_async expects a callback function")
 
-	local initial_wolfram_code
-	local pcall_ok, pcall_result = pcall(wolfram_codegen.ast_to_wolfram, ast)
+	local backend = manager.current()
+	if not backend then
+		callback(nil, "No active backend")
+		return
+	end
+
+	local ast_to_code = backend.ast_to_code
+	local initial_code
+	local pcall_ok, pcall_result = pcall(ast_to_code, ast)
 	if not pcall_ok or pcall_result == nil then
-		local err_msg = "Error converting AST to Wolfram code: " .. tostring(pcall_result)
+		local err_msg = "Error converting AST to code: " .. tostring(pcall_result)
 		callback(nil, err_msg)
 		return
 	end
-	initial_wolfram_code = pcall_result
+	initial_code = pcall_result
 
-	local code_with_vars_substituted = M.substitute_persistent_vars(initial_wolfram_code, state.persistent_variables)
-	if code_with_vars_substituted ~= initial_wolfram_code then
-		logger.debug(
-			"Tungsten Debug",
-			"Tungsten Debug: Code after persistent variable substitution: " .. code_with_vars_substituted
-		)
+	local code_with_vars_substituted = M.substitute_persistent_vars(initial_code, state.persistent_variables)
+	if code_with_vars_substituted ~= initial_code then
+		logger.debug("Tungsten Debug", "Code after persistent variable substitution: " .. code_with_vars_substituted)
 	else
-		logger.debug("Tungsten Debug", "Tungsten Debug: No persistent variable substitutions made.")
+		logger.debug("Tungsten Debug", "No persistent variable substitutions made.")
 	end
 
 	local cache_key = get_cache_key(code_with_vars_substituted, numeric)
@@ -123,41 +126,17 @@ function M.evaluate_async(ast, numeric, callback)
 		end
 	end
 
-	local code_to_execute = code_with_vars_substituted
-	if config.numeric_mode or numeric then
-		code_to_execute = "N[" .. code_to_execute .. "]"
-	end
-
-	code_to_execute = "ToString[TeXForm[" .. code_to_execute .. '], CharacterEncoding -> "UTF8"]'
-
-	async.run_job({ config.wolfram_path, "-code", code_to_execute }, {
-		cache_key = cache_key,
-		on_exit = function(exit_code, final_stdout, final_stderr)
-			if exit_code == 0 then
-				if final_stderr ~= "" then
-					logger.debug("Tungsten Debug", "Tungsten Debug (stderr): " .. final_stderr)
-				end
-				if use_cache then
-					state.cache:set(cache_key, final_stdout)
-					logger.info("Tungsten Debug", "Tungsten: Result for key '" .. cache_key .. "' stored in cache.")
-				end
-				callback(final_stdout, nil)
-			else
-				local err_msg
-				if exit_code == -1 or exit_code == 127 then
-					err_msg = "WolframScript not found. Check wolfram_path."
-				else
-					err_msg = ("WolframScript exited with code %d"):format(exit_code)
-				end
-				if final_stderr ~= "" then
-					err_msg = err_msg .. "\nStderr: " .. final_stderr
-				elseif final_stdout ~= "" then
-					err_msg = err_msg .. "\nStdout (potentially error): " .. final_stdout
-				end
-				callback(nil, err_msg)
+	backend.evaluate_async(
+		ast,
+		{ numeric = numeric, code = code_with_vars_substituted, cache_key = cache_key },
+		function(final_stdout, err)
+			if not err and use_cache then
+				state.cache:set(cache_key, final_stdout)
+				logger.info("Tungsten Debug", "Tungsten: Result for key '" .. cache_key .. "' stored in cache.")
 			end
-		end,
-	})
+			callback(final_stdout, err)
+		end
+	)
 end
 
 function M.clear_cache()

@@ -9,7 +9,7 @@ local mock_utils = require("tests.helpers.mock_utils")
 describe("tungsten.core.engine", function()
 	local engine
 
-	local mock_wolfram_codegen
+	local mock_backend
 	local mock_config
 	local mock_state
 	local mock_async
@@ -26,7 +26,7 @@ describe("tungsten.core.engine", function()
 
 	local modules_to_clear_from_cache = {
 		"tungsten.core.engine",
-		"tungsten.backends.wolfram",
+		"tungsten.backends.manager",
 		"tungsten.config",
 		"tungsten.state",
 		"tungsten.util.async",
@@ -40,13 +40,14 @@ describe("tungsten.core.engine", function()
 	end
 
 	before_each(function()
-		mock_wolfram_codegen = { ast_to_wolfram = function() end }
+		mock_backend = {}
+		mock_backend.ast_to_code = function() end
 		mock_config = {
-			wolfram_path = "mock_wolframscript",
 			numeric_mode = false,
 			debug = false,
 			cache_enabled = true,
 			process_timeout_ms = 5000,
+			backend_opts = { wolfram = { wolfram_path = "mock_wolframscript" } },
 		}
 		mock_state = {
 			cache = require("tungsten.cache").new(100, nil),
@@ -79,7 +80,7 @@ describe("tungsten.core.engine", function()
 			end
 			return "wolfram_code(" .. (ast.id or "nil") .. ")"
 		end)
-		mock_wolfram_codegen.ast_to_wolfram = ast_to_wolfram_spy
+		mock_backend.ast_to_code = ast_to_wolfram_spy
 
 		async_run_job_spy = spy.new(function(cmd, opts)
 			if opts.on_exit then
@@ -95,13 +96,34 @@ describe("tungsten.core.engine", function()
 		end)
 		mock_async.run_job = async_run_job_spy
 
+		mock_backend.evaluate_async = function(ast, opts, cb)
+			local code = opts.code or ast_to_wolfram_spy(ast)
+			if mock_config.numeric_mode or opts.numeric then
+				code = "N[" .. code .. "]"
+			end
+			code = "ToString[TeXForm[" .. code .. '], CharacterEncoding -> "UTF8"]'
+			mock_async.run_job({ mock_config.backend_opts.wolfram.wolfram_path, "-code", code }, {
+				cache_key = opts.cache_key,
+				on_exit = function(ec, out, err)
+					if cb then
+						local final_err = err ~= "" and err or nil
+						cb(out == "" and "mock_result" or out, final_err)
+					end
+				end,
+			})
+		end
+
 		logger_notify_spy = spy.new(function() end)
 		mock_logger.notify = logger_notify_spy
 
 		original_require = _G.require
 		_G.require = function(module_path)
-			if module_path == "tungsten.backends.wolfram" then
-				return mock_wolfram_codegen
+			if module_path == "tungsten.backends.manager" then
+				return {
+					current = function()
+						return mock_backend
+					end,
+				}
 			end
 			if module_path == "tungsten.config" then
 				return mock_config
