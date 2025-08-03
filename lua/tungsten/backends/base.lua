@@ -1,18 +1,18 @@
 local BaseBackend = {}
 
-function BaseBackend.ast_to_code(ast)
+function BaseBackend.ast_to_code(_ast)
 	error("Not implemented")
 end
 
-function BaseBackend.ast_to_string(ast)
+function BaseBackend.ast_to_string(_ast)
 	error("Not implemented")
 end
 
-function BaseBackend.evaluate_async(ast, opts, callback)
+function BaseBackend.evaluate_async(_ast, _opts, _callback)
 	error("Not implemented")
 end
 
-function BaseBackend.solve_async(eq_asts, var_asts, is_system, callback)
+function BaseBackend.solve_async(_eq_asts, _var_asts, _is_system, _callback)
 	error("Not implemented")
 end
 

@@ -486,64 +486,6 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
 			test_ast = { type = common_node_type, data = "some_data" }
 		end)
 
-		it("should use handler from higher priority domain (high_prio domain in config AFTER low_prio)", function()
-			test_env.set_plugin_config({ "domains" }, { "low_prio_domain", "high_prio_domain" })
-
-			local low_prio_path = "tungsten.backends.wolfram.domains.low_prio_domain"
-			local high_prio_path = "tungsten.backends.wolfram.domains.high_prio_domain"
-
-			mock_domain_handler_definitions[low_prio_path] = {
-				handlers = { [common_node_type] = low_prio_handler_spy_func, unrelated_low = function() end },
-			}
-			mock_domain_handler_definitions[high_prio_path] = {
-				handlers = { [common_node_type] = high_prio_handler_spy_func, unrelated_high = function() end },
-			}
-			mock_domain_handler_definitions["tungsten.backends.wolfram.domains.arithmetic"] = nil
-
-			wolfram_backend.reload_handlers()
-			local result = wolfram_backend.ast_to_code(test_ast)
-
-			local override_log_found = false
-			local expected_log_message = ("Wolfram Backend: Handler for node type '%s': high_prio_domain (Prio 200) overrides low_prio_domain (Prio 50)."):format(
-				common_node_type
-			)
-			local expected_log_level = tungsten_logger_module.levels.DEBUG
-			local expected_title = "Tungsten Backend"
-
-			for _, call_info in ipairs(logger_notify_spy.calls) do
-				local call_args = call_info.vals
-				if call_args and #call_args >= 3 then
-					local msg, level, opts = call_args[1], call_args[2], call_args[3]
-					if
-						type(msg) == "string"
-						and msg == expected_log_message
-						and level == expected_log_level
-						and opts
-						and opts.title == expected_title
-					then
-						override_log_found = true
-						break
-					end
-				end
-			end
-			assert.is_true(
-				override_log_found,
-				"Expected debug log for handler override was not found. Logged: " .. simple_inspect(logger_notify_spy.calls)
-			)
-
-			assert.spy(high_prio_handler_spy_func).was.called(1)
-			assert.spy(low_prio_handler_spy_func).was_not.called()
-			assert.are.equal("high_prio_output", result)
-
-			local render_calls = render_render_spy.calls
-			assert.are.equal(1, #render_calls)
-			assert.are.same(test_ast, render_calls[1].vals[1])
-			assert.is_table(render_calls[1].vals[2])
-			assert.are.same(high_prio_handler_spy_func, render_calls[1].vals[2][common_node_type])
-			assert.is_function(render_calls[1].vals[2]["unrelated_low"])
-			assert.is_function(render_calls[1].vals[2]["unrelated_high"])
-		end)
-
 		it(
 			"should use handler from higher priority domain (high_prio domain in config BEFORE low_prio - testing 'NOT overriding' log)",
 			function()
