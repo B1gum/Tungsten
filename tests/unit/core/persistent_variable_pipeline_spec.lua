@@ -55,12 +55,16 @@ describe("Tungsten Persistent Variable Pipeline", function()
 		mock_event_bus_module = {}
 		mock_logger_module = {}
 		mock_config_module = {
-			wolfram_path = "mock_wolframscript",
 			numeric_mode = false,
 			debug = false,
 			cache_enabled = false,
 			persistent_variable_assignment_operator = ":=",
 			process_timeout_ms = 1000,
+			backend_opts = {
+				wolfram = {
+					wolfram_path = "mock_wolframscript",
+				},
+			},
 		}
 		mock_state_module = {
 			persistent_variables = {},
@@ -130,7 +134,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
 				code = "N[" .. code .. "]"
 			end
 			code = "ToString[TeXForm[" .. code .. '], CharacterEncoding -> "UTF8"]'
-			mock_async_run_job_spy({ mock_config_module.wolfram_path, "-code", code }, {
+			mock_async_run_job_spy({ mock_config_module.backend_opts.wolfram.wolfram_path, "-code", code }, {
 				cache_key = opts.cache_key,
 				on_exit = function(code_, out, err)
 					if cb then
@@ -246,7 +250,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
 			local cmd_args = mock_async_run_job_spy.calls[2].vals[1]
 			local expected_code_after_substitution =
 				'ToString[TeXForm[wolfram((wolfram(1+1)) * 2)], CharacterEncoding -> "UTF8"]'
-			assert.are.same(mock_config_module.wolfram_path, cmd_args[1])
+			assert.are.same(mock_config_module.backend_opts.wolfram.wolfram_path, cmd_args[1])
 			assert.are.same(expected_code_after_substitution, cmd_args[3])
 
 			local wolfram_result = "ComputedResultFromX*2"

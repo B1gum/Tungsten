@@ -21,7 +21,6 @@ describe("Tungsten core commands", function()
 	local mock_config_module
 	local mock_cmd_utils_module
 	local mock_state_module
-	local mock_wolfram_backend_module
 
 	local original_require
 
@@ -43,7 +42,6 @@ describe("Tungsten core commands", function()
 		"tungsten.util.commands",
 		"tungsten.state",
 		"tungsten.core.persistent_vars",
-		"tungsten.backends.wolfram",
 	}
 
 	before_each(function()
@@ -69,7 +67,6 @@ describe("Tungsten core commands", function()
 		mock_solver_module = {}
 		mock_cmd_utils_module = {}
 		mock_state_module = { persistent_variables = {} }
-		mock_wolfram_backend_module = {}
 
 		original_require = _G.require
 		_G.require = function(module_path)
@@ -96,9 +93,6 @@ describe("Tungsten core commands", function()
 			end
 			if module_path == "tungsten.state" then
 				return mock_state_module
-			end
-			if module_path == "tungsten.backends.wolfram" then
-				return mock_wolfram_backend_module
 			end
 
 			if package.loaded[module_path] then

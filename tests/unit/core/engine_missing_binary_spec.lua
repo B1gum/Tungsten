@@ -34,11 +34,11 @@ describe("engine missing binary feedback", function()
 			return "wolfram_code"
 		end
 		mock_config = {
-			wolfram_path = "mock_wolframscript",
 			numeric_mode = false,
 			debug = false,
 			cache_enabled = false,
 			process_timeout_ms = 5000,
+			backend_opts = { wolfram = { wolfram_path = "mock_wolframscript" } },
 		}
 		mock_state = { cache = {}, active_jobs = {}, persistent_variables = {} }
 		mock_logger = { notify = function() end, levels = { ERROR = 1, WARN = 2, INFO = 3, DEBUG = 4 } }
@@ -69,7 +69,7 @@ describe("engine missing binary feedback", function()
 		end)
 		mock_async = { run_job = async_run_job_spy }
 		mock_backend.evaluate_async = function(_, opts, cb)
-			mock_async.run_job({ mock_config.wolfram_path, "-code", opts.code or "" }, {
+			mock_async.run_job({ mock_config.backend_opts.wolfram.wolfram_path, "-code", opts.code or "" }, {
 				cache_key = opts.cache_key,
 				on_exit = function(code, out, err)
 					if cb then

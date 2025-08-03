@@ -1,5 +1,5 @@
 -- engine.lua
--- Manages the interaction with the Wolfram Engine via wolframscript
+-- Manages evaluation through the active backend
 
 local manager = require("tungsten.backends.manager")
 local config = require("tungsten.config")

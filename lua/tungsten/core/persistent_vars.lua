@@ -62,13 +62,13 @@ local function get_backend()
 	return backend
 end
 
-function M.write_async(name, wolfram_def, callback)
+function M.write_async(name, backend_def, callback)
 	local backend = get_backend()
 	if backend and type(backend.persistent_write_async) == "function" then
-		backend.persistent_write_async(name, wolfram_def, callback)
+		backend.persistent_write_async(name, backend_def, callback)
 		return
 	end
-	local code = string.format("%s %s %s", tostring(name), config.persistent_variable_assignment_operator, wolfram_def)
+	local code = string.format("%s %s %s", tostring(name), config.persistent_variable_assignment_operator, backend_def)
 	if backend and type(backend.evaluate_async) == "function" then
 		backend.evaluate_async(nil, { code = code }, callback)
 	elseif callback then
@@ -89,10 +89,10 @@ function M.read_async(name, callback)
 	end
 end
 
-function M.store(name, wolfram_def, callback)
+function M.store(name, backend_def, callback)
 	state.persistent_variables = state.persistent_variables or {}
-	state.persistent_variables[name] = wolfram_def
-	M.write_async(name, wolfram_def, callback)
+	state.persistent_variables[name] = backend_def
+	M.write_async(name, backend_def, callback)
 end
 
 return M

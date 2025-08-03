@@ -43,11 +43,11 @@ describe("tungsten.core.engine", function()
 		mock_backend = {}
 		mock_backend.ast_to_code = function() end
 		mock_config = {
-			wolfram_path = "mock_wolframscript",
 			numeric_mode = false,
 			debug = false,
 			cache_enabled = true,
 			process_timeout_ms = 5000,
+			backend_opts = { wolfram = { wolfram_path = "mock_wolframscript" } },
 		}
 		mock_state = {
 			cache = require("tungsten.cache").new(100, nil),
@@ -102,7 +102,7 @@ describe("tungsten.core.engine", function()
 				code = "N[" .. code .. "]"
 			end
 			code = "ToString[TeXForm[" .. code .. '], CharacterEncoding -> "UTF8"]'
-			mock_async.run_job({ mock_config.wolfram_path, "-code", code }, {
+			mock_async.run_job({ mock_config.backend_opts.wolfram.wolfram_path, "-code", code }, {
 				cache_key = opts.cache_key,
 				on_exit = function(ec, out, err)
 					if cb then

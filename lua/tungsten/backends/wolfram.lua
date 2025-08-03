@@ -179,7 +179,9 @@ function M.evaluate_async(ast, opts, callback)
 
 	code = "ToString[TeXForm[" .. code .. '], CharacterEncoding -> "UTF8"]'
 
-	async.run_job({ config.wolfram_path, "-code", code }, {
+	local wolfram_opts = (config.backend_opts and config.backend_opts.wolfram) or {}
+	local wolfram_path = wolfram_opts.wolfram_path or "wolframscript"
+	async.run_job({ wolfram_path, "-code", code }, {
 		cache_key = cache_key,
 		on_exit = function(exit_code, stdout, stderr)
 			if exit_code == 0 then
@@ -206,35 +208,35 @@ function M.evaluate_async(ast, opts, callback)
 end
 
 function M.solve_async(solve_ast, opts, callback)
-  assert(type(callback) == "function", "solve_async expects callback")
+	assert(type(callback) == "function", "solve_async expects callback")
 
-  opts = opts or {}
-  local code_ok, code = pcall(M.ast_to_code, solve_ast)
-  if not code_ok or not code then
-    callback(nil, "Error converting AST to Wolfram code: " .. tostring(code))
-    return
-  end
+	opts = opts or {}
+	local code_ok, code = pcall(M.ast_to_code, solve_ast)
+	if not code_ok or not code then
+		callback(nil, "Error converting AST to Wolfram code: " .. tostring(code))
+		return
+	end
 
-  local variables = {}
-  for _, v in ipairs(solve_ast.variables or {}) do
-    local ok, name = pcall(M.ast_to_code, v)
-    table.insert(variables, ok and name or tostring(v.name or ""))
-  end
+	local variables = {}
+	for _, v in ipairs(solve_ast.variables or {}) do
+		local ok, name = pcall(M.ast_to_code, v)
+		table.insert(variables, ok and name or tostring(v.name or ""))
+	end
 
-  M.evaluate_async(nil, { code = code, cache_key = opts.cache_key }, function(result, err)
-    if err then
-      callback(nil, err)
-      return
-    end
+	M.evaluate_async(nil, { code = code, cache_key = opts.cache_key }, function(result, err)
+		if err then
+			callback(nil, err)
+			return
+		end
 
-    local parser = require("tungsten.backends.wolfram.wolfram_solution")
-    local parsed = parser.parse_wolfram_solution(result, variables, opts.is_system)
-    if parsed.ok then
-      callback(parsed.formatted, nil)
-    else
-      callback(nil, parsed.reason or "No solution")
-    end
-  end)
+		local parser = require("tungsten.backends.wolfram.wolfram_solution")
+		local parsed = parser.parse_wolfram_solution(result, variables, opts.is_system)
+		if parsed.ok then
+			callback(parsed.formatted, nil)
+		else
+			callback(nil, parsed.reason or "No solution")
+		end
+	end)
 end
 
 function M.load_handlers(domains, registry_obj)
@@ -249,6 +251,6 @@ function M.reload_handlers()
 	M.load_handlers(nil, nil)
 end
 
-manager.register("Wolfram", M)
+manager.register("wolfram", M)
 
 return M
