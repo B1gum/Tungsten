@@ -117,6 +117,49 @@ local function trim(s)
 	return trimmed, leading
 end
 
+local function try_point_tuple(expr, pattern, ser_start, item_start, input)
+	local inner, offset = nil, 0
+	if expr:sub(1, 6) == "\\left(" and expr:sub(-7) == "\\right)" then
+		inner = expr:sub(7, -8)
+		offset = 6
+	elseif expr:sub(1, 1) == "(" and expr:sub(-1) == ")" then
+		inner = expr:sub(2, -2)
+		offset = 1
+	end
+	if not inner then
+		return nil
+	end
+
+	local parts = top_level_split(inner, { [","] = true })
+	if #parts == 2 or #parts == 3 then
+		local elems = {}
+		for _, p in ipairs(parts) do
+			local subexpr = trim(p.str)
+			local subres, sublabel, subpos = lpeg.match(pattern, subexpr)
+			if not subres then
+				local msg = label_messages[sublabel] or tostring(sublabel)
+				if subpos then
+					local global_pos = ser_start + item_start - 1 + offset + p.start_pos - 1 + subpos - 1
+					msg = msg .. " at " .. error_handler.format_line_col(input, global_pos)
+					return nil, msg, global_pos
+				end
+				return nil, msg
+			end
+			table.insert(elems, subres)
+		end
+		if #elems == 2 then
+			return ast.create_point2_node(elems[1], elems[2])
+		else
+			return ast.create_point3_node(elems[1], elems[2], elems[3])
+		end
+	elseif #parts > 3 then
+		local global_pos = ser_start + item_start - 1 + offset + parts[4].start_pos - 1
+		local msg = "Point tuples support only 2D or 3D at " .. error_handler.format_line_col(input, global_pos)
+		return nil, msg, global_pos
+	end
+	return nil
+end
+
 function M.parse(input)
 	local current_grammar = M.get_grammar()
 	local pattern = space * current_grammar * (space * -1 + lpeg.T("extra_input"))
@@ -129,45 +172,20 @@ function M.parse(input)
 		for _, item in ipairs(seq_strs) do
 			local expr, lead = trim(item.str)
 			if expr ~= "" then
-				local result, err_label, err_pos = lpeg.match(pattern, expr)
-				if not result then
-					local tuple
-					if expr:sub(1, 1) == "(" or expr:sub(1, 6) == "\\left(" then
-						local inner, offset = nil, 0
-						if expr:sub(1, 6) == "\\left(" and expr:sub(-7) == "\\right)" then
-							inner = expr:sub(7, -8)
-							offset = 6
-						elseif expr:sub(1, 1) == "(" and expr:sub(-1) == ")" then
-							inner = expr:sub(2, -2)
-							offset = 1
-						end
-						if inner then
-							local parts = top_level_split(inner, { [","] = true })
-							if #parts == 2 or #parts == 3 then
-								local elems = {}
-								for _, p in ipairs(parts) do
-									local subexpr = trim(p.str)
-									local subres, sublabel, subpos = lpeg.match(pattern, subexpr)
-									if not subres then
-										local msg = label_messages[sublabel] or tostring(sublabel)
-										if subpos then
-											local global_pos = ser.start_pos + item.start_pos - 1 + offset + p.start_pos - 1 + subpos - 1
-											msg = msg .. " at " .. error_handler.format_line_col(input, global_pos)
-											return nil, msg, global_pos, input
-										end
-										return nil, msg, nil, input
-									end
-									table.insert(elems, subres)
-								end
-								if #elems == 2 then
-									tuple = ast.create_point2_node(elems[1], elems[2])
-								elseif #elems == 3 then
-									tuple = ast.create_point3_node(elems[1], elems[2], elems[3])
-								end
-							end
-						end
+				local tuple, tuple_err, tuple_pos
+				if expr:sub(1, 1) == "(" or expr:sub(1, 6) == "\\left(" then
+					tuple, tuple_err, tuple_pos = try_point_tuple(expr, pattern, ser.start_pos, item.start_pos, input)
+					if tuple_err then
+						return nil, tuple_err, tuple_pos, input
 					end
-					if not tuple then
+				end
+
+				local result, err_label, err_pos
+				if tuple then
+					result = tuple
+				else
+					result, err_label, err_pos = lpeg.match(pattern, expr)
+					if not result then
 						local msg = label_messages[err_label] or tostring(err_label)
 						if err_pos then
 							local global_pos = ser.start_pos + item.start_pos - 1 + lead + err_pos - 1
@@ -176,7 +194,6 @@ function M.parse(input)
 						end
 						return nil, msg, nil, input
 					end
-					result = tuple
 				end
 				table.insert(nodes, result)
 			end
