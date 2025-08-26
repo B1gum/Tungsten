@@ -34,11 +34,14 @@ function M.parse_definition(text)
 end
 
 function M.latex_to_backend_code(variable_name, rhs_latex)
-	local ok, ast_or_err, err_msg = pcall(parser.parse, rhs_latex)
-	if not ok or not ast_or_err then
-		return nil, "Failed to parse LaTeX definition for '" .. variable_name .. "': " .. tostring(err_msg or ast_or_err)
+	local ok, parsed_or_err, err_msg = pcall(parser.parse, rhs_latex)
+	if not ok or not parsed_or_err then
+		return nil, "Failed to parse LaTeX definition for '" .. variable_name .. "': " .. tostring(err_msg or parsed_or_err)
 	end
-	local ast = ast_or_err
+	if not parsed_or_err.series or #parsed_or_err.series ~= 1 then
+		return nil, "Failed to parse LaTeX definition for '" .. variable_name .. "': expected single expression"
+	end
+	local ast = parsed_or_err.series[1]
 
 	local backend = manager.current()
 	if not backend or not backend.ast_to_code then

@@ -357,7 +357,7 @@ describe("Tungsten core commands", function()
 
 			package.loaded["tungsten.core.parser"].parse = spy.new(function(text)
 				if text == "x" then
-					return { type = "variable", name = "x" }
+					return { series = { { type = "variable", name = "x" } } }
 				end
 				return nil
 			end)

@@ -16,7 +16,11 @@ local ast_utils = require("tungsten.core.ast")
 
 describe("tungsten.core.parser.parse with combined grammar", function()
 	local function parse_input(input_str)
-		return parser.parse(input_str)
+		local res = parser.parse(input_str)
+		if res and res.series and res.series[1] then
+			return res.series[1]
+		end
+		return nil
 	end
 
 	describe("basic arithmetic operations", function()

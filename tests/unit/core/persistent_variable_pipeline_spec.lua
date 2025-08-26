@@ -116,7 +116,8 @@ describe("Tungsten Persistent Variable Pipeline", function()
 			if string.find(latex_str, "error") then
 				return nil
 			end
-			return { type = "expression", latex = latex_str, id = "ast_for_" .. latex_str:gsub("%W", "") }
+			local ast = { type = "expression", latex = latex_str, id = "ast_for_" .. latex_str:gsub("%W", "") }
+			return { series = { ast } }
 		end)
 		mock_parser_module.parse = mock_parser_parse_spy
 

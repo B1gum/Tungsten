@@ -165,7 +165,8 @@ local function tungsten_solve_command(_)
 			return
 		end
 
-		local ok, var_ast = pcall(parser.parse, trimmed)
+		local ok, parse_res = pcall(parser.parse, trimmed)
+		local var_ast = (ok and parse_res and parse_res.series) and parse_res.series[1] or nil
 		if not ok or not var_ast or var_ast.type ~= "variable" then
 			error_handler.notify_error("Solve", "Invalid variable: '" .. trimmed .. "'. " .. tostring(var_ast or ""))
 			return

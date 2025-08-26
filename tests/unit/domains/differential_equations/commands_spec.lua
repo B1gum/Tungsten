@@ -52,7 +52,7 @@ describe("Tungsten Differential Equations Commands", function()
 		end
 		mock_logger.notify = spy.new(function() end)
 		mock_parser.parse = spy.new(function(text)
-			return current_parsed_ast
+			return { series = { current_parsed_ast } }
 		end)
 		mock_evaluator.evaluate_async = spy.new(function(ast, numeric, cb)
 			cb(current_eval_result, nil)

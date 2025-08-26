@@ -10,12 +10,15 @@ function M.parse_selected_latex(expected_desc)
 		return nil, nil, "No " .. expected_desc .. " selected."
 	end
 
-	local ok, ast, err_msg = pcall(parser.parse, text)
-	if not ok or not ast then
-		return nil, nil, err_msg or tostring(ast)
+	local ok, parsed, err_msg = pcall(parser.parse, text)
+	if not ok or not parsed then
+		return nil, nil, err_msg or tostring(parsed)
+	end
+	if not parsed.series or #parsed.series ~= 1 then
+		return nil, text, "Selection must contain a single expression"
 	end
 
-	return ast, text, nil
+	return parsed.series[1], text, nil
 end
 
 return M
