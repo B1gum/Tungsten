@@ -79,10 +79,7 @@ describe("Plotting Job Management", function()
 		PlottingJobManager.submit(job_definition, on_success_spy, on_error_spy)
 
 		assert.spy(mock_async.run_job).was.called(1)
-		assert.spy(mock_async.run_job).was.called_with(
-			match.is_table(),
-			match.is_table()
-		)
+		assert.spy(mock_async.run_job).was.called_with(match.is_table(), match.is_table())
 
 		local async_opts = mock_async.run_job.calls[1].vals[2]
 		async_opts.on_exit(0, "path/to/plot.png", "")

@@ -87,22 +87,18 @@ describe("Tungsten Plotting Commands", function()
 			assert.spy(get_selection_spy).was.called(1)
 			assert.spy(run_simple_spy).was_not.called()
 			assert.spy(notify_error_spy).was.called(1)
-			assert.spy(notify_error_spy).was.called_with(
-				"TungstenPlot",
-				"Simple plot requires a visual selection.",
-				match.is_nil()
-			)
+			assert
+				.spy(notify_error_spy).was
+				.called_with("TungstenPlot", "Simple plot requires a visual selection.", match.is_nil())
 		end)
 
 		it("should gracefully handle a nil selection", function()
 			current_selection = nil
 			plot_commands.simple_plot_command()
 			assert.spy(notify_error_spy).was.called(1)
-			assert.spy(notify_error_spy).was.called_with(
-				"TungstenPlot",
-				"Simple plot requires a visual selection.",
-				match.is_nil()
-			)
+			assert
+				.spy(notify_error_spy).was
+				.called_with("TungstenPlot", "Simple plot requires a visual selection.", match.is_nil())
 		end)
 
 		it("should trim whitespace from the selection before processing", function()

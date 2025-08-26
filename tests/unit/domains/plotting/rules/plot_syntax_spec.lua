@@ -29,23 +29,17 @@ describe("Plotting Grammar Rules", function()
 				/ function(l, op, r)
 					return mock_ast.create_inequality_node(l, op, r)
 				end,
-			FunctionCall = mock_tokenizer.variable
-				* P("(")
-				* (V("Expression") * (P(",") * V("Expression")) ^ 0)
-				* P(")"),
-			Point = P("(")
-				* S(" \t") ^ 0
-				* Ct(V("Expression") * (S(" \t") ^ 0 * P(",") * S(" \t") ^ 0 * V("Expression")) ^ 0)
-				* S(" \t") ^ 0
-				* P(")")
-				/ function(elements)
-					if #elements == 2 then
-						return mock_ast.create_point2_node(elements[1], elements[2])
-					elseif #elements == 3 then
-						return mock_ast.create_point3_node(elements[1], elements[2], elements[3])
-					end
-					return { type = "parenthesized_group", elements = elements }
-				end,
+			FunctionCall = mock_tokenizer.variable * P("(") * (V("Expression") * (P(",") * V("Expression")) ^ 0) * P(")"),
+			Point = P("(") * S(" \t") ^ 0 * Ct(
+				V("Expression") * (S(" \t") ^ 0 * P(",") * S(" \t") ^ 0 * V("Expression")) ^ 0
+			) * S(" \t") ^ 0 * P(")") / function(elements)
+				if #elements == 2 then
+					return mock_ast.create_point2_node(elements[1], elements[2])
+				elseif #elements == 3 then
+					return mock_ast.create_point3_node(elements[1], elements[2], elements[3])
+				end
+				return { type = "parenthesized_group", elements = elements }
+			end,
 		})
 	end
 
@@ -93,26 +87,30 @@ describe("Plotting Grammar Rules", function()
 			end
 
 		local SeriesSeparator = mock_tokenizer.space * (P(";") + P("\n")) * mock_tokenizer.space
-		local TopLevelPlotRule = Ct(Sequence * (SeriesSeparator * Sequence) ^ 0) / function(series)
-			if #series == 1 then
-				return series[1]
+		local TopLevelPlotRule = Ct(Sequence * (SeriesSeparator * Sequence) ^ 0)
+			/ function(series)
+				if #series == 1 then
+					return series[1]
+				end
+				return { type = "multi_series", series = series }
 			end
-			return { type = "multi_series", series = series }
-		end
 
 		plot_rules = TopLevelPlotRule
 		test_grammar = compile_grammar(plot_rules)
 	end)
 
 	describe("AST & Parsing", function()
-		it("should parse top-level comma-separated expressions as a Sequence AST node without splitting inside brackets or functions", function()
-			local result = parse_input("f(x,y), z")
-			assert.are.same("sequence", result.type)
-			assert.are.equal(2, #result.nodes)
-			assert.are.same("function_call", result.nodes[1].type)
-			assert.are.same("variable", result.nodes[2].type)
-			assert.are.same("z", result.nodes[2].name)
-		end)
+		it(
+			"should parse top-level comma-separated expressions as a Sequence AST node without splitting inside brackets or functions",
+			function()
+				local result = parse_input("f(x,y), z")
+				assert.are.same("sequence", result.type)
+				assert.are.equal(2, #result.nodes)
+				assert.are.same("function_call", result.nodes[1].type)
+				assert.are.same("variable", result.nodes[2].type)
+				assert.are.same("z", result.nodes[2].name)
+			end
+		)
 
 		it("should parse coordinate tuples like (x,y) or (x,y,z) as Point2 and Point3 AST nodes respectively", function()
 			local point2_ast = parse_input("(x,1)")
@@ -127,35 +125,47 @@ describe("Plotting Grammar Rules", function()
 			assert.are.same("z", point3_ast.z.name)
 		end)
 
-		it("should treat a coordinate tuple (expr, expr) as a 2D point in simple mode, but as a parametric pair when Advanced mode Form=parametric", function()
-			local result = parse_input("(x, y)")
-			assert.are.same("point2", result.type, "Parser should create a Point2 node for any (expr, expr) tuple.")
-		end)
+		it(
+			"should treat a coordinate tuple (expr, expr) as a 2D point in simple mode, but as a parametric pair when Advanced mode Form=parametric",
+			function()
+				local result = parse_input("(x, y)")
+				assert.are.same("point2", result.type, "Parser should create a Point2 node for any (expr, expr) tuple.")
+			end
+		)
 
-		it("should merge consecutive Point nodes in a Sequence into one scatter series, and separate multiple series by semicolons or newlines", function()
-			local result = parse_input("(1,2); (3,4)")
-			assert.are.same("multi_series", result.type)
-			assert.are.equal(2, #result.series)
-			assert.are.same("point2", result.series[1].type)
-			assert.are.same("point2", result.series[2].type)
-		end)
+		it(
+			"should merge consecutive Point nodes in a Sequence into one scatter series, and separate multiple series by semicolons or newlines",
+			function()
+				local result = parse_input("(1,2); (3,4)")
+				assert.are.same("multi_series", result.type)
+				assert.are.equal(2, #result.series)
+				assert.are.same("point2", result.series[1].type)
+				assert.are.same("point2", result.series[2].type)
+			end
+		)
 
-		it("should parse explicit equations like f(x) = <expr> or y(x) = <expr> as an Equality AST node with the correct left-hand side symbol or function", function()
-			local result = parse_input("f(x) = 1")
-			assert.are.same("equality", result.type)
-			assert.are.same("function_call", result.lhs.type)
-			assert.are.same("f", result.lhs.name_node.name)
-		end)
+		it(
+			"should parse explicit equations like f(x) = <expr> or y(x) = <expr> as an Equality AST node with the correct left-hand side symbol or function",
+			function()
+				local result = parse_input("f(x) = 1")
+				assert.are.same("equality", result.type)
+				assert.are.same("function_call", result.lhs.type)
+				assert.are.same("f", result.lhs.name_node.name)
+			end
+		)
 
-		it("should parse inequality expressions (e.g., x + y < 1 or y > 0) into an Inequality AST node, preserving the specified comparison operator", function()
-			local result = parse_input("x < 1")
-			assert.are.same("inequality", result.type)
-			assert.are.same("<", result.op)
+		it(
+			"should parse inequality expressions (e.g., x + y < 1 or y > 0) into an Inequality AST node, preserving the specified comparison operator",
+			function()
+				local result = parse_input("x < 1")
+				assert.are.same("inequality", result.type)
+				assert.are.same("<", result.op)
 
-			result = parse_input("y >= 2")
-			assert.are.same("inequality", result.type)
-			assert.are.same(">=", result.op)
-		end)
+				result = parse_input("y >= 2")
+				assert.are.same("inequality", result.type)
+				assert.are.same(">=", result.op)
+			end
+		)
 
 		it("should parse parametric expressions into Point2/Point3 nodes for later classification", function()
 			local result = parse_input("(f(t), g(t))")

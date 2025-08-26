@@ -150,11 +150,7 @@ describe("Plot Classification Logic", function()
 				ast_node("binary", { op = "*", left = "x", right = "y" }),
 			})
 
-			mock_free_vars.find
-				:on_call(1)
-				:returns({ "x" })
-				:on_call(2)
-				:returns({ "x", "y" })
+			mock_free_vars.find:on_call(1):returns({ "x" }):on_call(2):returns({ "x", "y" })
 
 			local result, err = classification.analyze(series)
 			assert.is_nil(result)

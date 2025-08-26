@@ -131,9 +131,13 @@ describe("Plotting I/O and File Management", function()
 		end)
 
 		it("should support timestamp filename mode", function()
-			mock(os, "date", spy.new(function(format)
-				return "2025-08-26_12-30-00"
-			end))
+			mock(
+				os,
+				"date",
+				spy.new(function(format)
+					return "2025-08-26_12-30-00"
+				end)
+			)
 
 			local opts = { filename_mode = "timestamp" }
 			local filename = plotting_io.generate_filename(opts, {})
@@ -168,9 +172,13 @@ describe("Plotting I/O and File Management", function()
 			local existing_file_path = plot_dir .. "/plot_" .. plot_hash .. ".pdf"
 			io.open(existing_file_path, "w"):close()
 
-			mock(plotting_io, "_calculate_hash", spy.new(function()
-				return plot_hash
-			end))
+			mock(
+				plotting_io,
+				"_calculate_hash",
+				spy.new(function()
+					return plot_hash
+				end)
+			)
 
 			local opts = { filename_mode = "hash", format = "pdf" }
 			local plot_data = { ast = { type = "variable", name = "x" } }

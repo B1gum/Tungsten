@@ -206,4 +206,116 @@ function M.create_convolution_node(left, right)
 	return node("convolution", { left = left, right = right })
 end
 
+function M.create_sequence_node(nodes)
+	return node("Sequence", { nodes = nodes })
+end
+
+function M.create_point2_node(x, y)
+	return node("Point2", { x = x, y = y })
+end
+
+function M.create_point3_node(x, y, z)
+	return node("Point3", { x = x, y = y, z = z })
+end
+
+function M.create_equality_node(lhs, rhs)
+	return node("Equality", { lhs = lhs, rhs = rhs })
+end
+
+function M.create_inequality_node(lhs, op, rhs)
+	return node("Inequality", { lhs = lhs, op = op, rhs = rhs })
+end
+
+function M.create_parametric2d_node(x, y)
+	return node("Parametric2D", { x = x, y = y })
+end
+
+function M.create_parametric3d_node(x, y, z)
+	return node("Parametric3D", { x = x, y = y, z = z })
+end
+
+function M.create_polar2d_node(r)
+	return node("Polar2D", { r = r })
+end
+
+function M.is_sequence_node(n)
+	return type(n) == "table" and n.type == "Sequence"
+end
+
+function M.is_point2_node(n)
+	return type(n) == "table" and n.type == "Point2"
+end
+
+function M.is_point3_node(n)
+	return type(n) == "table" and n.type == "Point3"
+end
+
+function M.is_equality_node(n)
+	return type(n) == "table" and n.type == "Equality"
+end
+
+function M.is_inequality_node(n)
+	return type(n) == "table" and n.type == "Inequality"
+end
+
+function M.is_parametric2d_node(n)
+	return type(n) == "table" and n.type == "Parametric2D"
+end
+
+function M.is_parametric3d_node(n)
+	return type(n) == "table" and n.type == "Parametric3D"
+end
+
+function M.is_polar2d_node(n)
+	return type(n) == "table" and n.type == "Polar2D"
+end
+
+local function canonical(node)
+	if type(node) ~= "table" then
+		return tostring(node)
+	end
+
+	local tag = node.type
+	if tag == "number" then
+		return tostring(node.value)
+	elseif tag == "variable" or tag == "symbol" or tag == "greek" then
+		return tostring(node.name)
+	elseif tag == "Sequence" then
+		local parts = {}
+		for _, child in ipairs(node.nodes) do
+			parts[#parts + 1] = canonical(child)
+		end
+		return "Sequence(" .. table.concat(parts, ",") .. ")"
+	elseif tag == "Point2" then
+		return "Point2(" .. canonical(node.x) .. "," .. canonical(node.y) .. ")"
+	elseif tag == "Point3" then
+		return "Point3(" .. canonical(node.x) .. "," .. canonical(node.y) .. "," .. canonical(node.z) .. ")"
+	elseif tag == "Equality" then
+		return "Equality(" .. canonical(node.lhs) .. "," .. canonical(node.rhs) .. ")"
+	elseif tag == "Inequality" then
+		return "Inequality(" .. tostring(node.op) .. "," .. canonical(node.lhs) .. "," .. canonical(node.rhs) .. ")"
+	elseif tag == "Parametric2D" then
+		return "Parametric2D(" .. canonical(node.x) .. "," .. canonical(node.y) .. ")"
+	elseif tag == "Parametric3D" then
+		return "Parametric3D(" .. canonical(node.x) .. "," .. canonical(node.y) .. "," .. canonical(node.z) .. ")"
+	elseif tag == "Polar2D" then
+		return "Polar2D(" .. canonical(node.r) .. ")"
+	else
+		local keys = {}
+		for k, _ in pairs(node) do
+			if k ~= "type" then
+				keys[#keys + 1] = k
+			end
+		end
+		table.sort(keys)
+		local parts = {}
+		for _, k in ipairs(keys) do
+			parts[#parts + 1] = k .. "=" .. canonical(node[k])
+		end
+		return tostring(tag) .. "{" .. table.concat(parts, ",") .. "}"
+	end
+end
+
+M.canonical = canonical
+
 return M
