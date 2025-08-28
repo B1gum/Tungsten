@@ -28,8 +28,8 @@ describe("parser series and sequence handling", function()
 		assert.are.same("Point2", res.series[1].type)
 		assert.are.same("Point2", res.series[2].type)
 		local third = res.series[3]
-		assert.are.same("binary", third.type)
-		assert.are.equal("=", third.operator)
+		assert.are.same("Equality", third.type)
+		assert.are.equal("binary", third.lhs.type)
 	end)
 
 	it("does not treat function calls as points", function()
