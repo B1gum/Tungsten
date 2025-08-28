@@ -143,11 +143,7 @@ local function tungsten_solve_command(_)
 	end
 
 	local valid_structure = eq_ast
-		and (
-			(eq_ast.type == "binary" and eq_ast.operator == "=")
-			or eq_ast.type == "EquationRule"
-			or eq_ast.type == "equation"
-		)
+		and ((eq_ast.type == "binary" and eq_ast.operator == "=") or eq_ast.type == "Equality" or eq_ast.type == "equation")
 
 	if not valid_structure then
 		error_handler.notify_error("Solve", "Selected text is not a valid single equation.")

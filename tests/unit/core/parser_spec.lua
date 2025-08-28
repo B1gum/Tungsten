@@ -299,6 +299,43 @@ describe("tungsten.core.parser.parse with combined grammar", function()
 			assert.are.same(expected_ast, parse_input(input))
 		end)
 	end)
+
+	describe("relations", function()
+		it("should parse y = f(x) as an Equality node", function()
+			local input = "y = f(x)"
+			local expected_ast = ast_utils.create_equality_node(
+				{ type = "variable", name = "y" },
+				ast_utils.create_function_call_node({ type = "variable", name = "f" }, { { type = "variable", name = "x" } })
+			)
+			assert.are.same(expected_ast, parse_input(input))
+		end)
+
+		it("should parse x^2 + y^2 = 1", function()
+			local input = "x^2 + y^2 = 1"
+			local lhs = ast_utils.create_binary_operation_node(
+				"+",
+				ast_utils.create_superscript_node({ type = "variable", name = "x" }, { type = "number", value = 2 }),
+				ast_utils.create_superscript_node({ type = "variable", name = "y" }, { type = "number", value = 2 })
+			)
+			local expected_ast = ast_utils.create_equality_node(lhs, { type = "number", value = 1 })
+			assert.are.same(expected_ast, parse_input(input))
+		end)
+
+		it("should parse inequalities including LaTeX variants", function()
+			local result = parse_input("x \\ge 0")
+			assert.are.same(
+				ast_utils.create_inequality_node({ type = "variable", name = "x" }, "≥", { type = "number", value = 0 }),
+				result
+			)
+
+			result = parse_input("x \\leq y")
+			assert.are.same(
+				ast_utils.create_inequality_node({ type = "variable", name = "x" }, "≤", { type = "variable", name = "y" }),
+				result
+			)
+		end)
+	end)
+
 	describe("linear algebra operations", function()
 		describe("matrix parsing", function()
 			it("should parse a simple 2x2 pmatrix: \\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}", function()

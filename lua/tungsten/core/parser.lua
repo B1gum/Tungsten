@@ -117,6 +117,117 @@ local function trim(s)
 	return trimmed, leading
 end
 
+local function detect_chained_relations(expr)
+	local paren, brace, bracket = 0, 0, 0
+	local count = 0
+	local i, len = 1, #expr
+	while i <= len do
+		local c = expr:sub(i, i)
+		local advance = 1
+		if c == "\\" then
+			local next_five = expr:sub(i, i + 4)
+			local next_six = expr:sub(i, i + 5)
+			if next_five == "\\left" then
+				local d = expr:sub(i + 5, i + 5)
+				if d == "(" then
+					paren = paren + 1
+				elseif d == "{" then
+					brace = brace + 1
+				elseif d == "[" then
+					bracket = bracket + 1
+				end
+				advance = 6
+			elseif next_six == "\\right" then
+				local d = expr:sub(i + 6, i + 6)
+				if d == ")" then
+					paren = paren - 1
+				elseif d == "}" then
+					brace = brace - 1
+				elseif d == "]" then
+					bracket = bracket - 1
+				end
+				advance = 7
+			elseif expr:sub(i, i + 3) == "\\leq" then
+				if paren == 0 and brace == 0 and bracket == 0 then
+					count = count + 1
+					if count > 1 then
+						return i
+					end
+				end
+				advance = 4
+			elseif expr:sub(i, i + 2) == "\\le" then
+				if paren == 0 and brace == 0 and bracket == 0 then
+					count = count + 1
+					if count > 1 then
+						return i
+					end
+				end
+				advance = 3
+			elseif expr:sub(i, i + 3) == "\\geq" then
+				if paren == 0 and brace == 0 and bracket == 0 then
+					count = count + 1
+					if count > 1 then
+						return i
+					end
+				end
+				advance = 4
+			elseif expr:sub(i, i + 2) == "\\ge" then
+				if paren == 0 and brace == 0 and bracket == 0 then
+					count = count + 1
+					if count > 1 then
+						return i
+					end
+				end
+				advance = 3
+			else
+				local j = i + 1
+				while j <= len and expr:sub(j, j):match("%a") do
+					j = j + 1
+				end
+				advance = j - i
+			end
+		else
+			if c == "(" then
+				paren = paren + 1
+			elseif c == ")" then
+				paren = paren - 1
+			elseif c == "{" then
+				brace = brace + 1
+			elseif c == "}" then
+				brace = brace - 1
+			elseif c == "[" then
+				bracket = bracket + 1
+			elseif c == "]" then
+				bracket = bracket - 1
+			elseif paren == 0 and brace == 0 and bracket == 0 then
+				if c == "<" or c == ">" or c == "=" then
+					if c == "<" or c == ">" then
+						if expr:sub(i + 1, i + 1) == "=" then
+							count = count + 1
+							if count > 1 then
+								return i
+							end
+							advance = 2
+						else
+							count = count + 1
+							if count > 1 then
+								return i
+							end
+						end
+					else
+						count = count + 1
+						if count > 1 then
+							return i
+						end
+					end
+				end
+			end
+		end
+		i = i + advance
+	end
+	return nil
+end
+
 local function try_point_tuple(expr, pattern, ser_start, item_start, input)
 	local inner, offset = nil, 0
 	if expr:sub(1, 6) == "\\left(" and expr:sub(-7) == "\\right)" then
@@ -172,6 +283,13 @@ function M.parse(input)
 		for _, item in ipairs(seq_strs) do
 			local expr, lead = trim(item.str)
 			if expr ~= "" then
+				local rel_pos = detect_chained_relations(expr)
+				if rel_pos then
+					local global_pos = ser.start_pos + item.start_pos - 1 + lead + rel_pos - 1
+					local msg = "Chained inequalities are not supported (v1)."
+					return nil, msg, global_pos, input
+				end
+
 				local tuple, tuple_err, tuple_pos
 				if expr:sub(1, 1) == "(" or expr:sub(1, 6) == "\\left(" then
 					tuple, tuple_err, tuple_pos = try_point_tuple(expr, pattern, ser.start_pos, item.start_pos, input)

@@ -1,8 +1,5 @@
 -- tungsten/lua/tungsten/domains/arithmetic/init.lua
-local lpeg = require("lpeglabel")
-local V = lpeg.V
 local tokens_mod = require("tungsten.core.tokenizer")
-local ast_utils = require("tungsten.core.ast")
 
 local M = {
 	name = "arithmetic",
@@ -15,15 +12,8 @@ M.grammar = { contributions = {}, extensions = {} }
 
 local prio = M.priority
 local supersub = require("tungsten.domains.arithmetic.rules.supersub")
-local standard_equation_pattern = (
-	V("AddSub")
-	* tokens_mod.space
-	* tokens_mod.equals_op
-	* tokens_mod.space
-	* V("AddSub")
-) / function(lhs, _, rhs)
-		return ast_utils.create_binary_operation_node("=", lhs, rhs)
-	end
+
+local relation_rules = require("tungsten.domains.arithmetic.rules.relation")
 
 local c = M.grammar.contributions
 c[#c + 1] = { name = "Number", pattern = tokens_mod.number, category = "AtomBaseItem", priority = prio }
@@ -67,8 +57,8 @@ c[#c + 1] = {
 	category = "AtomBaseItem",
 	priority = prio,
 }
-c[#c + 1] =
-	{ name = "EquationRule", pattern = standard_equation_pattern, category = "TopLevelRule", priority = prio + 5 }
+c[#c + 1] = { name = "Equality", pattern = relation_rules.Equality, category = "TopLevelRule", priority = prio + 5 }
+c[#c + 1] = { name = "Inequality", pattern = relation_rules.Inequality, category = "TopLevelRule", priority = prio + 5 }
 c[#c + 1] = {
 	name = "SolveSystemEquationsCapture",
 	pattern = require("tungsten.domains.arithmetic.rules.solve_system_rule"),

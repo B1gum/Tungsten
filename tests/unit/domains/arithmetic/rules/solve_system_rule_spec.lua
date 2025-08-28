@@ -66,7 +66,7 @@ describe("Arithmetic Solve System Rule: tungsten.domains.arithmetic.rules.solve_
 		test_grammar_table_definition = {
 			"TestEntryPoint",
 			TestEntryPoint = SolveSystemRule * -P(1),
-			EquationRule = simplified_equation_rule,
+			Equality = simplified_equation_rule,
 			Expression = mock_tokenizer_module.variable + mock_tokenizer_module.number,
 		}
 		compiled_test_grammar = lpeg.P(test_grammar_table_definition)
