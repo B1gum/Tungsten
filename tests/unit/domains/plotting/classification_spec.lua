@@ -95,24 +95,54 @@ describe("Plot Classification Logic", function()
 		}, result)
 	end)
 
-	it("should recognize parametric and polar forms from their AST nodes", function()
-		local para2d = ast_node("parametric_2d", { x = "cos(t)", y = "sin(t)" })
-		local para2d_result, err2d = classification.analyze(para2d)
-		assert.is_nil(err2d)
+	it("should recognize Parametric2D nodes", function()
+		local para2d = ast_node("Parametric2D", { x = "cos(t)", y = "sin(t)" })
+		mock_free_vars.find:on_call(1):returns({ "t" }):on_call(2):returns({ "t" })
+
+		local result, err = classification.analyze(para2d)
+
+		assert.is_nil(err)
 		assert.are.same({
 			dim = 2,
 			form = "parametric",
 			series = { { kind = "function", ast = para2d, independent_vars = { "t" }, dependent_vars = { "x", "y" } } },
-		}, para2d_result)
+		}, result)
+  end)
 
-		local polar = ast_node("polar_2d", { r = "1+cos(theta)" })
-		local polar_result, err_polar = classification.analyze(polar)
-		assert.is_nil(err_polar)
+  	it("should recognize Parametric3D nodes", function()
+		local para3d = ast_node("Parametric3D", { x = "u", y = "v", z = "u+v" })
+		mock_free_vars.find
+			:on_call(1)
+			:returns({ "u", "v" })
+			:on_call(2)
+			:returns({ "u", "v" })
+			:on_call(3)
+			:returns({ "u", "v" })
+
+		local result, err = classification.analyze(para3d)
+
+		assert.is_nil(err)
+		assert.are.same({
+			dim = 3,
+			form = "parametric",
+			series = {
+				{ kind = "function", ast = para3d, independent_vars = { "u", "v" }, dependent_vars = { "x", "y", "z" } },
+			},
+		}, result)
+	end)
+
+	it("should recognize Polar2D nodes", function()
+		local polar = ast_node("Polar2D", { r = "1+cos(theta)" })
+		mock_free_vars.find:returns({ "theta" })
+
+		local result, err = classification.analyze(polar)
+
+		assert.is_nil(err)
 		assert.are.same({
 			dim = 2,
 			form = "polar",
 			series = { { kind = "function", ast = polar, independent_vars = { "theta" }, dependent_vars = { "r" } } },
-		}, polar_result)
+		}, result)
 	end)
 
 	it("should classify inequality expressions as region plots", function()
