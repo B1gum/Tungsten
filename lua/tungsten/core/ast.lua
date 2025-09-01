@@ -270,39 +270,39 @@ function M.is_polar2d_node(n)
 	return type(n) == "table" and n.type == "Polar2D"
 end
 
-local function canonical(node)
-	if type(node) ~= "table" then
-		return tostring(node)
+local function canonical(n)
+	if type(n) ~= "table" then
+		return tostring(n)
 	end
 
-	local tag = node.type
+	local tag = n.type
 	if tag == "number" then
-		return tostring(node.value)
+		return tostring(n.value)
 	elseif tag == "variable" or tag == "symbol" or tag == "greek" then
-		return tostring(node.name)
+		return tostring(n.name)
 	elseif tag == "Sequence" then
 		local parts = {}
-		for _, child in ipairs(node.nodes) do
+		for _, child in ipairs(n.nodes) do
 			parts[#parts + 1] = canonical(child)
 		end
 		return "Sequence(" .. table.concat(parts, ",") .. ")"
 	elseif tag == "Point2" then
-		return "Point2(" .. canonical(node.x) .. "," .. canonical(node.y) .. ")"
+		return "Point2(" .. canonical(n.x) .. "," .. canonical(n.y) .. ")"
 	elseif tag == "Point3" then
-		return "Point3(" .. canonical(node.x) .. "," .. canonical(node.y) .. "," .. canonical(node.z) .. ")"
+		return "Point3(" .. canonical(n.x) .. "," .. canonical(n.y) .. "," .. canonical(n.z) .. ")"
 	elseif tag == "Equality" then
-		return "Equality(" .. canonical(node.lhs) .. "," .. canonical(node.rhs) .. ")"
+		return "Equality(" .. canonical(n.lhs) .. "," .. canonical(n.rhs) .. ")"
 	elseif tag == "Inequality" then
-		return "Inequality(" .. tostring(node.op) .. "," .. canonical(node.lhs) .. "," .. canonical(node.rhs) .. ")"
+		return "Inequality(" .. tostring(n.op) .. "," .. canonical(n.lhs) .. "," .. canonical(n.rhs) .. ")"
 	elseif tag == "Parametric2D" then
-		return "Parametric2D(" .. canonical(node.x) .. "," .. canonical(node.y) .. ")"
+		return "Parametric2D(" .. canonical(n.x) .. "," .. canonical(n.y) .. ")"
 	elseif tag == "Parametric3D" then
-		return "Parametric3D(" .. canonical(node.x) .. "," .. canonical(node.y) .. "," .. canonical(node.z) .. ")"
+		return "Parametric3D(" .. canonical(n.x) .. "," .. canonical(n.y) .. "," .. canonical(n.z) .. ")"
 	elseif tag == "Polar2D" then
-		return "Polar2D(" .. canonical(node.r) .. ")"
+		return "Polar2D(" .. canonical(n.r) .. ")"
 	else
 		local keys = {}
-		for k, _ in pairs(node) do
+		for k, _ in pairs(n) do
 			if k ~= "type" then
 				keys[#keys + 1] = k
 			end
@@ -310,7 +310,7 @@ local function canonical(node)
 		table.sort(keys)
 		local parts = {}
 		for _, k in ipairs(keys) do
-			parts[#parts + 1] = k .. "=" .. canonical(node[k])
+			parts[#parts + 1] = k .. "=" .. canonical(n[k])
 		end
 		return tostring(tag) .. "{" .. table.concat(parts, ",") .. "}"
 	end

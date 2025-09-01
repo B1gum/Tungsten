@@ -168,7 +168,7 @@ describe("Plot Classification Logic", function()
 		assert.is_nil(err)
 		assert.are.same({
 			dim = 2,
-			form = "inequality",
+			form = "implicit",
 			series = { { kind = "function", ast = inequality, independent_vars = { "x", "y" }, dependent_vars = {} } },
 		}, result)
 	end)
@@ -196,7 +196,7 @@ describe("Plot Classification Logic", function()
 		assert.is_nil(err)
 		assert.are.same({
 			dim = 2,
-			form = "points",
+			form = "explicit",
 			series = { { kind = "points", points = { point } } },
 		}, result)
 	end)

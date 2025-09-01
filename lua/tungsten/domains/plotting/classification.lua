@@ -78,7 +78,7 @@ local function analyze_point2(point, opts)
 	end
 	return {
 		dim = 2,
-		form = "points",
+		form = "explicit",
 		series = { { kind = "points", points = { point } } },
 	}
 end
@@ -113,11 +113,11 @@ local function analyze_sequence(ast, opts)
 			if dim and dim ~= pdim then
 				return nil, { code = "E_MIXED_DIMENSIONS" }
 			end
-			if form and form ~= "points" then
+			if form and form ~= "explicit" then
 				return nil, { code = "E_MIXED_COORD_SYS" }
 			end
 			dim = pdim
-			form = "points"
+			form = "explicit"
 			table.insert(series, { kind = "points", points = points })
 		else
 			local sub, err = M.analyze(node, opts)
@@ -228,7 +228,7 @@ local function analyze_inequality(ast)
 	local free = find_free_variables(ast)
 	return {
 		dim = #free,
-		form = "inequality",
+		form = "implicit",
 		series = {
 			{
 				kind = "function",
@@ -240,7 +240,7 @@ local function analyze_inequality(ast)
 	}
 end
 
-local function analyze_equality(ast, opts)
+local function analyze_equality(ast)
 	local lhs_is_var, lhs_var = is_simple_variable(ast.lhs)
 	if lhs_is_var and (lhs_var == "y" or lhs_var == "z") then
 		local free = find_free_variables(ast.rhs)
@@ -280,7 +280,7 @@ function M.analyze(ast, opts)
 	if t == "Sequence" or t == "sequence" then
 		return analyze_sequence(ast, opts)
 	elseif t == "equality" or t == "Equality" then
-		return analyze_equality(ast, opts)
+		return analyze_equality(ast)
 	elseif t == "Parametric2D" or t == "parametric_2d" then
 		return analyze_parametric2d(ast)
 	elseif t == "Parametric3D" or t == "parametric_3d" then
