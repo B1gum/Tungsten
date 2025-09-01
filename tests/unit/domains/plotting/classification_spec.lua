@@ -107,9 +107,9 @@ describe("Plot Classification Logic", function()
 			form = "parametric",
 			series = { { kind = "function", ast = para2d, independent_vars = { "t" }, dependent_vars = { "x", "y" } } },
 		}, result)
-  end)
+	end)
 
-  	it("should recognize Parametric3D nodes", function()
+	it("should recognize Parametric3D nodes", function()
 		local para3d = ast_node("Parametric3D", { x = "u", y = "v", z = "u+v" })
 		mock_free_vars.find
 			:on_call(1)
