@@ -1,6 +1,7 @@
 local M = {}
 
 local free_vars = require("tungsten.domains.plotting.free_vars")
+local helpers = require("tungsten.domains.plotting.helpers")
 
 local function find_free_variables(node)
 	return free_vars.find(node)
@@ -28,6 +29,60 @@ local function is_simple_variable(node)
 	return false, nil
 end
 
+local function analyze_point2(point, opts)
+	opts = opts or {}
+	if opts.mode == "advanced" then
+		if opts.form == "parametric" then
+			local param = helpers.detect_point2_param(point)
+			if not param then
+				return nil, { code = "E_MIXED_COORD_SYS" }
+			end
+			local params = union_vars(find_free_variables(point.x), find_free_variables(point.y))
+			return {
+				dim = 2,
+				form = "parametric",
+				series = {
+					{
+						kind = "function",
+						ast = point,
+						independent_vars = params,
+						dependent_vars = { "x", "y" },
+					},
+				},
+			}
+		elseif opts.form == "polar" then
+			local y_params = helpers.extract_param_names(point.y)
+			if not (#y_params == 1 and y_params[1] == "theta") then
+				return nil, { code = "E_MIXED_COORD_SYS" }
+			end
+			local x_params = helpers.extract_param_names(point.x)
+			for _, p in ipairs(x_params) do
+				if p ~= "theta" then
+					return nil, { code = "E_MIXED_COORD_SYS" }
+				end
+			end
+			local params = union_vars(find_free_variables(point.x), find_free_variables(point.y))
+			return {
+				dim = 2,
+				form = "polar",
+				series = {
+					{
+						kind = "function",
+						ast = point,
+						independent_vars = params,
+						dependent_vars = { "r" },
+					},
+				},
+			}
+		end
+	end
+	return {
+		dim = 2,
+		form = "points",
+		series = { { kind = "points", points = { point } } },
+	}
+end
+
 local function analyze_sequence(ast, opts)
 	local nodes = ast.nodes or {}
 	local series = {}
@@ -37,7 +92,9 @@ local function analyze_sequence(ast, opts)
 	while 1 <= #nodes do
 		local node = nodes[i]
 		local t = node.type
-		if t == "Point2" or 2 == "point_2d" or t == "Point3" or t == "point_3d" then
+		local treat_as_points = (t == "Point2" or t == "point_2d" or t == "Point3" or t == "point_3d")
+			and not (opts.mode == "advanced" and (opts.form == "parametric" or opts.form == "polar"))
+		if treat_as_points then
 			local points = { node }
 			local pdim = (t == "Point3" or t == "point_3d") and 3 or 2
 			i = i + 1
@@ -45,7 +102,7 @@ local function analyze_sequence(ast, opts)
 				local nxt = nodes[i]
 				local nt = nxt.type
 				local is_same = (pdim == 2 and (nt == "Point2" or nt == "point_2d"))
-					or (pdim == 3 and (nt == "Point3" or nt == "point_3d"))
+					or (pdim == 3 and (nt == "Point3" or nt == "point3d"))
 				if not is_same then
 					break
 				end
@@ -57,7 +114,7 @@ local function analyze_sequence(ast, opts)
 				return nil, { code = "E_MIXED_DIMENSIONS" }
 			end
 			if form and form ~= "points" then
-				return nil, { code = "E_MIXED_FORM" }
+				return nil, { code = "E_MIXED_COORD_SYS" }
 			end
 			dim = pdim
 			form = "points"
@@ -71,7 +128,7 @@ local function analyze_sequence(ast, opts)
 				return nil, { code = "E_MIXED_DIMENSIONS" }
 			end
 			if form and form ~= sub.form then
-				return nil, { code = "E_MIXED_FORM" }
+				return nil, { code = "E_MIXED_COORD_SYS" }
 			end
 			dim = sub.dim
 			form = sub.form
@@ -103,7 +160,7 @@ local function analyze_expression(ast, opts)
 		result.form = "explicit"
 		result.series[1].dependent_vars = { "y" }
 	elseif #vars == 2 then
-		if opts and opts.simple_mode then
+		if opts and (opts.simple_mode or opts.mode == "simple") then
 			result.dim = 2
 			result.form = "implicit"
 		else
@@ -167,6 +224,22 @@ local function analyze_polar2d(ast)
 	}
 end
 
+local function analyze_inequality(ast)
+	local free = find_free_variables(ast)
+	return {
+		dim = #free,
+		form = "inequality",
+		series = {
+			{
+				kind = "function",
+				ast = ast,
+				independent_vars = free,
+				dependent_vars = {},
+			},
+		},
+	}
+end
+
 local function analyze_equality(ast, opts)
 	local lhs_is_var, lhs_var = is_simple_variable(ast.lhs)
 	if lhs_is_var and (lhs_var == "y" or lhs_var == "z") then
@@ -214,6 +287,10 @@ function M.analyze(ast, opts)
 		return analyze_parametric3d(ast)
 	elseif t == "Polar2D" or t == "polar_2d" then
 		return analyze_polar2d(ast)
+	elseif t == "inequality" or t == "Inequality" then
+		return analyze_inequality(ast)
+	elseif t == "Point2" or t == "point_2d" then
+		return analyze_point2(ast, opts)
 	else
 		return analyze_expression(ast, opts)
 	end

@@ -1,6 +1,5 @@
 -- Unit tests for the plot classification logic.
 
-local spy = require("luassert.spy")
 local mock_utils = require("tests.helpers.mock_utils")
 
 describe("Plot Classification Logic", function()
@@ -22,9 +21,9 @@ describe("Plot Classification Logic", function()
 		})
 
 		mock_free_vars = {
-			find = spy.new(function()
+			find = function()
 				return {}
-			end),
+			end,
 		}
 		package.loaded["tungsten.domains.plotting.free_vars"] = mock_free_vars
 
@@ -40,7 +39,9 @@ describe("Plot Classification Logic", function()
 
 	it("should classify a single-variable expression f(x) as a 2D explicit plot", function()
 		local expr = ast_node("function_call", { name = "sin", args = { "x" } })
-		mock_free_vars.find:returns({ "x" })
+		mock_free_vars.find = function()
+			return { "x" }
+		end
 
 		local result, err = classification.analyze(expr)
 
@@ -54,7 +55,9 @@ describe("Plot Classification Logic", function()
 
 	it("should classify a two-variable expression f(x,y) as a 3D explicit surface", function()
 		local expr = ast_node("binary", { op = "+", left = "x^2", right = "y^2" })
-		mock_free_vars.find:returns({ "x", "y" })
+		mock_free_vars.find = function()
+			return { "x", "y" }
+		end
 
 		local result, err = classification.analyze(expr)
 
@@ -69,7 +72,9 @@ describe("Plot Classification Logic", function()
 	it("should classify equations like y = f(x) as explicit plots", function()
 		local rhs = ast_node("function_call", { name = "cos", args = { "x" } })
 		local eq = ast_node("equality", { lhs = mock_ast.create_variable_node("y"), rhs = rhs })
-		mock_free_vars.find:returns({ "x" })
+		mock_free_vars.find = function()
+			return { "x" }
+		end
 
 		local result, err = classification.analyze(eq)
 
@@ -83,7 +88,10 @@ describe("Plot Classification Logic", function()
 
 	it("should classify implicit equations like x^2 + y^2 = 1 as implicit plots", function()
 		local eq = ast_node("equality", { lhs = "x^2+y^2", rhs = "1" })
-		mock_free_vars.find:returns({ "x", "y" })
+
+		mock_free_vars.find = function()
+			return { "x", "y" }
+		end
 
 		local result, err = classification.analyze(eq)
 
@@ -97,7 +105,10 @@ describe("Plot Classification Logic", function()
 
 	it("should recognize Parametric2D nodes", function()
 		local para2d = ast_node("Parametric2D", { x = "cos(t)", y = "sin(t)" })
-		mock_free_vars.find:on_call(1):returns({ "t" }):on_call(2):returns({ "t" })
+
+		mock_free_vars.find = function()
+			return { "t" }
+		end
 
 		local result, err = classification.analyze(para2d)
 
@@ -111,13 +122,10 @@ describe("Plot Classification Logic", function()
 
 	it("should recognize Parametric3D nodes", function()
 		local para3d = ast_node("Parametric3D", { x = "u", y = "v", z = "u+v" })
-		mock_free_vars.find
-			:on_call(1)
-			:returns({ "u", "v" })
-			:on_call(2)
-			:returns({ "u", "v" })
-			:on_call(3)
-			:returns({ "u", "v" })
+
+		mock_free_vars.find = function()
+			return { "u", "v" }
+		end
 
 		local result, err = classification.analyze(para3d)
 
@@ -133,7 +141,10 @@ describe("Plot Classification Logic", function()
 
 	it("should recognize Polar2D nodes", function()
 		local polar = ast_node("Polar2D", { r = "1+cos(theta)" })
-		mock_free_vars.find:returns({ "theta" })
+
+		mock_free_vars.find = function()
+			return { "theta" }
+		end
 
 		local result, err = classification.analyze(polar)
 
@@ -147,7 +158,10 @@ describe("Plot Classification Logic", function()
 
 	it("should classify inequality expressions as region plots", function()
 		local inequality = ast_node("inequality", { lhs = "x^2+y^2", op = "<", rhs = "1" })
-		mock_free_vars.find:returns({ "x", "y" })
+
+		mock_free_vars.find = function()
+			return { "x", "y" }
+		end
 
 		local result, err = classification.analyze(inequality)
 
@@ -161,15 +175,69 @@ describe("Plot Classification Logic", function()
 
 	it("should default to a 2D contour plot for an expression with two free variables in simple mode", function()
 		local expr = ast_node("binary", { op = "+", left = "x^2", right = "y^2" })
-		mock_free_vars.find:returns({ "x", "y" })
+		mock_free_vars.find = function()
+			return { "x", "y" }
+		end
 
-		local result, err = classification.analyze(expr, { simple_mode = true })
+		local result, err = classification.analyze(expr, { mode = "simple" })
 
 		assert.is_nil(err)
 		assert.are.same({
 			dim = 2,
 			form = "implicit",
 			series = { { kind = "function", ast = expr, independent_vars = { "x", "y" }, dependent_vars = {} } },
+		}, result)
+	end)
+
+	it("treats (expr, expr) as a point in simple mode", function()
+		local point = ast_node("Point2", { x = ast_node("number", { value = 1 }), y = ast_node("number", { value = 2 }) })
+		local result, err = classification.analyze(point, { mode = "simple" })
+
+		assert.is_nil(err)
+		assert.are.same({
+			dim = 2,
+			form = "points",
+			series = { { kind = "points", points = { point } } },
+		}, result)
+	end)
+
+	it("treats (f(t), g(t)) as parametric in advanced mode", function()
+		local tvar = mock_ast.create_variable_node("t")
+		local point = ast_node("Point2", {
+			x = ast_node("function_call", { name = "f", args = { tvar } }),
+			y = ast_node("function_call", { name = "g", args = { tvar } }),
+		})
+		mock_free_vars.find = function()
+			return { "t" }
+		end
+
+		local result, err = classification.analyze(point, { mode = "advanced", form = "parametric" })
+
+		assert.is_nil(err)
+		assert.are.same({
+			dim = 2,
+			form = "parametric",
+			series = { { kind = "function", ast = point, independent_vars = { "t" }, dependent_vars = { "x", "y" } } },
+		}, result)
+	end)
+
+	it("treats (r(theta), theta) as polar in advanced mode", function()
+		local theta = mock_ast.create_variable_node("theta")
+		local point = ast_node("Point2", {
+			x = ast_node("function_call", { name = "h", args = { theta } }),
+			y = theta,
+		})
+		mock_free_vars.find = function()
+			return { "theta" }
+		end
+
+		local result, err = classification.analyze(point, { mode = "advanced", form = "polar" })
+
+		assert.is_nil(err)
+		assert.are.same({
+			dim = 2,
+			form = "polar",
+			series = { { kind = "function", ast = point, independent_vars = { "theta" }, dependent_vars = { "r" } } },
 		}, result)
 	end)
 
@@ -180,7 +248,15 @@ describe("Plot Classification Logic", function()
 				ast_node("binary", { op = "*", left = "x", right = "y" }),
 			})
 
-			mock_free_vars.find:on_call(1):returns({ "x" }):on_call(2):returns({ "x", "y" })
+			local call = 0
+			mock_free_vars.find = function()
+				call = call + 1
+				if call == 1 then
+					return { "x" }
+				else
+					return { "x", "y" }
+				end
+			end
 
 			local result, err = classification.analyze(series)
 			assert.is_nil(result)
@@ -192,7 +268,9 @@ describe("Plot Classification Logic", function()
 				ast_node("polar_2d", { r = "theta" }),
 				ast_node("function_call", { name = "sin" }),
 			})
-			mock_free_vars.find:returns({ "x" })
+			mock_free_vars.find = function()
+				return { "x" }
+			end
 
 			local result, err = classification.analyze(series)
 			assert.is_nil(result)
@@ -215,7 +293,10 @@ describe("Plot Classification Logic", function()
 				ast_node("function_call", { name = "sin" }),
 				ast_node("point_3d", { x = 1, y = 1, z = 1 }),
 			})
-			mock_free_vars.find:returns({ "x" })
+
+			mock_free_vars.find = function()
+				return { "x" }
+			end
 
 			local result, err = classification.analyze(series)
 			assert.is_nil(result)
