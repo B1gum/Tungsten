@@ -40,6 +40,9 @@ local config = {
 			},
 		},
 	},
+  plotting = {
+    backend = "wolfram",
+  },
 	hooks = {},
 }
 

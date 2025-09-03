@@ -1,4 +1,7 @@
-local M = {}
+local M = {
+  E_BACKEND_UNAVAILABLE = "E_BACKEND_UNAVAILABLE",
+  E_UNSUPPORTED_FORM = "E_UNSUPPORTED_FORM",
+}
 
 local function calc_line_col(input, pos)
 	if type(input) ~= "string" or type(pos) ~= "number" then
