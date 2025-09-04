@@ -60,6 +60,27 @@ function M.build(classification, user_overrides)
 		opts.vol_3d = { 30, 30, 30 }
 	end
 
+	if classification.dim == 2 and classification.form == "explicit" then
+		opts.figsize_in = { 6, 4 }
+		opts.aspect = "auto"
+	else
+		opts.figsize_in = { 6, 6 }
+		opts.aspect = "equal"
+	end
+
+	if classification.dim == 3 then
+		opts.view_elev = 30
+		opts.view_azim = -60
+	end
+
+	opts.colormap = "viridis"
+	opts.colorbar = false
+	opts.bg_color = "white"
+
+	for k, v in pairs(user_overrides) do
+		opts[k] = v
+	end
+
 	for k, v in pairs(user_overrides) do
 		opts[k] = v
 	end

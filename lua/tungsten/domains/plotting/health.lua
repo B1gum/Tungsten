@@ -23,24 +23,21 @@ function M.check_dependencies()
 		report.python = true
 
 		local output = {}
-		local job_id = vim.fn.jobstart(
-			{
-				python_cmd,
-				"-c",
-				[[import importlib, json, sys; libs=['matplotlib','sympy'];
+		local job_id = vim.fn.jobstart({
+			python_cmd,
+			"-c",
+			[[import importlib, json, sys; libs=['matplotlib','sympy'];
 print(json.dumps({l: importlib.util.find_spec(l) is not None for l in libs}))]],
-			},
-			{
-				stdout_buffered = true,
-				on_stdout = function(_, data)
-					for _, line in ipairs(data) do
-						if line ~= "" then
-							table.insert(output, line)
-						end
+		}, {
+			stdout_buffered = true,
+			on_stdout = function(_, data)
+				for _, line in ipairs(data) do
+					if line ~= "" then
+						table.insert(output, line)
 					end
-				end,
-			}
-		)
+				end
+			end,
+		})
 
 		if job_id > 0 then
 			vim.fn.jobwait({ job_id }, 10000)

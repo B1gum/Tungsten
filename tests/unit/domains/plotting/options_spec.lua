@@ -73,8 +73,37 @@ describe("Plotting Options and Defaults", function()
 		end)
 	end)
 
+	describe("Styling Defaults", function()
+		it("sets defaults for figure styling", function()
+			local exp2 = options_builder.build({ dim = 2, form = "explicit" }, {})
+			assert.are.same("auto", exp2.aspect)
+			assert.are.same({ 6, 4 }, exp2.figsize_in)
+			assert.is_nil(exp2.view_elev)
+			assert.is_nil(exp2.view_azim)
+
+			local imp2 = options_builder.build({ dim = 2, form = "implicit" }, {})
+			assert.are.same("equal", imp2.aspect)
+			assert.are.same({ 6, 6 }, imp2.figsize_in)
+
+			local exp3 = options_builder.build({ dim = 3, form = "explicit" }, {})
+			assert.are.same("equal", exp3.aspect)
+			assert.are.same({ 6, 6 }, exp3.figsize_in)
+			assert.are.same(30, exp3.view_elev)
+			assert.are.same(-60, exp3.view_azim)
+
+			assert.are.same("viridis", exp2.colormap)
+			assert.is_false(exp2.colorbar)
+			assert.are.same("white", exp2.bg_color)
+		end)
+	end)
+
 	it("allows overrides to replace defaults", function()
-		local opts = options_builder.build({ dim = 2, form = "explicit" }, { xrange = { -5, 5 } })
+		local opts = options_builder.build(
+			{ dim = 2, form = "explicit" },
+			{ xrange = { -5, 5 }, aspect = "equal", colorbar = true }
+		)
 		assert.are.same({ -5, 5 }, opts.xrange)
+		assert.are.same("equal", opts.aspect)
+		assert.is_true(opts.colorbar)
 	end)
 end)
