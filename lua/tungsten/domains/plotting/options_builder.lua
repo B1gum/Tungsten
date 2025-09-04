@@ -16,6 +16,8 @@ function M.build(classification, user_overrides)
 		usetex = defaults.usetex or true,
 		latex_engine = defaults.latex_engine or "pdflatex",
 		latex_preamble = defaults.latex_preamble or "",
+		outputmode = defaults.outputmode or "latex",
+		filename_mode = defaults.filename_mode or "hash",
 		crop = true,
 		timeout_ms = 30000,
 		series = {},
