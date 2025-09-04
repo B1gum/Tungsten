@@ -117,4 +117,50 @@ describe("Plotting I/O and File Management", function()
 			assert.are.equal("directory", lfs.attributes(expected_dir, "mode"))
 		end)
 	end)
+
+	describe("Filename Generation", function()
+		it("generates sequential filenames with zero padding", function()
+			local opts = { filename_mode = "sequential" }
+			local n1 = plotting_io.generate_filename(opts, {})
+			local n2 = plotting_io.generate_filename(opts, {})
+			assert.are.equal("plot_001", n1)
+			assert.are.equal("plot_002", n2)
+		end)
+
+		it("generates timestamp-based filenames", function()
+			local opts = { filename_mode = "timestamp" }
+			local name = plotting_io.generate_filename(opts, {})
+			assert.is_truthy(name:match("^plot_%d%d%d%d%-%d%d%-%d%d_%d%d%-%d%d%-%d%d$"))
+		end)
+
+		it("generates hash-based filenames sensitive to inputs", function()
+			local ast = require("tungsten.core.ast")
+			local plot_data = { ast = ast.create_number_node(1), variables = { a = 1 } }
+			local opts = {
+				filename_mode = "hash",
+				backend = "wolfram",
+				format = "pdf",
+				form = "explicit",
+				dim = 2,
+			}
+			local name1 = plotting_io.generate_filename(opts, plot_data)
+			local name1b = plotting_io.generate_filename(opts, plot_data)
+			assert.are.equal(name1, name1b)
+			assert.is_truthy(name1:match("^plot_%x%x%x%x%x%x%x%x%x%x%x%x$"))
+
+			plot_data.ast = ast.create_number_node(2)
+			local name2 = plotting_io.generate_filename(opts, plot_data)
+			assert.are_not.equal(name1, name2)
+
+			plot_data.ast = ast.create_number_node(1)
+			opts.format = "png"
+			local name3 = plotting_io.generate_filename(opts, plot_data)
+			assert.are_not.equal(name1, name3)
+
+			opts.format = "pdf"
+			plot_data.variables.a = 2
+			local name4 = plotting_io.generate_filename(opts, plot_data)
+			assert.are_not.equal(name1, name4)
+		end)
+	end)
 end)
