@@ -35,10 +35,8 @@ local function setup_test_environment()
 	mock_config = {
 		plotting = {
 			snippet_width = "0.8\\linewidth",
-			viewer_cmds = {
-				pdf = vim.fn.has("macunix") and "open" or "xdg-open",
-				png = vim.fn.has("macunix") and "open" or "xdg-open",
-			},
+      viewer_cmd_pdf = vim.fn.has("macunix") and "open" or "xdg-open",
+      viewer_cmd_png = vim.fn.has("macunix") and "open" or "xdg-open",
 		},
 	}
 	mock_async = mock_utils.create_empty_mock_module("tungsten.util.async", { "run_job" })
@@ -193,14 +191,14 @@ describe("Plotting UI and UX", function()
 
 	describe("External Viewer", function()
 		it("should open the output image in an external viewer when configured", function()
-			mock_config.plotting.output_mode = "viewer"
+      mock_config.plotting.outputmode = "viewer"
 			local plot_path = "/tmp/plot.pdf"
 
 			plotting_ui.handle_output(plot_path)
 
 			assert.spy(mock_async.run_job).was.called(1)
 			local cmd = mock_async.run_job.calls[1].vals[1]
-			assert.are.same(mock_config.plotting.viewer_cmds.pdf, cmd[1])
+      assert.are.same(mock_config.plotting.viewer_cmd_pdf, cmd[1])
 			assert.are.same(plot_path, cmd[2])
 		end)
 
@@ -221,7 +219,7 @@ describe("Plotting UI and UX", function()
 		end)
 
 		it("should raise E_VIEWER_FAILED if the viewer command fails", function()
-			mock_config.plotting.output_mode = "viewer"
+      mock_config.plotting.outputmode = "viewer"
 			mock_async.run_job:calls(function(cmd, opts)
 				opts.on_exit(127, "", "command not found")
 			end)
