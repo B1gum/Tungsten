@@ -17,6 +17,9 @@ describe("Plotting Options and Defaults", function()
 
 		mock_config = {
 			plotting = {
+				usetex = true,
+				latex_engine = "pdflatex",
+				latex_preamble = "",
 				default_xrange = { -10, 10 },
 				default_yrange = { -10, 10 },
 				default_zrange = { -10, 10 },
@@ -26,6 +29,7 @@ describe("Plotting Options and Defaults", function()
 				default_vrange = { -10, 10 },
 			},
 		}
+
 		package.loaded["tungsten.config"] = mock_config
 
 		options_builder = require("tungsten.domains.plotting.options_builder")
@@ -105,5 +109,23 @@ describe("Plotting Options and Defaults", function()
 		assert.are.same({ -5, 5 }, opts.xrange)
 		assert.are.same("equal", opts.aspect)
 		assert.is_true(opts.colorbar)
+	end)
+
+	describe("LaTeX configuration", function()
+		it("uses config defaults and reflects changes", function()
+			local defaults = options_builder.build({ dim = 2, form = "explicit" }, {})
+			assert.is_true(defaults.usetex)
+			assert.are.same("pdflatex", defaults.latex_engine)
+			assert.are.same("", defaults.latex_preamble)
+
+			mock_config.plotting.usetex = false
+			mock_config.plotting.latex_engine = "lualatex"
+			mock_config.plotting.latex_preamble = "\\usepackage{amsmath}"
+
+			local updated = options_builder.build({ dim = 2, form = "explicit" }, {})
+			assert.is_false(updated.usetex)
+			assert.are.same("lualatex", updated.latex_engine)
+			assert.are.same("\\usepackage{amsmath}", updated.latex_preamble)
+		end)
 	end)
 end)

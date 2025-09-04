@@ -42,6 +42,9 @@ local config = {
 	},
 	plotting = {
 		backend = "wolfram",
+		usetex = true,
+		latex_engine = "pdflatex",
+		latex_preamble = "",
 		default_xrange = { -10, 10 },
 		default_yrange = { -10, 10 },
 		default_zrange = { -10, 10 },

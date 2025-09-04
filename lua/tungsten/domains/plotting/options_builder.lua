@@ -4,6 +4,8 @@ local config = require("tungsten.config")
 function M.build(classification, user_overrides)
 	user_overrides = user_overrides or {}
 
+	local defaults = (config.plotting or {})
+
 	local opts = {
 		dim = classification.dim,
 		form = classification.form,
@@ -11,7 +13,9 @@ function M.build(classification, user_overrides)
 		format = classification.dim == 2 and "pdf" or "png",
 		grids = true,
 		legend_auto = true,
-		usetex = true,
+		usetex = defaults.usetex or true,
+		latex_engine = defaults.latex_engine or "pdflatex",
+		latex_preamble = defaults.latex_preamble or "",
 		crop = true,
 		timeout_ms = 30000,
 		series = {},
@@ -20,8 +24,6 @@ function M.build(classification, user_overrides)
 	if opts.format == "png" then
 		opts.dpi = 180
 	end
-
-	local defaults = (config.plotting or {})
 
 	if classification.dim == 2 and classification.form == "explicit" then
 		opts.xrange = defaults.default_xrange
