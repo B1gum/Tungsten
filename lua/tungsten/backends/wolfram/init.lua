@@ -12,7 +12,7 @@ local M = {
 	solve_async = executor.solve_async,
 	load_handlers = handlers.load_handlers,
 	reload_handlers = handlers.reload_handlers,
-  plot_async = plot.plot_async,
+	plot_async = plot.plot_async,
 }
 
 manager.register("wolfram", M)
