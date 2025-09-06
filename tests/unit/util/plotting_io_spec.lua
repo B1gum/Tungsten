@@ -163,4 +163,39 @@ describe("Plotting I/O and File Management", function()
 			assert.are_not.equal(name1, name4)
 		end)
 	end)
+
+	describe("Final Path Assembly and Atomic Writes", function()
+		it("reuses existing files in hash mode", function()
+			local out_dir = temp_dir .. "/project/tungsten_plots"
+			lfs.mkdir(out_dir)
+
+			local opts = { filename_mode = "hash", format = "pdf" }
+			local path1, reused1 = plotting_io.get_final_path(out_dir, opts, {})
+			assert.is_false(reused1)
+
+			local f = io.open(path1, "w")
+			f:write("dummy")
+			f:close()
+
+			local path2, reused2 = plotting_io.get_final_path(out_dir, opts, {})
+			assert.is_true(reused2)
+			assert.are.equal(path1, path2)
+		end)
+
+		it("performs atomic file writes", function()
+			local out_dir = temp_dir .. "/project/tungsten_plots"
+			lfs.mkdir(out_dir)
+			local final_path = out_dir .. "/atomic_test.dat"
+
+			local ok, err = plotting_io.write_atomically(final_path, "hello")
+			assert.is_true(ok)
+			assert.is_nil(err)
+
+			local f = io.open(final_path, "rb")
+			local content = f:read("*a")
+			f:close()
+			assert.are.equal("hello", content)
+			assert.is_nil(lfs.attributes(final_path .. ".tmp"))
+		end)
+	end)
 end)

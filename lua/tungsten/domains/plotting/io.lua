@@ -194,6 +194,45 @@ function M.get_output_directory(tex_root_path)
 	return final_dir, nil
 end
 
+function M.get_final_path(output_dir, opts, plot_data)
+	opts = opts or {}
+	plot_data = plot_data or {}
+
+	local base = M.generate_filename(opts, plot_data)
+	local ext = opts.format or "pdf"
+	local final_path = path.normpath(path.join(output_dir, base .. "." .. ext))
+	local reused = false
+
+	if opts.filename_mode == "hash" then
+		local attr = lfs.attributes(final_path)
+		if attr and attr.mode == "file" then
+			reused = true
+		end
+	end
+
+	return final_path, reused
+end
+
+function M.write_atomically(final_path, image_data)
+	local tmp_path = final_path .. ".tmp"
+	local file, err = io.open(tmp_path, "wb")
+	if not file then
+		return nil, err
+	end
+	local ok, write_err = file:write(image_data)
+	file:close()
+	if not ok then
+		os.remove(tmp_path)
+		return nil, write_err
+	end
+	local ok_rename, rename_err = os.rename(tmp_path, final_path)
+	if not ok_rename then
+		os.remove(tmp_path)
+		error(rename_err)
+	end
+	return true
+end
+
 function M.ensure_output_path_exists(tex_root_path)
 	local _, err = M.get_output_directory(tex_root_path)
 	return err
