@@ -1,6 +1,8 @@
 local M = {
 	E_BACKEND_UNAVAILABLE = "E_BACKEND_UNAVAILABLE",
 	E_UNSUPPORTED_FORM = "E_UNSUPPORTED_FORM",
+	E_TIMEOUT = "E_TIMEOUT",
+	E_BACKEND_CRASH = "E_BACKEND_CRASH",
 }
 
 local function calc_line_col(input, pos)

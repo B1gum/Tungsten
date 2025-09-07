@@ -1,6 +1,9 @@
 local config = require("tungsten.config")
 local logger = require("tungsten.util.logger")
 local async = require("tungsten.util.async")
+local path = require("pl.path")
+local error_handler = require("tungsten.util.error_handler")
+local plotting_io = require("tungsten.util.plotting_io")
 
 local M = {}
 
@@ -18,6 +21,63 @@ local function active_count()
 end
 
 local _process_queue
+
+local function cleanup_temp(job)
+	if job and job.plot_opts and job.plot_opts.temp_file then
+		pcall(vim.loop.fs_unlink, job.plot_opts.temp_file)
+	end
+end
+
+local function default_on_success(job, image_path)
+	cleanup_temp(job)
+
+	local bufnr = job.plot_opts.bufnr or vim.api.nvim_get_current_buf()
+	local outputmode = job.plot_opts.outputmode or "Latex"
+
+	if outputmode == "latex" or outputmode == "both" then
+		local start_line = job.plot_opts.start_line or 0
+		local end_line = plotting_io.find_math_block_end(bufnr, start_line)
+
+		local buf_path = vim.api.nvim_buf_get_name(bufnr)
+		local cwd = vim.fn.fnamemodify(buf_path, ":p:h")
+		local rel_path = image_path
+		local ok, rp = pcall(path.relpath, image_path, cwd)
+		if ok and rp then
+			rel_path = rp
+		end
+
+		local snippet = string.format("\\includegraphics[width=0.8\\linewidth]{%s}", rel_path)
+		vim.api.nvim_buf_set_lines(bufnr, end_line + 1, end_line + 1, false, { snippet })
+	end
+
+	if outputmode == "viewer" or outputmode == "both" then
+		local viewer_cmd
+		if job.plot_opts.format == "png" then
+			viewer_cmd = job.plot_opts.viewer_cmd_png or (config.plotting or {}).viewer_cmd_png
+		else
+			viewer_cmd = job.plot_opts.viewer_cmd_pdf or (config.plotting or {}).viewer_cmd_pdf
+		end
+		if viewer_cmd and viewer_cmd ~= "" then
+			async.run_job({ viewer_cmd, image_path }, { on_exit = function() end })
+		end
+	end
+end
+
+local function default_on_error(job, err)
+	cleanup_temp(job)
+
+	local code = err and err.code
+	local msg = err and err.message or ""
+	local error_code
+	if code == 127 then
+		error_code = error_handler.E_BACKEND_UNAVAILABLE
+	elseif code == 124 or msg:lower():find("timeout") then
+		error_code = error_handler.E_TIMEOUT
+	else
+		error_code = error_handler.E_BACKEND_CRASH
+	end
+	error_handler.notify_error("TungstenPlot", error_code)
+end
 
 local function _execute_plot(job)
 	logger.debug(
@@ -56,6 +116,7 @@ local function _execute_plot(job)
 			else
 				if job.on_error then
 					local msg = stderr ~= "" and stderr or stdout
+					job.on_error({ code = code, message = msg })
 					job.on_error(msg)
 				end
 			end
@@ -73,9 +134,24 @@ _process_queue = function()
 	end
 end
 
-function M.submit(plot_opts, on_success, on_error)
+function M.submit(plot_opts, user_on_success, user_on_error)
 	next_id = next_id + 1
-	local job = { id = next_id, plot_opts = plot_opts, on_success = on_success, on_error = on_error }
+	local job = { id = next_id, plot_opts = plot_opts }
+
+	job.on_success = function(img_path)
+		default_on_success(job, img_path)
+		if user_on_success then
+			user_on_success(img_path)
+		end
+	end
+
+	job.on_error = function(err)
+		default_on_error(job, err)
+		if user_on_error then
+			user_on_error(err)
+		end
+	end
+
 	table.insert(job_queue, job)
 	_process_queue()
 	return job.id
