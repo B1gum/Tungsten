@@ -1,6 +1,5 @@
 local config = require("tungsten.config")
 local logger = require("tungsten.util.logger")
-local async = require("tungsten.util.async")
 
 local M = {}
 
@@ -29,7 +28,7 @@ local function _process_queue()
 	while #job_queue > 0 and active_count() < max_jobs do
 		local job = table.remove(job_queue, 1)
 		job.start_time = vim.loop.now()
-		active_plot_jobs[job_id] =
+		active_plot_jobs[job] =
 			{ expression = job.plot_opts.expression, backend = job.plot_opts.backend, start_time = job.start_time }
 		vim.schedule(function()
 			_execute_plot(job)
