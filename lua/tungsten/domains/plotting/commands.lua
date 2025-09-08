@@ -1,6 +1,6 @@
 local workflow = require("tungsten.plot.workflow")
 local health = require("tungsten.domains.plotting.health")
-local job_manager = require("tungten.domains.plotting.job_manager")
+local job_manager = require("tungsten.domains.plotting.job_manager")
 local selection = require("tungsten.util.selection")
 local error_handler = require("tungsten.util.error_handler")
 
@@ -8,11 +8,11 @@ local M = {}
 
 function M.simple_plot_command()
 	local text = selection.get_visual_selection()
-	if not text or text:match("^%s*S") then
+	if not text or text:match("^%s*$") then
 		error_handler.notify_error("TungstenPlot", "Simple plot requires a visual selection.")
 		return
 	end
-	text = text:gsub("^%s+", ""):gsub("%s+S", "")
+	text = text:gsub("^%s+", ""):gsub("%s+$", "")
 	workflow.run_simple(text)
 end
 

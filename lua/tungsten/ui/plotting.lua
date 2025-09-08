@@ -3,7 +3,7 @@ local error_handler = require("tungsten.util.error_handler")
 local state = require("tungsten.state")
 local config = require("tungsten.config")
 local async = require("tungsten.util.async")
-local io_util = require("rungsten.util.io")
+local io_util = require("tungsten.util.io")
 
 local M = {}
 
