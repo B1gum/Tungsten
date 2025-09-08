@@ -102,7 +102,7 @@ local function _execute_plot(job)
 	info.backend = job.plot_opts.backend
 	active_plot_jobs[job.id] = info
 
-	async.run_job(job.plot_opts, {
+	local handle = async.run_job(job.plot_opts, {
 		on_exit = function(code, stdout, stderr)
 			if info.extmark_id then
 				pcall(vim.api.nvim_buf_del_extmark, info.bufnr, spinner_ns, info.extmark_id)
@@ -123,6 +123,9 @@ local function _execute_plot(job)
 			_process_queue()
 		end,
 	})
+	if handle then
+		info.handle = handle
+	end
 end
 
 _process_queue = function()
@@ -155,6 +158,27 @@ function M.submit(plot_opts, user_on_success, user_on_error)
 	table.insert(job_queue, job)
 	_process_queue()
 	return job.id
+end
+
+function M.cancel(job_id)
+	local info = active_plot_jobs[job_id]
+	if info and info.handle and info.handle.cancel then
+		info.handle.cancel()
+		return true
+	end
+	return false
+end
+
+function M.cancel_all()
+	for _, info in pairs(active_plot_jobs) do
+		if info.handle and info.handle.cancel then
+			info.handle.cancel()
+		end
+	end
+	for _, job in ipairs(job_queue) do
+		cleanup_temp(job)
+	end
+	job_queue = {}
 end
 
 M.active_jobs = active_plot_jobs

@@ -340,7 +340,7 @@ local function build_python_script(opts)
 	return table.concat(lines, "\n")
 end
 
-function M.plot_python_async(opts, callback)
+function M.plot_async(opts, callback)
 	opts = opts or {}
 	assert(type(callback) == "function", "plot async expects a callback")
 

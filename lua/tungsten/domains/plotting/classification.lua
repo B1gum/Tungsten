@@ -85,11 +85,16 @@ end
 
 local function analyze_sequence(ast, opts)
 	local nodes = ast.nodes or {}
+	if #nodes == 0 then
+		for _, n in ipairs(ast) do
+			table.insert(nodes, n)
+		end
+	end
 	local series = {}
 	local dim, form
 
 	local i = 1
-	while 1 <= #nodes do
+	while i <= #nodes do
 		local node = nodes[i]
 		local t = node.type
 		local treat_as_points = (t == "Point2" or t == "point_2d" or t == "Point3" or t == "point_3d")

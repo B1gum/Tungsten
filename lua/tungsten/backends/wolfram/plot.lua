@@ -253,7 +253,7 @@ local function build_export_code(opts, plot_code)
 	return export_str
 end
 
-function M.plot_wolfram_async(opts, callback)
+function M.plot_async(opts, callback)
 	opts = opts or {}
 	assert(type(callback) == "function", "plot async expects a callback")
 

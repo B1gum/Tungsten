@@ -6,6 +6,13 @@ function M.build(classification, user_overrides)
 
 	local defaults = (config.plotting or {})
 
+	local function get_default(val, fallback)
+		if val == nil then
+			return fallback
+		end
+		return val
+	end
+
 	local opts = {
 		dim = classification.dim,
 		form = classification.form,
@@ -13,13 +20,13 @@ function M.build(classification, user_overrides)
 		format = classification.dim == 2 and "pdf" or "png",
 		grids = true,
 		legend_auto = true,
-		usetex = defaults.usetex or true,
-		latex_engine = defaults.latex_engine or "pdflatex",
-		latex_preamble = defaults.latex_preamble or "",
-		outputmode = defaults.outputmode or "latex",
-		filename_mode = defaults.filename_mode or "hash",
-		viewer_cmd_pdf = defaults.viewer_cmd_pdf or (vim.fn.has("macunix") == 1 and "open" or "xdg-open"),
-		viewer_cmd_png = defaults.viewer_cmd_png or (vim.fn.has("macunix") == 1 and "open" or "xdg-open"),
+		usetex = get_default(defaults.usetex, true),
+		latex_engine = get_default(defaults.latex_engine, "pdflatex"),
+		latex_preamble = get_default(defaults.latex_preamble, ""),
+		outputmode = get_default(defaults.outputmode, "latex"),
+		filename_mode = get_default(defaults.filename_mode, "hash"),
+		viewer_cmd_pdf = get_default(defaults.viewer_cmd_pdf, (vim.fn.has("macunix") == 1 and "open" or "xdg-open")),
+		viewer_cmd_png = get_default(defaults.viewer_cmd_png, (vim.fn.has("macunix") == 1 and "open" or "xdg-open")),
 		crop = true,
 		timeout_ms = 30000,
 		series = {},
