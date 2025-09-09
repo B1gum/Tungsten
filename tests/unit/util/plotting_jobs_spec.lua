@@ -68,10 +68,10 @@ describe("Plotting Job Manager", function()
 		mock_health = {
 			check_dependencies = function()
 				return {
-					wolframscript = true,
-					python = true,
-					matplotlib = true,
-					sympy = true,
+					wolframscript = { ok = true },
+					python = { ok = true },
+					matplotlib = { ok = true },
+					sympy = { ok = true },
 				}
 			end,
 		}
@@ -203,10 +203,10 @@ describe("Plotting Job Manager", function()
 		check_deps_spy:clear()
 		check_deps_spy = check_deps_spy:call_fake(function()
 			return {
-				wolframscript = false,
-				python = true,
-				matplotlib = true,
-				sympy = true,
+				wolframscript = { ok = false, message = "required 13.0+, found none" },
+				python = { ok = true },
+				matplotlib = { ok = true },
+				sympy = { ok = true },
 			}
 		end)
 
@@ -214,6 +214,7 @@ describe("Plotting Job Manager", function()
 		assert.is_nil(id)
 		assert.spy(check_deps_spy).was.called(1)
 		assert.spy(notify_error_spy).was.called(1)
+		assert.spy(notify_error_spy).was.called_with("TungstenPlot", "Missing dependencies: wolframscript none < 13.0")
 		assert.are.equal(0, #mock_async.run_job_calls)
 
 		JobManager.submit({ expression = "another", bufnr = 0 })

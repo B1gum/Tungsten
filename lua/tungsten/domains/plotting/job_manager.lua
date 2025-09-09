@@ -163,18 +163,27 @@ function M.submit(plot_opts, user_on_success, user_on_error)
 	end
 	if deps_ok == nil then
 		local report = health.check_dependencies()
+		local function fmt_missing(name, info)
+			if info and info.message then
+				local required, found = info.message:match("required%s+([%d%.]+)%+, found%s+([%w%.]+)")
+				if required and found then
+					return string.format("%s %s < %s", name, found, required)
+				end
+			end
+			return name
+		end
 		local missing = {}
-		if not report.wolframscript then
-			table.insert(missing, "wolframscript")
+		if not report.wolframscript.ok then
+			table.insert(missing, fmt_missing("wolframscript", report.wolframscript))
 		end
-		if not report.python then
-			table.insert(missing, "python")
+		if not report.python.ok then
+			table.insert(missing, fmt_missing("python", report.python))
 		end
-		if not report.matplotlib then
-			table.insert(missing, "matplotlib")
+		if not report.matplotlib.ok then
+			table.insert(missing, fmt_missing("matplotlib", report.matplotlib))
 		end
-		if not report.sympy then
-			table.insert(missing, "sympy")
+		if not report.sympy.ok then
+			table.insert(missing, fmt_missing("sympy", report.sympy))
 		end
 		if #missing > 0 then
 			deps_ok = false
@@ -234,5 +243,10 @@ end
 
 M.active_jobs = active_plot_jobs
 M._process_queue = _process_queue
+
+function M.reset_deps_check()
+	deps_ok = nil
+	missing_message = nil
+end
 
 return M

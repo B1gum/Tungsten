@@ -66,6 +66,9 @@ function M.check_dependencies_command()
 	end
 
 	vim.notify(table.concat(lines, "\n"), vim.log.levels.INFO, { title = "Tungsten PlotCheck" })
+	if job_manager.reset_deps_check then
+		job_manager.reset_deps_check()
+	end
 end
 
 function M.cancel_command(opts)

@@ -18,6 +18,7 @@ describe("Tungsten Plotting Commands", function()
 	local run_advanced_spy
 	local cancel_spy
 	local cancel_all_spy
+	local reset_deps_spy
 	local check_deps_spy
 	local notify_error_spy
 	local get_selection_spy
@@ -45,6 +46,7 @@ describe("Tungsten Plotting Commands", function()
 		mock_job_manager = mock_utils.create_empty_mock_module("tungsten.domains.plotting.job_manager")
 		cancel_spy = spy.on(mock_job_manager, "cancel")
 		cancel_all_spy = spy.on(mock_job_manager, "cancel_all")
+		reset_deps_spy = spy.on(mock_job_manager, "reset_deps_check")
 
 		mock_health_checker = mock_utils.create_empty_mock_module("tungsten.domains.plotting.health")
 		check_deps_spy = spy.on(mock_health_checker, "check_dependencies")
@@ -78,6 +80,7 @@ describe("Tungsten Plotting Commands", function()
 		run_advanced_spy:clear()
 		cancel_spy:clear()
 		cancel_all_spy:clear()
+		reset_deps_spy:clear()
 		check_deps_spy:clear()
 		notify_error_spy:clear()
 		get_selection_spy:clear()
@@ -161,6 +164,7 @@ describe("Tungsten Plotting Commands", function()
 			check_deps_spy = spy.on(mock_health_checker, "check_dependencies")
 			plot_commands.check_dependencies_command()
 			assert.spy(check_deps_spy).was.called(1)
+			assert.spy(reset_deps_spy).was.called(1)
 			assert.spy(notify_spy).was.called(1)
 			local msg = notify_spy.calls[1].vals[1]
 			assert.truthy(msg:match("1%. Wolfram"))
