@@ -221,9 +221,9 @@ describe("Plotting UI and UX", function()
 
 		it("should raise E_VIEWER_FAILED if the viewer command fails", function()
 			mock_config.plotting.outputmode = "viewer"
-			mock_async.run_job = (function(_cmd, opts)
+			mock_async.run_job = function(_cmd, opts)
 				opts.on_exit(127, "", "command not found")
-			end)
+			end
 
 			plotting_ui.handle_output("/tmp/plot.pdf")
 
@@ -243,14 +243,14 @@ describe("Plotting UI and UX", function()
 				nvim_open_win = vim.api.nvim_open_win,
 				nvim_create_autocmd = vim.api.nvim_create_autocmd,
 			}
-                        vim.api.nvim_create_buf = stub.new(vim.api, "nvim_create_buf", function()
-                                return mock_bufnr
-                        end)
-                        vim.api.nvim_buf_set_lines = stub.new(vim.api, "nvim_buf_set_lines")
-                        vim.api.nvim_open_win = stub.new(vim.api, "nvim_open_win", function()
-                                return mock_winid
-                        end)
-                        vim.api.nvim_create_autocmd = stub.new(vim.api, "nvim_create_autocmd")
+			vim.api.nvim_create_buf = stub.new(vim.api, "nvim_create_buf", function()
+				return mock_bufnr
+			end)
+			vim.api.nvim_buf_set_lines = stub.new(vim.api, "nvim_buf_set_lines")
+			vim.api.nvim_open_win = stub.new(vim.api, "nvim_open_win", function()
+				return mock_winid
+			end)
+			vim.api.nvim_create_autocmd = stub.new(vim.api, "nvim_create_autocmd")
 		end)
 
 		after_each(function()

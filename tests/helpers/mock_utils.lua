@@ -38,7 +38,7 @@ function M.create_empty_mock_module(module_name, function_names)
 	local mock = {}
 	if function_names then
 		for _, fn_name in ipairs(function_names) do
-      mock[fn_name] = stub.new(mock, fn_name)
+			mock[fn_name] = stub.new(mock, fn_name)
 		end
 	end
 	package.loaded[module_name] = mock

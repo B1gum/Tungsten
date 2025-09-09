@@ -1,6 +1,6 @@
 local lfs = require("lfs")
-local mock_utils = require("tests.helpers.mock_utils")
 local spy = require("luassert.spy")
+local match = require("luassert.match")
 
 describe("DomainManager", function()
 	local dm
@@ -57,11 +57,12 @@ describe("DomainManager", function()
       }]])
 			f:close()
 
-			registry_mock = mock_utils.create_empty_mock_module("tungsten.core.registry", {
-				"register_domain_metadata",
-				"register_grammar_contribution",
-				"register_command",
-			})
+			registry_mock = {
+				register_domain_metadata = spy.new(function() end),
+				register_grammar_contribution = spy.new(function() end),
+				register_command = spy.new(function() end),
+			}
+			package.loaded["tungsten.core.registry"] = registry_mock
 			logger_mock = { notify = spy.new(function() end), levels = { ERROR = 1 } }
 			package.loaded["tungsten.util.logger"] = logger_mock
 			local cfg = require("tungsten.config")
@@ -105,10 +106,11 @@ describe("DomainManager", function()
 			orig_domains = config.domains
 			config.domains = { "plugdom", "userdom" }
 
-			registry_mock = mock_utils.create_empty_mock_module("tungsten.core.registry", {
-				"register_domain_metadata",
-				"register_grammar_contribution",
-			})
+			registry_mock = {
+				register_domain_metadata = spy.new(function() end),
+				register_grammar_contribution = spy.new(function() end),
+			}
+			package.loaded["tungsten.core.registry"] = registry_mock
 			logger_mock = { notify = spy.new(function() end), levels = { ERROR = 1 } }
 			package.loaded["tungsten.util.logger"] = logger_mock
 
