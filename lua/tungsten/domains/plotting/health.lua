@@ -101,7 +101,7 @@ function M.check_dependencies()
 		local job_id = vim.fn.jobstart({
 			python_cmd,
 			"-c",
-			[[import json,sys; import numpy, sympy, matplotlib; print(json.dumps({'python':sys.version,'numpy':numpy.__version__,'sympy':sympy.__version__,'matplotlib':matplotlib.__version__}))]],
+			[[import os; os.environ["MPLBACKEND"]="Agg"; import json,sys; import numpy, sympy; import matplotlib; matplotlib.use('Agg'); print(json.dumps({'python':sys.version,'numpy':numpy.__version__,'sympy':sympy.__version__,'matplotlib':matplotlib.__version__}))]],
 		}, {
 			stdout_buffered = true,
 			on_stdout = function(_, data)
