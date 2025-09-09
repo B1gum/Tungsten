@@ -17,9 +17,8 @@ describe("Tungsten Plotting Commands", function()
 
 	local run_simple_spy
 	local run_advanced_spy
-	local cancel_latest_spy
+	local cancel_spy
 	local cancel_all_spy
-	local show_queue_spy
 	local check_deps_spy
 	local notify_error_spy
 	local get_selection_spy
@@ -28,9 +27,9 @@ describe("Tungsten Plotting Commands", function()
 
 	local modules_to_reset = {
 		"tungsten.domains.plotting.commands",
-		"tungsten.plot.workflow",
-		"tungsten.plot.job_manager",
-		"tungsten.plot.health",
+		"tungsten.domains.plotting.workflow",
+		"tungsten.domains.plotting.job_manager",
+		"tungsten.domains.plotting.health",
 		"tungsten.util.selection",
 		"tungsten.util.error_handler",
 	}
@@ -43,13 +42,20 @@ describe("Tungsten Plotting Commands", function()
 		run_simple_spy = spy.on(mock_plot_workflow, "run_simple")
 		run_advanced_spy = spy.on(mock_plot_workflow, "run_advanced")
 
-		mock_job_manager = mock_utils.create_empty_mock_module("tungsten.plot.job_manager")
-		cancel_latest_spy = spy.on(mock_job_manager, "cancel_latest")
+		mock_job_manager = mock_utils.create_empty_mock_module("tungsten.domains.plotting.job_manager")
+		cancel_spy = spy.on(mock_job_manager, "cancel")
 		cancel_all_spy = spy.on(mock_job_manager, "cancel_all")
-		show_queue_spy = spy.on(mock_job_manager, "show_queue")
 
-		mock_health_checker = mock_utils.create_empty_mock_module("tungsten.plot.health")
+		mock_health_checker = mock_utils.create_empty_mock_module("tungsten.domains.plotting.health")
 		check_deps_spy = spy.on(mock_health_checker, "check_dependencies")
+		check_deps_spy = check_deps_spy:call_fake(function()
+			return {
+				wolframscript = true,
+				python = true,
+				matplotlib = true,
+				sympy = true,
+			}
+		end)
 
 		mock_error_handler = mock_utils.create_empty_mock_module("tungsten.util.error_handler")
 		notify_error_spy = spy.on(mock_error_handler, "notify_error")
@@ -57,7 +63,7 @@ describe("Tungsten Plotting Commands", function()
 		current_selection = "sin(x)"
 		mock_selection = mock_utils.create_empty_mock_module("tungsten.util.selection")
 		get_selection_spy = spy.on(mock_selection, "get_visual_selection")
-		get_selection_spy:call_fake(function()
+		get_selection_spy = get_selection_spy:call_fake(function()
 			return current_selection
 		end)
 
@@ -66,7 +72,13 @@ describe("Tungsten Plotting Commands", function()
 
 	after_each(function()
 		vim_test_env.cleanup()
-		spy.reset()
+		run_simple_spy:clear()
+		run_advanced_spy:clear()
+		cancel_spy:clear()
+		cancel_all_spy:clear()
+		check_deps_spy:clear()
+		notify_error_spy:clear()
+		get_selection_spy:clear()
 	end)
 
 	describe(":TungstenPlot (Simple)", function()
@@ -87,18 +99,14 @@ describe("Tungsten Plotting Commands", function()
 			assert.spy(get_selection_spy).was.called(1)
 			assert.spy(run_simple_spy).was_not.called()
 			assert.spy(notify_error_spy).was.called(1)
-			assert
-				.spy(notify_error_spy).was
-				.called_with("TungstenPlot", "Simple plot requires a visual selection.", match.is_nil())
+			assert.spy(notify_error_spy).was.called_with("TungstenPlot", "Simple plot requires a visual selection.")
 		end)
 
 		it("should gracefully handle a nil selection", function()
 			current_selection = nil
 			plot_commands.simple_plot_command()
 			assert.spy(notify_error_spy).was.called(1)
-			assert
-				.spy(notify_error_spy).was
-				.called_with("TungstenPlot", "Simple plot requires a visual selection.", match.is_nil())
+			assert.spy(notify_error_spy).was.called_with("TungstenPlot", "Simple plot requires a visual selection.")
 		end)
 
 		it("should trim whitespace from the selection before processing", function()
@@ -121,21 +129,17 @@ describe("Tungsten Plotting Commands", function()
 
 	describe("Plot Job Management Commands", function()
 		it("should allow canceling the latest running plot job with :TungstenPlotCancel", function()
-			assert.is_function(plot_commands.cancel_latest_plot_command)
-			plot_commands.cancel_latest_plot_command()
-			assert.spy(cancel_latest_spy).was.called(1)
+			assert.is_function(plot_commands.cancel_command)
+			mock_job_manager.active_jobs = { [1] = true, [3] = true }
+			plot_commands.cancel_command()
+			assert.spy(cancel_spy).was.called(1)
+			assert.spy(cancel_spy).was.called_with(3)
 		end)
 
 		it("should cancel all queued and running plot jobs when :TungstenPlotCancelAll is invoked", function()
-			assert.is_function(plot_commands.cancel_all_plots_command)
-			plot_commands.cancel_all_plots_command()
+			assert.is_function(plot_commands.cancel_all_command)
+			plot_commands.cancel_all_command()
 			assert.spy(cancel_all_spy).was.called(1)
-		end)
-
-		it("should list queued and running plot jobs with :TungstenPlotQueue", function()
-			assert.is_function(plot_commands.show_plot_queue_command)
-			plot_commands.show_plot_queue_command()
-			assert.spy(show_queue_spy).was.called(1)
 		end)
 	end)
 
