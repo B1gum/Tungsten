@@ -91,6 +91,37 @@ local function analyze_point2(point, opts)
 	}
 end
 
+local function analyze_point3(point, opts)
+	opts = opts or {}
+	if opts.mode == "advanced" and opts.form == "parametric" then
+		local x_params = helpers.extract_param_names(point.x)
+		local y_params = helpers.extract_param_names(point.y)
+		local z_params = helpers.extract_param_names(point.z)
+		if
+			not (
+				#x_params == 1
+				and x_params[1] == y_params[1]
+				and x_params[1] == z_params[1]
+				and #y_params == 1
+				and #z_params == 1
+			)
+		then
+			return nil, { code = "E_MIXED_COORD_SYS" }
+		end
+		local params = union_vars(find_free_variables(point.x), find_free_variables(point.y), find_free_variables(point.z))
+		return {
+			dim = 3,
+			form = "parametric",
+			series = { { kind = "function", ast = point, independent_vars = params, dependent_vars = { "x", "y", "z" } } },
+		}
+	end
+	return {
+		dim = 3,
+		form = "explicit",
+		series = { { kind = "points", points = { point } } },
+	}
+end
+
 local function analyze_sequence(ast, opts)
 	local nodes = ast.nodes or {}
 	if #nodes == 0 then
@@ -314,6 +345,8 @@ function M.analyze(ast, opts)
 		return analyze_inequality(ast)
 	elseif t == "Point2" or t == "point_2d" then
 		return analyze_point2(ast, opts)
+	elseif t == "Point3" or t == "point_3d" then
+		return analyze_point3(ast, opts)
 	else
 		return analyze_expression(ast, opts)
 	end

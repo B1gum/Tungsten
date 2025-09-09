@@ -97,4 +97,32 @@ describe("Sequence plot classification", function()
 		assert.are.equal("function", res.series[1].kind)
 		assert.are.equal("points", res.series[2].kind)
 	end)
+
+	it("classifies a single Point3 node", function()
+		local p = { type = "Point3", x = 1, y = 2, z = 3 }
+
+		local res = classification.analyze(p)
+		assert.are.same(1, #res.series)
+		assert.are.same("points", res.series[1].kind)
+		assert.are.same(p, res.series[1].points[1])
+		assert.are.same(3, res.dim)
+		assert.are.same("explicit", res.form)
+	end)
+
+	it("groups consecutive Point3 nodes into a single points series", function()
+		local seq = {
+			type = "Sequence",
+			nodes = {
+				{ type = "Point3", x = 1, y = 2, z = 3 },
+				{ type = "Point3", x = 4, y = 5, z = 6 },
+			},
+		}
+
+		local res = classification.analyze(seq)
+		assert.are.same(1, #res.series)
+		assert.are.same("points", res.series[1].kind)
+		assert.are.equal(2, #res.series[1].points)
+		assert.are.same(3, res.dim)
+		assert.are.same("explicit", res.form)
+	end)
 end)
