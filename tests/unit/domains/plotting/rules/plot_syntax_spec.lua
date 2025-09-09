@@ -12,16 +12,16 @@ describe("Plotting Grammar Rules", function()
 		return P({
 			"EntryPoint",
 			EntryPoint = rule * -P(1),
-			Expression = V("Equality")
-				+ V("Inequality")
-				+ V("Point")
-				+ V("FunctionCall")
-				+ mock_tokenizer.variable
-				+ mock_tokenizer.number,
-			Equality = V("Expression") * S(" \t") ^ 0 * P("=") * S(" \t") ^ 0 * V("Expression") / function(l, r)
+			-- "Primary" represents the basic expressions that can appear
+			-- without introducing recursion. Equality and Inequality
+			-- are defined in terms of these primitives to avoid
+			-- left-recursion warnings from lpeg.
+			Primary = V("Point") + V("FunctionCall") + mock_tokenizer.variable + mock_tokenizer.number,
+			Expression = V("Equality") + V("Inequality") + V("Primary"),
+			Equality = V("Primary") * S(" \t") ^ 0 * P("=") * S(" \t") ^ 0 * V("Expression") / function(l, r)
 				return mock_ast.create_equality_node(l, r)
 			end,
-			Inequality = V("Expression")
+			Inequality = V("Primary")
 				* S(" \t") ^ 0
 				* C(P("<=") + P("\\le") + P(">=") + P("\\ge") + S("<>"))
 				* S(" \t") ^ 0
@@ -29,7 +29,13 @@ describe("Plotting Grammar Rules", function()
 				/ function(l, op, r)
 					return mock_ast.create_inequality_node(l, op, r)
 				end,
-			FunctionCall = mock_tokenizer.variable * P("(") * (V("Expression") * (P(",") * V("Expression")) ^ 0) * P(")"),
+			FunctionCall = mock_tokenizer.variable
+				* P("(")
+				* Ct((V("Expression") * (P(",") * V("Expression")) ^ 0) ^ -1)
+				* P(")")
+				/ function(name_node, args)
+					return { type = "function_call", name_node = name_node, args = args }
+				end,
 			Point = P("(") * S(" \t") ^ 0 * Ct(
 				V("Expression") * (S(" \t") ^ 0 * P(",") * S(" \t") ^ 0 * V("Expression")) ^ 0
 			) * S(" \t") ^ 0 * P(")") / function(elements)
