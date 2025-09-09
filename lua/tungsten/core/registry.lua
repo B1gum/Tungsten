@@ -21,7 +21,7 @@ end
 
 function M.register_domain_metadata(name, metadata)
 	if M.domains_metadata[name] then
-		logger.warn("Tungsten Registry", ("Registry: Domain metadata for '%s' is being re-registered."):format(name))
+		logger.info("Tungsten Registry", ("Registry: Domain metadata for '%s' is being re-registered."):format(name))
 	end
 	M.domains_metadata[name] = metadata
 	logger.debug(
