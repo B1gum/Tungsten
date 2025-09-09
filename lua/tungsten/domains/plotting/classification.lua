@@ -106,7 +106,7 @@ local function analyze_sequence(ast, opts)
 				local nxt = nodes[i]
 				local nt = nxt.type
 				local is_same = (pdim == 2 and (nt == "Point2" or nt == "point_2d"))
-					or (pdim == 3 and (nt == "Point3" or nt == "point3d"))
+					or (pdim == 3 and (nt == "Point3" or nt == "point_3d"))
 				if not is_same then
 					break
 				end
