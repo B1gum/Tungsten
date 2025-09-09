@@ -36,8 +36,8 @@ local function setup_test_environment()
 	mock_config = {
 		plotting = {
 			snippet_width = "0.8\\linewidth",
-			viewer_cmd_pdf = vim.fn.has("macunix") == 1 and "open" or "xdg-open",
-			viewer_cmd_png = vim.fn.has("macunix") == 1 and "open" or "xdg-open",
+			viewer_cmd_pdf = "open",
+			viewer_cmd_png = "open",
 		},
 	}
 	mock_async = mock_utils.create_empty_mock_module("tungsten.util.async", { "run_job" })
@@ -203,17 +203,8 @@ describe("Plotting UI and UX", function()
 			assert.are.same(plot_path, cmd[2])
 		end)
 
-		it("should use 'xdg-open' on Linux and 'open' on macOS", function()
+		it("should use open", function()
 			local plot_path = "test.png"
-			vim.fn.has = stub.new(vim.fn, "has", function(feature)
-				return feature ~= "macunix"
-			end)
-			plotting_ui.handle_output(plot_path)
-			assert.are.same("xdg-open", mock_async.run_job.calls[1].vals[1][1])
-
-			vim.fn.has = stub.new(vim.fn, "has", function(feature)
-				return feature == "macunix"
-			end)
 			setup_test_environment()
 			plotting_ui.handle_output(plot_path)
 			assert.are.same("open", mock_async.run_job.calls[1].vals[1][1])

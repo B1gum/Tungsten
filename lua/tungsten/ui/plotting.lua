@@ -105,7 +105,7 @@ function M.handle_output(plot_path)
 		cmd = cfg.viewer_cmd_png
 	end
 	if not cmd or cmd == "" then
-		cmd = vim.fn.has("macunix") == 1 and "open" or "xdg-open"
+		cmd = "open"
 	end
 	async.run_job({ cmd, plot_path }, {
 		on_exit = function(code, _out, err)
