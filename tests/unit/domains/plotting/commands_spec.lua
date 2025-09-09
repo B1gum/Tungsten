@@ -2,7 +2,6 @@
 -- Unit tests for the user-facing plotting commands.
 
 local spy = require("luassert.spy")
-local match = require("luassert.match")
 local mock_utils = require("tests.helpers.mock_utils")
 local vim_test_env = require("tests.helpers.vim_test_env")
 
@@ -22,6 +21,7 @@ describe("Tungsten Plotting Commands", function()
 	local check_deps_spy
 	local notify_error_spy
 	local get_selection_spy
+	local notify_spy
 
 	local current_selection
 
@@ -69,6 +69,7 @@ describe("Tungsten Plotting Commands", function()
 		end)
 
 		plot_commands = require("tungsten.domains.plotting.commands")
+		notify_spy = spy.on(vim, "notify")
 	end)
 
 	after_each(function()
@@ -80,6 +81,7 @@ describe("Tungsten Plotting Commands", function()
 		check_deps_spy:clear()
 		notify_error_spy:clear()
 		get_selection_spy:clear()
+		notify_spy:clear()
 	end)
 
 	describe(":TungstenPlot (Simple)", function()
@@ -145,10 +147,25 @@ describe("Tungsten Plotting Commands", function()
 	end)
 
 	describe(":TungstenPlotCheck", function()
-		it("should perform a dependency check and report status", function()
+		it("should perform a dependency check and report structured status with hints", function()
 			assert.is_function(plot_commands.check_dependencies_command)
+			mock_health_checker.check_dependencies = function()
+				return {
+					wolframscript = { ok = false, message = "required 13.0+, found none" },
+					python = { ok = true, version = "3.10.0" },
+					numpy = { ok = true, version = "1.23.0" },
+					sympy = { ok = true, version = "1.12" },
+					matplotlib = { ok = false, message = "required 3.6+, found none" },
+				}
+			end
+			check_deps_spy = spy.on(mock_health_checker, "check_dependencies")
 			plot_commands.check_dependencies_command()
 			assert.spy(check_deps_spy).was.called(1)
+			assert.spy(notify_spy).was.called(1)
+			local msg = notify_spy.calls[1].vals[1]
+			assert.truthy(msg:match("1%. Wolfram"))
+			assert.truthy(msg:match("2%. Python"))
+			assert.truthy(msg:match("install matplotlib ≥3.6 via pip"))
 		end)
 	end)
 end)
