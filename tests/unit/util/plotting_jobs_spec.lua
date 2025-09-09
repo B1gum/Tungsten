@@ -10,6 +10,7 @@ describe("Plotting Job Manager", function()
 	local mock_health
 	local check_deps_spy
 	local notify_error_spy
+	local original_executable
 
 	local modules_to_clear = {
 		"tungsten.domains.plotting.job_manager",
@@ -23,6 +24,14 @@ describe("Plotting Job Manager", function()
 
 	before_each(function()
 		mock_utils.reset_modules(modules_to_clear)
+
+		original_executable = vim.fn.executable
+		vim.fn.executable = function(bin)
+			if bin == "wolframscript" then
+				return 1
+			end
+			return original_executable(bin)
+		end
 
 		mock_async = {}
 		mock_async.run_job_calls = {}
@@ -43,7 +52,10 @@ describe("Plotting Job Manager", function()
 
 		mock_config = { max_jobs = 3 }
 		package.loaded["tungsten.config"] = mock_config
-		mock_err_handler = { notify_error = function() end }
+		mock_err_handler = {
+			notify_error = function() end,
+			E_BACKEND_UNAVAILABLE = "E_BACKEND_UNAVAILABLE",
+		}
 		notify_error_spy = spy.on(mock_err_handler, "notify_error")
 		package.loaded["tungsten.util.error_handler"] = mock_err_handler
 		package.loaded["tungsten.util.logger"] = { debug = function() end }
@@ -76,6 +88,7 @@ describe("Plotting Job Manager", function()
 		notify_error_spy:clear()
 		local ns = vim.api.nvim_create_namespace("tungsten_plot_spinner")
 		vim.api.nvim_buf_clear_namespace(0, ns, 0, -1)
+		vim.fn.executable = original_executable
 		mock_utils.reset_modules(modules_to_clear)
 	end)
 
@@ -205,5 +218,19 @@ describe("Plotting Job Manager", function()
 
 		JobManager.submit({ expression = "another", bufnr = 0 })
 		assert.spy(check_deps_spy).was.called(1)
+	end)
+
+	it("raises backend unavailable when wolframscript missing", function()
+		vim.fn.executable = function()
+			return 0
+		end
+		check_deps_spy:clear()
+		local id = JobManager.submit({ expression = "nope", bufnr = 0 })
+		assert.is_nil(id)
+		assert.spy(check_deps_spy).was_not_called()
+		assert.spy(notify_error_spy).was.called(1)
+		assert
+			.spy(notify_error_spy).was
+			.called_with("TungstenPlot", mock_err_handler.E_BACKEND_UNAVAILABLE .. ": Install Wolfram or configure Python backend")
 	end)
 end)

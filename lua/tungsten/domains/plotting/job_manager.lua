@@ -150,6 +150,17 @@ _process_queue = function()
 end
 
 function M.submit(plot_opts, user_on_success, user_on_error)
+	local backend = (plot_opts and plot_opts.backend) or (config.plotting or {}).backend or "wolfram"
+	if backend == "wolfram" then
+		local wolfram_path = ((config.backend_opts or {}).wolfram or {}).wolfram_path or "wolframscript"
+		if vim.fn.executable(wolfram_path) ~= 1 then
+			error_handler.notify_error(
+				"TungstenPlot",
+				error_handler.E_BACKEND_UNAVAILABLE .. ": Install Wolfram or configure Python backend"
+			)
+			return nil
+		end
+	end
 	if deps_ok == nil then
 		local report = health.check_dependencies()
 		local missing = {}

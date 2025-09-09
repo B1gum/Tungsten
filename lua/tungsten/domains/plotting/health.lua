@@ -57,8 +57,6 @@ function M.check_dependencies()
 	local python_cmd
 	if vim.fn.executable("python3") == 1 then
 		python_cmd = "python3"
-	elseif vim.fn.executable("python") == 1 then
-		python_cmd = "python"
 	end
 
 	report.python = evaluate_version(nil, "3.10")
