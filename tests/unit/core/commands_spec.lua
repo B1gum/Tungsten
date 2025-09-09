@@ -50,7 +50,7 @@ describe("Tungsten core commands", function()
 		_G.vim.fn.mode = function()
 			return "v"
 		end
-		mock_selection_module = {
+		local mock_selection_module = {
 			create_selection_extmarks = function()
 				return 0, 1, 2, "v"
 			end,

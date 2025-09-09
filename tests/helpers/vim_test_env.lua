@@ -18,7 +18,6 @@ function M.mock_jobstart()
 
 	vim.fn.jobstart = spy.new(function(cmd, opts)
 		local cmd_list = type(cmd) == "string" and vim.split(cmd, " ") or cmd
-		local cmd_str = table.concat(cmd_list, " ")
 
 		for _, entry in ipairs(jobstart_handlers) do
 			if entry.matcher_fn(cmd_list, opts) then
@@ -52,12 +51,12 @@ function M.set_wolfram_response(query_substring, response_lines, exit_code, stde
 	response_lines = response_lines or {}
 	stderr_lines = stderr_lines or {}
 
-	local matcher = function(cmd_list, opts)
+	local matcher = function(cmd_list)
 		local cmd_str = table.concat(cmd_list, " ")
 		return cmd_str:match("curl") and cmd_str:match("api.wolframalpha.com") and cmd_str:match(vim.pesc(query_substring))
 	end
 
-	local handler = function(cmd_list, opts, original_fn)
+	local handler = function(opts)
 		vim.schedule(function()
 			if opts and opts.on_stdout and #response_lines > 0 then
 				opts.on_stdout(0, { table.concat(response_lines, "\n") }, "stdout")

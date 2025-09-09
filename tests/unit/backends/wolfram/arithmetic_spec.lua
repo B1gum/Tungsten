@@ -84,7 +84,6 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
 	end)
 
 	describe("binary handler (bin_with_parens)", function()
-		local prec = wolfram_handlers.precedence
 		local function recur_render_for_binary(node)
 			if node.type == "number" then
 				return tostring(node.value)

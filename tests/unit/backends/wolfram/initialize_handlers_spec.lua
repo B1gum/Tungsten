@@ -571,9 +571,6 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
 				return priority
 			end)
 
-			local common_node_type = "common_node"
-			local test_ast = { type = common_node_type, data = "some_data" }
-
 			local handler_spy_custom_one = spy.new(function()
 				return "custom_one_output"
 			end)
