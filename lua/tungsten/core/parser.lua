@@ -70,12 +70,18 @@ local function top_level_split(str, seps)
 				end
 				i = i + 1
 			else
-				local j = i + 1
-				while j <= len and str:sub(j, j):match("%a") do
-					j = j + 1
+				local next_char = str:sub(i + 1, i + 1)
+				if next_char ~= "" and not next_char:match("%a") then
+					table.insert(current, str:sub(i, i + 1))
+					i = i + 2
+				else
+					local j = i + 1
+					while j <= len and str:sub(j, j):match("%a") do
+						j = j + 1
+					end
+					table.insert(current, str:sub(i, j - 1))
+					i = j
 				end
-				table.insert(current, str:sub(i, j - 1))
-				i = j
 			end
 		else
 			if c == "(" then

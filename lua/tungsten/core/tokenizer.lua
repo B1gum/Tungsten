@@ -5,7 +5,8 @@ local lpeg = require("lpeglabel")
 local P, R, S, C = lpeg.P, lpeg.R, lpeg.S, lpeg.C
 
 local ast = require("tungsten.core.ast")
-local space = S(" \t\n\r") ^ 0
+local latex_spacing = P("\\,")
+local space = (S(" \t\n\r") + latex_spacing) ^ 0
 
 local digit = R("09")
 local letter = R("az", "AZ")
@@ -13,7 +14,7 @@ local letter = R("az", "AZ")
 local number = C(digit ^ 1 * (P(".") * digit ^ 1) ^ -1) / function(n)
 	return ast.create_number_node(tonumber(n))
 end
-local variable = C(letter * (letter + digit) ^ 0) * -P("\\") / function(v)
+local variable = C(letter * (letter + digit) ^ 0) / function(v)
 	return ast.create_variable_node(v)
 end
 
