@@ -102,12 +102,12 @@ describe("tungsten.setup", function()
 
 	it("activates configured backend with options", function()
 		local tungsten = require("tungsten")
-    local spy = require("luassert.spy")
+		local spy = require("luassert.spy")
 
 		local mock_manager = { activate = spy.new(function() end) }
-    package.loaded["tungsten.backends.manager"] = mock_manager
+		package.loaded["tungsten.backends.manager"] = mock_manager
 
-    tungsten.setup({
+		tungsten.setup({
 			backend = "demo",
 			backend_opts = { demo = { foo = 1 } },
 		})

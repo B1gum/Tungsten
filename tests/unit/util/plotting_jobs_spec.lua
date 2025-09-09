@@ -2,159 +2,164 @@ local mock_utils = require("tests.helpers.mock_utils")
 local wait_for = require("tests.helpers.wait").wait_for
 
 describe("Plotting Job Manager", function()
-        local JobManager
-        local mock_async
-        local mock_config
-        local mock_err_handler
+	local JobManager
+	local mock_async
+	local mock_config
+	local mock_err_handler
 
-        local modules_to_clear = {
-                "tungsten.domains.plotting.job_manager",
-                "tungsten.util.async",
-                "tungsten.config",
-                "tungsten.util.error_handler",
-                "tungsten.util.logger",
-                "tungsten.util.plotting_io",
-        }
+	local modules_to_clear = {
+		"tungsten.domains.plotting.job_manager",
+		"tungsten.util.async",
+		"tungsten.config",
+		"tungsten.util.error_handler",
+		"tungsten.util.logger",
+		"tungsten.util.plotting_io",
+	}
 
-        before_each(function()
-                mock_utils.reset_modules(modules_to_clear)
+	before_each(function()
+		mock_utils.reset_modules(modules_to_clear)
 
-                mock_async = {}
-                mock_async.run_job_calls = {}
-                function mock_async.run_job(cmd, opts)
-                        table.insert(mock_async.run_job_calls, { cmd, opts })
-                        if mock_async._callback then
-                                return mock_async._callback(cmd, opts)
-                        end
-                        return mock_async._return
-                end
-                function mock_async.set_callback(fn)
-                        mock_async._callback = fn
-                end
-                function mock_async.set_returns(val)
-                        mock_async._return = val
-                end
-                package.loaded["tungsten.util.async"] = mock_async
+		mock_async = {}
+		mock_async.run_job_calls = {}
+		function mock_async.run_job(cmd, opts)
+			table.insert(mock_async.run_job_calls, { cmd, opts })
+			if mock_async._callback then
+				return mock_async._callback(cmd, opts)
+			end
+			return mock_async._return
+		end
+		function mock_async.set_callback(fn)
+			mock_async._callback = fn
+		end
+		function mock_async.set_returns(val)
+			mock_async._return = val
+		end
+		package.loaded["tungsten.util.async"] = mock_async
 
-                mock_config = { max_jobs = 3 }
-                package.loaded["tungsten.config"] = mock_config
-                mock_err_handler = { notify_error = function() end }
-                package.loaded["tungsten.util.error_handler"] = mock_err_handler
-                package.loaded["tungsten.util.logger"] = { debug = function() end }
-                package.loaded["tungsten.util.plotting_io"] = { find_math_block_end = function()
-                        return 0
-                end }
+		mock_config = { max_jobs = 3 }
+		package.loaded["tungsten.config"] = mock_config
+		mock_err_handler = { notify_error = function() end }
+		package.loaded["tungsten.util.error_handler"] = mock_err_handler
+		package.loaded["tungsten.util.logger"] = { debug = function() end }
+		package.loaded["tungsten.util.plotting_io"] = {
+			find_math_block_end = function()
+				return 0
+			end,
+		}
 
-                JobManager = require("tungsten.domains.plotting.job_manager")
-                local ns = vim.api.nvim_create_namespace("tungsten_plot_spinner")
-                vim.api.nvim_buf_clear_namespace(0, ns, 0, -1)
-        end)
+		JobManager = require("tungsten.domains.plotting.job_manager")
+		local ns = vim.api.nvim_create_namespace("tungsten_plot_spinner")
+		vim.api.nvim_buf_clear_namespace(0, ns, 0, -1)
+	end)
 
-        after_each(function()
-                mock_utils.reset_modules(modules_to_clear)
-        end)
+	after_each(function()
+		mock_utils.reset_modules(modules_to_clear)
+	end)
 
-        it("runs plot jobs asynchronously and invokes callbacks", function()
-                local success_called, success_arg = false, nil
-                local error_called = false
+	it("runs plot jobs asynchronously and invokes callbacks", function()
+		local success_called, success_arg = false, nil
+		local error_called = false
 
-                local function on_success(arg)
-                        success_called = true
-                        success_arg = arg
-                end
+		local function on_success(arg)
+			success_called = true
+			success_arg = arg
+		end
 
-                local function on_error()
-                        error_called = true
-                end
+		local function on_error()
+			error_called = true
+		end
 
-                JobManager.submit({ expression = "x^2" }, on_success, on_error)
+		JobManager.submit({ expression = "x^2" }, on_success, on_error)
 
-                assert.are.equal(1, #mock_async.run_job_calls)
-                local opts = mock_async.run_job_calls[1][2]
-                opts.on_exit(0, "plot.png", "")
+		assert.are.equal(1, #mock_async.run_job_calls)
+		local opts = mock_async.run_job_calls[1][2]
+		opts.on_exit(0, "plot.png", "")
 
-                assert.is_true(success_called)
-                assert.are.equal("plot.png", success_arg)
-                assert.is_false(error_called)
-        end)
+		assert.is_true(success_called)
+		assert.are.equal("plot.png", success_arg)
+		assert.is_false(error_called)
+	end)
 
-        it("queues jobs beyond the concurrency limit in FIFO order", function()
-                mock_config.max_jobs = 1
-                local order = {}
+	it("queues jobs beyond the concurrency limit in FIFO order", function()
+		mock_config.max_jobs = 1
+		local order = {}
 
-                mock_async.set_callback(function(cmd, opts)
-                        table.insert(order, cmd.expression)
-                        vim.defer_fn(function()
-                                opts.on_exit(0, "ok", "")
-                        end, 10)
-                end)
+		mock_async.set_callback(function(cmd, opts)
+			table.insert(order, cmd.expression)
+			vim.defer_fn(function()
+				opts.on_exit(0, "ok", "")
+			end, 10)
+		end)
 
-                JobManager.submit({ expression = "job1" })
-                JobManager.submit({ expression = "job2" })
-                JobManager.submit({ expression = "job3" })
+		JobManager.submit({ expression = "job1" })
+		JobManager.submit({ expression = "job2" })
+		JobManager.submit({ expression = "job3" })
 
-                assert.are.equal(1, #mock_async.run_job_calls)
-                assert.are.same({ "job1" }, order)
+		assert.are.equal(1, #mock_async.run_job_calls)
+		assert.are.same({ "job1" }, order)
 
-                wait_for(function()
-                        return #order == 3
-                end, 500)
+		wait_for(function()
+			return #order == 3
+		end, 500)
 
-                assert.are.equal(3, #mock_async.run_job_calls)
-                assert.are.same({ "job1", "job2", "job3" }, order)
-        end)
+		assert.are.equal(3, #mock_async.run_job_calls)
+		assert.are.same({ "job1", "job2", "job3" }, order)
+	end)
 
-        it("shows and clears a progress indicator", function()
-                local ns = vim.api.nvim_create_namespace("tungsten_plot_spinner")
+	it("shows and clears a progress indicator", function()
+		local ns = vim.api.nvim_create_namespace("tungsten_plot_spinner")
 
-                mock_async.set_callback(function(_, opts)
-                        vim.defer_fn(function()
-                                opts.on_exit(0, "done", "")
-                        end, 10)
-                end)
+		mock_async.set_callback(function(_, opts)
+			vim.defer_fn(function()
+				opts.on_exit(0, "done", "")
+			end, 10)
+		end)
 
-                JobManager.submit({ expression = "sin(x)" })
+		JobManager.submit({ expression = "sin(x)" })
 
-                local marks = vim.api.nvim_buf_get_extmarks(0, ns, 0, -1, {})
-                assert.are.equal(1, #marks)
+		local marks = vim.api.nvim_buf_get_extmarks(0, ns, 0, -1, {})
+		assert.are.equal(1, #marks)
 
-                wait_for(function()
-                        return #vim.api.nvim_buf_get_extmarks(0, ns, 0, -1, {}) == 0
-                end, 500)
-        end)
+		wait_for(function()
+			return #vim.api.nvim_buf_get_extmarks(0, ns, 0, -1, {}) == 0
+		end, 500)
+	end)
 
-        it("cancels a running job", function()
-                local handle_cancelled = false
-                local handle = { cancel = function()
-                        handle_cancelled = true
-                end }
-                mock_async.set_returns(handle)
+	it("cancels a running job", function()
+		local handle_cancelled = false
+		local handle = {
+			cancel = function()
+				handle_cancelled = true
+			end,
+		}
+		mock_async.set_returns(handle)
 
-                local id = JobManager.submit({ expression = "x^3" })
-                local ok = JobManager.cancel(id)
+		local id = JobManager.submit({ expression = "x^3" })
+		local ok = JobManager.cancel(id)
 
-                assert.is_true(ok)
-                assert.is_true(handle_cancelled)
-        end)
+		assert.is_true(ok)
+		assert.is_true(handle_cancelled)
+	end)
 
-        it("cancels all jobs and cleans up queued temp files", function()
-                mock_config.max_jobs = 1
-                local handle_cancelled = false
-                local handle = { cancel = function()
-                        handle_cancelled = true
-                end }
-                mock_async.set_returns(handle)
+	it("cancels all jobs and cleans up queued temp files", function()
+		mock_config.max_jobs = 1
+		local handle_cancelled = false
+		local handle = {
+			cancel = function()
+				handle_cancelled = true
+			end,
+		}
+		mock_async.set_returns(handle)
 
-                JobManager.submit({ expression = "active" })
+		JobManager.submit({ expression = "active" })
 
-                local tmp = vim.fn.tempname()
-                vim.fn.writefile({ "tmp" }, tmp)
-                JobManager.submit({ temp_file = tmp })
+		local tmp = vim.fn.tempname()
+		vim.fn.writefile({ "tmp" }, tmp)
+		JobManager.submit({ temp_file = tmp })
 
-                JobManager.cancel_all()
+		JobManager.cancel_all()
 
-                assert.is_true(handle_cancelled)
-                assert.is_nil(vim.loop.fs_stat(tmp))
-        end)
+		assert.is_true(handle_cancelled)
+		assert.is_nil(vim.loop.fs_stat(tmp))
+	end)
 end)
-
