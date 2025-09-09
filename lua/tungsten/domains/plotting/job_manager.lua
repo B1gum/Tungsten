@@ -194,9 +194,9 @@ function M.submit(plot_opts, user_on_success, user_on_error)
 	end
 
 	if not deps_ok then
-    if missing_message then
-      logger.error("TungstenPlot", missing_message)
-    end
+		if missing_message then
+			logger.error("TungstenPlot", missing_message)
+		end
 		error_handler.notify_error("TungstenPlot", error_handler.E_BACKEND_UNAVAILABLE, nil, missing_message)
 		return nil
 	end

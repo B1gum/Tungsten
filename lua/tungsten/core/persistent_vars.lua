@@ -33,8 +33,8 @@ function M.parse_definition(text)
 	return variable_name, rhs, nil
 end
 
-function M.latex_to_backend_code(variable_name, rhs_latex)
-	local ok, parsed_or_err, err_msg = pcall(parser.parse, rhs_latex)
+function M.latex_to_backend_code(variable_name, rhs_latex, opts)
+	local ok, parsed_or_err, err_msg = pcall(parser.parse, rhs_latex, opts)
 	if not ok or not parsed_or_err then
 		return nil, "Failed to parse LaTeX definition for '" .. variable_name .. "': " .. tostring(err_msg or parsed_or_err)
 	end

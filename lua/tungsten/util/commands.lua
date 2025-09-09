@@ -4,13 +4,13 @@ local M = {}
 local selection = require("tungsten.util.selection")
 local parser = require("tungsten.core.parser")
 
-function M.parse_selected_latex(expected_desc)
+function M.parse_selected_latex(expected_desc, opts)
 	local text = selection.get_visual_selection()
 	if not text or text == "" then
 		return nil, nil, "No " .. expected_desc .. " selected."
 	end
 
-	local ok, parsed, err_msg = pcall(parser.parse, text)
+	local ok, parsed, err_msg = pcall(parser.parse, text, opts)
 	if not ok or not parsed then
 		return nil, nil, err_msg or tostring(parsed)
 	end

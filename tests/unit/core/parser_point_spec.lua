@@ -9,6 +9,7 @@ package.loaded["tungsten.domains.linear_algebra"] = nil
 package.loaded["tungsten.domains.differential_equations"] = nil
 
 local parser = require("tungsten.core.parser")
+local ast = require("tungsten.core.ast")
 require("tungsten.core")
 
 describe("point literal parsing", function()
@@ -48,5 +49,11 @@ describe("point literal parsing", function()
 		local res = parser.parse("f(x, y)")
 		assert.are.equal(1, #res.series)
 		assert.are.same("function_call", res.series[1].type)
+	end)
+
+	it("parses parametric tuples in advanced mode", function()
+		local res = parser.parse("(sin(t),cos(t))", { mode = "advanced", form = "parametric" })
+		local canonical = ast.canonical(res.series[1])
+		assert.are.equal("Parametric2D(sin(t),cos(t))", canonical)
 	end)
 end)

@@ -17,10 +17,7 @@ describe("parser canonical debug strings", function()
 		local res = parser.parse("sin(x), cos(x)")
 		assert.are.equal(1, #res.series)
 		local str = ast.canonical(res.series[1])
-		assert.are.equal(
-			"Sequence(function_call{args=nil{1=x},name_node=sin},function_call{args=nil{1=x},name_node=cos})",
-			str
-		)
+		assert.are.equal("Sequence(sin(x),cos(x))", str)
 	end)
 
 	it("splits semicolon-separated series", function()
@@ -33,7 +30,7 @@ describe("parser canonical debug strings", function()
 	it("handles nested expressions inside points", function()
 		local res = parser.parse("(x, y+g(1,2))")
 		local str = ast.canonical(res.series[1])
-		assert.are.equal("Point2(x,binary{left=y,operator=+,right=function_call{args=nil{1=1,2=2},name_node=g}})", str)
+		assert.are.equal("Point2(x,binary{left=y,operator=+,right=g(1,2)})", str)
 	end)
 
 	it("produces equality canonical form", function()
@@ -67,10 +64,7 @@ describe("parser canonical debug strings", function()
 		local res = parser.parse("g(1, h(2,3)), 4")
 		assert.are.equal(1, #res.series)
 		local str = ast.canonical(res.series[1])
-		assert.are.equal(
-			"Sequence(function_call{args=nil{1=1,2=function_call{args=nil{1=2,2=3},name_node=h}},name_node=g},4)",
-			str
-		)
+		assert.are.equal("Sequence(g(1,h(2,3)),4)", str)
 	end)
 
 	it("does not misinterpret function calls as points", function()

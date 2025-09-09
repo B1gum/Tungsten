@@ -228,7 +228,7 @@ local function detect_chained_relations(expr)
 	return nil
 end
 
-local function try_point_tuple(expr, pattern, ser_start, item_start, input)
+local function try_point_tuple(expr, pattern, ser_start, item_start, input, opts)
 	local inner, offset = nil, 0
 	if expr:sub(1, 6) == "\\left(" and expr:sub(-7) == "\\right)" then
 		inner = expr:sub(7, -8)
@@ -258,6 +258,26 @@ local function try_point_tuple(expr, pattern, ser_start, item_start, input)
 			end
 			table.insert(elems, subres)
 		end
+
+		-- Advanced parsing modes may treat tuples differently
+		if opts and opts.mode == "advanced" then
+			if opts.form == "parametric" then
+				if #elems == 2 then
+					return ast.create_parametric2d_node(elems[1], elems[2])
+				else
+					return ast.create_parametric3d_node(elems[1], elems[2], elems[3])
+				end
+			elseif opts.form == "polar" then
+				if #elems == 2 then
+					return ast.create_polar2d_node(elems[1])
+				else
+					local global_pos = ser_start + item_start - 1 + offset + parts[3].start_pos - 1
+					local msg = "Polar tuples support only 2D at " .. error_handler.format_line_col(input, global_pos)
+					return nil, msg, global_pos
+				end
+			end
+		end
+
 		if #elems == 2 then
 			return ast.create_point2_node(elems[1], elems[2])
 		else
@@ -271,7 +291,8 @@ local function try_point_tuple(expr, pattern, ser_start, item_start, input)
 	return nil
 end
 
-function M.parse(input)
+function M.parse(input, opts)
+	opts = opts or {}
 	local current_grammar = M.get_grammar()
 	local pattern = space * current_grammar * (space * -1 + lpeg.T("extra_input"))
 
@@ -292,7 +313,7 @@ function M.parse(input)
 
 				local tuple, tuple_err, tuple_pos
 				if expr:sub(1, 1) == "(" or expr:sub(1, 6) == "\\left(" then
-					tuple, tuple_err, tuple_pos = try_point_tuple(expr, pattern, ser.start_pos, item.start_pos, input)
+					tuple, tuple_err, tuple_pos = try_point_tuple(expr, pattern, ser.start_pos, item.start_pos, input, opts)
 					if tuple_err then
 						return nil, tuple_err, tuple_pos, input
 					end

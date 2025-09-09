@@ -234,7 +234,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
 			assert.are.equal(1, get_visual_selection_call_count)
 			get_visual_selection_call_count = 0
 
-			assert.spy(mock_parser_parse_spy).was.called_with("1+1")
+			assert.spy(mock_parser_parse_spy).was.called_with("1+1", nil)
 			local expected_code = "wolfram(1+1)"
 			assert.are.same(expected_code, mock_state_module.persistent_variables["x"])
 
@@ -243,7 +243,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
 			assert.are.equal(1, get_visual_selection_call_count)
 			get_visual_selection_call_count = 0
 
-			assert.spy(mock_parser_parse_spy).was.called_with("x * 2")
+			assert.spy(mock_parser_parse_spy).was.called_with("x * 2", nil)
 			local ast_for_eval = { type = "expression", latex = "x * 2", id = "ast_for_" .. ("x * 2"):gsub("%W", "") }
 			assert.spy(mock_ast_to_wolfram_spy).was.called_with(ast_for_eval)
 

@@ -11,7 +11,7 @@ describe("Plotting Job Manager", function()
 	local mock_health
 	local check_deps_spy
 	local notify_error_spy
-  local logger_error_spy
+	local logger_error_spy
 	local original_executable
 
 	local modules_to_clear = {
@@ -93,7 +93,7 @@ describe("Plotting Job Manager", function()
 	after_each(function()
 		check_deps_spy:clear()
 		notify_error_spy:clear()
-    logger_error_spy:clear()
+		logger_error_spy:clear()
 		local ns = vim.api.nvim_create_namespace("tungsten_plot_spinner")
 		vim.api.nvim_buf_clear_namespace(0, ns, 0, -1)
 		vim.fn.executable = original_executable
@@ -222,7 +222,9 @@ describe("Plotting Job Manager", function()
 		assert.is_nil(id)
 		assert.spy(check_deps_spy).was.called(1)
 		assert.spy(notify_error_spy).was.called(1)
-		assert.spy(notify_error_spy).was.called_with("TungstenPlot", "E_BACKEND_UNAVAILABLE", nil, "Missing dependencies: wolframscript none < 13.0")
+		assert
+			.spy(notify_error_spy).was
+			.called_with("TungstenPlot", "E_BACKEND_UNAVAILABLE", nil, "Missing dependencies: wolframscript none < 13.0")
 		assert.are.equal(0, #mock_async.run_job_calls)
 
 		JobManager.submit({ expression = "another", bufnr = 0 })

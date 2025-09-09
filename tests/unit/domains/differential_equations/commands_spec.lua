@@ -115,7 +115,7 @@ describe("Tungsten Differential Equations Commands", function()
 			command_fn()
 
 			assert.spy(mock_selection.get_visual_selection).was.called()
-			assert.spy(mock_parser.parse).was.called_with(selection_text)
+			assert.spy(mock_parser.parse).was.called_with(selection_text, nil)
 			local final_ast = final_ast_producer(parsed_ast)
 			assert.spy(mock_evaluator.evaluate_async).was.called_with(final_ast, false, match.is_function())
 			assert.spy(mock_event_bus.emit).was.called_with("result_ready", match.is_table())

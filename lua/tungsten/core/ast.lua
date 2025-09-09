@@ -300,6 +300,15 @@ local function canonical(n)
 		return "Parametric3D(" .. canonical(n.x) .. "," .. canonical(n.y) .. "," .. canonical(n.z) .. ")"
 	elseif tag == "Polar2D" then
 		return "Polar2D(" .. canonical(n.r) .. ")"
+	elseif tag == "function_call" then
+		local name = canonical(n.name_node)
+		local args_parts = {}
+		if n.args then
+			for _, arg in ipairs(n.args) do
+				args_parts[#args_parts + 1] = canonical(arg)
+			end
+		end
+		return name .. "(" .. table.concat(args_parts, ",") .. ")"
 	else
 		local keys = {}
 		for k, _ in pairs(n) do
