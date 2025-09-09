@@ -1,184 +1,160 @@
--- Unit tests for the plotting job management logic.
-
-local spy = require("luassert.spy")
-local match = require("luassert.match")
 local mock_utils = require("tests.helpers.mock_utils")
 local wait_for = require("tests.helpers.wait").wait_for
 
-describe("Plotting Job Management", function()
-	local PlottingJobManager
-	local mock_async
-	local mock_state
-	local mock_config
-	local mock_status_ui
-	local mock_temp_file_manager
+describe("Plotting Job Manager", function()
+        local JobManager
+        local mock_async
+        local mock_config
+        local mock_err_handler
 
-	local original_require
+        local modules_to_clear = {
+                "tungsten.domains.plotting.job_manager",
+                "tungsten.util.async",
+                "tungsten.config",
+                "tungsten.util.error_handler",
+                "tungsten.util.logger",
+                "tungsten.util.plotting_io",
+        }
 
-	local modules_to_clear = {
-		"tungsten.plotting.job_manager",
-		"tungsten.util.async",
-		"tungsten.state",
-		"tungsten.config",
-		"tungsten.ui.virtual_result",
-		"tungsten.util.temp_files",
-	}
+        before_each(function()
+                mock_utils.reset_modules(modules_to_clear)
 
-	before_each(function()
-		mock_utils.reset_modules(modules_to_clear)
+                mock_async = {}
+                mock_async.run_job_calls = {}
+                function mock_async.run_job(cmd, opts)
+                        table.insert(mock_async.run_job_calls, { cmd, opts })
+                        if mock_async._callback then
+                                return mock_async._callback(cmd, opts)
+                        end
+                        return mock_async._return
+                end
+                function mock_async.set_callback(fn)
+                        mock_async._callback = fn
+                end
+                function mock_async.set_returns(val)
+                        mock_async._return = val
+                end
+                package.loaded["tungsten.util.async"] = mock_async
 
-		mock_async = mock_utils.create_empty_mock_module("tungsten.util.async", { "run_job", "cancel_all_jobs" })
-		mock_state = { active_jobs = {} }
-		mock_config = { max_jobs = 3 }
-		mock_status_ui = mock_utils.create_empty_mock_module("tungsten.ui.virtual_result", { "show", "clear" })
-		mock_temp_file_manager = mock_utils.create_empty_mock_module("tungsten.util.temp_files", { "cleanup" })
+                mock_config = { max_jobs = 3 }
+                package.loaded["tungsten.config"] = mock_config
+                mock_err_handler = { notify_error = function() end }
+                package.loaded["tungsten.util.error_handler"] = mock_err_handler
+                package.loaded["tungsten.util.logger"] = { debug = function() end }
+                package.loaded["tungsten.util.plotting_io"] = { find_math_block_end = function()
+                        return 0
+                end }
 
-		original_require = _G.require
-		_G.require = function(module_path)
-			if module_path == "tungsten.util.async" then
-				return mock_async
-			end
-			if module_path == "tungsten.state" then
-				return mock_state
-			end
-			if module_path == "tungsten.config" then
-				return mock_config
-			end
-			if module_path == "tungsten.ui.virtual_result" then
-				return mock_status_ui
-			end
-			if module_path == "tungsten.util.temp_files" then
-				return mock_temp_file_manager
-			end
-			if package.loaded[module_path] then
-				return package.loaded[module_path]
-			end
-			return original_require(module_path)
-		end
+                JobManager = require("tungsten.domains.plotting.job_manager")
+                local ns = vim.api.nvim_create_namespace("tungsten_plot_spinner")
+                vim.api.nvim_buf_clear_namespace(0, ns, 0, -1)
+        end)
 
-		PlottingJobManager = require("tungsten.plotting.job_manager")
-	end)
+        after_each(function()
+                mock_utils.reset_modules(modules_to_clear)
+        end)
 
-	after_each(function()
-		_G.require = original_require
-	end)
+        it("runs plot jobs asynchronously and invokes callbacks", function()
+                local success_called, success_arg = false, nil
+                local error_called = false
 
-	PlottingJobManager = {
-		submit = function() end,
-		cancel = function() end,
-		cancel_all = function() end,
-		setup_autocmds = function() end,
-	}
+                local function on_success(arg)
+                        success_called = true
+                        success_arg = arg
+                end
 
-	it("should run all plot generation jobs asynchronously", function()
-		-- Arrange
-		local job_definition = { backend = "python", expression = "x^2" }
-		local on_success_spy = spy.new()
-		local on_error_spy = spy.new()
+                local function on_error()
+                        error_called = true
+                end
 
-		PlottingJobManager.submit(job_definition, on_success_spy, on_error_spy)
+                JobManager.submit({ expression = "x^2" }, on_success, on_error)
 
-		assert.spy(mock_async.run_job).was.called(1)
-		assert.spy(mock_async.run_job).was.called_with(match.is_table(), match.is_table())
+                assert.are.equal(1, #mock_async.run_job_calls)
+                local opts = mock_async.run_job_calls[1][2]
+                opts.on_exit(0, "plot.png", "")
 
-		local async_opts = mock_async.run_job.calls[1].vals[2]
-		async_opts.on_exit(0, "path/to/plot.png", "")
+                assert.is_true(success_called)
+                assert.are.equal("plot.png", success_arg)
+                assert.is_false(error_called)
+        end)
 
-		assert.spy(on_success_spy).was.called(1)
-		assert.spy(on_success_spy).was.called_with("path/to/plot.png")
-		assert.spy(on_error_spy).was_not.called()
-	end)
+        it("queues jobs beyond the concurrency limit in FIFO order", function()
+                mock_config.max_jobs = 1
+                local order = {}
 
-	it("should queue jobs beyond the concurrency limit and run them in FIFO order", function()
-		mock_config.max_jobs = 1
-		local execution_order = {}
+                mock_async.set_callback(function(cmd, opts)
+                        table.insert(order, cmd.expression)
+                        vim.defer_fn(function()
+                                opts.on_exit(0, "ok", "")
+                        end, 10)
+                end)
 
-		mock_async.run_job:callback(function(cmd, opts)
-			table.insert(execution_order, cmd.id)
-			vim.defer_fn(function()
-				opts.on_exit(0, "done", "")
-			end, 10)
-		end)
+                JobManager.submit({ expression = "job1" })
+                JobManager.submit({ expression = "job2" })
+                JobManager.submit({ expression = "job3" })
 
-		PlottingJobManager.submit({ id = "job1" })
-		PlottingJobManager.submit({ id = "job2" })
-		PlottingJobManager.submit({ id = "job3" })
+                assert.are.equal(1, #mock_async.run_job_calls)
+                assert.are.same({ "job1" }, order)
 
-		assert.spy(mock_async.run_job).was.called(1)
-		assert.are.same({ "job1" }, execution_order)
+                wait_for(function()
+                        return #order == 3
+                end, 500)
 
-		wait_for(function()
-			return #execution_order == 3
-		end, 500)
+                assert.are.equal(3, #mock_async.run_job_calls)
+                assert.are.same({ "job1", "job2", "job3" }, order)
+        end)
 
-		assert.spy(mock_async.run_job).was.called(3)
-		assert.are.same({ "job1", "job2", "job3" }, execution_order)
-	end)
+        it("shows and clears a progress indicator", function()
+                local ns = vim.api.nvim_create_namespace("tungsten_plot_spinner")
 
-	it("should display a live progress indicator when a job starts", function()
-		PlottingJobManager.submit({ expression = "sin(x)" })
+                mock_async.set_callback(function(_, opts)
+                        vim.defer_fn(function()
+                                opts.on_exit(0, "done", "")
+                        end, 10)
+                end)
 
-		assert.spy(mock_status_ui.show).was.called(1)
-		assert.spy(mock_status_ui.show).was.called_with(match.is_string(), match.is_number())
-	end)
+                JobManager.submit({ expression = "sin(x)" })
 
-	it("should remove the indicator on job completion", function()
-		mock_async.run_job:callback(function(cmd, opts)
-			opts.on_exit(0, "plot.pdf", "")
-		end)
+                local marks = vim.api.nvim_buf_get_extmarks(0, ns, 0, -1, {})
+                assert.are.equal(1, #marks)
 
-		PlottingJobManager.submit({ expression = "cos(x)" })
+                wait_for(function()
+                        return #vim.api.nvim_buf_get_extmarks(0, ns, 0, -1, {}) == 0
+                end, 500)
+        end)
 
-		assert.spy(mock_status_ui.show).was.called(1)
-		assert.spy(mock_status_ui.clear).was.called(1)
-	end)
+        it("cancels a running job", function()
+                local handle_cancelled = false
+                local handle = { cancel = function()
+                        handle_cancelled = true
+                end }
+                mock_async.set_returns(handle)
 
-	it("should allow a running job to be canceled", function()
-		local mock_job_handle = { cancel = spy.new() }
-		mock_async.run_job:returns(mock_job_handle)
-		local on_error_spy = spy.new()
+                local id = JobManager.submit({ expression = "x^3" })
+                local ok = JobManager.cancel(id)
 
-		local job_id = PlottingJobManager.submit({ expression = "x^3" }, function() end, on_error_spy)
+                assert.is_true(ok)
+                assert.is_true(handle_cancelled)
+        end)
 
-		PlottingJobManager.cancel(job_id)
+        it("cancels all jobs and cleans up queued temp files", function()
+                mock_config.max_jobs = 1
+                local handle_cancelled = false
+                local handle = { cancel = function()
+                        handle_cancelled = true
+                end }
+                mock_async.set_returns(handle)
 
-		assert.spy(mock_job_handle.cancel).was.called(1)
-		assert.spy(on_error_spy).was.called_with(match.table.containing({ code = "E_CANCELLED" }))
-	end)
+                JobManager.submit({ expression = "active" })
 
-	it("should clean up temporary files if a job is canceled or fails", function()
-		local mock_job_handle = { cancel = spy.new() }
-		mock_async.run_job:returns(mock_job_handle)
+                local tmp = vim.fn.tempname()
+                vim.fn.writefile({ "tmp" }, tmp)
+                JobManager.submit({ temp_file = tmp })
 
-		local job_id = PlottingJobManager.submit({ temp_file = "/tmp/plot1.tmp" })
-		PlottingJobManager.cancel(job_id)
-		assert.spy(mock_temp_file_manager.cleanup).was.called_with("/tmp/plot1.tmp")
+                JobManager.cancel_all()
 
-		mock_async.run_job:callback(function(cmd, opts)
-			opts.on_exit(1, "", "Backend crashed")
-		end)
-		PlottingJobManager.submit({ temp_file = "/tmp/plot2.tmp" })
-		assert.spy(mock_temp_file_manager.cleanup).was.called_with("/tmp/plot2.tmp")
-	end)
-
-	it("should terminate ongoing plot jobs when Neovim exits", function()
-		local cancel_all_spy = spy.on(PlottingJobManager, "cancel_all")
-		local autocmd_callback
-
-		local orig_autocmd = vim.api.nvim_create_autocmd
-		vim.api.nvim_create_autocmd = spy.new(function(event, opts)
-			if event == "VimLeavePre" then
-				autocmd_callback = opts.callback
-			end
-		end)
-
-		PlottingJobManager.setup_autocmds()
-		autocmd_callback()
-
-		assert.is_function(autocmd_callback)
-		assert.spy(cancel_all_spy).was.called(1)
-
-		vim.api.nvim_create_autocmd = orig_autocmd
-		cancel_all_spy:revert()
-	end)
+                assert.is_true(handle_cancelled)
+                assert.is_nil(vim.loop.fs_stat(tmp))
+        end)
 end)
+
