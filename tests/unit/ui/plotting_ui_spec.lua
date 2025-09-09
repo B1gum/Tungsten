@@ -1,6 +1,7 @@
 -- Unit tests for the Plotting UI and user experience workflows.
 
 local spy = require("luassert.spy")
+local stub = require("luassert.stub")
 local match = require("luassert.match")
 local mock_utils = require("tests.helpers.mock_utils")
 local vim_test_env = require("tests.helpers.vim_test_env")
@@ -35,8 +36,8 @@ local function setup_test_environment()
 	mock_config = {
 		plotting = {
 			snippet_width = "0.8\\linewidth",
-			viewer_cmd_pdf = vim.fn.has("macunix") and "open" or "xdg-open",
-			viewer_cmd_png = vim.fn.has("macunix") and "open" or "xdg-open",
+			viewer_cmd_pdf = vim.fn.has("macunix") == 1 and "open" or "xdg-open",
+			viewer_cmd_png = vim.fn.has("macunix") == 1 and "open" or "xdg-open",
 		},
 	}
 	mock_async = mock_utils.create_empty_mock_module("tungsten.util.async", { "run_job" })
@@ -67,7 +68,7 @@ describe("Plotting UI and UX", function()
 				{ name = "a", type = "variable" },
 				{ name = "b", type = "variable" },
 			})
-			vim.ui.input = spy.new(function(opts, on_confirm)
+			vim.ui.input = stub.new(vim.ui, "input", function(opts, on_confirm)
 				on_confirm(nil)
 			end)
 
@@ -83,7 +84,7 @@ describe("Plotting UI and UX", function()
 		it("should first apply persistent variables before prompting", function()
 			mock_state.persistent_variables = { a = "5" }
 			mock_plotting_core.get_undefined_symbols:returns({ { name = "b", type = "variable" } })
-			vim.ui.input = spy.new(function(_, on_confirm)
+			vim.ui.input = stub.new(vim.ui, "input", function(_, on_confirm)
 				on_confirm(nil)
 			end)
 
@@ -101,7 +102,7 @@ describe("Plotting UI and UX", function()
 				{ name = "f", type = "function" },
 			})
 
-			vim.ui.input = spy.new(function(_, on_confirm)
+			vim.ui.input = stub.new(vim.ui, "input", function(_, on_confirm)
 				on_confirm("a = 10\nf(x) := x^2")
 			end)
 
@@ -122,7 +123,7 @@ describe("Plotting UI and UX", function()
 			end)
 			mock_plotting_core.get_undefined_symbols:returns({ { name = "k", type = "variable" } })
 
-			vim.ui.input = spy.new(function(_, on_confirm)
+			vim.ui.input = stub.new(vim.ui, "input", function(_, on_confirm)
 				on_confirm("k = 9.8")
 			end)
 
@@ -154,7 +155,7 @@ describe("Plotting UI and UX", function()
 		it("should insert the \\includegraphics snippet on a new line after the math block", function()
 			local bufnr = vim_test_env.setup_buffer({ "Some text before", "$$ sin(x) $$", "Some text after" })
 			mock_io.find_math_block_end:returns(2)
-			local set_lines_spy = spy.on(vim.api, "nvim_buf_set_lines")
+			local set_lines_spy = stub(vim.api, "nvim_buf_set_lines")
 
 			plotting_ui.insert_snippet(bufnr, 2, "plots/myplot_123")
 
@@ -167,7 +168,7 @@ describe("Plotting UI and UX", function()
 		it("should use a default width of 0.8\\linewidth", function()
 			local bufnr = vim_test_env.setup_buffer({ "$$x$$" })
 			mock_io.find_math_block_end:returns(1)
-			local set_lines_spy = spy.on(vim.api, "nvim_buf_set_lines")
+			local set_lines_spy = stub(vim.api, "nvim_buf_set_lines")
 
 			plotting_ui.insert_snippet(bufnr, 1, "myplot")
 
@@ -180,7 +181,7 @@ describe("Plotting UI and UX", function()
 			local bufnr = vim_test_env.setup_buffer({ "no math here" })
 			mock_io.find_math_block_end:returns(nil)
 			local selection_end_line = 1
-			local set_lines_spy = spy.on(vim.api, "nvim_buf_set_lines")
+			local set_lines_spy = stub(vim.api, "nvim_buf_set_lines")
 
 			plotting_ui.insert_snippet(bufnr, selection_end_line, "plots/myplot_456")
 
@@ -204,13 +205,13 @@ describe("Plotting UI and UX", function()
 
 		it("should use 'xdg-open' on Linux and 'open' on macOS", function()
 			local plot_path = "test.png"
-			vim.fn.has = spy.new(function(feature)
+			vim.fn.has = stub.new(vim.fn, "has", function(feature)
 				return feature ~= "macunix"
 			end)
 			plotting_ui.handle_output(plot_path)
 			assert.are.same("xdg-open", mock_async.run_job.calls[1].vals[1][1])
 
-			vim.fn.has = spy.new(function(feature)
+			vim.fn.has = stub.new(vim.fn, "has", function(feature)
 				return feature == "macunix"
 			end)
 			setup_test_environment()
@@ -220,7 +221,7 @@ describe("Plotting UI and UX", function()
 
 		it("should raise E_VIEWER_FAILED if the viewer command fails", function()
 			mock_config.plotting.outputmode = "viewer"
-			mock_async.run_job:calls(function(cmd, opts)
+			mock_async.run_job = (function(_cmd, opts)
 				opts.on_exit(127, "", "command not found")
 			end)
 
@@ -242,14 +243,14 @@ describe("Plotting UI and UX", function()
 				nvim_open_win = vim.api.nvim_open_win,
 				nvim_create_autocmd = vim.api.nvim_create_autocmd,
 			}
-			vim.api.nvim_create_buf = spy.new(function()
-				return mock_bufnr
-			end)
-			vim.api.nvim_buf_set_lines = spy.new()
-			vim.api.nvim_open_win = spy.new(function()
-				return mock_winid
-			end)
-			vim.api.nvim_create_autocmd = spy.new()
+                        vim.api.nvim_create_buf = stub.new(vim.api, "nvim_create_buf", function()
+                                return mock_bufnr
+                        end)
+                        vim.api.nvim_buf_set_lines = stub.new(vim.api, "nvim_buf_set_lines")
+                        vim.api.nvim_open_win = stub.new(vim.api, "nvim_open_win", function()
+                                return mock_winid
+                        end)
+                        vim.api.nvim_create_autocmd = stub.new(vim.api, "nvim_create_autocmd")
 		end)
 
 		after_each(function()
@@ -278,9 +279,9 @@ describe("Plotting UI and UX", function()
 		it("should include fields for ranges, scales, and style options", function()
 			plotting_ui.open_advanced_config({ classification = { dim = 2 } })
 			local content = table.concat(vim.api.nvim_buf_set_lines.calls[1].vals[5], "\n")
-			assert.truthy(content:find("X-range:"))
-			assert.truthy(content:find("Y-range:"))
-			assert.falsy(content:find("Z-range:"))
+			assert.truthy(content:find("X%-range:"))
+			assert.truthy(content:find("Y%-range:"))
+			assert.falsy(content:find("Z%-range:"))
 			assert.truthy(content:find("Grid: on"))
 			assert.truthy(content:find("X-scale: linear"))
 		end)
