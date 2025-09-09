@@ -104,23 +104,31 @@ local function _execute_plot(job)
 
 	local handle = async.run_job(job.plot_opts, {
 		on_exit = function(code, stdout, stderr)
-			if info.extmark_id then
-				pcall(vim.api.nvim_buf_del_extmark, info.bufnr, spinner_ns, info.extmark_id)
-			end
-			active_plot_jobs[job.id] = nil
+			local function handle()
+				if info.extmark_id then
+					pcall(vim.api.nvim_buf_del_extmark, info.bufnr, spinner_ns, info.extmark_id)
+				end
+				active_plot_jobs[job.id] = nil
 
-			if code == 0 then
-				if job.on_success then
-					job.on_success(stdout)
+				if code == 0 then
+					if job.on_success then
+						job.on_success(stdout)
+					end
+				else
+					if job.on_error then
+						local msg = stderr ~= "" and stderr or stdout
+						job.on_error({ code = code, message = msg })
+						job.on_error(msg)
+					end
 				end
-			else
-				if job.on_error then
-					local msg = stderr ~= "" and stderr or stdout
-					job.on_error({ code = code, message = msg })
-					job.on_error(msg)
-				end
+				_process_queue()
 			end
-			_process_queue()
+
+			if vim.in_fast_event() then
+				vim.schedule(handle)
+			else
+				handle()
+			end
 		end,
 	})
 	if handle then
