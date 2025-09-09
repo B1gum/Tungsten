@@ -51,8 +51,7 @@ local function analyze_point2(point, opts)
 				},
 			}
 		elseif opts.form == "polar" then
-			local y_params = helpers.extract_param_names(point.y)
-			if not (#y_params == 1 and y_params[1] == "theta") then
+      if not (point.y and point.y.type == "variable" and point.y.name == "theta") then
 				return nil, { code = "E_MIXED_COORD_SYS" }
 			end
 			local x_params = helpers.extract_param_names(point.x)

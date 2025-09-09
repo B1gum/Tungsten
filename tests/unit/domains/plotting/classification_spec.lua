@@ -241,6 +241,22 @@ describe("Plot Classification Logic", function()
 		}, result)
 	end)
 
+	it("errors on (r(theta), theta+1) in polar advanced mode", function()
+		local theta = mock_ast.create_variable_node("theta")
+		local point = ast_node("Point2", {
+			x = ast_node("function_call", { name = "h", args = { theta } }),
+			y = ast_node("binary", { left = theta, op = "+", right = ast_node("number", { value = 1 }) }),
+		})
+		mock_free_vars.find = function()
+			return { "theta" }
+		end
+
+		local result, err = classification.analyze(point, { mode = "advanced", form = "polar" })
+
+		assert.is_nil(result)
+		assert.are.equal("E_MIXED_COORD_SYS", err.code)
+	end)
+
 	describe("Error Handling", function()
 		it("should throw an error if multiple expressions have mixed dimensions", function()
 			local series = ast_node("sequence", {
