@@ -257,20 +257,20 @@ describe("Plot Classification Logic", function()
 		assert.are.equal("E_MIXED_COORD_SYS", err.code)
 	end)
 
-          it("merges consecutive Point3 nodes into one scatter series", function()
-                local p1 = ast_node("Point3", { x = 1, y = 2, z = 3 })
-                local p2 = ast_node("point_3d", { x = 4, y = 5, z = 6 })
-                local seq = ast_node("sequence", { p1, p2 })
+	it("merges consecutive Point3 nodes into one scatter series", function()
+		local p1 = ast_node("Point3", { x = 1, y = 2, z = 3 })
+		local p2 = ast_node("point_3d", { x = 4, y = 5, z = 6 })
+		local seq = ast_node("sequence", { p1, p2 })
 
-                local result, err = classification.analyze(seq)
+		local result, err = classification.analyze(seq)
 
-                assert.is_nil(err)
-                assert.are.same({
-                        dim = 3,
-                        form = "explicit",
-                        series = { { kind = "points", points = { p1, p2 } } },
-                }, result)
-        end)
+		assert.is_nil(err)
+		assert.are.same({
+			dim = 3,
+			form = "explicit",
+			series = { { kind = "points", points = { p1, p2 } } },
+		}, result)
+	end)
 
 	describe("Error Handling", function()
 		it("should throw an error if multiple expressions have mixed dimensions", function()
