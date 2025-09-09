@@ -1,22 +1,54 @@
 local M = {}
 
-local function version_at_least(found, required)
-	local function split(v)
-		local parts = {}
-		for num in v:gmatch("%d+") do
-			table.insert(parts, tonumber(num))
+function M.version_at_least(found, required)
+	local function parse(v)
+		local main, pre = v:match("^([0-9]+%.[0-9]+%.[0-9]+)(.*)$")
+		if not main then
+			main, pre = v:match("^([0-9]+%.[0-9]+)(.*)$")
+			main = main .. ".0"
 		end
-		return parts
+		local nums = {}
+		for num in main:gmatch("%d+") do
+			table.insert(nums, tonumber(num))
+		end
+		pre = pre or ""
+		if pre ~= "" then
+			pre = pre:gsub("^[-.]", "")
+			local tag, num = pre:match("^(%a+)(%d*)$")
+			return nums, tag, tonumber(num) or 0
+		end
+		return nums, nil, 0
 	end
-	local f, r = split(found), split(required)
-	local len = math.max(#f, #r)
+
+	local pre_weight = { dev = 0, rc = 1 }
+	local function weight(tag)
+		if not tag then
+			return 2
+		end
+		return pre_weight[tag] or 0
+	end
+
+	local fnums, ftag, fpre = parse(found)
+	local rnums, rtag, rpre = parse(required)
+	local len = math.max(#fnums, #rnums)
 	for i = 1, len do
-		local fv, rv = f[i] or 0, r[i] or 0
+		local fv, rv = fnums[i] or 0, rnums[i] or 0
 		if fv > rv then
 			return true
 		elseif fv < rv then
 			return false
 		end
+	end
+
+	local fw, rw = weight(ftag), weight(rtag)
+	if fw > rw then
+		return true
+	elseif fw < rw then
+		return false
+	end
+
+	if fw < 2 then
+		return fpre >= rpre
 	end
 	return true
 end
@@ -25,7 +57,7 @@ local function evaluate_version(found, required)
 	if not found or found == "" then
 		return { ok = false, message = string.format("required %s+, found none", required) }
 	end
-	if version_at_least(found, required) then
+	if M.version_at_least(found, required) then
 		return { ok = true, version = found }
 	end
 	return { ok = false, message = string.format("required %s+, found %s", required, found) }

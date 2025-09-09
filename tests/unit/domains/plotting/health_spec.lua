@@ -83,4 +83,28 @@ describe("Plotting dependency health", function()
 		assert.is_false(report.sympy.ok)
 		assert.is_false(report.matplotlib.ok)
 	end)
+
+	describe("version comparison", function()
+		local compare
+
+		before_each(function()
+			mock_utils.reset_modules({ "tungsten.domains.plotting.health" })
+			compare = require("tungsten.domains.plotting.health").version_at_least
+		end)
+
+		it("handles rc prereleases", function()
+			assert.is_true(compare("1.2", "1.2rc1"))
+			assert.is_false(compare("1.2rc1", "1.2"))
+		end)
+
+		it("handles dev prereleases", function()
+			assert.is_true(compare("1.2.0", "1.2.0-dev"))
+			assert.is_false(compare("1.2.0-dev", "1.2.0"))
+		end)
+
+		it("handles normal releases", function()
+			assert.is_true(compare("1.2.1", "1.2.0"))
+			assert.is_false(compare("1.2.0", "1.2.1"))
+		end)
+	end)
 end)
