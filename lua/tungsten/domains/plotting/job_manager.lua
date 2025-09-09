@@ -4,6 +4,7 @@ local async = require("tungsten.util.async")
 local path = require("pl.path")
 local error_handler = require("tungsten.util.error_handler")
 local plotting_io = require("tungsten.util.plotting_io")
+local health = require("tungsten.domains.plotting.health")
 
 local M = {}
 
@@ -11,6 +12,9 @@ local job_queue = {}
 local active_plot_jobs = {}
 local next_id = 0
 local spinner_ns = vim.api.nvim_create_namespace("tungsten_plot_spinner")
+
+local deps_ok
+local missing_message
 
 local function active_count()
 	local n = 0
@@ -146,6 +150,34 @@ _process_queue = function()
 end
 
 function M.submit(plot_opts, user_on_success, user_on_error)
+	if deps_ok == nil then
+		local report = health.check_dependencies()
+		local missing = {}
+		if not report.wolframscript then
+			table.insert(missing, "wolframscript")
+		end
+		if not report.python then
+			table.insert(missing, "python")
+		end
+		if not report.matplotlib then
+			table.insert(missing, "matplotlib")
+		end
+		if not report.sympy then
+			table.insert(missing, "sympy")
+		end
+		if #missing > 0 then
+			deps_ok = false
+			missing_message = "Missing dependencies: " .. table.concat(missing, ", ")
+		else
+			deps_ok = true
+		end
+	end
+
+	if not deps_ok then
+		error_handler.notify_error("TungstenPlot", missing_message or error_handler.E_BACKEND_UNAVAILABLE)
+		return nil
+	end
+
 	next_id = next_id + 1
 	local job = { id = next_id, plot_opts = plot_opts }
 

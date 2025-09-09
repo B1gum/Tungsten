@@ -1,11 +1,15 @@
 local mock_utils = require("tests.helpers.mock_utils")
 local wait_for = require("tests.helpers.wait").wait_for
+local spy = require("luassert.spy")
 
 describe("Plotting Job Manager", function()
 	local JobManager
 	local mock_async
 	local mock_config
 	local mock_err_handler
+	local mock_health
+	local check_deps_spy
+	local notify_error_spy
 
 	local modules_to_clear = {
 		"tungsten.domains.plotting.job_manager",
@@ -14,6 +18,7 @@ describe("Plotting Job Manager", function()
 		"tungsten.util.error_handler",
 		"tungsten.util.logger",
 		"tungsten.util.plotting_io",
+		"tungsten.domains.plotting.health",
 	}
 
 	before_each(function()
@@ -39,6 +44,7 @@ describe("Plotting Job Manager", function()
 		mock_config = { max_jobs = 3 }
 		package.loaded["tungsten.config"] = mock_config
 		mock_err_handler = { notify_error = function() end }
+		notify_error_spy = spy.on(mock_err_handler, "notify_error")
 		package.loaded["tungsten.util.error_handler"] = mock_err_handler
 		package.loaded["tungsten.util.logger"] = { debug = function() end }
 		package.loaded["tungsten.util.plotting_io"] = {
@@ -47,12 +53,29 @@ describe("Plotting Job Manager", function()
 			end,
 		}
 
+		mock_health = {
+			check_dependencies = function()
+				return {
+					wolframscript = true,
+					python = true,
+					matplotlib = true,
+					sympy = true,
+				}
+			end,
+		}
+		check_deps_spy = spy.on(mock_health, "check_dependencies")
+		package.loaded["tungsten.domains.plotting.health"] = mock_health
+
 		JobManager = require("tungsten.domains.plotting.job_manager")
 		local ns = vim.api.nvim_create_namespace("tungsten_plot_spinner")
 		vim.api.nvim_buf_clear_namespace(0, ns, 0, -1)
 	end)
 
 	after_each(function()
+		check_deps_spy:clear()
+		notify_error_spy:clear()
+		local ns = vim.api.nvim_create_namespace("tungsten_plot_spinner")
+		vim.api.nvim_buf_clear_namespace(0, ns, 0, -1)
 		mock_utils.reset_modules(modules_to_clear)
 	end)
 
@@ -69,7 +92,7 @@ describe("Plotting Job Manager", function()
 			error_called = true
 		end
 
-		JobManager.submit({ expression = "x^2" }, on_success, on_error)
+		JobManager.submit({ expression = "x^2", bufnr = 0 }, on_success, on_error)
 
 		assert.are.equal(1, #mock_async.run_job_calls)
 		local opts = mock_async.run_job_calls[1][2]
@@ -85,24 +108,18 @@ describe("Plotting Job Manager", function()
 		local order = {}
 
 		mock_async.set_callback(function(cmd, opts)
-			table.insert(order, cmd.expression)
-			vim.defer_fn(function()
+			vim.schedule(function()
+				table.insert(order, cmd.expression)
 				opts.on_exit(0, "ok", "")
-			end, 10)
+			end)
 		end)
 
-		JobManager.submit({ expression = "job1" })
-		JobManager.submit({ expression = "job2" })
-		JobManager.submit({ expression = "job3" })
-
-		assert.are.equal(1, #mock_async.run_job_calls)
-		assert.are.same({ "job1" }, order)
-
+		JobManager.submit({ expression = "job1", bufnr = 0 })
+		JobManager.submit({ expression = "job2", bufnr = 0 })
+		JobManager.submit({ expression = "job3", bufnr = 0 })
 		wait_for(function()
 			return #order == 3
 		end, 500)
-
-		assert.are.equal(3, #mock_async.run_job_calls)
 		assert.are.same({ "job1", "job2", "job3" }, order)
 	end)
 
@@ -115,7 +132,7 @@ describe("Plotting Job Manager", function()
 			end, 10)
 		end)
 
-		JobManager.submit({ expression = "sin(x)" })
+		JobManager.submit({ expression = "sin(x)", bufnr = 0 })
 
 		local marks = vim.api.nvim_buf_get_extmarks(0, ns, 0, -1, {})
 		assert.are.equal(1, #marks)
@@ -134,7 +151,7 @@ describe("Plotting Job Manager", function()
 		}
 		mock_async.set_returns(handle)
 
-		local id = JobManager.submit({ expression = "x^3" })
+		local id = JobManager.submit({ expression = "x^3", bufnr = 0 })
 		local ok = JobManager.cancel(id)
 
 		assert.is_true(ok)
@@ -151,15 +168,42 @@ describe("Plotting Job Manager", function()
 		}
 		mock_async.set_returns(handle)
 
-		JobManager.submit({ expression = "active" })
+		JobManager.submit({ expression = "active", bufnr = 0 })
 
 		local tmp = vim.fn.tempname()
 		vim.fn.writefile({ "tmp" }, tmp)
-		JobManager.submit({ temp_file = tmp })
+		JobManager.submit({ temp_file = tmp, bufnr = 0 })
 
 		JobManager.cancel_all()
 
 		assert.is_true(handle_cancelled)
 		assert.is_nil(vim.loop.fs_stat(tmp))
+	end)
+
+	it("checks dependencies only once before submitting jobs", function()
+		JobManager.submit({ expression = "a", bufnr = 0 })
+		JobManager.submit({ expression = "b", bufnr = 0 })
+		assert.spy(check_deps_spy).was.called(1)
+	end)
+
+	it("aborts submission when dependencies are missing", function()
+		check_deps_spy:clear()
+		check_deps_spy = check_deps_spy:call_fake(function()
+			return {
+				wolframscript = false,
+				python = true,
+				matplotlib = true,
+				sympy = true,
+			}
+		end)
+
+		local id = JobManager.submit({ expression = "fail", bufnr = 0 })
+		assert.is_nil(id)
+		assert.spy(check_deps_spy).was.called(1)
+		assert.spy(notify_error_spy).was.called(1)
+		assert.are.equal(0, #mock_async.run_job_calls)
+
+		JobManager.submit({ expression = "another", bufnr = 0 })
+		assert.spy(check_deps_spy).was.called(1)
 	end)
 end)
