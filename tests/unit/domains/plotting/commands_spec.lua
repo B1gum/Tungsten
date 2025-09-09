@@ -50,10 +50,11 @@ describe("Tungsten Plotting Commands", function()
 		check_deps_spy = spy.on(mock_health_checker, "check_dependencies")
 		check_deps_spy = check_deps_spy:call_fake(function()
 			return {
-				wolframscript = true,
-				python = true,
-				matplotlib = true,
-				sympy = true,
+				wolframscript = { ok = true, version = "13.1.0" },
+				python = { ok = true, version = "3.10.0" },
+				numpy = { ok = true, version = "1.23.0" },
+				sympy = { ok = true, version = "1.12" },
+				matplotlib = { ok = true, version = "3.6.0" },
 			}
 		end)
 

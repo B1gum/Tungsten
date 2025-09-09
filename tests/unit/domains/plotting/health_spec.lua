@@ -27,24 +27,39 @@ describe("Plotting dependency health", function()
 			end
 			return 0
 		end
-		vim.fn.jobstart = function(_, opts)
-			if opts.on_stdout then
-				opts.on_stdout(nil, { '{"matplotlib": true, "sympy": true}', "" })
+		vim.fn.jobstart = function(cmd, opts)
+			if cmd[1] == "wolframscript" then
+				if opts.on_stdout then
+					opts.on_stdout(nil, { "13.1.0", "" })
+				end
+				if opts.on_exit then
+					opts.on_exit(nil, 0)
+				end
+				return 1
+			elseif cmd[1] == "python3" then
+				if opts.on_stdout then
+					opts.on_stdout(nil, {
+						'{"python":"3.11.0","numpy":"1.23.5","sympy":"1.12","matplotlib":"3.6.3"}',
+						"",
+					})
+				end
+				if opts.on_exit then
+					opts.on_exit(nil, 0)
+				end
+				return 2
 			end
-			if opts.on_exit then
-				opts.on_exit(nil, 0)
-			end
-			return 1
+			return -1
 		end
 		vim.fn.jobwait = function(_)
 			return { 0 }
 		end
 
 		local report = health.check_dependencies()
-		assert.is_true(report.wolframscript)
-		assert.is_true(report.python)
-		assert.is_true(report.matplotlib)
-		assert.is_true(report.sympy)
+		assert.is_true(report.wolframscript.ok)
+		assert.is_true(report.python.ok)
+		assert.is_true(report.numpy.ok)
+		assert.is_true(report.sympy.ok)
+		assert.is_true(report.matplotlib.ok)
 	end)
 
 	it("handles missing python", function()
@@ -62,9 +77,10 @@ describe("Plotting dependency health", function()
 		end
 
 		local report = health.check_dependencies()
-		assert.is_false(report.wolframscript)
-		assert.is_false(report.python)
-		assert.is_false(report.matplotlib)
-		assert.is_false(report.sympy)
+		assert.is_false(report.wolframscript.ok)
+		assert.is_false(report.python.ok)
+		assert.is_false(report.numpy.ok)
+		assert.is_false(report.sympy.ok)
+		assert.is_false(report.matplotlib.ok)
 	end)
 end)
