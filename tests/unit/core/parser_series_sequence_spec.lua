@@ -58,6 +58,14 @@ describe("parser series and sequence handling", function()
 		assert.are.same("Point2", seq.nodes[2].type)
 	end)
 
+	it("respects delimiter commands inside \\left...\\right", function()
+		local res = parser.parse("\\left\\langle a,b \\right\\rangle, c")
+		assert.are.equal(1, #res.series)
+		local seq = res.series[1]
+		assert.are.same("Sequence", seq.type)
+		assert.are.equal(2, #seq.nodes)
+	end)
+
 	it("does not split at commas within non-letter macros", function()
 		local res = parser.parse("x\\,y")
 		assert.is_not_nil(res)

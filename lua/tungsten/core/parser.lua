@@ -32,6 +32,36 @@ local label_messages = {
 	fail = "syntax error",
 }
 
+local delimiter_open_cmds = {
+	["\\langle"] = true,
+	["\\lfloor"] = true,
+	["\\lceil"] = true,
+}
+
+local delimiter_close_cmds = {
+	["\\rangle"] = true,
+	["\\rfloor"] = true,
+	["\\rceil"] = true,
+}
+
+local delimiter_replacements = {
+	["\\langle"] = "(",
+	["\\rangle"] = ")",
+}
+
+local function read_delim(str, i)
+	local c = str:sub(i, i)
+	if c == "\\" then
+		local j = i + 1
+		while j <= #str and str:sub(j, j):match("%a") do
+			j = j + 1
+		end
+		return str:sub(i, j - 1), j - i
+	else
+		return c, 1
+	end
+end
+
 local function top_level_split(str, seps)
 	local parts = {}
 	local current = {}
@@ -46,29 +76,31 @@ local function top_level_split(str, seps)
 			if next_five == "\\left" then
 				table.insert(current, "\\left")
 				i = i + 5
-				local d = str:sub(i, i)
-				table.insert(current, d)
+				local d, consumed = read_delim(str, i)
+				local out = delimiter_replacements[d] or d
+				table.insert(current, out)
 				if d == "(" then
 					paren = paren + 1
 				elseif d == "{" then
 					brace = brace + 1
-				elseif d == "[" then
+				elseif d == "[" or delimiter_open_cmds[d] then
 					bracket = bracket + 1
 				end
-				i = i + 1
+				i = i + consumed
 			elseif next_six == "\\right" then
 				table.insert(current, "\\right")
 				i = i + 6
-				local d = str:sub(i, i)
-				table.insert(current, d)
+				local d, consumed = read_delim(str, i)
+				local out = delimiter_replacements[d] or d
+				table.insert(current, out)
 				if d == ")" then
 					paren = paren - 1
 				elseif d == "}" then
 					brace = brace - 1
-				elseif d == "]" then
+				elseif d == "]" or delimiter_close_cmds[d] then
 					bracket = bracket - 1
 				end
-				i = i + 1
+				i = i + consumed
 			else
 				local next_char = str:sub(i + 1, i + 1)
 				if next_char ~= "" and not next_char:match("%a") then
@@ -79,7 +111,13 @@ local function top_level_split(str, seps)
 					while j <= len and str:sub(j, j):match("%a") do
 						j = j + 1
 					end
-					table.insert(current, str:sub(i, j - 1))
+					local cmd = str:sub(i, j - 1)
+					table.insert(current, delimiter_replacements[cmd] or cmd)
+					if delimiter_open_cmds[cmd] then
+						bracket = bracket + 1
+					elseif delimiter_close_cmds[cmd] then
+						bracket = bracket - 1
+					end
 					i = j
 				end
 			end
@@ -134,25 +172,25 @@ local function detect_chained_relations(expr)
 			local next_five = expr:sub(i, i + 4)
 			local next_six = expr:sub(i, i + 5)
 			if next_five == "\\left" then
-				local d = expr:sub(i + 5, i + 5)
+				local d, consumed = read_delim(expr, i + 5)
 				if d == "(" then
 					paren = paren + 1
 				elseif d == "{" then
 					brace = brace + 1
-				elseif d == "[" then
+				elseif d == "[" or delimiter_open_cmds[d] then
 					bracket = bracket + 1
 				end
-				advance = 6
+				advance = 5 + consumed
 			elseif next_six == "\\right" then
-				local d = expr:sub(i + 6, i + 6)
+				local d, consumed = read_delim(expr, i + 6)
 				if d == ")" then
 					paren = paren - 1
 				elseif d == "}" then
 					brace = brace - 1
-				elseif d == "]" then
+				elseif d == "]" or delimiter_close_cmds[d] then
 					bracket = bracket - 1
 				end
-				advance = 7
+				advance = 6 + consumed
 			elseif expr:sub(i, i + 3) == "\\leq" then
 				if paren == 0 and brace == 0 and bracket == 0 then
 					count = count + 1
@@ -189,6 +227,12 @@ local function detect_chained_relations(expr)
 				local j = i + 1
 				while j <= len and expr:sub(j, j):match("%a") do
 					j = j + 1
+				end
+				local cmd = expr:sub(i, j - 1)
+				if delimiter_open_cmds[cmd] then
+					bracket = bracket + 1
+				elseif delimiter_close_cmds[cmd] then
+					bracket = bracket - 1
 				end
 				advance = j - i
 			end
