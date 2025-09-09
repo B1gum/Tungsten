@@ -7,15 +7,17 @@ local ast = require("tungsten.core.ast")
 local space = tokens.space
 
 local inequality_op = (P("&") ^ -1)
-	* C(P("\\leq") + P("\\le") + P("<=") + P("\\geq") + P("\\ge") + P(">=") + P("<") + P(">"))
+	* C(P("\\leq") + P("\\le") + P("<=") + P("\\geq") + P("\\ge") + P(">=") + P("≤") + P("≥") + P("<") + P(">"))
 
 local op_map = {
 	["\\le"] = "≤",
 	["\\leq"] = "≤",
 	["<="] = "≤",
+	["≤"] = "≤",
 	["\\ge"] = "≥",
 	["\\geq"] = "≥",
 	[">="] = "≥",
+	["≥"] = "≥",
 }
 
 local Inequality = V("ExpressionContent")

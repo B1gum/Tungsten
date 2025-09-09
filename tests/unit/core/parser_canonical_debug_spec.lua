@@ -48,6 +48,11 @@ describe("parser canonical debug strings", function()
 		assert.are.equal("Inequality(≤,y,x)", str)
 	end)
 
+	it("produces inequality canonical form with unicode symbol", function()
+		local res = parser.parse("y ≤ x")
+		assert.are.equal("Inequality(≤,y,x)", ast.canonical(res.series[1]))
+	end)
+
 	it("errors on chained inequalities", function()
 		local res, err = parser.parse("a < b < c")
 		assert.is_nil(res)

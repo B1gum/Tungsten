@@ -200,7 +200,7 @@ local function detect_chained_relations(expr)
 			elseif c == "]" then
 				bracket = bracket - 1
 			elseif paren == 0 and brace == 0 and bracket == 0 then
-				if c == "<" or c == ">" or c == "=" then
+				if c == "<" or c == ">" or c == "=" or c == "≤" or c == "≥" then
 					if c == "<" or c == ">" then
 						if expr:sub(i + 1, i + 1) == "=" then
 							count = count + 1
