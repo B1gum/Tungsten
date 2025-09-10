@@ -387,7 +387,7 @@ local function try_point_tuple(expr, pattern, ser_start, item_start, input, opts
 			elseif opts.form == "polar" then
 				if #elems ~= 2 then
 					local global_pos = ser_start + item_start - 1 + offset + parts[3].start_pos - 1
-					local msg = "Polar typles support only 2D at " .. error_handler.format_line_col(input, global_pos)
+					local msg = "Polar tuples support only 2D at " .. error_handler.format_line_col(input, global_pos)
 					return nil, msg, global_pos
 				end
 				local r, theta = elems[1], elems[2]
