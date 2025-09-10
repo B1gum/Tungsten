@@ -234,6 +234,9 @@ end
 
 local function analyze_parametric2d(ast)
 	local params = union_vars(find_free_variables(ast.x), find_free_variables(ast.y))
+	if #params ~= 1 then
+		return nil, { code = "E_MIXED_COORD_SYS" }
+	end
 	return {
 		dim = 2,
 		form = "parametric",
@@ -250,6 +253,9 @@ end
 
 local function analyze_parametric3d(ast)
 	local params = union_vars(find_free_variables(ast.x), find_free_variables(ast.y), find_free_variables(ast.z))
+	if #params < 1 or #params > 2 then
+		return nil, { code = "E_MIXED_COORD_SYS" }
+	end
 	return {
 		dim = 3,
 		form = "parametric",

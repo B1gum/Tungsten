@@ -8,6 +8,7 @@ local space = require("tungsten.core.tokenizer").space
 local logger = require("tungsten.util.logger")
 local error_handler = require("tungsten.util.error_handler")
 local ast = require("tungsten.core.ast")
+local helpers = require("tungsten.domains.plotting.helpers")
 
 local M = {}
 
@@ -293,31 +294,6 @@ local function detect_chained_relations(expr)
 	return nil
 end
 
-local function contains_variable(node)
-	if type(node) ~= "table" then
-		return false
-	end
-	if node.type == "variable" or node.type == "symbol" or node.type == "greek" then
-		return true
-	end
-	if node.type == "function_call" then
-		if node.args then
-			for _, arg in ipairs(node.args) do
-				if contains_variable(arg) then
-					return true
-				end
-			end
-		end
-		return false
-	end
-	for _, v in pairs(node) do
-		if contains_variable(v) then
-			return true
-		end
-	end
-	return false
-end
-
 local function try_point_tuple(expr, pattern, ser_start, item_start, input, opts)
 	local inner, offset = nil, 0
 	if expr:sub(1, 6) == "\\left(" and expr:sub(-7) == "\\right)" then
@@ -370,14 +346,56 @@ local function try_point_tuple(expr, pattern, ser_start, item_start, input, opts
 		end
 		if opts and opts.mode == "advanced" then
 			if opts.form == "parametric" then
-				local has_var = false
-				for _, e in ipairs(elems) do
-					if contains_variable(e) then
-						has_var = true
-						break
+				local elem_params = {}
+				local union_set = {}
+				for i, e in ipairs(elems) do
+					local params = helpers.extract_param_names(e)
+					elem_params[i] = params
+					for _, p in ipairs(params) do
+						union_set[p] = true
 					end
 				end
-				if has_var then
+
+				local union = {}
+				for p in pairs(union_set) do
+					table.insert(union, p)
+				end
+				table.sort(union)
+
+				local function elements_share_union()
+					for _, params in ipairs(elem_params) do
+						if #params ~= #union then
+							return false
+						end
+						for _, n in ipairs(params) do
+							if not union_set[n] then
+								return false
+							end
+						end
+					end
+					return true
+				end
+
+				local valid = false
+				if #elems == 2 then
+					if #union == 1 and union[1] == "t" and elements_share_union() then
+						valid = true
+					end
+				elseif #elems == 3 then
+					local allowed = { u = true, v = true }
+					valid = true
+					for _, name in ipairs(union) do
+						if not allowed[name] then
+							valid = false
+							break
+						end
+					end
+					if valid and (#union == 0 or #union > 2 or not elements_share_union()) then
+						valid = false
+					end
+				end
+
+				if valid then
 					if #elems == 2 then
 						return ast.create_parametric2d_node(elems[1], elems[2])
 					else
@@ -387,7 +405,7 @@ local function try_point_tuple(expr, pattern, ser_start, item_start, input, opts
 			elseif opts.form == "polar" then
 				if #elems ~= 2 then
 					local global_pos = ser_start + item_start - 1 + offset + parts[3].start_pos - 1
-					local msg = "Polar tuples support only 2D at " .. error_handler.format_line_col(input, global_pos)
+					local msg = "Polar typles support only 2D at " .. error_handler.format_line_col(input, global_pos)
 					return nil, msg, global_pos
 				end
 				local r, theta = elems[1], elems[2]

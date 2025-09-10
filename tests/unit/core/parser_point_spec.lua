@@ -57,6 +57,18 @@ describe("point literal parsing", function()
 		assert.are.equal("Parametric2D(sin(t),cos(t))", canonical)
 	end)
 
+	it("treats variable tuples as Point2 in parametric mode", function()
+		local res = parser.parse("(x, y)", { mode = "advanced", form = "parametric" })
+		local node = res.series[1]
+		assert.are.same("Point2", node.type)
+	end)
+
+	it("parses function tuples with shared parameter as Parametric2D", function()
+		local res = parser.parse("(f(t), g(t))", { mode = "advanced", form = "parametric" })
+		local canonical = ast.canonical(res.series[1])
+		assert.are.equal("Parametric2D(f(t),g(t))", canonical)
+	end)
+
 	it("errors on polar tuples with non-theta second element", function()
 		local node, err = parser.parse("(r(phi), phi)", { mode = "advanced", form = "polar" })
 		assert.is_nil(node)
