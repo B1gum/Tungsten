@@ -310,12 +310,18 @@ local function try_point_tuple(expr, pattern, ser_start, item_start, input, opts
 	if #parts == 2 or #parts == 3 then
 		local elems = {}
 		for _, p in ipairs(parts) do
-			local subexpr = trim(p.str)
+			local subexpr, sublead = trim(p.str)
+			local rel_pos = detect_chained_relations(subexpr)
+			if rel_pos then
+				local global_pos = ser_start + item_start - 1 + offset + p.start_pos - 1 + sublead + rel_pos - 1
+				local msg = "Chained inequalities are not supported (v1)."
+				return nil, msg, global_pos
+			end
 			local subres, sublabel, subpos = lpeg.match(pattern, subexpr)
 			if not subres then
 				local msg = label_messages[sublabel] or tostring(sublabel)
 				if subpos then
-					local global_pos = ser_start + item_start - 1 + offset + p.start_pos - 1 + subpos - 1
+					local global_pos = ser_start + item_start - 1 + offset + p.start_pos - 1 + sublead + subpos - 1
 					msg = msg .. " at " .. error_handler.format_line_col(input, global_pos)
 					return nil, msg, global_pos
 				end
