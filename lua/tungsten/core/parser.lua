@@ -408,10 +408,10 @@ function M.parse(input, opts)
 
 	local series_strs = top_level_split(input, { [";"] = true, ["\n"] = true })
 	local series = {}
+	local global_point_dim
 	for _, ser in ipairs(series_strs) do
 		local seq_strs = top_level_split(ser.str, { [","] = true })
 		local nodes = {}
-		local point_dim
 		for _, item in ipairs(seq_strs) do
 			local expr, lead = trim(item.str)
 			if expr ~= "" then
@@ -448,13 +448,13 @@ function M.parse(input, opts)
 
 				if result.type == "Point2" or result.type == "Point3" then
 					local dim = result.type == "Point2" and 2 or 3
-					if point_dim and point_dim ~= dim then
+					if global_point_dim and global_point_dim ~= dim then
 						local global_pos = ser.start_pos + item.start_pos - 1 + lead
 						local msg = "Cannot mix 2D and 3D points in the same sequence or series at "
 							.. error_handler.format_line_col(input, global_pos)
 						return nil, msg, global_pos, input
 					end
-					point_dim = point_dim or dim
+					global_point_dim = global_point_dim or dim
 				end
 
 				table.insert(nodes, result)

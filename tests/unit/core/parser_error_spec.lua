@@ -35,6 +35,13 @@ describe("tungsten.core.parser.parse error reporting", function()
 		assert.is_number(pos)
 	end)
 
+	it("returns an error when mixing Point2 and Point3 across series", function()
+		local ast, err, pos = parser.parse("(1,2);(3,4,5)")
+		assert.is_nil(ast)
+		assert.matches("Cannot mix 2D and 3D points", err)
+		assert.is_number(pos)
+	end)
+
 	it("returns the chained inequality error inside point tuples", function()
 		local ast, err = parser.parse("(a < b < c, 1)")
 		assert.is_nil(ast)
