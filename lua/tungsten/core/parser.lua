@@ -339,15 +339,21 @@ local function try_point_tuple(expr, pattern, ser_start, item_start, input, opts
 					else
 						return ast.create_parametric3d_node(elems[1], elems[2], elems[3])
 					end
-        end
+				end
 			elseif opts.form == "polar" then
-				if #elems == 2 then
-					return ast.create_polar2d_node(elems[1])
-				else
+				if #elems ~= 2 then
 					local global_pos = ser_start + item_start - 1 + offset + parts[3].start_pos - 1
-					local msg = "Polar tuples support only 2D at " .. error_handler.format_line_col(input, global_pos)
+					local msg = "Polar typles support only 2D at " .. error_handler.format_line_col(input, global_pos)
 					return nil, msg, global_pos
 				end
+				local r, theta = elems[1], elems[2]
+				if theta.type ~= "variable" or theta.name ~= "theta" then
+					local global_pos = ser_start + item_start - 1 + offset + parts[2].start_pos - 1
+					local msg = "Polar tuples must have theta as second element at "
+						.. error_handler.format_line_col(input, global_pos)
+					return nil, msg, global_pos
+				end
+				return ast.create_polar2d_node(r)
 			end
 		end
 

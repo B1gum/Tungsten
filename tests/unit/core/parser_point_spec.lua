@@ -57,6 +57,12 @@ describe("point literal parsing", function()
 		assert.are.equal("Parametric2D(sin(t),cos(t))", canonical)
 	end)
 
+	it("errors on polar tuples with non-theta second element", function()
+		local node, err = parser.parse("(r(phi), phi)", { mode = "advanced", form = "polar" })
+		assert.is_nil(node)
+		assert.is_truthy(err:match("Polar tuples must have theta as second element"))
+	end)
+
 	it("treats numeric tuples as Point2 in parametric mode", function()
 		local res = parser.parse("(1,2)", { mode = "advanced", form = "parametric" })
 		local node = res.series[1]
