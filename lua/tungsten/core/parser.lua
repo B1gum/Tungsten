@@ -383,6 +383,12 @@ local function try_point_tuple(expr, pattern, ser_start, item_start, input, opts
 					.. error_handler.format_line_col(input, global_pos)
 				return nil, msg, global_pos
 			end
+			if not helpers.is_theta_function(r) then
+				local global_pos = ser_start + item_start - 1 + offset + parts[1].start_pos - 1
+				local msg = "Polar touples must define r as a function of θ at "
+					.. error_handler.format_line_col(input, global_pos)
+				return nil, msg, global_pos
+			end
 			return ast.create_polar2d_node(r)
 		end
 		if #elems == 2 then

@@ -293,7 +293,7 @@ local function canonical(n)
 	elseif tag == "Equality" then
 		return "Equality(" .. canonical(n.lhs) .. "," .. canonical(n.rhs) .. ")"
 	elseif tag == "Inequality" then
-                return "Inequality(" .. canonical(n.lhs) .. "," .. tostring(n.op) .. "," .. canonical(n.rhs) .. ")"
+		return "Inequality(" .. canonical(n.lhs) .. "," .. tostring(n.op) .. "," .. canonical(n.rhs) .. ")"
 	elseif tag == "Parametric2D" then
 		return "Parametric2D(" .. canonical(n.x) .. "," .. canonical(n.y) .. ")"
 	elseif tag == "Parametric3D" then

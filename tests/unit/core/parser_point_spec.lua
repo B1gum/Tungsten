@@ -75,6 +75,12 @@ describe("point literal parsing", function()
 		assert.is_truthy(err:match("Polar tuples must have theta as second element"))
 	end)
 
+	it("errors when r is not a function of theta in polar tuples", function()
+		local node, err = parser.parse("(r(t), \\theta)", { mode = "advanced", form = "polar" })
+		assert.is_nil(node)
+		assert.is_truthy(err:match("Polar tuples must define r as a function of θ"))
+	end)
+
 	it("parses polar tuples with greek theta", function()
 		local res = parser.parse("(r(\\theta), \\theta)", { form = "polar" })
 		local node = res.series[1]
