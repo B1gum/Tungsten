@@ -69,7 +69,7 @@ end
 local function top_level_split(str, seps)
 	local parts = {}
 	local current = {}
-	local paren, brace, bracket = 0, 0, 0
+	local stack = {}
 	local i, len = 1, #str
 	local current_start = 1
 	while i <= len do
@@ -85,15 +85,7 @@ local function top_level_split(str, seps)
 				if out ~= "" then
 					table.insert(current, out)
 				end
-				if d == "(" then
-					paren = paren + 1
-				elseif d == "{" then
-					brace = brace + 1
-				elseif d == "[" or delimiter_open_cmds[d] then
-					bracket = bracket + 1
-				elseif d == "." then
-					bracket = bracket + 1
-				end
+				table.insert(stack, d)
 				i = i + consumed
 			elseif next_six == "\\right" then
 				table.insert(current, "\\right")
@@ -103,14 +95,8 @@ local function top_level_split(str, seps)
 				if out ~= "" then
 					table.insert(current, out)
 				end
-				if d == ")" then
-					paren = paren - 1
-				elseif d == "}" then
-					brace = brace - 1
-				elseif d == "]" or delimiter_close_cmds[d] then
-					bracket = bracket - 1
-				elseif d == "." then
-					bracket = bracket - 1
+				if #stack > 0 then
+					table.remove(stack)
 				end
 				i = i + consumed
 			else
@@ -126,28 +112,24 @@ local function top_level_split(str, seps)
 					local cmd = str:sub(i, j - 1)
 					table.insert(current, delimiter_replacements[cmd] or cmd)
 					if delimiter_open_cmds[cmd] then
-						bracket = bracket + 1
+						table.insert(stack, cmd)
 					elseif delimiter_close_cmds[cmd] then
-						bracket = bracket - 1
+						if #stack > 0 then
+							table.remove(stack)
+						end
 					end
 					i = j
 				end
 			end
 		else
-			if c == "(" then
-				paren = paren + 1
-			elseif c == ")" then
-				paren = paren - 1
-			elseif c == "{" then
-				brace = brace + 1
-			elseif c == "}" then
-				brace = brace - 1
-			elseif c == "[" then
-				bracket = bracket + 1
-			elseif c == "]" then
-				bracket = bracket - 1
+			if c == "(" or c == "{" or c == "[" then
+				table.insert(stack, c)
+			elseif c == ")" or c == "}" or c == "]" then
+				if #stack > 0 then
+					table.remove(stack)
+				end
 			end
-			if seps[c] and paren == 0 and brace == 0 and bracket == 0 then
+			if seps[c] and #stack == 0 then
 				table.insert(parts, { str = table.concat(current), start_pos = current_start })
 				current = {}
 				i = i + 1
