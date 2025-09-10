@@ -38,6 +38,20 @@ local function is_simple_variable(node)
 	return false, nil
 end
 
+local function is_function_call_with_args(node)
+	if type(node) == "table" and node.type == "function_call" then
+		local args = node.args or {}
+		if #args > 0 then
+			local name = node.name
+			if not name and node.name_node then
+				name = node.name_node.name
+			end
+			return true, name
+		end
+	end
+	return false, nil
+end
+
 local function analyze_point2(point, opts)
 	opts = opts or {}
 	if opts.mode == "advanced" then
@@ -306,6 +320,23 @@ local function analyze_inequality(ast)
 end
 
 local function analyze_equality(ast)
+	local lhs_is_call, lhs_name = is_function_call_with_args(ast.lhs)
+	if lhs_is_call then
+		local free = find_free_variables(ast.rhs)
+		local dim = #free + 1
+		return {
+			dim = dim,
+			form = "explicit",
+			series = {
+				{
+					kind = "function",
+					ast = ast,
+					independent_vars = free,
+					dependent_vars = { lhs_name },
+				},
+			},
+		}
+	end
 	local lhs_is_var, lhs_var = is_simple_variable(ast.lhs)
 	if lhs_is_var and lhs_var == "x" then
 		local free = find_free_variables(ast.rhs)

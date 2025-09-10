@@ -72,6 +72,43 @@ describe("Equality classification", function()
 		}, result)
 	end)
 
+	it("classifies f(x) = x^2 as explicit", function()
+		local lhs = ast_node("function_call", { name = "f", args = { "x" } })
+		local eq = ast_node("equality", { lhs = lhs, rhs = "x^2" })
+		mock_free_vars.find = spy.new(function()
+			return { "x" }
+		end)
+
+		local result, err = classification.analyze(eq)
+		assert.is_nil(err)
+		assert.are.same({
+			dim = 2,
+			form = "explicit",
+			series = {
+				{ kind = "function", ast = eq, independent_vars = { "x" }, dependent_vars = { "f" } },
+			},
+		}, result)
+	end)
+
+	it("classifies y(x) = sin(x) as explicit", function()
+		local lhs = ast_node("function_call", { name = "y", args = { "x" } })
+		local rhs = ast_node("function_call", { name = "sin", args = { "x" } })
+		local eq = ast_node("equality", { lhs = lhs, rhs = rhs })
+		mock_free_vars.find = spy.new(function()
+			return { "x" }
+		end)
+
+		local result, err = classification.analyze(eq)
+		assert.is_nil(err)
+		assert.are.same({
+			dim = 2,
+			form = "explicit",
+			series = {
+				{ kind = "function", ast = eq, independent_vars = { "x" }, dependent_vars = { "y" } },
+			},
+		}, result)
+	end)
+
 	it("classifies x^2 + y^2 = 1 as implicit", function()
 		local eq = ast_node("equality", { lhs = "x^2+y^2", rhs = "1" })
 		mock_free_vars.find = spy.new(function()
