@@ -151,6 +151,43 @@ end
 
 function M.submit(plot_opts, user_on_success, user_on_error)
 	local backend = (plot_opts and plot_opts.backend) or (config.plotting or {}).backend or "wolfram"
+
+	local dep_vars = {}
+	if plot_opts and plot_opts.series then
+		for _, s in ipairs(plot_opts.series) do
+			for _, v in ipairs(s.dependent_vars or {}) do
+				dep_vars[#dep_vars + 1] = v
+			end
+		end
+	end
+
+	local supported = true
+	if plot_opts and plot_opts.form and plot_opts.dim then
+		local backends = require("tungsten.domains.plotting.backends")
+		supported = backends.is_supported(backend, plot_opts.form, plot_opts.dim, { dependent_vars = dep_vars })
+		if not supported then
+			local has_x = false
+			for _, v in ipairs(dep_vars) do
+				if v == "x" then
+					has_x = true
+					break
+				end
+			end
+			if has_x and backend ~= "wolfram" then
+				if backends.is_supported("wolfram", plot_opts.form, plot_opts.dim, { dependent_vars = dep_vars }) then
+					backend = "wolfram"
+					plot_opts.backend = "wolfram"
+					supported = true
+				end
+			end
+		end
+	end
+
+	if not supported then
+		error_handler.notify_error("TungstenPlot", error_handler.E_UNSUPPORTED_FORM)
+		return nil
+	end
+
 	if backend == "wolfram" then
 		local wolfram_path = ((config.backend_opts or {}).wolfram or {}).wolfram_path or "wolframscript"
 		if vim.fn.executable(wolfram_path) ~= 1 then
@@ -161,6 +198,7 @@ function M.submit(plot_opts, user_on_success, user_on_error)
 			return nil
 		end
 	end
+
 	if deps_ok == nil then
 		local report = health.check_dependencies()
 		local function fmt_missing(name, info)

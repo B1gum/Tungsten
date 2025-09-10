@@ -57,6 +57,7 @@ describe("Plotting Job Manager", function()
 		mock_err_handler = {
 			notify_error = function() end,
 			E_BACKEND_UNAVAILABLE = "E_BACKEND_UNAVAILABLE",
+			E_UNSUPPORTED_FORM = "E_UNSUPPORTED_FORM",
 		}
 		notify_error_spy = spy.on(mock_err_handler, "notify_error")
 		package.loaded["tungsten.util.error_handler"] = mock_err_handler
@@ -243,5 +244,34 @@ describe("Plotting Job Manager", function()
 		assert
 			.spy(notify_error_spy).was
 			.called_with("TungstenPlot", mock_err_handler.E_BACKEND_UNAVAILABLE .. ": Install Wolfram or configure Python backend")
+	end)
+
+	it("routes unsupported Python plots depending on x to Wolfram", function()
+		JobManager.submit({
+			expression = "expr",
+			bufnr = 0,
+			backend = "python",
+			form = "explicit",
+			dim = 2,
+			series = { { dependent_vars = { "x" } } },
+		})
+		assert.are.equal(1, #mock_async.run_job_calls)
+		local cmd = mock_async.run_job_calls[1][1]
+		assert.are.equal("wolfram", cmd.backend)
+	end)
+
+	it("returns E_UNSUPPORTED_FORM when backend cannot handle classification", function()
+		local id = JobManager.submit({
+			expression = "expr",
+			bufnr = 0,
+			backend = "python",
+			form = "implicit",
+			dim = 3,
+			series = { { dependent_vars = {} } },
+		})
+		assert.is_nil(id)
+		assert.spy(notify_error_spy).was.called(1)
+		assert.spy(notify_error_spy).was.called_with("TungstenPlot", mock_err_handler.E_UNSUPPORTED_FORM)
+		assert.are.equal(0, #mock_async.run_job_calls)
 	end)
 end)
