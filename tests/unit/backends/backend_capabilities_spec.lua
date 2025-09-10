@@ -21,6 +21,10 @@ describe("backend capabilities", function()
 		assert.is_false(backends.is_supported("python", "unknown", 2))
 	end)
 
+	it("flags python explicit x functions as unsupported", function()
+		assert.is_false(backends.is_supported("python", "explicit", 2, { dependent_vars = { "x" } }))
+	end)
+
 	it("uses wolfram as default backend", function()
 		local original = _G.require
 		_G.require = function(name)

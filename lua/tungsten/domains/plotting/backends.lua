@@ -9,16 +9,25 @@ function M.get_backend(name)
 	return backend_capabilities[name]
 end
 
-function M.is_supported(backend_name, form, dim)
+function M.is_supported(backend_name, form, dim, opts)
+	opts = opts or {}
 	local backend = M.get_backend(backend_name)
 	if not backend then
 		return false
 	end
 	local form_table = backend.supports[form]
-	if not form_table then
+	if not form_table or not form_table[dim] then
 		return false
 	end
-	return form_table[dim] or false
+	if backend_name == "python" and form == "explicit" then
+		local dep = opts.dependent_vars or {}
+		for _, v in ipairs(dep) do
+			if v == "x" then
+				return false
+			end
+		end
+	end
+	return true
 end
 
 local function get_config()

@@ -307,7 +307,22 @@ end
 
 local function analyze_equality(ast)
 	local lhs_is_var, lhs_var = is_simple_variable(ast.lhs)
-	if lhs_is_var and (lhs_var == "y" or lhs_var == "z") then
+	if lhs_is_var and lhs_var == "x" then
+		local free = find_free_variables(ast.rhs)
+		local dim = #free + 1
+		return {
+			dim = dim,
+			form = "explicit",
+			series = {
+				{
+					kind = "function",
+					ast = ast,
+					independent_vars = free,
+					dependent_vars = { "x" },
+				},
+			},
+		}
+	elseif lhs_is_var and (lhs_var == "y" or lhs_var == "z") then
 		local free = find_free_variables(ast.rhs)
 		local dim = #free + 1
 		return {
