@@ -22,6 +22,17 @@ local function union_vars(...)
 	return result
 end
 
+local function remove_var(vars, name)
+	local removed = false
+	for i = #vars, 1, -1 do
+		if vars[i] == name then
+			table.remove(vars, i)
+			removed = true
+		end
+	end
+	return removed
+end
+
 local function is_simple_variable(node)
 	if type(node) == "table" and node.type == "variable" then
 		return true, node.name
@@ -305,6 +316,16 @@ local function analyze_equality(ast)
 	local lhs_is_call, lhs_name = is_function_call_with_args(ast.lhs)
 	if lhs_is_call then
 		local free = find_free_variables(ast.rhs)
+		if remove_var(free, lhs_name) then
+			free = find_free_variables(ast)
+			return {
+				dim = #free,
+				form = "implicit",
+				series = {
+					{ kind = "function", ast = ast, independent_vars = free, dependent_vars = {} },
+				},
+			}
+		end
 		local dim = #free + 1
 		return {
 			dim = dim,
@@ -322,6 +343,16 @@ local function analyze_equality(ast)
 	local lhs_is_var, lhs_var = is_simple_variable(ast.lhs)
 	if lhs_is_var and lhs_var == "x" then
 		local free = find_free_variables(ast.rhs)
+		if remove_var(free, lhs_var) then
+			free = find_free_variables(ast)
+			return {
+				dim = #free,
+				form = "implicit",
+				series = {
+					{ kind = "function", ast = ast, independent_vars = free, dependent_vars = {} },
+				},
+			}
+		end
 		local dim = #free + 1
 		return {
 			dim = dim,
@@ -337,6 +368,16 @@ local function analyze_equality(ast)
 		}
 	elseif lhs_is_var and (lhs_var == "y" or lhs_var == "z") then
 		local free = find_free_variables(ast.rhs)
+		if remove_var(free, lhs_var) then
+			free = find_free_variables(ast)
+			return {
+				dim = #free,
+				form = "implicit",
+				series = {
+					{ kind = "function", ast = ast, independent_vars = free, dependent_vars = {} },
+				},
+			}
+		end
 		local dim = #free + 1
 		if lhs_var == "z" then
 			dim = math.max(3, dim)

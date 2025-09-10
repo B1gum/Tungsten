@@ -137,4 +137,24 @@ describe("Equality classification", function()
 			},
 		}, result)
 	end)
+
+	it("classifies y = x + y as implicit", function()
+		local eq = ast_node("equality", { lhs = mock_ast.create_variable_node("y"), rhs = "x+y" })
+		free_vars.find = spy.new(function(node)
+			if node == eq.rhs then
+				return { "x", "y" }
+			end
+			return { "x" }
+		end)
+
+		local result, err = classification.analyze(eq)
+		assert.is_nil(err)
+		assert.are.same({
+			dim = 1,
+			form = "implicit",
+			series = {
+				{ kind = "function", ast = eq, independent_vars = { "x" }, dependent_vars = {} },
+			},
+		}, result)
+	end)
 end)
