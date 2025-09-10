@@ -80,7 +80,7 @@ describe("Sequence plot classification", function()
 		assert.are.same("explicit", res.form)
 	end)
 
-	it("keeps parametric and point series separate in advanced mode", function()
+	it("throws an error when parametric and point series are mixed in advanced mode", function()
 		local ast = require("tungsten.core.ast")
 		local t = ast.create_variable_node("t")
 		local sin_t = ast.create_function_call_node(ast.create_variable_node("sin"), { t })
@@ -93,9 +93,9 @@ describe("Sequence plot classification", function()
 			},
 		}
 
-		local res = classification.analyze(seq, { mode = "advanced", form = "parametric" })
-		assert.are.equal("function", res.series[1].kind)
-		assert.are.equal("points", res.series[2].kind)
+		local res, err = classification.analyze(seq, { mode = "advanced", form = "parametric" })
+		assert.is_nil(res)
+		assert.are.equal("E_MIXED_COORD_SYS", err.code)
 	end)
 
 	it("classifies a single Point3 node", function()

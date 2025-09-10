@@ -22,15 +22,6 @@ local function union_vars(...)
 	return result
 end
 
-local function all_points(series)
-	for _, s in ipairs(series) do
-		if s.kind ~= "points" then
-			return false
-		end
-	end
-	return true
-end
-
 local function is_simple_variable(node)
 	if type(node) == "table" and node.type == "variable" then
 		return true, node.name
@@ -188,16 +179,7 @@ local function analyze_sequence(ast, opts)
 				return nil, { code = "E_MIXED_DIMENSIONS" }
 			end
 			if form and form ~= sub.form then
-				local allowed = false
-				if form == "parametric" and sub.form == "explicit" and all_points(sub.series) then
-					allowed = true
-				elseif form == "explicit" and sub.form == "parametric" and all_points(series) then
-					form = "parametric"
-					allowed = true
-				end
-				if not allowed then
-					return nil, { code = "E_MIXED_COORD_SYS" }
-				end
+        return nil, { code = "E_MIXED_COORD_SYS" }
 			else
 				form = sub.form
 			end
