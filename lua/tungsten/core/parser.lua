@@ -36,17 +36,20 @@ local delimiter_open_cmds = {
 	["\\langle"] = true,
 	["\\lfloor"] = true,
 	["\\lceil"] = true,
+	["|"] = true,
 }
 
 local delimiter_close_cmds = {
 	["\\rangle"] = true,
 	["\\rfloor"] = true,
 	["\\rceil"] = true,
+	["|"] = true,
 }
 
 local delimiter_replacements = {
 	["\\langle"] = "(",
 	["\\rangle"] = ")",
+	["."] = "",
 }
 
 local function read_delim(str, i)
@@ -78,12 +81,16 @@ local function top_level_split(str, seps)
 				i = i + 5
 				local d, consumed = read_delim(str, i)
 				local out = delimiter_replacements[d] or d
-				table.insert(current, out)
+				if out ~= "" then
+					table.insert(current, out)
+				end
 				if d == "(" then
 					paren = paren + 1
 				elseif d == "{" then
 					brace = brace + 1
 				elseif d == "[" or delimiter_open_cmds[d] then
+					bracket = bracket + 1
+				elseif d == "." then
 					bracket = bracket + 1
 				end
 				i = i + consumed
@@ -92,12 +99,16 @@ local function top_level_split(str, seps)
 				i = i + 6
 				local d, consumed = read_delim(str, i)
 				local out = delimiter_replacements[d] or d
-				table.insert(current, out)
+				if out ~= "" then
+					table.insert(current, out)
+				end
 				if d == ")" then
 					paren = paren - 1
 				elseif d == "}" then
 					brace = brace - 1
 				elseif d == "]" or delimiter_close_cmds[d] then
+					bracket = bracket - 1
+				elseif d == "." then
 					bracket = bracket - 1
 				end
 				i = i + consumed
@@ -179,6 +190,8 @@ local function detect_chained_relations(expr)
 					brace = brace + 1
 				elseif d == "[" or delimiter_open_cmds[d] then
 					bracket = bracket + 1
+				elseif d == "." then
+					bracket = bracket + 1
 				end
 				advance = 5 + consumed
 			elseif next_six == "\\right" then
@@ -188,6 +201,8 @@ local function detect_chained_relations(expr)
 				elseif d == "}" then
 					brace = brace - 1
 				elseif d == "]" or delimiter_close_cmds[d] then
+					bracket = bracket - 1
+				elseif d == "." then
 					bracket = bracket - 1
 				end
 				advance = 6 + consumed
