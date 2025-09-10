@@ -84,14 +84,10 @@ describe("parser series and sequence handling", function()
 		assert.are.same("function_call", node.y.type)
 	end)
 
-	it("treats tuples with greek variable as Parametric2D in parametric mode", function()
-		local res = parser.parse("(1, \\theta)", { mode = "advanced", form = "parametric" })
-		assert.are.equal(1, #res.series)
-		local node = res.series[1]
-		assert.are.same("Parametric2D", node.type)
-		assert.are.same("number", node.x.type)
-		assert.are.same("greek", node.y.type)
-		assert.are.same("theta", node.y.name)
+	it("errors when theta is used in parametric mode", function()
+		local node, err = parser.parse("(1, \\theta)", { mode = "advanced", form = "parametric" })
+		assert.is_nil(node)
+		assert.is_truthy(err:match("theta") and err:match("polar"))
 	end)
 
 	it("does not split at commas within non-letter macros", function()

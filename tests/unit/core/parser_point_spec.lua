@@ -71,6 +71,12 @@ describe("point literal parsing", function()
 		assert.are.same("theta", node.r.args[1].name)
 	end)
 
+	it("errors when theta is used without polar form", function()
+		local node, err = parser.parse("(r, \\theta)")
+		assert.is_nil(node)
+		assert.is_truthy(err:match("theta") and err:match("polar"))
+	end)
+
 	it("treats numeric tuples as Point2 in parametric mode", function()
 		local res = parser.parse("(1,2)", { mode = "advanced", form = "parametric" })
 		local node = res.series[1]

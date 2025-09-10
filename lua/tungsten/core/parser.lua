@@ -355,6 +355,19 @@ local function try_point_tuple(expr, pattern, ser_start, item_start, input, opts
 			table.insert(elems, subres)
 		end
 
+		if #elems == 2 then
+			local second = elems[2]
+			if
+				not (opts and opts.form == "polar")
+				and (second.type == "variable" or second.type == "greek")
+				and second.name == "theta"
+			then
+				local global_pos = ser_start + item_start - 1 + offset + parts[2].start_pos - 1
+				local msg = "Coordinate system mismatch: theta can unly be used with polar coordinates at "
+					.. error_handler.format_line_col(input, global_pos)
+				return nil, msg, global_pos
+			end
+		end
 		if opts and opts.mode == "advanced" then
 			if opts.form == "parametric" then
 				local has_var = false
