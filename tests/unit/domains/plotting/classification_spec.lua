@@ -156,6 +156,19 @@ describe("Plot Classification Logic", function()
 		}, result)
 	end)
 
+	it("errors when Polar2D uses a non-theta variable", function()
+		local polar = ast_node("Polar2D", { r = "1+cos(phi)" })
+
+		mock_free_vars.find = function()
+			return { "phi" }
+		end
+
+		local result, err = classification.analyze(polar)
+
+		assert.is_nil(result)
+		assert.are.equal("E_MIXED_COORD_SYS", err.code)
+	end)
+
 	it("should classify inequality expressions as region plots", function()
 		local inequality = ast_node("inequality", { lhs = "x^2+y^2", op = "<", rhs = "1" })
 

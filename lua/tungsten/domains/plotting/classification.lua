@@ -264,6 +264,9 @@ end
 
 local function analyze_polar2d(ast)
 	local params = find_free_variables(ast.r)
+	if #params ~= 1 or params[1] ~= "theta" then
+		return nil, { code = "E_MIXED_COORD_SYS" }
+	end
 	return {
 		dim = 2,
 		form = "polar",
