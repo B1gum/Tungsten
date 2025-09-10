@@ -1,47 +1,9 @@
-local stub = require("luassert.stub")
-
 describe("Sequence plot classification", function()
 	local classification
 
 	before_each(function()
 		package.loaded["tungsten.domains.plotting.classification"] = nil
-		package.loaded["tungsten.domains.plotting.free_vars"] = {
-			find = function(node)
-				local names = {}
-				local function collect(n)
-					if type(n) ~= "table" then
-						return
-					end
-					if n.type == "function_call" then
-						for _, arg in ipairs(n.args or {}) do
-							collect(arg)
-						end
-						return
-					end
-					if n.type == "variable" then
-						names[n.name] = true
-					end
-					for k, v in pairs(n) do
-						if k ~= "type" and type(v) == "table" then
-							if v.type then
-								collect(v)
-							else
-								for _, child in pairs(v) do
-									collect(child)
-								end
-							end
-						end
-					end
-				end
-				collect(node)
-				local result = {}
-				for name in pairs(names) do
-					table.insert(result, name)
-				end
-				table.sort(result)
-				return result
-			end,
-		}
+		package.loaded["tungsten.domains.plotting.free_vars"] = nil
 		classification = require("tungsten.domains.plotting.classification")
 	end)
 
