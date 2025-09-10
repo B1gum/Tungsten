@@ -63,6 +63,14 @@ describe("point literal parsing", function()
 		assert.is_truthy(err:match("Polar tuples must have theta as second element"))
 	end)
 
+	it("parses polar tuples with greek theta", function()
+		local res = parser.parse("(r(\\theta), \\theta)", { mode = "advanced", form = "polar" })
+		local node = res.series[1]
+		assert.are.same("Polar2D", node.type)
+		assert.are.same("greek", node.r.args[1].type)
+		assert.are.same("theta", node.r.args[1].name)
+	end)
+
 	it("treats numeric tuples as Point2 in parametric mode", function()
 		local res = parser.parse("(1,2)", { mode = "advanced", form = "parametric" })
 		local node = res.series[1]

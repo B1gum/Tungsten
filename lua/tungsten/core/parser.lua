@@ -353,7 +353,7 @@ local function try_point_tuple(expr, pattern, ser_start, item_start, input, opts
 					return nil, msg, global_pos
 				end
 				local r, theta = elems[1], elems[2]
-				if theta.type ~= "variable" or theta.name ~= "theta" then
+				if not ((theta.type == "variable" or theta.type == "greek") and theta.name == "theta") then
 					local global_pos = ser_start + item_start - 1 + offset + parts[2].start_pos - 1
 					local msg = "Polar tuples must have theta as second element at "
 						.. error_handler.format_line_col(input, global_pos)

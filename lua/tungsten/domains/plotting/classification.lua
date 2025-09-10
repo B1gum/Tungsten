@@ -60,12 +60,12 @@ local function analyze_point2(point, opts)
 				series = { { kind = "function", ast = point, independent_vars = params, dependent_vars = { "x", "y" } } },
 			}
 		elseif opts.form == "polar" then
-			if not (point.y and point.y.type == "variable" and point.y.name == "theta") then
+			if not (point.y and (point.y.type == "variable" or point.y.type == "greek") and point.y.name == "theta") then
 				return nil, { code = "E_MIXED_COORD_SYS" }
 			end
 			local x_params = helpers.extract_param_names(point.x)
-			for _, p in ipairs(x_params) do
-				if p ~= "theta" then
+			for _, name in ipairs(x_params) do
+				if name ~= "theta" then
 					return nil, { code = "E_MIXED_COORD_SYS" }
 				end
 			end
