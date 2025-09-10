@@ -278,6 +278,21 @@ local function detect_chained_relations(expr)
 	return nil
 end
 
+local function contains_variable(node)
+	if type(node) ~= "table" then
+		return false
+	end
+	if node.type == "variable" then
+		return true
+	end
+	for _, v in pairs(node) do
+		if contains_variable(v) then
+			return true
+		end
+	end
+	return false
+end
+
 local function try_point_tuple(expr, pattern, ser_start, item_start, input, opts)
 	local inner, offset = nil, 0
 	if expr:sub(1, 6) == "\\left(" and expr:sub(-7) == "\\right)" then
@@ -309,14 +324,22 @@ local function try_point_tuple(expr, pattern, ser_start, item_start, input, opts
 			table.insert(elems, subres)
 		end
 
-		-- Advanced parsing modes may treat tuples differently
 		if opts and opts.mode == "advanced" then
 			if opts.form == "parametric" then
-				if #elems == 2 then
-					return ast.create_parametric2d_node(elems[1], elems[2])
-				else
-					return ast.create_parametric3d_node(elems[1], elems[2], elems[3])
+				local has_var = false
+				for _, e in ipairs(elems) do
+					if contains_variable(e) then
+						has_var = true
+						break
+					end
 				end
+				if has_var then
+					if #elems == 2 then
+						return ast.create_parametric2d_node(elems[1], elems[2])
+					else
+						return ast.create_parametric3d_node(elems[1], elems[2], elems[3])
+					end
+        end
 			elseif opts.form == "polar" then
 				if #elems == 2 then
 					return ast.create_polar2d_node(elems[1])

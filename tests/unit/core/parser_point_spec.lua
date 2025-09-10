@@ -56,4 +56,12 @@ describe("point literal parsing", function()
 		local canonical = ast.canonical(res.series[1])
 		assert.are.equal("Parametric2D(sin(t),cos(t))", canonical)
 	end)
+
+	it("treats numeric tuples as Point2 in parametric mode", function()
+		local res = parser.parse("(1,2)", { mode = "advanced", form = "parametric" })
+		local node = res.series[1]
+		assert.are.same("Point2", node.type)
+		assert.are.same("number", node.x.type)
+		assert.are.same("number", node.y.type)
+	end)
 end)
