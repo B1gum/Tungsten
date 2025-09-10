@@ -234,6 +234,30 @@ describe("Plot Classification Logic", function()
 		}, result)
 	end)
 
+	it("treats (u, v, u+v) as parametric in advanced mode", function()
+		local u = mock_ast.create_variable_node("u")
+		local v = mock_ast.create_variable_node("v")
+		local point = ast_node("Point3", {
+			x = u,
+			y = v,
+			z = ast_node("binary", { op = "+", left = u, right = v }),
+		})
+		mock_free_vars.find = function()
+			return { "u", "v" }
+		end
+
+		local result, err = classification.analyze(point, { mode = "advanced", form = "parametric" })
+
+		assert.is_nil(err)
+		assert.are.same({
+			dim = 3,
+			form = "parametric",
+			series = {
+				{ kind = "function", ast = point, independent_vars = { "u", "v" }, dependent_vars = { "x", "y", "z" } },
+			},
+		}, result)
+	end)
+
 	it("treats (r(theta), theta) as polar in advanced mode", function()
 		local theta = mock_ast.create_variable_node("theta")
 		local point = ast_node("Point2", {

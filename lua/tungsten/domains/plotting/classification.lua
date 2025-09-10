@@ -97,15 +97,17 @@ local function analyze_point3(point, opts)
 		local x_params = helpers.extract_param_names(point.x)
 		local y_params = helpers.extract_param_names(point.y)
 		local z_params = helpers.extract_param_names(point.z)
-		if
-			not (
-				#x_params == 1
-				and x_params[1] == y_params[1]
-				and x_params[1] == z_params[1]
-				and #y_params == 1
-				and #z_params == 1
-			)
-		then
+		local param_names = union_vars(x_params, y_params, z_params)
+
+		if #param_names == 0 then
+			return {
+				dim = 3,
+				form = "explicit",
+				series = { { kind = "points", points = { point } } },
+			}
+		end
+
+		if #param_names > 2 then
 			return nil, { code = "E_MIXED_COORD_SYS" }
 		end
 		local params = union_vars(find_free_variables(point.x), find_free_variables(point.y), find_free_variables(point.z))
