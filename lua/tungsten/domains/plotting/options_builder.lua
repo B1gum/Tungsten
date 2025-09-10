@@ -1,5 +1,6 @@
 local M = {}
 local config = require("tungsten.config")
+local logger = require("tungsten.util.logger")
 
 function M.build(classification, user_overrides)
 	user_overrides = user_overrides or {}
@@ -13,10 +14,39 @@ function M.build(classification, user_overrides)
 		return val
 	end
 
+	local backend = user_overrides.backend or defaults.backend or "wolfram"
+
+	if backend == "python" and classification.dim == 3 and classification.form == "explicit" then
+		local series = classification.series or {}
+		local downgrade = true
+		for _, s in ipairs(series) do
+			local dep = s.dependent_vars or {}
+			local indep = s.independent_vars or {}
+			local has_z = false
+			for _, v in ipairs(dep) do
+				if v == "z" then
+					has_z = true
+					break
+				end
+			end
+			if not has_z or #indep >= 2 then
+				downgrade = false
+				break
+			end
+		end
+		if downgrade then
+			classification.dim = 2
+			for _, s in ipairs(series) do
+				s.dependent_vars = { "y" }
+			end
+			logger.warn("TungstenPlot", "Downgrading 3D explicit plot to 2D explicit for python backend")
+		end
+	end
+
 	local opts = {
 		dim = classification.dim,
 		form = classification.form,
-		backend = "wolfram",
+		backend = backend,
 		format = classification.dim == 2 and "pdf" or "png",
 		grids = true,
 		legend_auto = true,

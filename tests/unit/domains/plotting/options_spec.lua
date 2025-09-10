@@ -2,6 +2,7 @@
 -- adherence to the v1 specification.
 
 local mock_utils = require("tests.helpers.mock_utils")
+local spy = require("luassert.spy")
 
 describe("Plotting Options and Defaults", function()
 	local options_builder
@@ -109,6 +110,32 @@ describe("Plotting Options and Defaults", function()
 		assert.are.same({ -5, 5 }, opts.xrange)
 		assert.are.same("equal", opts.aspect)
 		assert.is_true(opts.colorbar)
+	end)
+
+	describe("Python backend downgrade", function()
+		it("downgrades unsupported 3D explicit plots to 2D and warns", function()
+			local classification = {
+				dim = 3,
+				form = "explicit",
+				series = {
+					{ dependent_vars = { "z" }, independent_vars = { "x" } },
+				},
+			}
+
+			local logger = require("tungsten.util.logger")
+			local warn_spy = spy.on(logger, "warn")
+
+			local opts = options_builder.build(classification, { backend = "python" })
+
+			assert.are.equal(2, classification.dim)
+			assert.are.same({ "y" }, classification.series[1].dependent_vars)
+			assert.are.equal(2, opts.dim)
+			assert.is_nil(opts.yrange)
+			assert.are.same(500, opts.samples)
+			assert.spy(warn_spy).was.called(1)
+
+			warn_spy:revert()
+		end)
 	end)
 
 	describe("LaTeX configuration", function()

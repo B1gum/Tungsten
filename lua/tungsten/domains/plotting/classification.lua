@@ -179,7 +179,7 @@ local function analyze_sequence(ast, opts)
 				return nil, { code = "E_MIXED_DIMENSIONS" }
 			end
 			if form and form ~= sub.form then
-        return nil, { code = "E_MIXED_COORD_SYS" }
+				return nil, { code = "E_MIXED_COORD_SYS" }
 			else
 				form = sub.form
 			end
