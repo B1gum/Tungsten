@@ -42,6 +42,13 @@ describe("tungsten.core.parser.parse error reporting", function()
 		assert.is_number(pos)
 	end)
 
+	it("returns an error when mixing parametric and point dimensions in advanced mode", function()
+		local ast, err, pos = parser.parse("(sin(t),cos(t)); (1,2,3)", { mode = "advanced", form = "parametric" })
+		assert.is_nil(ast)
+		assert.matches("Cannot mix 2D and 3D points", err)
+		assert.is_number(pos)
+	end)
+
 	it("returns the chained inequality error inside point tuples", function()
 		local ast, err = parser.parse("(a < b < c, 1)")
 		assert.is_nil(ast)

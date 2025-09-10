@@ -459,8 +459,19 @@ function M.parse(input, opts)
 					end
 				end
 
-				if result.type == "Point2" or result.type == "Point3" then
-					local dim = result.type == "Point2" and 2 or 3
+				if
+					result.type == "Point2"
+					or result.type == "Point3"
+					or result.type == "Parametric2D"
+					or result.type == "Parametric3D"
+					or result.type == "Polar2D"
+				then
+					local dim
+					if result.type == "Point2" or result.type == "Parametric2D" or result.type == "Polar2D" then
+						dim = 2
+					else
+						dim = 3
+					end
 					if global_point_dim and global_point_dim ~= dim then
 						local global_pos = ser.start_pos + item.start_pos - 1 + lead
 						local msg = "Cannot mix 2D and 3D points in the same sequence or series at "
