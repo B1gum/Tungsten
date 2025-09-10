@@ -297,8 +297,18 @@ local function contains_variable(node)
 	if type(node) ~= "table" then
 		return false
 	end
-	if node.type == "variable" then
+	if node.type == "variable" or node.type == "symbol" or node.type == "greek" then
 		return true
+	end
+	if node.type == "function_call" then
+		if node.args then
+			for _, arg in ipairs(node.args) do
+				if contains_variable(arg) then
+					return true
+				end
+			end
+		end
+		return false
 	end
 	for _, v in pairs(node) do
 		if contains_variable(v) then

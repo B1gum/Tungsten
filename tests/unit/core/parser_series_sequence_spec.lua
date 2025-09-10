@@ -75,6 +75,25 @@ describe("parser series and sequence handling", function()
 		assert.are.same(" 3", parts[2].str)
 	end)
 
+	it("treats numeric function call tuples as Point2 in parametric mode", function()
+		local res = parser.parse("(sin(1), cos(1))", { mode = "advanced", form = "parametric" })
+		assert.are.equal(1, #res.series)
+		local node = res.series[1]
+		assert.are.same("Point2", node.type)
+		assert.are.same("function_call", node.x.type)
+		assert.are.same("function_call", node.y.type)
+	end)
+
+	it("treats tuples with greek variable as Parametric2D in parametric mode", function()
+		local res = parser.parse("(1, \\theta)", { mode = "advanced", form = "parametric" })
+		assert.are.equal(1, #res.series)
+		local node = res.series[1]
+		assert.are.same("Parametric2D", node.type)
+		assert.are.same("number", node.x.type)
+		assert.are.same("greek", node.y.type)
+		assert.are.same("theta", node.y.name)
+	end)
+
 	it("does not split at commas within non-letter macros", function()
 		local res = parser.parse("x\\,y")
 		assert.is_not_nil(res)
