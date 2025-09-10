@@ -375,31 +375,18 @@ local function try_point_tuple(expr, pattern, ser_start, item_start, input, opts
 				return true
 			end
 
-			local valid = false
 			if #elems == 2 then
 				if #union == 1 and union[1] == "t" and elements_share_union() then
-					valid = true
+					return ast.create_parametric2d_node(elems[1], elems[2])
 				end
 			elseif #elems == 3 then
-				local allowed = { u = true, v = true }
-				valid = true
-				for _, name in ipairs(union) do
-					if not allowed[name] then
-						valid = false
-						break
-					end
-				end
-				if valid and (#union == 0 or #union > 2 or not elements_share_union()) then
-					valid = false
-				end
-			end
-
-			if valid then
-				if #elems == 2 then
-					return ast.create_parametric2d_node(elems[1], elems[2])
-				else
+				if #union == 2 and union[1] == "u" and union[2] == "v" and elements_share_union() then
 					return ast.create_parametric3d_node(elems[1], elems[2], elems[3])
 				end
+				local global_pos = ser_start + item_start - 1 + offset + parts[1].start_pos - 1
+				local msg = "Parametric 3D tuples must use parameters u and v at "
+					.. error_handler.format_line_col(input, global_pos)
+				return nil, msg, global_pos
 			end
 		elseif opts.form == "polar" then
 			if #elems ~= 2 then

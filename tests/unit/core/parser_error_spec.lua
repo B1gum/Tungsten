@@ -45,7 +45,7 @@ describe("tungsten.core.parser.parse error reporting", function()
 	it("returns an error when mixing parametric and point dimensions in advanced mode", function()
 		local ast, err, pos = parser.parse("(sin(t),cos(t)); (1,2,3)", { mode = "advanced", form = "parametric" })
 		assert.is_nil(ast)
-		assert.matches("Cannot mix 2D and 3D points", err)
+		assert.matches("Parametric 3D tuples must use parameters u and v", err)
 		assert.is_number(pos)
 	end)
 
