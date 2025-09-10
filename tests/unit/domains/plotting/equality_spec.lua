@@ -109,6 +109,24 @@ describe("Equality classification", function()
 		}, result)
 	end)
 
+	it("classifies z = f(x) as explicit 3D", function()
+		local rhs = ast_node("function_call", { name = "sin", args = { "x" } })
+		local eq = ast_node("equality", { lhs = mock_ast.create_variable_node("z"), rhs = rhs })
+		mock_free_vars.find = spy.new(function()
+			return { "x" }
+		end)
+
+		local result, err = classification.analyze(eq)
+		assert.is_nil(err)
+		assert.are.same({
+			dim = 3,
+			form = "explicit",
+			series = {
+				{ kind = "function", ast = eq, independent_vars = { "x" }, dependent_vars = { "z" } },
+			},
+		}, result)
+	end)
+
 	it("classifies x^2 + y^2 = 1 as implicit", function()
 		local eq = ast_node("equality", { lhs = "x^2+y^2", rhs = "1" })
 		mock_free_vars.find = spy.new(function()

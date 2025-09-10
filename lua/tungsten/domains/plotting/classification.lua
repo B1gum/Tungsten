@@ -356,6 +356,9 @@ local function analyze_equality(ast)
 	elseif lhs_is_var and (lhs_var == "y" or lhs_var == "z") then
 		local free = find_free_variables(ast.rhs)
 		local dim = #free + 1
+		if lhs_var == "z" then
+			dim = math.max(3, dim)
+		end
 		return {
 			dim = dim,
 			form = "explicit",
