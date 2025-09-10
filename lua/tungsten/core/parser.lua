@@ -344,81 +344,78 @@ local function try_point_tuple(expr, pattern, ser_start, item_start, input, opts
 				return nil, msg, global_pos
 			end
 		end
-		if opts and opts.mode == "advanced" then
-			if opts.form == "parametric" then
-				local elem_params = {}
-				local union_set = {}
-				for i, e in ipairs(elems) do
-					local params = helpers.extract_param_names(e)
-					elem_params[i] = params
-					for _, p in ipairs(params) do
-						union_set[p] = true
+		if opts and opts.mode == "advanced" and opts.form == "parametric" then
+			local elem_params = {}
+			local union_set = {}
+			for i, e in ipairs(elems) do
+				local params = helpers.extract_param_names(e)
+				elem_params[i] = params
+				for _, p in ipairs(params) do
+					union_set[p] = true
+				end
+			end
+
+			local union = {}
+			for p in pairs(union_set) do
+				table.insert(union, p)
+			end
+			table.sort(union)
+
+			local function elements_share_union()
+				for _, params in ipairs(elem_params) do
+					if #params ~= #union then
+						return false
 					end
-				end
-
-				local union = {}
-				for p in pairs(union_set) do
-					table.insert(union, p)
-				end
-				table.sort(union)
-
-				local function elements_share_union()
-					for _, params in ipairs(elem_params) do
-						if #params ~= #union then
+					for _, n in ipairs(params) do
+						if not union_set[n] then
 							return false
 						end
-						for _, n in ipairs(params) do
-							if not union_set[n] then
-								return false
-							end
-						end
-					end
-					return true
-				end
-
-				local valid = false
-				if #elems == 2 then
-					if #union == 1 and union[1] == "t" and elements_share_union() then
-						valid = true
-					end
-				elseif #elems == 3 then
-					local allowed = { u = true, v = true }
-					valid = true
-					for _, name in ipairs(union) do
-						if not allowed[name] then
-							valid = false
-							break
-						end
-					end
-					if valid and (#union == 0 or #union > 2 or not elements_share_union()) then
-						valid = false
 					end
 				end
-
-				if valid then
-					if #elems == 2 then
-						return ast.create_parametric2d_node(elems[1], elems[2])
-					else
-						return ast.create_parametric3d_node(elems[1], elems[2], elems[3])
-					end
-				end
-			elseif opts.form == "polar" then
-				if #elems ~= 2 then
-					local global_pos = ser_start + item_start - 1 + offset + parts[3].start_pos - 1
-					local msg = "Polar typles support only 2D at " .. error_handler.format_line_col(input, global_pos)
-					return nil, msg, global_pos
-				end
-				local r, theta = elems[1], elems[2]
-				if not ((theta.type == "variable" or theta.type == "greek") and theta.name == "theta") then
-					local global_pos = ser_start + item_start - 1 + offset + parts[2].start_pos - 1
-					local msg = "Polar tuples must have theta as second element at "
-						.. error_handler.format_line_col(input, global_pos)
-					return nil, msg, global_pos
-				end
-				return ast.create_polar2d_node(r)
+				return true
 			end
-		end
 
+			local valid = false
+			if #elems == 2 then
+				if #union == 1 and union[1] == "t" and elements_share_union() then
+					valid = true
+				end
+			elseif #elems == 3 then
+				local allowed = { u = true, v = true }
+				valid = true
+				for _, name in ipairs(union) do
+					if not allowed[name] then
+						valid = false
+						break
+					end
+				end
+				if valid and (#union == 0 or #union > 2 or not elements_share_union()) then
+					valid = false
+				end
+			end
+
+			if valid then
+				if #elems == 2 then
+					return ast.create_parametric2d_node(elems[1], elems[2])
+				else
+					return ast.create_parametric3d_node(elems[1], elems[2], elems[3])
+				end
+			end
+		elseif opts.form == "polar" then
+			if #elems ~= 2 then
+				local global_pos = ser_start + item_start - 1 + offset + parts[3].start_pos - 1
+				local msg = "Polar typles support only 2D at " .. error_handler.format_line_col(input, global_pos)
+				return nil, msg, global_pos
+			end
+			local r, theta = elems[1], elems[2]
+			if not ((theta.type == "variable" or theta.type == "greek") and theta.name == "theta") then
+				local global_pos = ser_start + item_start - 1 + offset + parts[2].start_pos - 1
+				local msg = "Polar tuples must have theta as second element at "
+					.. error_handler.format_line_col(input, global_pos)
+				return nil, msg, global_pos
+			end
+			return ast.create_polar2d_node(r)
+		end
 		if #elems == 2 then
 			return ast.create_point2_node(elems[1], elems[2])
 		else

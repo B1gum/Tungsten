@@ -76,7 +76,7 @@ describe("point literal parsing", function()
 	end)
 
 	it("parses polar tuples with greek theta", function()
-		local res = parser.parse("(r(\\theta), \\theta)", { mode = "advanced", form = "polar" })
+		local res = parser.parse("(r(\\theta), \\theta)", { form = "polar" })
 		local node = res.series[1]
 		assert.are.same("Polar2D", node.type)
 		assert.are.same("greek", node.r.args[1].type)
