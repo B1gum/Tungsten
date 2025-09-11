@@ -174,7 +174,11 @@ function M.submit(plot_opts, user_on_success, user_on_error)
 	local supported = true
 	if plot_opts and plot_opts.form and plot_opts.dim then
 		local backends = require("tungsten.domains.plotting.backends")
-		supported = backends.is_supported(backend, plot_opts.form, plot_opts.dim, { dependent_vars = dep_vars })
+		supported = backends.is_supported(backend, plot_opts.form, plot_opts.dim, {
+			dependent_vars = dep_vars,
+			points = has_points,
+			inequalities = has_inequality,
+		})
 	end
 
 	if not supported then

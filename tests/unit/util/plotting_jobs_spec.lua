@@ -275,6 +275,21 @@ describe("Plotting Job Manager", function()
 		assert.are.equal(0, #mock_async.run_job_calls)
 	end)
 
+	it("returns E_UNSUPPORTED_FORM when backend cannot handle inequalities", function()
+		local id = JobManager.submit({
+			expression = "expr",
+			bufnr = 0,
+			backend = "python",
+			form = "implicit",
+			dim = 2,
+			series = { { kind = "inequality", dependent_vars = {} } },
+		})
+		assert.is_nil(id)
+		assert.spy(notify_error_spy).was.called(1)
+		assert.spy(notify_error_spy).was.called_with("TungstenPlot", mock_err_handler.E_UNSUPPORTED_FORM)
+		assert.are.equal(0, #mock_async.run_job_calls)
+	end)
+
 	it("returns E_UNSUPPORTED_FORM when backend cannot handle classification", function()
 		local id = JobManager.submit({
 			expression = "expr",
