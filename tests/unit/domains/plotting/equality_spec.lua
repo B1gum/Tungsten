@@ -139,13 +139,10 @@ describe("Equality classification", function()
 	end)
 
 	it("classifies y = x + y as implicit", function()
-		local eq = ast_node("equality", { lhs = mock_ast.create_variable_node("y"), rhs = "x+y" })
-		free_vars.find = spy.new(function(node)
-			if node == eq.rhs then
-				return { "x", "y" }
-			end
-			return { "x" }
-		end)
+		local x = mock_ast.create_variable_node("x")
+		local y = mock_ast.create_variable_node("y")
+		local rhs = ast_node("binary", { operator = "+", left = x, right = y })
+		local eq = ast_node("equality", { lhs = y, rhs = rhs })
 
 		local result, err = classification.analyze(eq)
 		assert.is_nil(err)

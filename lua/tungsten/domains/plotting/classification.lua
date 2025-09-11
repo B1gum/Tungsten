@@ -318,6 +318,7 @@ local function analyze_equality(ast)
 		local free = find_free_variables(ast.rhs)
 		if remove_var(free, lhs_name) then
 			free = find_free_variables(ast)
+			remove_var(free, lhs_name)
 			return {
 				dim = #free,
 				form = "implicit",
@@ -345,6 +346,7 @@ local function analyze_equality(ast)
 		local free = find_free_variables(ast.rhs)
 		if remove_var(free, lhs_var) then
 			free = find_free_variables(ast)
+			remove_var(free, lhs_var)
 			return {
 				dim = #free,
 				form = "implicit",
@@ -370,6 +372,7 @@ local function analyze_equality(ast)
 		local free = find_free_variables(ast.rhs)
 		if remove_var(free, lhs_var) then
 			free = find_free_variables(ast)
+			remove_var(free, lhs_var)
 			return {
 				dim = #free,
 				form = "implicit",
