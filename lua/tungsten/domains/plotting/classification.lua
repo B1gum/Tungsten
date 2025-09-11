@@ -328,6 +328,7 @@ local function analyze_equality(ast)
 			}
 		end
 		local dim = #free + 1
+		dim = math.max(2, dim)
 		return {
 			dim = dim,
 			form = "explicit",
@@ -356,6 +357,7 @@ local function analyze_equality(ast)
 			}
 		end
 		local dim = #free + 1
+		dim = math.max(2, dim)
 		return {
 			dim = dim,
 			form = "explicit",
@@ -384,6 +386,8 @@ local function analyze_equality(ast)
 		local dim = #free + 1
 		if lhs_var == "z" then
 			dim = math.max(3, dim)
+		else
+			dim = math.max(2, dim)
 		end
 		return {
 			dim = dim,

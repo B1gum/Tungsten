@@ -121,6 +121,42 @@ describe("Equality classification", function()
 		}, result)
 	end)
 
+	it("classifies y = 2 as explicit", function()
+		local eq =
+			ast_node("equality", { lhs = mock_ast.create_variable_node("y"), rhs = ast_node("number", { value = 2 }) })
+		free_vars.find = spy.new(function()
+			return {}
+		end)
+
+		local result, err = classification.analyze(eq)
+		assert.is_nil(err)
+		assert.are.same({
+			dim = 2,
+			form = "explicit",
+			series = {
+				{ kind = "function", ast = eq, independent_vars = {}, dependent_vars = { "y" } },
+			},
+		}, result)
+	end)
+
+	it("classifies x = 3 as explicit", function()
+		local eq =
+			ast_node("equality", { lhs = mock_ast.create_variable_node("x"), rhs = ast_node("number", { value = 3 }) })
+		free_vars.find = spy.new(function()
+			return {}
+		end)
+
+		local result, err = classification.analyze(eq)
+		assert.is_nil(err)
+		assert.are.same({
+			dim = 2,
+			form = "explicit",
+			series = {
+				{ kind = "function", ast = eq, independent_vars = {}, dependent_vars = { "x" } },
+			},
+		}, result)
+	end)
+
 	it("classifies x^2 + y^2 = 1 as implicit", function()
 		local eq = ast_node("equality", { lhs = "x^2+y^2", rhs = "1" })
 		free_vars.find = spy.new(function()
