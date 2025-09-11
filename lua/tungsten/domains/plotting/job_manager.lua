@@ -150,21 +150,35 @@ _process_queue = function()
 end
 
 function M.submit(plot_opts, user_on_success, user_on_error)
-	local backend = (plot_opts and plot_opts.backend) or (config.plotting or {}).backend or "wolfram"
+	plot_opts = plot_opts or {}
+	local backend = plot_opts.backend or (config.plotting or {}).backend or "wolfram"
 
 	local dep_vars = {}
+	local has_points = false
+	local has_inequality = false
 	if plot_opts and plot_opts.series then
 		for _, s in ipairs(plot_opts.series) do
 			for _, v in ipairs(s.dependent_vars or {}) do
 				dep_vars[#dep_vars + 1] = v
 			end
+			if s.kind == "points" then
+				has_points = true
+			elseif s.kind == "inequality" then
+				has_inequality = true
+			end
 		end
 	end
+	plot_opts.has_points = has_points
+	plot_opts.has_inequality = has_inequality
 
 	local supported = true
 	if plot_opts and plot_opts.form and plot_opts.dim then
 		local backends = require("tungsten.domains.plotting.backends")
-		supported = backends.is_supported(backend, plot_opts.form, plot_opts.dim, { dependent_vars = dep_vars })
+		supported = backends.is_supported(backend, plot_opts.form, plot_opts.dim, {
+			dependent_vars = dep_vars,
+			points = has_points,
+			inequalities = has_inequality,
+		})
 		if not supported then
 			local has_x = false
 			for _, v in ipairs(dep_vars) do
@@ -174,7 +188,13 @@ function M.submit(plot_opts, user_on_success, user_on_error)
 				end
 			end
 			if has_x and backend ~= "wolfram" then
-				if backends.is_supported("wolfram", plot_opts.form, plot_opts.dim, { dependent_vars = dep_vars }) then
+				if
+					backends.is_supported("wolfram", plot_opts.form, plot_opts.dim, {
+						dependent_vars = dep_vars,
+						points = has_points,
+						inequalities = has_inequality,
+					})
+				then
 					backend = "wolfram"
 					plot_opts.backend = "wolfram"
 					supported = true

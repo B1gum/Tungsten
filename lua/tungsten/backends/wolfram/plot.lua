@@ -119,8 +119,8 @@ local function build_implicit_code(opts)
 	local exprs = {}
 	local has_inequality = false
 	for _, s in ipairs(series) do
-		if s.kind == "function" then
-			if s.ast and s.ast.type == "has_inequality" then
+		if s.kind == "function" or s.kind == "inequality" then
+			if s.kind == "inequality" then
 				has_inequality = true
 			end
 			local code = render_ast_to_wolfram(s.ast)

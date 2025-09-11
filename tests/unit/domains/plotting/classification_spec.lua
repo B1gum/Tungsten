@@ -176,7 +176,14 @@ describe("Plot Classification Logic", function()
 		assert.are.same({
 			dim = 2,
 			form = "implicit",
-			series = { { kind = "function", ast = inequality, independent_vars = { "x", "y" }, dependent_vars = {} } },
+			series = {
+				{
+					kind = "inequality",
+					ast = inequality,
+					independent_vars = { "x", "y" },
+					dependent_vars = {},
+				},
+			},
 		}, result)
 	end)
 

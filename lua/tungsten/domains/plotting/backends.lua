@@ -19,6 +19,18 @@ function M.is_supported(backend_name, form, dim, opts)
 	if not form_table or not form_table[dim] then
 		return false
 	end
+	if opts.points then
+		local pt = backend.supports.points
+		if not (pt and pt[dim]) then
+			return false
+		end
+	end
+	if opts.inequalities then
+		local ineq = backend.supports.inequalities
+		if not (ineq and ineq[dim]) then
+			return false
+		end
+	end
 	if backend_name == "python" and form == "explicit" then
 		local dep = opts.dependent_vars or {}
 		for _, v in ipairs(dep) do

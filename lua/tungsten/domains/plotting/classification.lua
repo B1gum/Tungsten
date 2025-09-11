@@ -303,7 +303,7 @@ local function analyze_inequality(ast)
 		form = "implicit",
 		series = {
 			{
-				kind = "function",
+				kind = "inequality",
 				ast = ast,
 				independent_vars = free,
 				dependent_vars = {},
