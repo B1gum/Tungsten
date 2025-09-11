@@ -246,6 +246,20 @@ describe("Plotting Job Manager", function()
 			.called_with("TungstenPlot", mock_err_handler.E_BACKEND_UNAVAILABLE .. ": Install Wolfram or configure Python backend")
 	end)
 
+	it("submits vertical functions with Wolfram backend", function()
+		local id = JobManager.submit({
+			expression = "expr",
+			bufnr = 0,
+			backend = "wolfram",
+			form = "explicit",
+			dim = 2,
+			series = { { dependent_vars = { "x" } } },
+		})
+		assert.is_not_nil(id)
+		assert.are.equal(1, #mock_async.run_job_calls)
+		assert.spy(notify_error_spy).was_not_called()
+	end)
+
 	it("returns E_UNSUPPORTED_FORM for vertical functions with Python backend", function()
 		local id = JobManager.submit({
 			expression = "expr",
