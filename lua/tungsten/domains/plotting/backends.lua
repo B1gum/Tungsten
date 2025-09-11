@@ -20,13 +20,13 @@ function M.is_supported(backend_name, form, dim, opts)
 		return false
 	end
 	if opts.points then
-		local pt = backend.supports.points
+                local pt = backend.points
 		if not (pt and pt[dim]) then
 			return false
 		end
 	end
 	if opts.inequalities then
-		local ineq = backend.supports.inequalities
+                local ineq = backend.inequalities
 		if not (ineq and ineq[dim]) then
 			return false
 		end

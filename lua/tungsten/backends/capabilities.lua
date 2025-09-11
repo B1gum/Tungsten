@@ -9,10 +9,10 @@ local backend_capabilities = {
 			implicit = { [2] = true, [3] = true },
 			parametric = { [2] = true, [3] = true },
 			polar = { [2] = true },
-			points = {},
-			inequalities = { [2] = true, [3] = true },
+    },
+		points = { [2] = true, [3] = true },
+		inequalities = { [2] = true, [3] = true },
 		},
-	},
 	python = {
 		name = "python",
 		supports = {
@@ -20,9 +20,9 @@ local backend_capabilities = {
 			implicit = { [2] = true },
 			parametric = { [2] = true, [3] = true },
 			polar = { [2] = true },
-			points = {},
-			inequalities = {},
-		},
+    },
+		points = { [2] = true, [3] = true},
+		inequalities = {},
 	},
 }
 
