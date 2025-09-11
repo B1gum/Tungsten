@@ -174,33 +174,7 @@ function M.submit(plot_opts, user_on_success, user_on_error)
 	local supported = true
 	if plot_opts and plot_opts.form and plot_opts.dim then
 		local backends = require("tungsten.domains.plotting.backends")
-		supported = backends.is_supported(backend, plot_opts.form, plot_opts.dim, {
-			dependent_vars = dep_vars,
-			points = has_points,
-			inequalities = has_inequality,
-		})
-		if not supported then
-			local has_x = false
-			for _, v in ipairs(dep_vars) do
-				if v == "x" then
-					has_x = true
-					break
-				end
-			end
-			if has_x and backend ~= "wolfram" then
-				if
-					backends.is_supported("wolfram", plot_opts.form, plot_opts.dim, {
-						dependent_vars = dep_vars,
-						points = has_points,
-						inequalities = has_inequality,
-					})
-				then
-					backend = "wolfram"
-					plot_opts.backend = "wolfram"
-					supported = true
-				end
-			end
-		end
+		supported = backends.is_supported(backend, plot_opts.form, plot_opts.dim, { dependent_vars = dep_vars })
 	end
 
 	if not supported then
