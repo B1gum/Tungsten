@@ -128,7 +128,7 @@ describe("Plotting Options and Defaults", function()
 			local opts = options_builder.build(classification, { backend = "python" })
 
 			assert.are.equal(2, classification.dim)
-			assert.are.same({ "y" }, classification.series[1].dependent_vars)
+			assert.are.same({ "z" }, classification.series[1].dependent_vars)
 			assert.are.equal(2, opts.dim)
 			assert.is_nil(opts.yrange)
 			assert.are.same(500, opts.samples)

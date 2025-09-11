@@ -35,9 +35,16 @@ function M.build(classification, user_overrides)
 			end
 		end
 		if downgrade then
+      local original_dep = {}
+      for i, s in ipairs(series) do
+        original_dep[i] = {}
+        for j, v in ipairs(s.dependent_vars or {}) do
+          original_dep[i][j] = v
+        end
+      end
 			classification.dim = 2
-			for _, s in ipairs(series) do
-				s.dependent_vars = { "y" }
+      for i, s in ipairs(series) do
+        s.dependent_vars = original_dep[i]
 			end
 			logger.warn("TungstenPlot", "Downgrading 3D explicit plot to 2D explicit for python backend")
 		end
