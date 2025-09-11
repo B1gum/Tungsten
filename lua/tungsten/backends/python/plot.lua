@@ -17,6 +17,52 @@ local function render_ast_to_python(ast)
 	return nil
 end
 
+local function build_style_args(series, context, default_color)
+	series = series or {}
+	local parts = {}
+	local color = series.color or default_color
+	if color then
+		if context == "contour" then
+			parts[#parts + 1] = string.format("colors='%s'", color)
+		else
+			parts[#parts + 1] = string.format("color='%s'", color)
+		end
+	end
+	if series.linewidth then
+		if context == "contour" or context == "scatter" then
+			parts[#parts + 1] = string.format("linewidths=%s", series.linewidth)
+		else
+			parts[#parts + 1] = string.format("linewidth=%s", series.linewidth)
+		end
+	end
+	if series.linestyle then
+		if context == "contour" then
+			parts[#parts + 1] = string.format("linestyles='%s'", series.linestyle)
+		else
+			parts[#parts + 1] = string.format("linestyle='%s'", series.linestyle)
+		end
+	end
+	if series.marker and context ~= "surface" then
+		parts[#parts + 1] = string.format("marker='%s'", series.marker)
+	end
+	if series.markersize then
+		if context == "scatter" then
+			parts[#parts + 1] = string.format("s=%s", series.markersize)
+		elseif context ~= "surface" then
+			parts[#parts + 1] = string.format("markersize=%s", series.markersize)
+		end
+	elseif context == "scatter" then
+		parts[#parts + 1] = "s=1"
+	end
+	if series.alpha then
+		parts[#parts + 1] = string.format("alpha=%s", series.alpha)
+	end
+	if #parts > 0 then
+		return ", " .. table.concat(parts, ", ")
+	end
+	return ""
+end
+
 local function build_explicit_2d_python_code(opts)
 	local series = opts.series or {}
 	local exprs = {}
@@ -28,7 +74,7 @@ local function build_explicit_2d_python_code(opts)
 			end
 			local code = render_ast_to_python(ast)
 			if code then
-				table.insert(exprs, code)
+				table.insert(exprs, { code = code, series = s })
 			end
 		end
 	end
@@ -44,10 +90,11 @@ local function build_explicit_2d_python_code(opts)
 	local lines = {}
 	table.insert(lines, string.format("%s = sp.symbols('%s')", xvar, xvar))
 	table.insert(lines, string.format("xs = np.linspace(%s, %s, %d)", xrange[1], xrange[2], samples))
-	for i, expr in ipairs(exprs) do
+	for i, item in ipairs(exprs) do
 		local fname = "f" .. i
-		table.insert(lines, string.format("%s = sp.lambdify((%s,), %s, 'numpy')", fname, xvar, expr))
-		table.insert(lines, string.format("ax.plot(xs, %s(xs))", fname))
+		table.insert(lines, string.format("%s = sp.lambdify((%s,), %s, 'numpy')", fname, xvar, item.code))
+		local style = build_style_args(item.series, "plot")
+		table.insert(lines, string.format("ax.plot(xs, %s(xs)%s)", fname, style))
 	end
 
 	return table.concat(lines, "\n"), nil
@@ -64,7 +111,7 @@ local function build_explicit_3d_python_code(opts)
 			end
 			local code = render_ast_to_python(ast)
 			if code then
-				table.insert(exprs, code)
+				table.insert(exprs, { code = code, series = s })
 			end
 		end
 	end
@@ -85,11 +132,15 @@ local function build_explicit_3d_python_code(opts)
 	table.insert(lines, string.format("y_vals = np.linspace(%s, %s, %d)", yrange[1], yrange[2], grid[2]))
 	table.insert(lines, "X, Y = np.meshgrid(x_vals, y_vals)")
 	local surf_var = "surf"
-	for i, expr in ipairs(exprs) do
+	for i, item in ipairs(exprs) do
 		local fname = "f" .. i
-		table.insert(lines, string.format("%s = sp.lambdify((%s,%s), %s, 'numpy')", fname, xvar, yvar, expr))
+		table.insert(lines, string.format("%s = sp.lambdify((%s,%s), %s, 'numpy')", fname, xvar, yvar, item.code))
 		table.insert(lines, string.format("Z = %s(X, Y)", fname))
-		table.insert(lines, string.format("%s = ax.plot_surface(X, Y, Z, cmap='%s')", surf_var, opts.colormap or "viridis"))
+		local style = build_style_args(item.series, "surface")
+		table.insert(
+			lines,
+			string.format("%s = ax.plot_surface(X, Y, Z, cmap='%s'%s)", surf_var, opts.colormap or "viridis", style)
+		)
 	end
 
 	return table.concat(lines, "\n"), surf_var
@@ -102,7 +153,7 @@ local function build_implicit_2d_py_code(opts)
 		if s.kind == "function" then
 			local code = render_ast_to_python(s.ast)
 			if code then
-				table.insert(exprs, code)
+				table.insert(exprs, { code = code, series = s })
 			end
 		end
 	end
@@ -123,11 +174,12 @@ local function build_implicit_2d_py_code(opts)
 	table.insert(lines, string.format("y_vals = np.linspace(%s, %s, %d)", yrange[1], yrange[2], grid_n))
 	table.insert(lines, "X, Y = np.meshgrid(x_vals, y_vals)")
 	local cont_var = "cs"
-	for i, expr in ipairs(exprs) do
+	for i, item in ipairs(exprs) do
 		local fname = "f" .. i
-		table.insert(lines, string.format("%s = sp.lambdify((%s,%s), %s, 'numpy')", fname, xvar, yvar, expr))
+		table.insert(lines, string.format("%s = sp.lambdify((%s,%s), %s, 'numpy')", fname, xvar, yvar, item.code))
 		table.insert(lines, string.format("Z = %s(X, Y)", fname))
-		table.insert(lines, string.format("%s = ax.contour(X, Y, Z, levels=[0], colors='black')", cont_var))
+		local style = build_style_args(item.series, "contour", "black")
+		table.insert(lines, string.format("%s = ax.contour(X, Y, Z, levels=[0]%s)", cont_var, style))
 	end
 
 	return table.concat(lines, "\n"), cont_var
@@ -166,7 +218,8 @@ local function build_implicit_3d_py_code(opts)
 	table.insert(lines, string.format("f = sp.lambdify((%s,%s,%s), %s, 'numpy')", xvar, yvar, zvar, expr))
 	table.insert(lines, "vals = f(X, Y, Z)")
 	table.insert(lines, "mask = np.isclose(vals, 0, atol=0.1)")
-	table.insert(lines, "ax.scatter(X[mask], Y[mask], Z[mask], s=1)")
+	local style = build_style_args(series[1], "scatter")
+	table.insert(lines, string.format("ax.scatter(X[mask], Y[mask], Z[mask]%s)", style))
 
 	return table.concat(lines, "\n"), nil
 end
@@ -179,7 +232,7 @@ local function build_parametric_2d_py_code(opts)
 			local x = render_ast_to_python(s.ast.x)
 			local y = render_ast_to_python(s.ast.y)
 			if x and y then
-				table.insert(exprs, { x = x, y = y, indep = s.independent_vars or {} })
+				table.insert(exprs, { x = x, y = y, indep = s.independent_vars or {}, series = s })
 			end
 		end
 	end
@@ -194,12 +247,14 @@ local function build_parametric_2d_py_code(opts)
 	local lines = {}
 	table.insert(lines, string.format("%s = sp.symbols('%s')", tvar, tvar))
 	table.insert(lines, string.format("t_vals = np.linspace(%s, %s, %d)", t_range[1], t_range[2], samples))
+
 	for i, e in ipairs(exprs) do
 		local fx = "fx" .. i
 		local fy = "fy" .. i
 		table.insert(lines, string.format("%s = sp.lambdify((%s,), %s, 'numpy')", fx, tvar, e.x))
 		table.insert(lines, string.format("%s = sp.lambdify((%s,), %s, 'numpy')", fy, tvar, e.y))
-		table.insert(lines, string.format("ax.plot(%s(t_vals), %s(t_vals))", fx, fy))
+		local style = build_style_args(e.series, "plot")
+		table.insert(lines, string.format("ax.plot(%s(t_vals), %s(t_vals)%s)", fx, fy, style))
 	end
 
 	return table.concat(lines, "\n"), nil
@@ -214,7 +269,7 @@ local function build_parametric_3d_py_code(opts)
 			local y = render_ast_to_python(s.ast.y)
 			local z = render_ast_to_python(s.ast.z)
 			if x and y and z then
-				table.insert(exprs, { x = x, y = y, z = z })
+				table.insert(exprs, { x = x, y = y, z = z, series = s })
 			end
 		end
 	end
@@ -245,7 +300,11 @@ local function build_parametric_3d_py_code(opts)
 		table.insert(lines, string.format("X = %s(U, V)", fx))
 		table.insert(lines, string.format("Y = %s(U, V)", fy))
 		table.insert(lines, string.format("Z = %s(U, V)", fz))
-		table.insert(lines, string.format("%s = ax.plot_surface(X, Y, Z, cmap='%s')", surf_var, opts.colormap or "viridis"))
+		local style = build_style_args(e.series, "surface")
+		table.insert(
+			lines,
+			string.format("%s = ax.plot_surface(X, Y, Z, cmap='%s'%s)", surf_var, opts.colormap or "viridis", style)
+		)
 	end
 
 	return table.concat(lines, "\n"), surf_var

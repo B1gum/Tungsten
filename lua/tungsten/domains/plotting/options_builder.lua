@@ -2,6 +2,25 @@ local M = {}
 local config = require("tungsten.config")
 local logger = require("tungsten.util.logger")
 
+local function parse_style_tokens(tokens)
+	local res = {}
+	if type(tokens) == "string" then
+		tokens = vim.split(tokens, " ", { trimempty = true })
+	end
+	if type(tokens) ~= "table" then
+		return res
+	end
+	for _, tok in ipairs(tokens) do
+		local key, val = tok:match("^%s*(%w+)%s*=%s*(.-)%s*$")
+		if key and val then
+			val = val:gsub("^['\"]", ""):gsub("['\"]$", "")
+			local num = tonumber(val)
+			res[key] = num or val
+		end
+	end
+	return res
+end
+
 function M.build(classification, user_overrides)
 	user_overrides = user_overrides or {}
 
@@ -127,8 +146,16 @@ function M.build(classification, user_overrides)
 	opts.colorbar = false
 	opts.bg_color = "white"
 
-	for k, v in pairs(user_overrides) do
-		opts[k] = v
+	local src_series = classification.series or {}
+	for i, s in ipairs(src_series) do
+		opts.series[i] = {}
+		for k, v in pairs(s) do
+			opts.series[i][k] = v
+		end
+		local style = parse_style_tokens(s.style_tokens or s.style)
+		for k, v in pairs(style) do
+			opts.series[i][k] = v
+		end
 	end
 
 	for k, v in pairs(user_overrides) do

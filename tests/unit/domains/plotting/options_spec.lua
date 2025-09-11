@@ -100,6 +100,34 @@ describe("Plotting Options and Defaults", function()
 			assert.is_false(exp2.colorbar)
 			assert.are.same("white", exp2.bg_color)
 		end)
+
+		it("parses style tokens for each series", function()
+			local classification = {
+				dim = 2,
+				form = "explicit",
+				series = {
+					{
+						kind = "function",
+						style_tokens = {
+							"color=red",
+							"linewidth=3",
+							"linestyle=--",
+							"marker=x",
+							"markersize=4",
+							"alpha=0.5",
+						},
+					},
+				},
+			}
+			local opts = options_builder.build(classification, {})
+			local s = opts.series[1]
+			assert.are.same("red", s.color)
+			assert.are.same(3, s.linewidth)
+			assert.are.same("--", s.linestyle)
+			assert.are.same("x", s.marker)
+			assert.are.same(4, s.markersize)
+			assert.are.same(0.5, s.alpha)
+		end)
 	end)
 
 	it("allows overrides to replace defaults", function()

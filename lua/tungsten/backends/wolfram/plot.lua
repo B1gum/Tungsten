@@ -67,6 +67,67 @@ local function translate_opts_to_wolfram(opts)
 	return res
 end
 
+local function build_style_directive(series)
+	local parts = {}
+	if series.color then
+		parts[#parts + 1] = series.color
+	end
+	if series.linewidth then
+		parts[#parts + 1] = string.format("AbsoluteThickness[%s]", series.linewidth)
+	end
+	if series.linestyle then
+		parts[#parts + 1] = series.linestyle
+	end
+	if series.alpha then
+		parts[#parts + 1] = string.format("Opacity[%s]", series.alpha)
+	end
+	if series.markersize then
+		parts[#parts + 1] = string.format("PointSize[%s]", series.markersize)
+	end
+	if #parts > 0 then
+		return "Directive[" .. table.concat(parts, ", ") .. "]"
+	end
+	return nil
+end
+
+local function build_marker_spec(series)
+	if series.marker or series.markersize then
+		local marker = series.marker and string.format('"%s"', series.marker) or "Automatic"
+		local size = series.markersize and tostring(series.markersize) or "Automatic"
+		return string.format("{%s, %s}", marker, size)
+	end
+	return nil
+end
+
+local function apply_series_styles(extra_opts, series)
+	local styles = {}
+	local markers = {}
+	for _, s in ipairs(series or {}) do
+		local st = build_style_directive(s)
+		if st then
+			styles[#styles + 1] = st
+		end
+		local mk = build_marker_spec(s)
+		if mk then
+			markers[#markers + 1] = mk
+		end
+	end
+	if #styles > 0 then
+		if #styles == 1 then
+			extra_opts[#extra_opts + 1] = "PlotStyle -> " .. styles[1]
+		else
+			extra_opts[#extra_opts + 1] = "PlotStyle -> {" .. table.concat(styles, ", ") .. "}"
+		end
+	end
+	if #markers > 0 then
+		if #markers == 1 then
+			extra_opts[#extra_opts + 1] = "PlotMarkers -> " .. markers[1]
+		else
+			extra_opts[#extra_opts + 1] = "PlotMarkers -> {" .. table.concat(markers, ", ") .. "}"
+		end
+	end
+end
+
 local function build_explicit_code(opts)
 	local series = opts.series or {}
 	local functions = {}
@@ -106,6 +167,7 @@ local function build_explicit_code(opts)
 	local code = plot_fun .. "[" .. func_expr .. ", " .. table.concat(ranges, ", ")
 
 	local extra_opts = translate_opts_to_wolfram(opts)
+	apply_series_styles(extra_opts, series)
 	if #extra_opts > 0 then
 		code = code .. ", " .. table.concat(extra_opts, ", ")
 	end
@@ -161,6 +223,7 @@ local function build_implicit_code(opts)
 
 	local code = fn .. "[" .. expr .. ", " .. table.concat(ranges, ", ")
 	local extra_opts = translate_opts_to_wolfram(opts)
+	apply_series_styles(extra_opts, series)
 	if #extra_opts > 0 then
 		code = code .. ", " .. table.concat(extra_opts, ", ")
 	end
@@ -219,6 +282,7 @@ local function build_parametric_code(opts)
 	local fn = opts.dim == 3 and "ParametricPlot3D" or "ParametricPlot"
 	local code = fn .. "[" .. inner .. ", " .. table.concat(ranges, ", ")
 	local extra_opts = translate_opts_to_wolfram(opts)
+	apply_series_styles(extra_opts, series)
 	if #extra_opts > 0 then
 		code = code .. ", " .. table.concat(extra_opts, ", ")
 	end

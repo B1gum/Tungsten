@@ -147,6 +147,11 @@ local function build_default_lines(opts)
 			lines[#lines + 1] = string.format("--- Series %d: %s ---", i, s.ast or "")
 			lines[#lines + 1] = "Label:"
 			lines[#lines + 1] = "Color:"
+			lines[#lines + 1] = "Linewidth:"
+			lines[#lines + 1] = "Linestyle:"
+			lines[#lines + 1] = "Marker:"
+			lines[#lines + 1] = "Markersize:"
+			lines[#lines + 1] = "Alpha:"
 			lines[#lines + 1] = ""
 		end
 	end
@@ -168,6 +173,25 @@ function M.open_advanced_config(opts)
 	vim.api.nvim_create_autocmd("BufWipeout", { buffer = bufnr, callback = function() end })
 end
 
+local function parse_style_tokens(tokens)
+	local res = {}
+	if type(tokens) == "string" then
+		tokens = vim.split(tokens, " ", { trimempty = true })
+	end
+	if type(tokens) ~= "table" then
+		return res
+	end
+	for _, tok in ipairs(tokens) do
+		local key, val = tok:match("^%s*(%w+)%s*=%s*(.-)%s*$")
+		if key and val then
+			val = val:gsub("^['\"]", ""):gsub("['\"]$", "")
+			local num = tonumber(val)
+			res[key] = num or val
+		end
+	end
+	return res
+end
+
 function M.build_final_opts_from_classification(classification)
 	local final = vim.deepcopy(classification or {})
 	final.series = {}
@@ -177,6 +201,10 @@ function M.build_final_opts_from_classification(classification)
 		final.series[i] = vim.deepcopy(s)
 		if multi and (not final.series[i].label or final.series[i].label == "") then
 			final.series[i].label = string.format("Series %d", i)
+		end
+		local style = parse_style_tokens(s.style_tokens or s.style)
+		for k, v in pairs(style) do
+			final.series[i][k] = v
 		end
 	end
 	if #final.series > 1 then
