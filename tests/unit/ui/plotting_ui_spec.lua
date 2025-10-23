@@ -227,6 +227,7 @@ describe("Plotting UI and UX", function()
 
 	describe("Advanced Config UI", function()
 		local original_api
+		local original_vim_ui_input
 		local mock_bufnr = 100
 		local mock_winid = 200
 
@@ -237,6 +238,7 @@ describe("Plotting UI and UX", function()
 				nvim_open_win = vim.api.nvim_open_win,
 				nvim_create_autocmd = vim.api.nvim_create_autocmd,
 			}
+			original_vim_ui_input = vim.ui.input
 			vim.api.nvim_create_buf = stub.new(vim.api, "nvim_create_buf", function()
 				return mock_bufnr
 			end)
@@ -245,6 +247,11 @@ describe("Plotting UI and UX", function()
 				return mock_winid
 			end)
 			vim.api.nvim_create_autocmd = stub.new(vim.api, "nvim_create_autocmd")
+			vim.ui.input = stub.new(vim.ui, "input", function(_, on_confirm)
+				if on_confirm then
+					on_confirm("y")
+				end
+			end)
 		end)
 
 		after_each(function()
@@ -252,8 +259,8 @@ describe("Plotting UI and UX", function()
 			vim.api.nvim_buf_set_lines = original_api.nvim_buf_set_lines
 			vim.api.nvim_open_win = original_api.nvim_open_win
 			vim.api.nvim_create_autocmd = original_api.nvim_create_autocmd
+			vim.ui.input = original_vim_ui_input
 		end)
-
 		it("should open a config buffer pre-filled with defaults", function()
 			plotting_ui.open_advanced_config({})
 			assert.spy(vim.api.nvim_create_buf).was.called(1)
@@ -311,11 +318,32 @@ describe("Plotting UI and UX", function()
 			assert.is_function(q_callback, "BufWipeout callback was not defined.")
 
 			wq_callback()
+			assert.spy(vim.ui.input).was.called(1)
 			assert.spy(mock_plotting_core.initiate_plot).was.called(1)
 
 			mock_plotting_core.initiate_plot:clear()
 			q_callback()
 			assert.spy(mock_plotting_core.initiate_plot).was_not.called()
+		end)
+
+		it("should only plot when the user confirms", function()
+			plotting_ui.open_advanced_config({})
+			local wq_callback
+
+			for _, call in ipairs(vim.api.nvim_create_autocmd.calls) do
+				if call.vals[1] == "BufWriteCmd" then
+					wq_callback = call.vals[2].callback
+				end
+			end
+
+			vim.ui.input = stub.new(vim.ui, "input", function(_, on_confirm)
+				if on_confirm then
+					on_confirm(nil)
+				end
+			end)
+
+			wq_callback()
+			assert.spy(mock_plotting_core.initiate_plot).was_not_called()
 		end)
 	end)
 

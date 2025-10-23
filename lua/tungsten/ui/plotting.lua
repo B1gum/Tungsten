@@ -7,6 +7,60 @@ local io_util = require("tungsten.util.io")
 
 local M = {}
 
+local function extract_series_label(entry)
+	if type(entry) == "table" then
+		return entry.ast
+			or entry.value
+			or entry.display
+			or entry.text
+			or entry.raw
+			or entry.source
+			or entry.name
+			or entry.label
+			or entry.type
+	end
+	if entry == nil then
+		return ""
+	end
+	return tostring(entry)
+end
+
+local function resolve_series_entries(opts)
+	opts = opts or {}
+	local classification_series = (opts.classification and opts.classification.series) or {}
+	local series = opts.series or classification_series or {}
+	series = vim.deepcopy(series)
+	local parsed_series = opts.parsed_series or {}
+	local max_count = math.max(#series, #parsed_series)
+	for i = 1, max_count do
+		series[i] = series[i] or {}
+		local parsed_entry = parsed_series[i]
+		if parsed_entry and (series[i].ast == nil or series[i].ast == "") then
+			series[i].ast = extract_series_label(parsed_entry)
+		end
+	end
+	return series
+end
+
+local function parse_style_tokens(tokens)
+	local res = {}
+	if type(tokens) == "string" then
+		tokens = vim.split(tokens, " ", { trimempty = true })
+	end
+	if type(tokens) ~= "table" then
+		return res
+	end
+	for _, tok in ipairs(tokens) do
+		local key, val = tok:match("^%s*(%w+)%s*=%s*(.-)%s*$")
+		if key and val then
+			val = val:gsub("^['\"]", ""):gsub("['\"]$", "")
+			local num = tonumber(val)
+			res[key] = num or val
+		end
+	end
+	return res
+end
+
 local function parse_definitions(input)
 	local defs = {}
 	if not input or input == "" then
@@ -116,42 +170,191 @@ function M.handle_output(plot_path)
 	})
 end
 
+local function format_range(range)
+	if type(range) ~= "table" then
+		return ""
+	end
+	local start_val = range[1] ~= nil and tostring(range[1]) or ""
+	local end_val = range[2] ~= nil and tostring(range[2]) or ""
+	return string.format("[%s, %s]", start_val, end_val)
+end
+
+local function to_on_off(val)
+	if val == nil then
+		return "auto"
+	end
+	return val and "on" or "off"
+end
+
+local function determine_legend_auto(opts, classification, series)
+	if opts.legend_auto ~= nil then
+		return opts.legend_auto
+	end
+	if classification.legend_auto ~= nil then
+		return classification.legend_auto
+	end
+	local count = #series
+	if count > 1 then
+		return true
+	elseif count == 1 then
+		local lbl = series[1].label
+		return lbl ~= nil and lbl ~= ""
+	end
+	return false
+end
+
+local function collect_dependents(series, dim, form)
+	local set = {}
+	for _, s in ipairs(series) do
+		for _, dep in ipairs(s.dependent_vars or {}) do
+			set[dep] = true
+		end
+	end
+	if next(set) == nil then
+		if dim == 2 and form == "explicit" then
+			set.y = true
+		elseif dim == 3 and (form == "explicit" or form == "implicit") then
+			set.z = true
+		elseif form == "polar" then
+			set.r = true
+		elseif form == "parametric" then
+			if dim == 2 then
+				set.x = true
+				set.y = true
+			elseif dim == 3 then
+				set.x = true
+				set.y = true
+				set.z = true
+			end
+		end
+	end
+	local ordered = {}
+	local priority = { x = 1, y = 2, z = 3, r = 4, theta = 5, u = 6, v = 7, t = 8 }
+	for key in pairs(set) do
+		table.insert(ordered, key)
+	end
+	table.sort(ordered, function(a, b)
+		local pa = priority[a] or 99
+		local pb = priority[b] or 99
+		if pa == pb then
+			return a < b
+		end
+		return pa < pb
+	end)
+	if #ordered == 0 then
+		return "auto"
+	end
+	return table.concat(ordered, ", ")
+end
+
+local function get_series_defaults(series)
+	local parsed = parse_style_tokens(series.style_tokens or series.style)
+	return {
+		color = series.color or parsed.color or "auto",
+		linewidth = series.linewidth or parsed.linewidth or "1.5",
+		linestyle = series.linestyle or parsed.linestyle or "solid",
+		marker = series.marker or parsed.marker or "none",
+		markersize = series.markersize or parsed.markersize or "6",
+		alpha = series.alpha or parsed.alpha or "1.0",
+	}
+end
+
 local function build_default_lines(opts)
 	opts = opts or {}
+	local defaults = config.plotting or {}
 	local classification = opts.classification or {}
+	local form = classification.form or opts.form or "explicit"
+	local dim = classification.dim or opts.dim or 2
+	local backend = opts.backend or defaults.backend or "wolfram"
+	local outputmode = opts.outputmode or defaults.outputmode or "latex"
+	local aspect
+	if opts.aspect then
+		aspect = opts.aspect
+	elseif dim == 2 and form == "explicit" then
+		aspect = "auto"
+	else
+		aspect = "equal"
+	end
+	local series = {}
+	if type(opts.series) == "table" and #opts.series > 0 then
+		series = opts.series
+	elseif type(classification.series) == "table" and #classification.series > 0 then
+		series = classification.series
+	end
+	local legend_auto = determine_legend_auto(opts, classification, series)
+	local legend_state = legend_auto and "auto" or "off"
+	local legend_placement = opts.legend_placement or opts.legend_position or "best"
+	local dependents = collect_dependents(series, dim, form)
 	local lines = {}
-	lines[#lines + 1] = "Form: " .. (classification.form or "explicit")
-	local dim = classification.dim or 2
-	if dim >= 1 then
-		lines[#lines + 1] = "X-range:"
-	end
-	if dim >= 2 then
-		lines[#lines + 1] = "Y-range:"
-	end
-	if dim >= 3 then
-		lines[#lines + 1] = "Z-range:"
-	end
-	lines[#lines + 1] = "Grid: on"
-	if dim >= 1 then
-		lines[#lines + 1] = "X-scale: linear"
-	end
-	if dim >= 2 then
-		lines[#lines + 1] = "Y-scale: linear"
-	end
-	if dim >= 3 then
-		lines[#lines + 1] = "Z-scale: linear"
-	end
+	lines[#lines + 1] = "Form: " .. form
+	lines[#lines + 1] = "Backend: " .. backend
+	lines[#lines + 1] = "Output mode: " .. outputmode
+	lines[#lines + 1] = "Aspect: " .. aspect
+	lines[#lines + 1] = "Legend: " .. legend_state
+	lines[#lines + 1] = "Legend placement: " .. legend_placement
+	lines[#lines + 1] = "Dependents: " .. dependents
 	lines[#lines + 1] = ""
-	if opts.series then
-		for i, s in ipairs(opts.series) do
-			lines[#lines + 1] = string.format("--- Series %d: %s ---", i, s.ast or "")
-			lines[#lines + 1] = "Label:"
-			lines[#lines + 1] = "Color:"
-			lines[#lines + 1] = "Linewidth:"
-			lines[#lines + 1] = "Linestyle:"
-			lines[#lines + 1] = "Marker:"
-			lines[#lines + 1] = "Markersize:"
-			lines[#lines + 1] = "Alpha:"
+	if dim >= 1 then
+		local xrange = opts.xrange or defaults.default_xrange
+		lines[#lines + 1] = "X-range: " .. format_range(xrange)
+	end
+	if dim >= 2 then
+		local yrange = opts.yrange or defaults.default_yrange
+		lines[#lines + 1] = "Y-range: " .. format_range(yrange)
+	end
+	if dim >= 3 then
+		local zrange = opts.zrange or defaults.default_zrange
+		lines[#lines + 1] = "Z-range: " .. format_range(zrange)
+	end
+	if form == "parametric" and dim == 2 then
+		local trange = opts.t_range or defaults.default_t_range
+		lines[#lines + 1] = "T-range: " .. format_range(trange)
+	elseif form == "parametric" and dim == 3 then
+		local urange = opts.u_range or defaults.default_urange
+		local vrange = opts.v_range or defaults.default_vrange
+		lines[#lines + 1] = "U-range: " .. format_range(urange)
+		lines[#lines + 1] = "V-range: " .. format_range(vrange)
+	elseif form == "polar" then
+		local theta_range = opts.theta_range or defaults.default_theta_range
+		lines[#lines + 1] = "Theta-range: " .. format_range(theta_range)
+	end
+	local grid_val = opts.grid
+	if grid_val == nil then
+		grid_val = opts.grids
+	end
+	if grid_val == nil then
+		grid_val = true
+	end
+	lines[#lines + 1] = "Grid: " .. to_on_off(grid_val)
+	if dim >= 1 then
+		lines[#lines + 1] = "X-scale: " .. (opts.xscale or "linear")
+	end
+	if dim >= 2 then
+		lines[#lines + 1] = "Y-scale: " .. (opts.yscale or "linear")
+	end
+	if dim >= 3 then
+		lines[#lines + 1] = "Z-scale: " .. (opts.zscale or "linear")
+	end
+	if dim == 3 then
+		lines[#lines + 1] = "View elevation: " .. tostring(opts.view_elev or 30)
+		lines[#lines + 1] = "View azimuth: " .. tostring(opts.view_azim or -60)
+	end
+	lines[#lines + 1] = "Colormap: " .. tostring(opts.colormap or "viridis")
+	lines[#lines + 1] = "Colorbar: " .. (opts.colorbar == nil and "off" or to_on_off(opts.colorbar))
+	lines[#lines + 1] = "Background: " .. tostring(opts.bg_color or "white")
+	lines[#lines + 1] = ""
+	for i, s in ipairs(series) do
+		local defaults_for_series = get_series_defaults(s)
+		lines[#lines + 1] = string.format("--- Series %d: %s ---", i, s.ast or "")
+		lines[#lines + 1] = "Label: " .. (s.label or "")
+		lines[#lines + 1] = "Dependents: " .. collect_dependents({ s }, dim, form)
+		lines[#lines + 1] = "Color: " .. tostring(defaults_for_series.color)
+		lines[#lines + 1] = "Linewidth: " .. tostring(defaults_for_series.linewidth)
+		lines[#lines + 1] = "Linestyle: " .. tostring(defaults_for_series.linestyle)
+		lines[#lines + 1] = "Marker: " .. tostring(defaults_for_series.marker)
+		lines[#lines + 1] = "Markersize: " .. tostring(defaults_for_series.markersize)
+		lines[#lines + 1] = "Alpha: " .. tostring(defaults_for_series.alpha)
+		if i < #series then
 			lines[#lines + 1] = ""
 		end
 	end
@@ -167,29 +370,14 @@ function M.open_advanced_config(opts)
 	vim.api.nvim_create_autocmd("BufWriteCmd", {
 		buffer = bufnr,
 		callback = function()
-			core.initiate_plot(opts)
+			vim.ui.input({ prompt = "Generate plot with current configuration? (y/N): " }, function(answer)
+				if answer and answer:match("^%s*[Yy]") then
+					core.initiate_plot(opts)
+				end
+			end)
 		end,
 	})
 	vim.api.nvim_create_autocmd("BufWipeout", { buffer = bufnr, callback = function() end })
-end
-
-local function parse_style_tokens(tokens)
-	local res = {}
-	if type(tokens) == "string" then
-		tokens = vim.split(tokens, " ", { trimempty = true })
-	end
-	if type(tokens) ~= "table" then
-		return res
-	end
-	for _, tok in ipairs(tokens) do
-		local key, val = tok:match("^%s*(%w+)%s*=%s*(.-)%s*$")
-		if key and val then
-			val = val:gsub("^['\"]", ""):gsub("['\"]$", "")
-			local num = tonumber(val)
-			res[key] = num or val
-		end
-	end
-	return res
 end
 
 function M.build_final_opts_from_classification(classification)

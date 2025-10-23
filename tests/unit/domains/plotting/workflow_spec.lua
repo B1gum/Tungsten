@@ -27,6 +27,7 @@ describe("Plotting workflow", function()
 		"tungsten.backends.wolfram",
 		"tungsten.core.ast",
 		"tungsten.ui.plotting",
+		"tungsten.util.selection",
 	}
 
 	local original_mode
@@ -121,8 +122,17 @@ describe("Plotting workflow", function()
 			end,
 		}
 
-		mock_ui = { start_plot_workflow = spy.new(function() end) }
+		mock_ui = {
+			start_plot_workflow = spy.new(function() end),
+			open_advanced_config = spy.new(function() end),
+		}
 		package.loaded["tungsten.ui.plotting"] = mock_ui
+
+		package.loaded["tungsten.util.selection"] = {
+			get_visual_selection = function()
+				return "sin(x)"
+			end,
+		}
 
 		workflow = require("tungsten.domains.plotting.workflow")
 	end)
@@ -183,8 +193,20 @@ describe("Plotting workflow", function()
 		assert.spy(mock_job_manager.submit).was_not_called()
 	end)
 
-	it("delegates advanced mode to the plotting UI", function()
+	it("computes advanced plotting context from the visual selection", function()
 		workflow.run_advanced()
-		assert.spy(mock_ui.start_plot_workflow).was.called(1)
+		assert.spy(mock_ui.open_advanced_config).was.called(1)
+		assert.spy(mock_ui.start_plot_workflow).was_not_called()
+		local advanced_opts = mock_ui.open_advanced_config.calls[1].vals[1]
+		assert.are.equal("sin(x)", advanced_opts.expression)
+		assert.is_table(advanced_opts.classification)
+		assert.are.equal(2, advanced_opts.classification.dim)
+		assert.are.equal("explicit", advanced_opts.classification.form)
+		assert.is_table(advanced_opts.series)
+		assert.are.equal(1, #advanced_opts.series)
+		assert.is_table(advanced_opts.parsed_series)
+		assert.are.equal(1, #advanced_opts.parsed_series)
+		assert.is_not_nil(advanced_opts.ast)
+		assert.are.equal(vim.api.nvim_get_current_buf(), advanced_opts.bufnr)
 	end)
 end)

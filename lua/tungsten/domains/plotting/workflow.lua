@@ -5,6 +5,7 @@ local options_builder = require("tungsten.domains.plotting.options_builder")
 local plot_io = require("tungsten.domains.plotting.io")
 local job_manager = require("tungsten.domains.plotting.job_manager")
 local error_handler = require("tungsten.util.error_handler")
+local selection = require("tungsten.util.selection")
 
 local M = {}
 
@@ -223,7 +224,50 @@ end
 
 function M.run_advanced()
 	local plotting_ui = require("tungsten.ui.plotting")
-	plotting_ui.start_plot_workflow()
+
+	local text = selection.get_visual_selection()
+	if type(text) ~= "string" then
+		text = ""
+	end
+	text = text:gsub("^%s+", ""):gsub("%s+$", "")
+
+	if text == "" then
+		notify_error("Advanced plot requires an expression")
+		return
+	end
+
+	local ok_parse, parsed, err_msg, err_pos, err_input = pcall(parser.parse, text, { simple_mode = true })
+	if not ok_parse then
+		notify_error(parsed)
+		return
+	end
+	if not parsed or not parsed.series or #parsed.series == 0 then
+		notify_error(err_msg or "Unable to parse selection", err_pos, err_input)
+		return
+	end
+
+	local classification_data, classify_err = merge_classifications(parsed.series)
+	if not classification_data then
+		notify_error(classify_err)
+		return
+	end
+
+	local plot_ast = build_plot_ast(parsed.series)
+
+	local bufnr, start_line, start_col, end_line, end_col = get_selection_range()
+
+	plotting_ui.open_advanced_config({
+		expression = text,
+		classification = classification_data,
+		series = vim.deepcopy(classification_data.series),
+		parsed_series = vim.deepcopy(parsed.series),
+		ast = plot_ast,
+		bufnr = bufnr,
+		start_line = start_line,
+		start_col = start_col,
+		end_line = end_line,
+		end_col = end_col,
+	})
 end
 
 return M
