@@ -1,4 +1,4 @@
-local workflow = require("tungsten.plot.workflow")
+local workflow = require("tungsten.domains.plotting.workflow")
 local health = require("tungsten.domains.plotting.health")
 local job_manager = require("tungsten.domains.plotting.job_manager")
 local selection = require("tungsten.util.selection")

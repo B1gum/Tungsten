@@ -39,7 +39,7 @@ describe("Tungsten Plotting Commands", function()
 		mock_utils.reset_modules(modules_to_reset)
 		vim_test_env.setup_buffer({ "sin(x)" })
 
-		mock_plot_workflow = mock_utils.create_empty_mock_module("tungsten.plot.workflow")
+		mock_plot_workflow = mock_utils.create_empty_mock_module("tungsten.domains.plotting.workflow")
 		run_simple_spy = spy.on(mock_plot_workflow, "run_simple")
 		run_advanced_spy = spy.on(mock_plot_workflow, "run_advanced")
 
