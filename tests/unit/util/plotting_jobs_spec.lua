@@ -1,7 +1,7 @@
 local mock_utils = require("tests.helpers.mock_utils")
 local wait_for = require("tests.helpers.wait").wait_for
 local spy = require("luassert.spy")
-local match = require("luassert.match")
+local stub = require("luassert.stub")
 
 describe("Plotting Job Manager", function()
 	local JobManager
@@ -52,7 +52,12 @@ describe("Plotting Job Manager", function()
 		end
 		package.loaded["tungsten.util.async"] = mock_async
 
-		mock_config = { max_jobs = 3 }
+		mock_config = {
+			max_jobs = 3,
+			plotting = {
+				snippet_width = "0.8\\linewidth",
+			},
+		}
 		package.loaded["tungsten.config"] = mock_config
 		mock_err_handler = {
 			notify_error = function() end,
@@ -290,10 +295,73 @@ describe("Plotting Job Manager", function()
 		assert.are.equal(0, #mock_async.run_job_calls)
 	end)
 
+	it("falls back to the selection end and warns when the math block is unterminated", function()
+		local original_notify = vim.notify
+		local notify_spy = spy.new(function() end)
+		vim.notify = notify_spy
+
+		package.loaded["tungsten.util.plotting_io"].find_math_block_end = function()
+			return nil
+		end
+
+		local bufnr = vim.api.nvim_create_buf(false, true)
+		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "line1", "line2", "line3", "line4" })
+		local set_lines_stub = stub(vim.api, "nvim_buf_set_lines")
+
+		local function cleanup()
+			mock_async.set_callback(nil)
+			if set_lines_stub then
+				set_lines_stub:revert()
+			end
+			if bufnr and vim.api.nvim_buf_is_valid(bufnr) then
+				vim.api.nvim_buf_delete(bufnr, { force = true })
+			end
+			vim.notify = original_notify
+		end
+
+		local ok, err = pcall(function()
+			mock_async.set_callback(function(_, opts)
+				opts.on_exit(0, "/tmp/plot.png", "")
+			end)
+
+			JobManager.submit({
+				expression = "expr",
+				bufnr = bufnr,
+				outputmode = "latex",
+				start_line = 1,
+				end_line = 3,
+			})
+
+			assert.spy(notify_spy).was.called(1)
+			local notify_args = notify_spy.calls[1].vals
+			assert.matches("missing a closing delimiter", notify_args[1])
+			assert.are.equal(vim.log.levels.INFO, notify_args[2])
+			assert.are.same({ title = "TungstenPlot" }, notify_args[3])
+
+			assert.stub(set_lines_stub).was.called(1)
+			local args = set_lines_stub.calls[1].vals
+			assert.are.equal(bufnr, args[1])
+			assert.are.equal(4, args[2])
+			assert.are.equal(4, args[3])
+			assert.is_table(args[5])
+			assert.are.equal(1, #args[5])
+			local snippet = args[5][1]
+			assert.is_truthy(snippet:find("includegraphics", 1, true))
+			assert.is_truthy(snippet:find("0.8", 1, true))
+		end)
+
+		cleanup()
+
+		if not ok then
+			error(err)
+		end
+	end)
+
 	it("returns E_UNSUPPORTED_FORM when backend cannot handle classification", function()
 		local id = JobManager.submit({
 			expression = "expr",
 			bufnr = 0,
+
 			backend = "python",
 			form = "implicit",
 			dim = 3,

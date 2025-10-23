@@ -24,6 +24,9 @@ describe("Plot Classification Logic", function()
 			create_variable_node = function(name)
 				return ast_node("variable", { name = name })
 			end,
+			create_polar2d_node = function(r)
+				return ast_node("Polar2D", { r = r })
+			end,
 		}
 		package.loaded["tungsten.core.ast"] = mock_ast
 
@@ -77,6 +80,67 @@ describe("Plot Classification Logic", function()
 			dim = 2,
 			form = "explicit",
 			series = { { kind = "function", ast = eq, independent_vars = { "x" }, dependent_vars = { "y" } } },
+		}, result)
+	end)
+
+	it("classifies r = f(theta) as polar in simple mode", function()
+		local theta = mock_ast.create_variable_node("theta")
+		local rhs = ast_node("function_call", { name = "h", args = { theta } })
+		local eq = ast_node("equality", { lhs = mock_ast.create_variable_node("r"), rhs = rhs })
+		local expected_polar = mock_ast.create_polar2d_node(rhs)
+
+		free_vars.find = function(node)
+			if node == rhs or (type(node) == "table" and node.type == "Polar2D") then
+				return { "theta" }
+			elseif node == eq then
+				return { "theta" }
+			end
+			return {}
+		end
+
+		local result, err = classification.analyze(eq, { mode = "simple" })
+
+		assert.is_nil(err)
+		assert.are.same({
+			dim = 2,
+			form = "polar",
+			series = {
+				{
+					kind = "function",
+					ast = expected_polar,
+					independent_vars = { "theta" },
+					dependent_vars = { "r" },
+				},
+			},
+		}, result)
+	end)
+
+	it("classifies f(theta) as polar in simple mode", function()
+		local theta = mock_ast.create_variable_node("theta")
+		local expr = ast_node("function_call", { name = "h", args = { theta } })
+		local expected_polar = mock_ast.create_polar2d_node(expr)
+
+		free_vars.find = function(node)
+			if node == expr or (type(node) == "table" and node.type == "Polar2D") then
+				return { "theta" }
+			end
+			return {}
+		end
+
+		local result, err = classification.analyze(expr, { mode = "simple" })
+
+		assert.is_nil(err)
+		assert.are.same({
+			dim = 2,
+			form = "polar",
+			series = {
+				{
+					kind = "function",
+					ast = expected_polar,
+					independent_vars = { "theta" },
+					dependent_vars = { "r" },
+				},
+			},
 		}, result)
 	end)
 
@@ -330,6 +394,30 @@ describe("Plot Classification Logic", function()
 			local result, err = classification.analyze(series)
 			assert.is_nil(result)
 			assert.are.equal("E_MIXED_DIMENSIONS", err.code)
+		end)
+
+		it("errors when simple polar equalities are mixed with Cartesian expressions", function()
+			local theta = mock_ast.create_variable_node("theta")
+			local rhs = ast_node("function_call", { name = "h", args = { theta } })
+			local eq = ast_node("equality", { lhs = mock_ast.create_variable_node("r"), rhs = rhs })
+			local cart = ast_node("function_call", { name = "sin", args = { "x" } })
+			local seq = ast_node("sequence", { eq, cart })
+
+			free_vars.find = function(node)
+				if node == rhs or (type(node) == "table" and node.type == "Polar2D") then
+					return { "theta" }
+				elseif node == cart then
+					return { "x" }
+				elseif node == eq then
+					return { "theta" }
+				end
+				return {}
+			end
+
+			local result, err = classification.analyze(seq, { mode = "simple" })
+
+			assert.is_nil(result)
+			assert.are.equal("E_MIXED_COORD_SYS", err.code)
 		end)
 
 		it("should throw an error if polar and Cartesian expressions are mixed", function()

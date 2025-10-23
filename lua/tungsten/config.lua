@@ -49,6 +49,7 @@ local config = {
 		filename_mode = "hash",
 		viewer_cmd_pdf = "open",
 		viewer_cmd_png = "open",
+		snippet_width = "0.8\\linewidth",
 		default_xrange = { -10, 10 },
 		default_yrange = { -10, 10 },
 		default_zrange = { -10, 10 },

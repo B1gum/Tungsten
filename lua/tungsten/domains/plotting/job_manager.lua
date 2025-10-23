@@ -42,6 +42,17 @@ local function default_on_success(job, image_path)
 		local start_line = job.plot_opts.start_line or 0
 		local end_line = plotting_io.find_math_block_end(bufnr, start_line)
 
+		if not end_line then
+			end_line = job.plot_opts.end_line or start_line
+			if vim.notify then
+				vim.notify(
+					"Display math block is missing a closing delimiter; inserting plot snippet at selection end.",
+					vim.log.levels.INFO,
+					{ title = "TungstenPlot" }
+				)
+			end
+		end
+
 		local buf_path = vim.api.nvim_buf_get_name(bufnr)
 		local cwd = vim.fn.fnamemodify(buf_path, ":p:h")
 		local rel_path = image_path
@@ -50,7 +61,15 @@ local function default_on_success(job, image_path)
 			rel_path = rp
 		end
 
-		local snippet = string.format("\\includegraphics[width=0.8\\linewidth]{%s}", rel_path)
+		local snippet_width = job.plot_opts.snippet_width or (config.plotting or {}).snippet_width or "0.8\\linewidth"
+
+		local snippet_path = rel_path
+		local base, ext = path.splitext(rel_path)
+		if base and ext and ext ~= "" then
+			snippet_path = base
+		end
+
+		local snippet = string.format("\\includegraphics[width=%s]{%s}", snippet_width, snippet_path)
 		vim.api.nvim_buf_set_lines(bufnr, end_line + 1, end_line + 1, false, { snippet })
 	end
 

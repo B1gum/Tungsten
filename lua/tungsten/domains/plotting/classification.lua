@@ -1,5 +1,6 @@
 local M = {}
 
+local ast_builder = require("tungsten.core.ast")
 local free_vars = require("tungsten.domains.plotting.free_vars")
 local helpers = require("tungsten.domains.plotting.helpers")
 
@@ -205,13 +206,20 @@ local function analyze_sequence(ast, opts)
 	return { dim = dim, form = form, series = series }
 end
 
-local function analyze_expression(ast, opts)
-	local vars = find_free_variables(ast)
+local analyze_polar2d
+
+local function analyze_expression(ast_node, opts)
+	local vars = find_free_variables(ast_node)
+	if opts and (opts.simple_mode or opts.mode == "simple") and #vars == 1 and vars[1] == "theta" then
+		local polar = ast_builder.create_polar2d_node(ast_node)
+		return analyze_polar2d(polar)
+	end
+
 	local result = {
 		series = {
 			{
 				kind = "function",
-				ast = ast,
+				ast = ast_node,
 				independent_vars = vars,
 				dependent_vars = {},
 			},
@@ -277,7 +285,7 @@ local function analyze_parametric3d(ast)
 	}
 end
 
-local function analyze_polar2d(ast)
+analyze_polar2d = function(ast)
 	local params = find_free_variables(ast.r)
 	if #params ~= 1 or params[1] ~= "theta" then
 		return nil, { code = "E_MIXED_COORD_SYS" }
@@ -312,18 +320,29 @@ local function analyze_inequality(ast)
 	}
 end
 
-local function analyze_equality(ast)
-	local lhs_is_call, lhs_name = is_function_call_with_args(ast.lhs)
+local function analyze_equality(ast_node, opts)
+	if opts and (opts.simple_mode or opts.mode == "simple") then
+		local lhs_is_var, lhs_var = is_simple_variable(ast_node.lhs)
+		if lhs_is_var and lhs_var == "r" then
+			local rhs_vars = find_free_variables(ast_node.rhs)
+			if #rhs_vars == 1 and rhs_vars[1] == "theta" then
+				local polar = ast_builder.create_polar2d_node(ast_node.rhs)
+				return analyze_polar2d(polar)
+			end
+		end
+	end
+
+	local lhs_is_call, lhs_name = is_function_call_with_args(ast_node.lhs)
 	if lhs_is_call then
-		local free = find_free_variables(ast.rhs)
+		local free = find_free_variables(ast_node.rhs)
 		if remove_var(free, lhs_name) then
-			free = find_free_variables(ast)
+			free = find_free_variables(ast_node)
 			remove_var(free, lhs_name)
 			return {
 				dim = #free,
 				form = "implicit",
 				series = {
-					{ kind = "function", ast = ast, independent_vars = free, dependent_vars = {} },
+					{ kind = "function", ast = ast_node, independent_vars = free, dependent_vars = {} },
 				},
 			}
 		end
@@ -335,24 +354,24 @@ local function analyze_equality(ast)
 			series = {
 				{
 					kind = "function",
-					ast = ast,
+					ast = ast_node,
 					independent_vars = free,
 					dependent_vars = { lhs_name },
 				},
 			},
 		}
 	end
-	local lhs_is_var, lhs_var = is_simple_variable(ast.lhs)
+	local lhs_is_var, lhs_var = is_simple_variable(ast_node.lhs)
 	if lhs_is_var and lhs_var == "x" then
-		local free = find_free_variables(ast.rhs)
+		local free = find_free_variables(ast_node.rhs)
 		if remove_var(free, lhs_var) then
-			free = find_free_variables(ast)
+			free = find_free_variables(ast_node)
 			remove_var(free, lhs_var)
 			return {
 				dim = #free,
 				form = "implicit",
 				series = {
-					{ kind = "function", ast = ast, independent_vars = free, dependent_vars = {} },
+					{ kind = "function", ast = ast_node, independent_vars = free, dependent_vars = {} },
 				},
 			}
 		end
@@ -364,22 +383,22 @@ local function analyze_equality(ast)
 			series = {
 				{
 					kind = "function",
-					ast = ast,
+					ast = ast_node,
 					independent_vars = free,
 					dependent_vars = { "x" },
 				},
 			},
 		}
 	elseif lhs_is_var and (lhs_var == "y" or lhs_var == "z") then
-		local free = find_free_variables(ast.rhs)
+		local free = find_free_variables(ast_node.rhs)
 		if remove_var(free, lhs_var) then
-			free = find_free_variables(ast)
+			free = find_free_variables(ast_node)
 			remove_var(free, lhs_var)
 			return {
 				dim = #free,
 				form = "implicit",
 				series = {
-					{ kind = "function", ast = ast, independent_vars = free, dependent_vars = {} },
+					{ kind = "function", ast = ast_node, independent_vars = free, dependent_vars = {} },
 				},
 			}
 		end
@@ -395,21 +414,21 @@ local function analyze_equality(ast)
 			series = {
 				{
 					kind = "function",
-					ast = ast,
+					ast = ast_node,
 					independent_vars = free,
 					dependent_vars = { lhs_var },
 				},
 			},
 		}
 	else
-		local free = find_free_variables(ast)
+		local free = find_free_variables(ast_node)
 		return {
 			dim = #free,
 			form = "implicit",
 			series = {
 				{
 					kind = "function",
-					ast = ast,
+					ast = ast_node,
 					independent_vars = free,
 					dependent_vars = {},
 				},
@@ -424,7 +443,7 @@ function M.analyze(ast, opts)
 	if t == "Sequence" or t == "sequence" then
 		return analyze_sequence(ast, opts)
 	elseif t == "equality" or t == "Equality" then
-		return analyze_equality(ast)
+		return analyze_equality(ast, opts)
 	elseif t == "Parametric2D" or t == "parametric_2d" then
 		return analyze_parametric2d(ast)
 	elseif t == "Parametric3D" or t == "parametric_3d" then
