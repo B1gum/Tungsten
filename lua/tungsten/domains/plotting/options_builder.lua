@@ -75,7 +75,6 @@ function M.build(classification, user_overrides)
 		backend = backend,
 		format = classification.dim == 2 and "pdf" or "png",
 		grids = true,
-		legend_auto = true,
 		usetex = get_default(defaults.usetex, true),
 		latex_engine = get_default(defaults.latex_engine, "pdflatex"),
 		latex_preamble = get_default(defaults.latex_preamble, ""),
@@ -87,6 +86,10 @@ function M.build(classification, user_overrides)
 		timeout_ms = 30000,
 		series = {},
 	}
+
+	if classification.legend_auto ~= nil then
+		opts.legend_auto = classification.legend_auto
+	end
 
 	if opts.format == "png" then
 		opts.dpi = 180
@@ -127,6 +130,8 @@ function M.build(classification, user_overrides)
 		opts.grid_3d = { 64, 64 }
 	elseif classification.dim == 3 and classification.form == "implicit" then
 		opts.vol_3d = { 30, 30, 30 }
+		opts.plot_points = 30
+		opts.max_recursion = 2
 	end
 
 	if classification.dim == 2 and classification.form == "explicit" then

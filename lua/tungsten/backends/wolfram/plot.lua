@@ -64,6 +64,12 @@ local function translate_opts_to_wolfram(opts)
 		table.insert(res, string.format("ImageSize -> {%d, %d}", w, h))
 	end
 
+	if opts.crop then
+		table.insert(res, "ImageMargins -> 0")
+		table.insert(res, "ImagePadding -> 0")
+		table.insert(res, "PlotRangePadding -> Scaled[0.02]")
+	end
+
 	return res
 end
 
@@ -125,6 +131,33 @@ local function apply_series_styles(extra_opts, series)
 		else
 			extra_opts[#extra_opts + 1] = "PlotMarkers -> {" .. table.concat(markers, ", ") .. "}"
 		end
+	end
+end
+
+local function translate_legend_pos(pos)
+	local map = {
+		["upper right"] = "Scaled[{1, 1}]",
+		["upper left"] = "Scaled[{0, 1}]",
+		["lower left"] = "Scaled[{0, 0}]",
+		["lower right"] = "Scaled[{1, 0}]",
+		["center"] = "Scaled[{0.5, 0.5}]",
+	}
+	return map[pos] or pos
+end
+
+local function apply_legend(extra_opts, opts)
+	local labels = {}
+	for _, s in ipairs(opts.series or {}) do
+		if s.label and s.label ~= "" then
+			labels[#labels + 1] = string.format('"%s"', s.label)
+		end
+	end
+	if #labels > 0 then
+		local legend = "{" .. table.concat(labels, ", ") .. "}"
+		if opts.legend_auto == false and opts.legend_pos then
+			legend = string.format("Placed[%s, %s]", legend, translate_legend_pos(opts.legend_pos))
+		end
+		extra_opts[#extra_opts + 1] = "PlotLegends -> " .. legend
 	end
 end
 
@@ -223,7 +256,14 @@ local function build_implicit_code(opts)
 
 	local code = fn .. "[" .. expr .. ", " .. table.concat(ranges, ", ")
 	local extra_opts = translate_opts_to_wolfram(opts)
+	if opts.plot_points then
+		extra_opts[#extra_opts + 1] = string.format("PlotPoints -> %d", opts.plot_points)
+	end
+	if opts.max_recursion then
+		extra_opts[#extra_opts + 1] = string.format("MaxRecursion -> %d", opts.max_recursion)
+	end
 	apply_series_styles(extra_opts, series)
+	apply_legend(extra_opts, opts)
 	if #extra_opts > 0 then
 		code = code .. ", " .. table.concat(extra_opts, ", ")
 	end
@@ -283,6 +323,7 @@ local function build_parametric_code(opts)
 	local code = fn .. "[" .. inner .. ", " .. table.concat(ranges, ", ")
 	local extra_opts = translate_opts_to_wolfram(opts)
 	apply_series_styles(extra_opts, series)
+	apply_legend(extra_opts, opts)
 	if #extra_opts > 0 then
 		code = code .. ", " .. table.concat(extra_opts, ", ")
 	end

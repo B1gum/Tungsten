@@ -57,6 +57,9 @@ local function build_style_args(series, context, default_color)
 	if series.alpha then
 		parts[#parts + 1] = string.format("alpha=%s", series.alpha)
 	end
+	if series.label and (context == "plot" or context == "scatter") then
+		parts[#parts + 1] = string.format("label='%s'", series.label)
+	end
 	if #parts > 0 then
 		return ", " .. table.concat(parts, ", ")
 	end
@@ -389,12 +392,36 @@ local function build_python_script(opts)
 		table.insert(lines, string.format("fig.colorbar(%s, ax=ax)", colorbar_var))
 	end
 
+	local has_labels = false
+	if not (opts.dim == 3 and (opts.form == "explicit" or opts.form == "parametric")) then
+		for _, s in ipairs(opts.series or {}) do
+			if s.label and s.label ~= "" then
+				has_labels = true
+				break
+			end
+		end
+	end
+	if has_labels then
+		if opts.legend_auto == false and opts.legend_pos then
+			table.insert(lines, string.format("ax.legend(loc='%s')", opts.legend_pos))
+		else
+			table.insert(lines, "ax.legend()")
+		end
+	end
+
 	local out_path = opts.out_path
 	if not out_path:match("%.%w+$") then
 		out_path = out_path .. "." .. (opts.format or "png")
 	end
 	local dpi = opts.dpi or 100
-	table.insert(lines, string.format("plt.savefig(r'%s', dpi=%d, bbox_inches='tight', pad_inches=0.02)", out_path, dpi))
+	if opts.crop then
+		table.insert(
+			lines,
+			string.format("plt.savefig(r'%s', dpi=%d, bbox_inches='tight', pad_inches=0.02)", out_path, dpi)
+		)
+	else
+		table.insert(lines, string.format("plt.savefig(r'%s', dpi=%d)", out_path, dpi))
+	end
 
 	return table.concat(lines, "\n")
 end
