@@ -295,7 +295,7 @@ describe("Plotting Job Manager", function()
 		assert.are.equal(0, #mock_async.run_job_calls)
 	end)
 
-	it("falls back to the selection end and warns when the math block is unterminated", function()
+	it("falls back to the selection end without notifying when the math block is unterminated", function()
 		local original_notify = vim.notify
 		local notify_spy = spy.new(function() end)
 		vim.notify = notify_spy
@@ -332,11 +332,7 @@ describe("Plotting Job Manager", function()
 				end_line = 3,
 			})
 
-			assert.spy(notify_spy).was.called(1)
-			local notify_args = notify_spy.calls[1].vals
-			assert.matches("missing a closing delimiter", notify_args[1])
-			assert.are.equal(vim.log.levels.INFO, notify_args[2])
-			assert.are.same({ title = "TungstenPlot" }, notify_args[3])
+			assert.spy(notify_spy).was_not_called()
 
 			assert.stub(set_lines_stub).was.called(1)
 			local args = set_lines_stub.calls[1].vals

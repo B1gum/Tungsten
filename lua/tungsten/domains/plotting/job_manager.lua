@@ -44,13 +44,10 @@ local function default_on_success(job, image_path)
 
 		if not end_line then
 			end_line = job.plot_opts.end_line or start_line
-			if vim.notify then
-				vim.notify(
-					"Display math block is missing a closing delimiter; inserting plot snippet at selection end.",
-					vim.log.levels.INFO,
-					{ title = "TungstenPlot" }
-				)
-			end
+			logger.debug(
+				"TungstenPlot",
+				"Display math block is missing a closing delimiter; inserting plot snippet at selection end."
+			)
 		end
 
 		local buf_path = vim.api.nvim_buf_get_name(bufnr)

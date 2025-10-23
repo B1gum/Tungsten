@@ -177,16 +177,19 @@ describe("Plotting UI and UX", function()
 			set_lines_spy:revert()
 		end)
 
-		it("should insert after selection if no math block is found", function()
+		it("should insert after selection if no math block is found without notifying the user", function()
 			local bufnr = vim_test_env.setup_buffer({ "no math here" })
 			mock_io.find_math_block_end:returns(nil)
 			local selection_end_line = 1
 			local set_lines_spy = stub(vim.api, "nvim_buf_set_lines")
+			local notify_stub = stub(vim, "notify")
 
 			plotting_ui.insert_snippet(bufnr, selection_end_line, "plots/myplot_456")
 
 			assert.spy(set_lines_spy).was.called_with(bufnr, 1, 1, false, match.is_table())
+			assert.spy(notify_stub).was_not_called()
 			set_lines_spy:revert()
+			notify_stub:revert()
 		end)
 	end)
 
