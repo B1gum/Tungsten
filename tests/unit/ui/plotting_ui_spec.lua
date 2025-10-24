@@ -481,6 +481,67 @@ describe("Plotting UI and UX", function()
 			assert.are.same("sin(x)", final_opts.expression)
 		end)
 
+		it("should allow dependents to be reset for recomputation", function()
+			local classification = {
+				form = "explicit",
+				dim = 2,
+				dependent_vars = { "y" },
+				series = {
+					{
+						ast = "sin(x)",
+						dependent_vars = { "y" },
+						independent_vars = { "x" },
+					},
+				},
+			}
+
+			plotting_ui.open_advanced_config({
+				classification = classification,
+				series = classification.series,
+				dependent_vars = { "y" },
+			})
+
+			local wq_callback
+			for _, call in ipairs(vim.api.nvim_create_autocmd.calls) do
+				if call.vals[1] == "BufWriteCmd" then
+					wq_callback = call.vals[2].callback
+				end
+			end
+
+			assert.is_function(wq_callback)
+
+			local defaults = vim.deepcopy(vim.api.nvim_buf_set_lines.calls[1].vals[5])
+			local mutated = vim.deepcopy(defaults)
+			set_field(mutated, "Dependents", "")
+			set_series_field(mutated, 1, "Dependents", "auto")
+			buffer_lines = mutated
+
+			mock_options_builder.build = stub.new(mock_options_builder, "build", function(classification_arg, overrides)
+				assert.are.same(classification, classification_arg)
+				if overrides then
+					assert.is_nil(overrides.dependents_mode)
+				end
+				return {
+					dim = classification_arg.dim,
+					form = classification_arg.form,
+					dependent_vars = { "y" },
+					series = {
+						{
+							dependent_vars = { "y" },
+						},
+					},
+				}
+			end)
+
+			wq_callback()
+
+			assert.spy(mock_error_handler.notify_error).was_not_called()
+			assert.spy(mock_plotting_core.initiate_plot).was.called(1)
+			local final_opts = mock_plotting_core.initiate_plot.calls[1].vals[1]
+			assert.is_nil(final_opts.dependent_vars)
+			assert.is_nil(final_opts.series[1].dependent_vars)
+		end)
+
 		it("should report an error when the form conflicts with the classification", function()
 			local classification = { form = "explicit", dim = 2 }
 			plotting_ui.open_advanced_config({ classification = classification })

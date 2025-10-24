@@ -9,6 +9,86 @@ local selection = require("tungsten.util.selection")
 
 local M = {}
 
+local function create_regenerate_prompt(on_confirm, on_cancel)
+	local prompt_text = "Regenerate? [y/n]"
+	local buf = vim.api.nvim_create_buf(false, true)
+	vim.api.nvim_buf_set_lines(buf, 0, -1, false, { prompt_text })
+	vim.api.nvim_buf_set_option(buf, "modifiable", false)
+	vim.api.nvim_buf_set_option(buf, "bufhidden", "wipe")
+	vim.api.nvim_buf_set_option(buf, "filetype", "tungsten_prompt")
+
+	local width = math.max(#prompt_text + 2, 18)
+	local height = 1
+	local row = math.floor((vim.o.lines - height) / 2)
+	local col = math.floor((vim.o.columns - width) / 2)
+
+	local prev_win = vim.api.nvim_get_current_win()
+	local win = vim.api.nvim_open_win(buf, true, {
+		relative = "editor",
+		width = width,
+		height = height,
+		row = row,
+		col = col,
+		border = "rounded",
+		style = "minimal",
+	})
+
+	local closed = false
+
+	local function close_window()
+		if closed then
+			return
+		end
+		closed = true
+		if win and vim.api.nvim_win_is_valid(win) then
+			pcall(vim.api.nvim_win_close, win, true)
+		end
+		if prev_win and vim.api.nvim_win_is_valid(prev_win) then
+			pcall(vim.api.nvim_set_current_win, prev_win)
+		end
+	end
+
+	local function confirm()
+		if closed then
+			return
+		end
+		close_window()
+		if on_confirm then
+			on_confirm()
+		end
+	end
+
+	local function cancel()
+		if closed then
+			return
+		end
+		close_window()
+		if on_cancel then
+			on_cancel()
+		end
+	end
+
+	vim.keymap.set("n", "y", confirm, { buffer = buf, nowait = true, noremap = true, silent = true })
+	vim.keymap.set("n", "Y", confirm, { buffer = buf, nowait = true, noremap = true, silent = true })
+	for _, key in ipairs({ "n", "N", "<Esc>", "q" }) do
+		vim.keymap.set("n", key, cancel, { buffer = buf, nowait = true, noremap = true, silent = true })
+	end
+
+	vim.api.nvim_create_autocmd("WinClosed", {
+		once = true,
+		pattern = tostring(win),
+		callback = function(args)
+			if tonumber(args.match) == win then
+				cancel()
+			end
+		end,
+	})
+
+	return { buf = buf, win = win }
+end
+
+M._show_regenerate_prompt = create_regenerate_prompt
+
 local function notify_error(err, pos, input)
 	if err == nil then
 		err = "Unknown error"
@@ -256,6 +336,76 @@ function M.run_advanced()
 
 	local bufnr, start_line, start_col, end_line, end_col = get_selection_range()
 
+	local function submit_advanced(final_opts)
+		final_opts = final_opts or {}
+		final_opts.on_submit = nil
+
+		local target_bufnr = final_opts.bufnr or bufnr
+		if not target_bufnr or target_bufnr == 0 then
+			target_bufnr = vim.api.nvim_get_current_buf()
+			final_opts.bufnr = target_bufnr
+		end
+
+		final_opts.expression = final_opts.expression or text
+		final_opts.ast = final_opts.ast or plot_ast
+		final_opts.start_line = final_opts.start_line or start_line
+		final_opts.start_col = final_opts.start_col or start_col
+		final_opts.end_line = final_opts.end_line or end_line
+		final_opts.end_col = final_opts.end_col or end_col
+
+		local buf_path = vim.api.nvim_buf_get_name(target_bufnr)
+		local tex_root, tex_err = plot_io.find_tex_root(buf_path)
+		if not tex_root then
+			notify_error(tex_err)
+			return
+		end
+
+		local output_dir, output_err = plot_io.get_output_directory(tex_root)
+		if not output_dir then
+			notify_error(output_err)
+			return
+		end
+
+		local out_path, reused = plot_io.get_final_path(output_dir, final_opts, {
+			ast = final_opts.ast,
+			var_defs = final_opts.definitions,
+		})
+
+		if not out_path or out_path == "" then
+			notify_error("Unable to determine output path")
+			return
+		end
+
+		final_opts.out_path = out_path
+		final_opts.reused_output = reused
+		final_opts.tex_root = tex_root
+
+		local command, command_opts = capture_backend_command(final_opts)
+		if not command then
+			notify_error(command_opts)
+			return
+		end
+
+		for i = 1, #command do
+			final_opts[i] = command[i]
+		end
+
+		if command_opts and command_opts.timeout then
+			final_opts.timeout_ms = command_opts.timeout
+		end
+
+		local function submit_job()
+			job_manager.submit(final_opts)
+		end
+
+		if reused then
+			local prompt_handler = M._show_regenerate_prompt or create_regenerate_prompt
+			prompt_handler(submit_job, function() end, final_opts)
+		else
+			submit_job()
+		end
+	end
+
 	plotting_ui.open_advanced_config({
 		expression = text,
 		classification = classification_data,
@@ -267,6 +417,7 @@ function M.run_advanced()
 		start_col = start_col,
 		end_line = end_line,
 		end_col = end_col,
+		on_submit = submit_advanced,
 	})
 end
 

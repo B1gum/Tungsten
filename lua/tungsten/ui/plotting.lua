@@ -8,6 +8,19 @@ local options_builder = require("tungsten.domains.plotting.options_builder")
 
 local M = {}
 
+local DEPENDENTS_HINT = " (blank or auto to recompute)"
+
+local function strip_dependents_hint(value)
+	if type(value) ~= "string" or value == "" then
+		return value
+	end
+	if value:sub(-#DEPENDENTS_HINT) == DEPENDENTS_HINT then
+		local stripped = value:sub(1, #value - #DEPENDENTS_HINT)
+		return vim.trim(stripped)
+	end
+	return value
+end
+
 local function parse_style_tokens(tokens)
 	local res = {}
 	if type(tokens) == "string" then
@@ -258,7 +271,7 @@ local function build_default_lines(opts)
 	lines[#lines + 1] = "Aspect: " .. aspect
 	lines[#lines + 1] = "Legend: " .. legend_state
 	lines[#lines + 1] = "Legend placement: " .. legend_placement
-	lines[#lines + 1] = "Dependents: " .. dependents
+	lines[#lines + 1] = string.format("Dependents: %s%s", dependents, DEPENDENTS_HINT)
 	lines[#lines + 1] = ""
 	if dim >= 1 then
 		local xrange = opts.xrange or defaults.default_xrange
@@ -313,7 +326,7 @@ local function build_default_lines(opts)
 		local defaults_for_series = get_series_defaults(s)
 		lines[#lines + 1] = string.format("--- Series %d: %s ---", i, s.ast or "")
 		lines[#lines + 1] = "Label: " .. (s.label or "")
-		lines[#lines + 1] = "Dependents: " .. collect_dependents({ s }, dim, form)
+		lines[#lines + 1] = string.format("Dependents: %s%s", collect_dependents({ s }, dim, form), DEPENDENTS_HINT)
 		lines[#lines + 1] = "Color: " .. tostring(defaults_for_series.color)
 		lines[#lines + 1] = "Linewidth: " .. tostring(defaults_for_series.linewidth)
 		lines[#lines + 1] = "Linestyle: " .. tostring(defaults_for_series.linestyle)
@@ -506,7 +519,10 @@ local function parse_advanced_buffer(lines, opts)
 				series_overrides[current_series].label = trimmed
 			elseif key == "Dependents" then
 				local expected_value = expected_series_dependents[current_series]
-				if expected_value and trimmed ~= expected_value then
+				local dependents_value = strip_dependents_hint(trimmed)
+				if dependents_value == "" or dependents_value:lower() == "auto" then
+					series_overrides[current_series].dependents_mode = "auto"
+				elseif expected_value and dependents_value ~= expected_value then
 					error_handler.notify_error(
 						"Plot Config",
 						string.format("Series %d dependents cannot be changed (expected %s)", current_series, expected_value)
@@ -588,7 +604,10 @@ local function parse_advanced_buffer(lines, opts)
 			elseif key == "Legend placement" then
 				overrides.legend_pos = trimmed
 			elseif key == "Dependents" then
-				if trimmed ~= expected_dependents then
+				local dependents_value = strip_dependents_hint(trimmed)
+				if dependents_value == "" or dependents_value:lower() == "auto" then
+					overrides.dependents_mode = "auto"
+				elseif dependents_value ~= expected_dependents then
 					error_handler.notify_error(
 						"Plot Config",
 						string.format("Dependents cannot be changed (expected %s)", expected_dependents)
@@ -701,7 +720,10 @@ function M.open_advanced_config(opts)
 			vim.ui.input({ prompt = "Generate plot with current configuration? (y/N): " }, function(answer)
 				if answer and answer:match("^%s*[Yy]") then
 					local classification = vim.deepcopy(opts.classification or {})
-					local built = options_builder.build(classification, parsed.overrides)
+					local builder_overrides = vim.deepcopy(parsed.overrides or {})
+					local dependents_mode = builder_overrides.dependents_mode
+					builder_overrides.dependents_mode = nil
+					local built = options_builder.build(classification, builder_overrides)
 					local final_opts = vim.deepcopy(opts)
 					final_opts.series = {}
 					if built.series then
@@ -709,15 +731,29 @@ function M.open_advanced_config(opts)
 							final_opts.series[i] = vim.deepcopy(series_entry)
 						end
 					end
+					local series_dependents = {}
 					for i, edit in ipairs(parsed.series) do
 						final_opts.series[i] = final_opts.series[i] or {}
+						if edit.dependents_mode == "auto" then
+							series_dependents[i] = true
+						end
 						for key, value in pairs(edit) do
-							final_opts.series[i][key] = value
+							if key ~= "dependents_mode" then
+								final_opts.series[i][key] = value
+							end
 						end
 					end
 					for key, value in pairs(built) do
 						if key ~= "series" then
 							final_opts[key] = value
+						end
+					end
+					if dependents_mode == "auto" then
+						final_opts.dependent_vars = nil
+					end
+					for idx in pairs(series_dependents) do
+						if final_opts.series[idx] then
+							final_opts.series[idx].dependent_vars = nil
 						end
 					end
 					core.initiate_plot(final_opts)

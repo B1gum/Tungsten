@@ -14,6 +14,12 @@ describe("Plotting workflow", function()
 	local mock_backend
 	local backend_calls
 	local mock_ui
+	local original_prompt
+
+	local function unique_tex_path()
+		local stamp = vim.loop.hrtime()
+		return string.format("/tmp/project/main_%d.tex", stamp % 1000000)
+	end
 
 	local modules_to_reset = {
 		"tungsten.domains.plotting.workflow",
@@ -135,6 +141,7 @@ describe("Plotting workflow", function()
 		}
 
 		workflow = require("tungsten.domains.plotting.workflow")
+		original_prompt = workflow._show_regenerate_prompt
 	end)
 
 	after_each(function()
@@ -142,6 +149,9 @@ describe("Plotting workflow", function()
 		vim_test_env.cleanup()
 		if original_mode then
 			vim.fn.mode = original_mode
+		end
+		if workflow and original_prompt then
+			workflow._show_regenerate_prompt = original_prompt
 		end
 	end)
 
@@ -208,5 +218,99 @@ describe("Plotting workflow", function()
 		assert.are.equal(1, #advanced_opts.parsed_series)
 		assert.is_not_nil(advanced_opts.ast)
 		assert.are.equal(vim.api.nvim_get_current_buf(), advanced_opts.bufnr)
+		assert.is_function(advanced_opts.on_submit)
+	end)
+
+	it("submits advanced plots immediately when not reusing an artifact", function()
+		vim.api.nvim_buf_set_name(0, unique_tex_path())
+
+		workflow.run_advanced()
+
+		local advanced_opts = mock_ui.open_advanced_config.calls[1].vals[1]
+		assert.is_function(advanced_opts.on_submit)
+
+		workflow._show_regenerate_prompt = spy.new(function() end)
+
+		local final_opts = vim.deepcopy(advanced_opts)
+		final_opts.backend = "wolfram"
+		final_opts.format = "pdf"
+		final_opts.timeout_ms = 30000
+
+		advanced_opts.on_submit(final_opts)
+
+		assert.is_false(final_opts.reused_output)
+		assert.spy(mock_job_manager.submit).was.called(1)
+		assert.spy(workflow._show_regenerate_prompt).was_not_called()
+	end)
+
+	it("prompts before regenerating an existing advanced artifact", function()
+		vim.api.nvim_buf_set_name(0, unique_tex_path())
+
+		mock_io.get_final_path = spy.new(function()
+			return "/tmp/project/tungsten_plots/plot.pdf", true
+		end)
+		package.loaded["tungsten.domains.plotting.io"] = mock_io
+		mock_utils.reset_modules({ "tungsten.domains.plotting.workflow" })
+		workflow = require("tungsten.domains.plotting.workflow")
+		original_prompt = workflow._show_regenerate_prompt
+
+		workflow.run_advanced()
+
+		local advanced_opts = mock_ui.open_advanced_config.calls[1].vals[1]
+		local final_opts = vim.deepcopy(advanced_opts)
+		final_opts.backend = "wolfram"
+		final_opts.format = "pdf"
+		final_opts.timeout_ms = 30000
+
+		local confirm_cb
+		workflow._show_regenerate_prompt = function(on_confirm)
+			confirm_cb = on_confirm
+		end
+
+		advanced_opts.on_submit(final_opts)
+
+		assert.is_true(final_opts.reused_output)
+		assert.spy(mock_job_manager.submit).was_not_called()
+		assert.is_function(confirm_cb)
+
+		confirm_cb()
+
+		assert.spy(mock_job_manager.submit).was.called(1)
+	end)
+
+	it("allows skipping regeneration when declining the prompt", function()
+		vim.api.nvim_buf_set_name(0, unique_tex_path())
+
+		mock_io.get_final_path = spy.new(function()
+			return "/tmp/project/tungsten_plots/plot.pdf", true
+		end)
+		package.loaded["tungsten.domains.plotting.io"] = mock_io
+		mock_utils.reset_modules({ "tungsten.domains.plotting.workflow" })
+		workflow = require("tungsten.domains.plotting.workflow")
+		original_prompt = workflow._show_regenerate_prompt
+
+		workflow.run_advanced()
+
+		local advanced_opts = mock_ui.open_advanced_config.calls[1].vals[1]
+		local final_opts = vim.deepcopy(advanced_opts)
+		final_opts.backend = "wolfram"
+		final_opts.format = "pdf"
+		final_opts.timeout_ms = 30000
+
+		local confirm_cb, cancel_cb
+		workflow._show_regenerate_prompt = function(on_confirm, on_cancel)
+			confirm_cb = on_confirm
+			cancel_cb = on_cancel
+		end
+
+		advanced_opts.on_submit(final_opts)
+
+		assert.spy(mock_job_manager.submit).was_not_called()
+		assert.is_function(cancel_cb)
+
+		cancel_cb()
+
+		assert.spy(mock_job_manager.submit).was_not_called()
+		assert.is_function(confirm_cb)
 	end)
 end)
