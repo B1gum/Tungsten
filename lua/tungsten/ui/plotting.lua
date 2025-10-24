@@ -4,43 +4,9 @@ local state = require("tungsten.state")
 local config = require("tungsten.config")
 local async = require("tungsten.util.async")
 local io_util = require("tungsten.util.io")
+local options_builder = require("tungsten.domains.plotting.options_builder")
 
 local M = {}
-
-local function extract_series_label(entry)
-	if type(entry) == "table" then
-		return entry.ast
-			or entry.value
-			or entry.display
-			or entry.text
-			or entry.raw
-			or entry.source
-			or entry.name
-			or entry.label
-			or entry.type
-	end
-	if entry == nil then
-		return ""
-	end
-	return tostring(entry)
-end
-
-local function resolve_series_entries(opts)
-	opts = opts or {}
-	local classification_series = (opts.classification and opts.classification.series) or {}
-	local series = opts.series or classification_series or {}
-	series = vim.deepcopy(series)
-	local parsed_series = opts.parsed_series or {}
-	local max_count = math.max(#series, #parsed_series)
-	for i = 1, max_count do
-		series[i] = series[i] or {}
-		local parsed_entry = parsed_series[i]
-		if parsed_entry and (series[i].ast == nil or series[i].ast == "") then
-			series[i].ast = extract_series_label(parsed_entry)
-		end
-	end
-	return series
-end
 
 local function parse_style_tokens(tokens)
 	local res = {}
@@ -162,7 +128,7 @@ function M.handle_output(plot_path)
 		cmd = "open"
 	end
 	async.run_job({ cmd, plot_path }, {
-		on_exit = function(code, _out, err)
+		on_exit = function(code, err)
 			if code ~= 0 then
 				error_handler.notify_error("Plot Viewer", "E_VIEWER_FAILED: " .. (err or ""))
 			end
@@ -361,6 +327,363 @@ local function build_default_lines(opts)
 	return lines
 end
 
+local function normalize_toggle(value, allow_auto)
+	if type(value) ~= "string" then
+		return nil
+	end
+	local normalized = value:lower()
+	if normalized == "on" or normalized == "true" or normalized == "yes" then
+		return true
+	elseif normalized == "off" or normalized == "false" or normalized == "no" then
+		return false
+	elseif allow_auto and normalized == "auto" then
+		return "auto"
+	end
+	return nil
+end
+
+local function parse_number(value, key)
+	local trimmed = vim.trim(value or "")
+	local num = tonumber(trimmed)
+	if num == nil then
+		error_handler.notify_error("Plot Config", string.format("Invalid numeric value for %s", key))
+		return nil
+	end
+	return num
+end
+
+local function parse_alpha(value)
+	local alpha = parse_number(value, "Alpha")
+	if not alpha then
+		return nil
+	end
+	if alpha < 0 or alpha > 1 then
+		error_handler.notify_error("Plot Config", "Alpha must be between 0 and 1")
+		return nil
+	end
+	return alpha
+end
+
+local function parse_range_value(value, key)
+	local trimmed = vim.trim(value or "")
+	if trimmed == "" or trimmed == "[]" then
+		return true, nil
+	end
+	if trimmed:lower() == "auto" then
+		return true, nil
+	end
+	local start_val, end_val = trimmed:match("^%[?%s*(.-)%s*,%s*(.-)%s*%]?$")
+	if not start_val then
+		error_handler.notify_error("Plot Config", string.format("Invalid range format for %s", key))
+		return false
+	end
+	local function parse_endpoint(str)
+		local endpoint = vim.trim(str)
+		if endpoint == "" then
+			return nil
+		end
+		local num = tonumber(endpoint)
+		return num or endpoint
+	end
+	local start_parsed = parse_endpoint(start_val)
+	local end_parsed = parse_endpoint(end_val)
+	if start_parsed == nil and end_parsed == nil then
+		return true, nil
+	end
+	return true, { start_parsed, end_parsed }
+end
+
+local function parse_advanced_buffer(lines, opts)
+	local classification = opts.classification or {}
+	local form = classification.form or opts.form or "explicit"
+	local dim = classification.dim or opts.dim or 2
+	local base_series = {}
+	if type(opts.series) == "table" and #opts.series > 0 then
+		base_series = opts.series
+	elseif type(classification.series) == "table" and #classification.series > 0 then
+		base_series = classification.series
+	end
+
+	local allowed_forms = { explicit = true, implicit = true, parametric = true, polar = true }
+	local allowed_backends = { wolfram = true, python = true }
+	local allowed_output_modes = { latex = true, viewer = true, both = true }
+
+	local expected_global_keys = {
+		["Form"] = true,
+		["Backend"] = true,
+		["Output mode"] = true,
+		["Aspect"] = true,
+		["Legend"] = true,
+		["Legend placement"] = true,
+		["Dependents"] = true,
+		["Grid"] = true,
+		["Colormap"] = true,
+		["Colorbar"] = true,
+		["Background"] = true,
+	}
+
+	if dim >= 1 then
+		expected_global_keys["X-range"] = true
+		expected_global_keys["X-scale"] = true
+	end
+	if dim >= 2 then
+		expected_global_keys["Y-range"] = true
+		expected_global_keys["Y-scale"] = true
+	end
+	if dim >= 3 then
+		expected_global_keys["Z-range"] = true
+		expected_global_keys["Z-scale"] = true
+		expected_global_keys["View elevation"] = true
+		expected_global_keys["View azimuth"] = true
+	end
+	if form == "parametric" and dim == 2 then
+		expected_global_keys["T-range"] = true
+	elseif form == "parametric" and dim == 3 then
+		expected_global_keys["U-range"] = true
+		expected_global_keys["V-range"] = true
+	elseif form == "polar" then
+		expected_global_keys["Theta-range"] = true
+	end
+
+	local expected_series_keys = {
+		["Label"] = true,
+		["Dependents"] = true,
+		["Color"] = true,
+		["Linewidth"] = true,
+		["Linestyle"] = true,
+		["Marker"] = true,
+		["Markersize"] = true,
+		["Alpha"] = true,
+	}
+
+	local seen_global_keys = {}
+	local seen_series_keys = {}
+	local overrides = {}
+	local series_overrides = {}
+	local current_series
+
+	local expected_dependents = collect_dependents(base_series, dim, form)
+	local expected_series_dependents = {}
+	for i, s in ipairs(base_series) do
+		expected_series_dependents[i] = collect_dependents({ s }, dim, form)
+	end
+
+	for idx, line in ipairs(lines or {}) do
+		if line:match("^%s*$") then
+			goto continue
+		end
+		local series_idx = line:match("^%s*%-%-%-%s*Series%s+(%d+)%s*:")
+		if series_idx then
+			local parsed_idx = tonumber(series_idx)
+			if not parsed_idx then
+				error_handler.notify_error("Plot Config", string.format("Invalid series header on line %d", idx))
+				return nil
+			end
+			if parsed_idx < 1 or parsed_idx > #base_series then
+				error_handler.notify_error("Plot Config", string.format("Unexpected series index %d", parsed_idx))
+				return nil
+			end
+			current_series = parsed_idx
+			series_overrides[current_series] = series_overrides[current_series] or {}
+			seen_series_keys[current_series] = seen_series_keys[current_series] or {}
+			goto continue
+		end
+
+		local key, value = line:match("^%s*(.-)%s*:%s*(.-)%s*$")
+		if not key then
+			error_handler.notify_error("Plot Config", string.format("Unable to parse line %d", idx))
+			return nil
+		end
+
+		if current_series then
+			if not expected_series_keys[key] then
+				error_handler.notify_error("Plot Config", string.format("Unknown series key '%s'", key))
+				return nil
+			end
+			seen_series_keys[current_series][key] = true
+			local trimmed = vim.trim(value or "")
+			if key == "Label" then
+				series_overrides[current_series].label = trimmed
+			elseif key == "Dependents" then
+				local expected_value = expected_series_dependents[current_series]
+				if expected_value and trimmed ~= expected_value then
+					error_handler.notify_error(
+						"Plot Config",
+						string.format("Series %d dependents cannot be changed (expected %s)", current_series, expected_value)
+					)
+					return nil
+				end
+			elseif key == "Color" then
+				series_overrides[current_series].color = trimmed
+			elseif key == "Linewidth" then
+				local lw = parse_number(trimmed, "Linewidth")
+				if not lw then
+					return nil
+				end
+				series_overrides[current_series].linewidth = lw
+			elseif key == "Linestyle" then
+				series_overrides[current_series].linestyle = trimmed
+			elseif key == "Marker" then
+				series_overrides[current_series].marker = trimmed
+			elseif key == "Markersize" then
+				local ms = parse_number(trimmed, "Markersize")
+				if not ms then
+					return nil
+				end
+				series_overrides[current_series].markersize = ms
+			elseif key == "Alpha" then
+				local alpha = parse_alpha(trimmed)
+				if not alpha then
+					return nil
+				end
+				series_overrides[current_series].alpha = alpha
+			end
+		else
+			if not expected_global_keys[key] then
+				error_handler.notify_error("Plot Config", string.format("Unknown key '%s'", key))
+				return nil
+			end
+			seen_global_keys[key] = true
+			local trimmed = vim.trim(value or "")
+			if key == "Form" then
+				local normalized = trimmed:lower()
+				if not allowed_forms[normalized] then
+					error_handler.notify_error("Plot Config", string.format("Unsupported plot form '%s'", trimmed))
+					return nil
+				end
+				if classification.form and classification.form ~= normalized then
+					error_handler.notify_error(
+						"Plot Config",
+						string.format("Cannot change plot form from %s to %s", classification.form, normalized)
+					)
+					return nil
+				end
+			elseif key == "Backend" then
+				local normalized = trimmed:lower()
+				if not allowed_backends[normalized] then
+					error_handler.notify_error("Plot Config", string.format("Unsupported backend '%s'", trimmed))
+					return nil
+				end
+				overrides.backend = normalized
+			elseif key == "Output mode" then
+				local normalized = trimmed:lower()
+				if not allowed_output_modes[normalized] then
+					error_handler.notify_error("Plot Config", string.format("Unsupported output mode '%s'", trimmed))
+					return nil
+				end
+				overrides.outputmode = normalized
+			elseif key == "Aspect" then
+				overrides.aspect = trimmed
+			elseif key == "Legend" then
+				local toggle = normalize_toggle(trimmed, true)
+				if toggle == nil then
+					error_handler.notify_error("Plot Config", "Legend must be 'auto', 'on', or 'off'")
+					return nil
+				end
+				if toggle == true or toggle == "auto" then
+					overrides.legend_auto = true
+				else
+					overrides.legend_auto = false
+				end
+			elseif key == "Legend placement" then
+				overrides.legend_pos = trimmed
+			elseif key == "Dependents" then
+				if trimmed ~= expected_dependents then
+					error_handler.notify_error(
+						"Plot Config",
+						string.format("Dependents cannot be changed (expected %s)", expected_dependents)
+					)
+					return nil
+				end
+			elseif
+				key == "X-range"
+				or key == "Y-range"
+				or key == "Z-range"
+				or key == "T-range"
+				or key == "U-range"
+				or key == "V-range"
+				or key == "Theta-range"
+			then
+				local ok, range_val = parse_range_value(trimmed, key)
+				if not ok then
+					return nil
+				end
+				if range_val ~= nil then
+					local map = {
+						["X-range"] = "xrange",
+						["Y-range"] = "yrange",
+						["Z-range"] = "zrange",
+						["T-range"] = "t_range",
+						["U-range"] = "u_range",
+						["V-range"] = "v_range",
+						["Theta-range"] = "theta_range",
+					}
+					overrides[map[key]] = range_val
+				end
+			elseif key == "Grid" then
+				local toggle = normalize_toggle(trimmed, false)
+				if toggle == nil then
+					error_handler.notify_error("Plot Config", "Grid must be 'on' or 'off'")
+					return nil
+				end
+				overrides.grids = toggle
+			elseif key == "X-scale" then
+				overrides.xscale = trimmed
+			elseif key == "Y-scale" then
+				overrides.yscale = trimmed
+			elseif key == "Z-scale" then
+				overrides.zscale = trimmed
+			elseif key == "View elevation" then
+				local elev = parse_number(trimmed, "View elevation")
+				if not elev then
+					return nil
+				end
+				overrides.view_elev = elev
+			elseif key == "View azimuth" then
+				local azim = parse_number(trimmed, "View azimuth")
+				if not azim then
+					return nil
+				end
+				overrides.view_azim = azim
+			elseif key == "Colormap" then
+				overrides.colormap = trimmed
+			elseif key == "Colorbar" then
+				local toggle = normalize_toggle(trimmed, false)
+				if toggle == nil then
+					error_handler.notify_error("Plot Config", "Colorbar must be 'on' or 'off'")
+					return nil
+				end
+				overrides.colorbar = toggle
+			elseif key == "Background" then
+				overrides.bg_color = trimmed
+			end
+		end
+		::continue::
+	end
+
+	for expected_key in pairs(expected_global_keys) do
+		if not seen_global_keys[expected_key] then
+			error_handler.notify_error("Plot Config", string.format("Missing key '%s'", expected_key))
+			return nil
+		end
+	end
+
+	for i = 1, #base_series do
+		if not seen_series_keys[i] then
+			error_handler.notify_error("Plot Config", string.format("Missing configuration for series %d", i))
+			return nil
+		end
+		for key in pairs(expected_series_keys) do
+			if not seen_series_keys[i][key] then
+				error_handler.notify_error("Plot Config", string.format("Missing key '%s' for series %d", key, i))
+				return nil
+			end
+		end
+	end
+
+	return { overrides = overrides, series = series_overrides }
+end
+
 function M.open_advanced_config(opts)
 	opts = opts or {}
 	local bufnr = vim.api.nvim_create_buf(false, true)
@@ -370,9 +693,34 @@ function M.open_advanced_config(opts)
 	vim.api.nvim_create_autocmd("BufWriteCmd", {
 		buffer = bufnr,
 		callback = function()
+			local buffer_lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+			local parsed = parse_advanced_buffer(buffer_lines, opts)
+			if not parsed then
+				return
+			end
 			vim.ui.input({ prompt = "Generate plot with current configuration? (y/N): " }, function(answer)
 				if answer and answer:match("^%s*[Yy]") then
-					core.initiate_plot(opts)
+					local classification = vim.deepcopy(opts.classification or {})
+					local built = options_builder.build(classification, parsed.overrides)
+					local final_opts = vim.deepcopy(opts)
+					final_opts.series = {}
+					if built.series then
+						for i, series_entry in ipairs(built.series) do
+							final_opts.series[i] = vim.deepcopy(series_entry)
+						end
+					end
+					for i, edit in ipairs(parsed.series) do
+						final_opts.series[i] = final_opts.series[i] or {}
+						for key, value in pairs(edit) do
+							final_opts.series[i][key] = value
+						end
+					end
+					for key, value in pairs(built) do
+						if key ~= "series" then
+							final_opts[key] = value
+						end
+					end
+					core.initiate_plot(final_opts)
 				end
 			end)
 		end,

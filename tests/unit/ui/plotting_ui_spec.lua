@@ -12,6 +12,7 @@ local mock_state
 local mock_config
 local mock_async
 local mock_io
+local mock_options_builder
 
 local plotting_ui
 
@@ -24,6 +25,7 @@ local function setup_test_environment()
 		"tungsten.config",
 		"tungsten.util.async",
 		"tungsten.util.io",
+		"tungsten.domains.plotting.options_builder",
 	})
 
 	mock_plotting_core = mock_utils.create_empty_mock_module("tungsten.core.plotting", {
@@ -42,6 +44,28 @@ local function setup_test_environment()
 	}
 	mock_async = mock_utils.create_empty_mock_module("tungsten.util.async", { "run_job" })
 	mock_io = mock_utils.create_empty_mock_module("tungsten.util.io", { "find_math_block_end" })
+	mock_options_builder = mock_utils.create_empty_mock_module("tungsten.domains.plotting.options_builder", { "build" })
+	mock_options_builder.build = stub.new(mock_options_builder, "build", function(classification_arg, overrides)
+		local result = { series = {} }
+		if type(classification_arg) == "table" then
+			if classification_arg.dim then
+				result.dim = classification_arg.dim
+			end
+			if classification_arg.form then
+				result.form = classification_arg.form
+			end
+			local src_series = classification_arg.series or {}
+			for i = 1, #src_series do
+				result.series[i] = {}
+			end
+		end
+		if type(overrides) == "table" then
+			for k, v in pairs(overrides) do
+				result[k] = v
+			end
+		end
+		return result
+	end)
 
 	package.loaded["tungsten.state"] = mock_state
 	package.loaded["tungsten.config"] = mock_config
@@ -230,6 +254,7 @@ describe("Plotting UI and UX", function()
 		local original_vim_ui_input
 		local mock_bufnr = 100
 		local mock_winid = 200
+		local buffer_lines
 
 		before_each(function()
 			original_api = {
@@ -237,16 +262,22 @@ describe("Plotting UI and UX", function()
 				nvim_buf_set_lines = vim.api.nvim_buf_set_lines,
 				nvim_open_win = vim.api.nvim_open_win,
 				nvim_create_autocmd = vim.api.nvim_create_autocmd,
+				nvim_buf_get_lines = vim.api.nvim_buf_get_lines,
 			}
 			original_vim_ui_input = vim.ui.input
 			vim.api.nvim_create_buf = stub.new(vim.api, "nvim_create_buf", function()
 				return mock_bufnr
 			end)
-			vim.api.nvim_buf_set_lines = stub.new(vim.api, "nvim_buf_set_lines")
+			vim.api.nvim_buf_set_lines = stub.new(vim.api, "nvim_buf_set_lines", function(_, _, _, _, lines)
+				buffer_lines = vim.deepcopy(lines)
+			end)
 			vim.api.nvim_open_win = stub.new(vim.api, "nvim_open_win", function()
 				return mock_winid
 			end)
 			vim.api.nvim_create_autocmd = stub.new(vim.api, "nvim_create_autocmd")
+			vim.api.nvim_buf_get_lines = stub.new(vim.api, "nvim_buf_get_lines", function()
+				return vim.deepcopy(buffer_lines or {})
+			end)
 			vim.ui.input = stub.new(vim.ui, "input", function(_, on_confirm)
 				if on_confirm then
 					on_confirm("y")
@@ -259,8 +290,32 @@ describe("Plotting UI and UX", function()
 			vim.api.nvim_buf_set_lines = original_api.nvim_buf_set_lines
 			vim.api.nvim_open_win = original_api.nvim_open_win
 			vim.api.nvim_create_autocmd = original_api.nvim_create_autocmd
+			vim.api.nvim_buf_get_lines = original_api.nvim_buf_get_lines
 			vim.ui.input = original_vim_ui_input
 		end)
+
+		local function set_field(lines, key, value)
+			for i, line in ipairs(lines) do
+				if line:match("^" .. key:gsub("%-", "%%-") .. ":%s*") then
+					lines[i] = string.format("%s: %s", key, value)
+					return
+				end
+			end
+		end
+
+		local function set_series_field(lines, series_index, key, value)
+			local current_series
+			for i, line in ipairs(lines) do
+				local idx = line:match("^%-%-%-%s*Series%s+(%d+)%s*:")
+				if idx then
+					current_series = tonumber(idx)
+				elseif current_series == series_index and line:match("^" .. key:gsub("%-", "%%-") .. ":%s*") then
+					lines[i] = string.format("%s: %s", key, value)
+					return
+				end
+			end
+		end
+
 		it("should open a config buffer pre-filled with defaults", function()
 			plotting_ui.open_advanced_config({})
 			assert.spy(vim.api.nvim_create_buf).was.called(1)
@@ -343,6 +398,111 @@ describe("Plotting UI and UX", function()
 			end)
 
 			wq_callback()
+			assert.spy(mock_plotting_core.initiate_plot).was_not_called()
+		end)
+
+		it("should parse buffer edits into plotting options", function()
+			local classification = {
+				form = "explicit",
+				dim = 2,
+				series = {
+					{
+						ast = "sin(x)",
+						dependent_vars = { "y" },
+						independent_vars = { "x" },
+					},
+				},
+			}
+			plotting_ui.open_advanced_config({
+				classification = classification,
+				series = classification.series,
+				expression = "sin(x)",
+			})
+
+			local wq_callback
+			for _, call in ipairs(vim.api.nvim_create_autocmd.calls) do
+				if call.vals[1] == "BufWriteCmd" then
+					wq_callback = call.vals[2].callback
+				end
+			end
+
+			assert.is_function(wq_callback)
+
+			local defaults = vim.deepcopy(vim.api.nvim_buf_set_lines.calls[1].vals[5])
+			local mutated = vim.deepcopy(defaults)
+			set_field(mutated, "Backend", "python")
+			set_field(mutated, "Output mode", "viewer")
+			set_field(mutated, "Legend", "off")
+			set_field(mutated, "Legend placement", "upper left")
+			set_field(mutated, "X-range", "[0, 5]")
+			set_field(mutated, "Grid", "off")
+			set_field(mutated, "Colorbar", "on")
+			set_series_field(mutated, 1, "Color", "red")
+			set_series_field(mutated, 1, "Linewidth", "3.5")
+			set_series_field(mutated, 1, "Alpha", "0.5")
+			buffer_lines = mutated
+
+			mock_options_builder.build = stub.new(mock_options_builder, "build", function(classification_arg, overrides)
+				assert.are.same(classification, classification_arg)
+				local base = {
+					dim = classification_arg.dim,
+					form = classification_arg.form,
+					backend = "wolfram",
+					outputmode = "latex",
+					legend_auto = true,
+					legend_pos = "best",
+					grids = true,
+					colorbar = false,
+					series = { {} },
+				}
+				if overrides then
+					for k, v in pairs(overrides) do
+						base[k] = v
+					end
+				end
+				return base
+			end)
+
+			wq_callback()
+
+			assert.spy(mock_options_builder.build).was.called(1)
+			assert.spy(mock_plotting_core.initiate_plot).was.called(1)
+			local final_opts = mock_plotting_core.initiate_plot.calls[1].vals[1]
+			assert.are.same("python", final_opts.backend)
+			assert.are.same("viewer", final_opts.outputmode)
+			assert.is_false(final_opts.legend_auto)
+			assert.are.same("upper left", final_opts.legend_pos)
+			assert.are.same({ 0, 5 }, final_opts.xrange)
+			assert.is_false(final_opts.grids)
+			assert.is_true(final_opts.colorbar)
+			assert.are.same("red", final_opts.series[1].color)
+			assert.are.same(3.5, final_opts.series[1].linewidth)
+			assert.are.same(0.5, final_opts.series[1].alpha)
+			assert.are.same("sin(x)", final_opts.expression)
+		end)
+
+		it("should report an error when the form conflicts with the classification", function()
+			local classification = { form = "explicit", dim = 2 }
+			plotting_ui.open_advanced_config({ classification = classification })
+
+			local wq_callback
+			for _, call in ipairs(vim.api.nvim_create_autocmd.calls) do
+				if call.vals[1] == "BufWriteCmd" then
+					wq_callback = call.vals[2].callback
+				end
+			end
+
+			assert.is_function(wq_callback)
+
+			local defaults = vim.deepcopy(vim.api.nvim_buf_set_lines.calls[1].vals[5])
+			local mutated = vim.deepcopy(defaults)
+			set_field(mutated, "Form", "polar")
+			buffer_lines = mutated
+
+			wq_callback()
+
+			assert.spy(mock_error_handler.notify_error).was.called()
+			assert.spy(mock_options_builder.build).was_not.called()
 			assert.spy(mock_plotting_core.initiate_plot).was_not_called()
 		end)
 	end)
