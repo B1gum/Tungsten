@@ -33,6 +33,7 @@ describe("Tungsten Plotting Commands", function()
 		"tungsten.domains.plotting.health",
 		"tungsten.util.selection",
 		"tungsten.util.error_handler",
+		"tungsten.ui.status_window",
 	}
 
 	before_each(function()
@@ -146,6 +147,101 @@ describe("Tungsten Plotting Commands", function()
 			assert.is_function(plot_commands.cancel_all_command)
 			plot_commands.cancel_all_command()
 			assert.spy(cancel_all_spy).was.called(1)
+		end)
+	end)
+
+	describe(":TungstenPlotQueue", function()
+		it("renders queue details for active and pending jobs", function()
+			assert.is_function(plot_commands.queue_command)
+
+			local api = vim.api
+			local orig_create_buf = api.nvim_create_buf
+			local orig_set_lines = api.nvim_buf_set_lines
+			local orig_open_win = api.nvim_open_win
+			local orig_set_option = api.nvim_buf_set_option
+
+			local function restore_api()
+				api.nvim_create_buf = orig_create_buf
+				api.nvim_buf_set_lines = orig_set_lines
+				api.nvim_open_win = orig_open_win
+				api.nvim_buf_set_option = orig_set_option
+			end
+
+			local captured_lines
+			local fake_start = os.time({ year = 2024, month = 1, day = 2, hour = 3, min = 4, sec = 5 })
+
+			local function run_test()
+				api.nvim_create_buf = function()
+					return 101
+				end
+				api.nvim_buf_set_option = function() end
+				api.nvim_open_win = function()
+					return 202
+				end
+				api.nvim_buf_set_lines = function(_, _, _, _, lines)
+					captured_lines = lines
+				end
+
+				mock_job_manager.get_queue_snapshot = function()
+					return {
+						active = {
+							{
+								id = 7,
+								backend = "python",
+								dim = 3,
+								form = "explicit",
+								expression = "sin(x)",
+								ranges = {
+									xrange = { 0, 1 },
+									yrange = { -1, 1 },
+								},
+								started_at = fake_start,
+								elapsed = 1.2,
+								out_path = "/tmp/out.png",
+							},
+						},
+						pending = {
+							{
+								id = 11,
+								backend = "wolfram",
+								dim = 2,
+								form = "implicit",
+								expression = "x^2 + y^2 = 1",
+								ranges = {
+									xrange = { -2, 2 },
+								},
+								out_path = "/tmp/pending.pdf",
+							},
+						},
+					}
+				end
+
+				local snapshot_spy = spy.on(mock_job_manager, "get_queue_snapshot")
+
+				plot_commands.queue_command()
+
+				assert.spy(snapshot_spy).was.called(1)
+				assert.is_truthy(captured_lines)
+				local rendered = table.concat(captured_lines, "\n")
+				assert.matches("python", rendered)
+				assert.matches("3D explicit", rendered)
+				assert.matches("sin%(x%)", rendered)
+				assert.matches("x:%s*%[0, 1%]", rendered)
+				assert.matches("; y:", rendered)
+				assert.matches(os.date("%H:%M:%S", fake_start), rendered)
+				assert.matches("1%.2s", rendered)
+				assert.matches("/tmp/out%.png", rendered)
+				assert.matches("wolfram", rendered)
+				assert.matches("2D implicit", rendered)
+				assert.matches("x%^2%s*%+%s*y%^2 = 1", rendered)
+				assert.matches("/tmp/pending%.pdf", rendered)
+			end
+
+			local ok, err = pcall(run_test)
+			restore_api()
+			if not ok then
+				error(err)
+			end
 		end)
 	end)
 

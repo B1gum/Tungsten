@@ -1,6 +1,7 @@
 local workflow = require("tungsten.domains.plotting.workflow")
 local health = require("tungsten.domains.plotting.health")
 local job_manager = require("tungsten.domains.plotting.job_manager")
+local status_window = require("tungsten.ui.status_window")
 local selection = require("tungsten.util.selection")
 local error_handler = require("tungsten.util.error_handler")
 
@@ -93,6 +94,11 @@ function M.cancel_all_command()
 	job_manager.cancel_all()
 end
 
+function M.queue_command()
+	local snapshot = job_manager.get_queue_snapshot and job_manager.get_queue_snapshot() or { active = {}, pending = {} }
+	status_window.open_queue(snapshot)
+end
+
 M.commands = {
 	{
 		name = "TungstenPlot",
@@ -113,6 +119,11 @@ M.commands = {
 		name = "TungstenPlotCancelAll",
 		func = M.cancel_all_command,
 		opts = { desc = "Cancel all running plot jobs" },
+	},
+	{
+		name = "TungstenPlotQueue",
+		func = M.queue_command,
+		opts = { desc = "Display the plotting job queue" },
 	},
 	{
 		name = "TungstenPlotCheck",

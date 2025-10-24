@@ -3,6 +3,7 @@ local M = {
 	E_UNSUPPORTED_FORM = "E_UNSUPPORTED_FORM",
 	E_TIMEOUT = "E_TIMEOUT",
 	E_BACKEND_CRASH = "E_BACKEND_CRASH",
+	E_CANCELLED = "E_CANCELLED",
 }
 
 local function calc_line_col(input, pos)

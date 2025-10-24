@@ -77,10 +77,25 @@ local function spawn_process(cmd, opts)
 		_job = job,
 	}
 	function handle.cancel()
-		if not completed then
-			job:shutdown()
-			finalize(-1)
+		if completed then
+			return
 		end
+
+		job:shutdown(15)
+
+		local active_job = state.active_jobs[handle.id]
+		if active_job then
+			active_job.cancellation_time = vim.loop.now()
+		end
+
+		vim.defer_fn(function()
+			if completed then
+				return
+			end
+
+			job:shutdown(9)
+			finalize(-1)
+		end, 1000)
 	end
 	function handle.is_active()
 		return not completed

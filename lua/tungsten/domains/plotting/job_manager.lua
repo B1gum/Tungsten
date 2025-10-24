@@ -12,6 +12,19 @@ local job_queue = {}
 local active_plot_jobs = {}
 local next_id = 0
 local spinner_ns = vim.api.nvim_create_namespace("tungsten_plot_spinner")
+local spinner_frames = {
+	"⠋",
+	"⠙",
+	"⠹",
+	"⠸",
+	"⠼",
+	"⠴",
+	"⠦",
+	"⠧",
+	"⠇",
+	"⠏",
+}
+local spinner_interval = 80
 
 local deps_ok
 local missing_message
@@ -88,8 +101,11 @@ local function default_on_error(job, err)
 
 	local code = err and err.code
 	local msg = err and err.message or ""
+	local cancelled = err and err.cancelled
 	local error_code
-	if code == 127 then
+	if cancelled or code == -1 then
+		error_code = error_handler.E_CANCELLED
+	elseif code == 127 then
 		error_code = error_handler.E_BACKEND_UNAVAILABLE
 	elseif code == 124 or msg:lower():find("timeout") then
 		error_code = error_handler.E_TIMEOUT
@@ -108,13 +124,16 @@ local function _execute_plot(job)
 	local info = active_plot_jobs[job.id] or {}
 	job.start_time = vim.loop.now()
 	info.start_time = job.start_time
+	info.started_at = os.time()
+	info.plot_opts = job.plot_opts
 
 	local bufnr = job.plot_opts.bufnr or vim.api.nvim_get_current_buf()
 	local row = job.plot_opts.end_line or job.plot_opts.start_line or 0
 	local col = job.plot_opts.end_col or job.plot_opts.start_col or 0
+	local frame_index = 1
 	local extmark_id = vim.api.nvim_buf_set_extmark(bufnr, spinner_ns, row, col, {
-		virt_text = { { "Plotting..." } },
-		virt_text_pos = "eol",
+		virt_text = { { spinner_frames[frame_index] } },
+		virt_text_pos = "overlay",
 	})
 	info.extmark_id = extmark_id
 	info.bufnr = bufnr
@@ -122,9 +141,34 @@ local function _execute_plot(job)
 	info.backend = job.plot_opts.backend
 	active_plot_jobs[job.id] = info
 
+	local timer = vim.loop.new_timer()
+	if timer then
+		local function update_spinner()
+			frame_index = frame_index % #spinner_frames + 1
+			local next_frame = spinner_frames[frame_index]
+			vim.schedule(function()
+				if info.extmark_id then
+					pcall(vim.api.nvim_buf_set_extmark, info.bufnr, spinner_ns, row, col, {
+						id = info.extmark_id,
+						virt_text = { { next_frame } },
+						virt_text_pos = "overlay",
+					})
+				end
+			end)
+		end
+
+		timer:start(spinner_interval, spinner_interval, update_spinner)
+		info.timer = timer
+	end
+
 	local handle = async.run_job(job.plot_opts, {
 		on_exit = function(code, stdout, stderr)
 			local function handle()
+				if info.timer then
+					info.timer:stop()
+					info.timer:close()
+					info.timer = nil
+				end
 				if info.extmark_id then
 					pcall(vim.api.nvim_buf_del_extmark, info.bufnr, spinner_ns, info.extmark_id)
 				end
@@ -137,8 +181,12 @@ local function _execute_plot(job)
 				else
 					if job.on_error then
 						local msg = stderr ~= "" and stderr or stdout
-						job.on_error({ code = code, message = msg })
-						job.on_error(msg)
+						local was_cancelled = (code == -1) or info.cancelled
+						job.on_error({
+							code = code,
+							message = msg,
+							cancelled = was_cancelled,
+						})
 					end
 				end
 				_process_queue()
@@ -157,10 +205,11 @@ local function _execute_plot(job)
 end
 
 _process_queue = function()
-	local max_jobs = config.max_jobs or 3
+	local configured_max = config.max_jobs or 3
+	local max_jobs = math.min(configured_max, 3)
 	while #job_queue > 0 and active_count() < max_jobs do
 		local job = table.remove(job_queue, 1)
-		active_plot_jobs[job.id] = {}
+		active_plot_jobs[job.id] = { plot_opts = job.plot_opts }
 		_execute_plot(job)
 	end
 end
@@ -278,6 +327,7 @@ end
 function M.cancel(job_id)
 	local info = active_plot_jobs[job_id]
 	if info and info.handle and info.handle.cancel then
+		info.cancelled = true
 		info.handle.cancel()
 		return true
 	end
@@ -287,6 +337,7 @@ end
 function M.cancel_all()
 	for _, info in pairs(active_plot_jobs) do
 		if info.handle and info.handle.cancel then
+			info.cancelled = true
 			info.handle.cancel()
 		end
 	end
@@ -302,6 +353,72 @@ M._process_queue = _process_queue
 function M.reset_deps_check()
 	deps_ok = nil
 	missing_message = nil
+end
+
+local function extract_ranges(plot_opts)
+	if not plot_opts then
+		return nil
+	end
+	local keys = {
+		{ key = "xrange", label = "xrange" },
+		{ key = "yrange", label = "yrange" },
+		{ key = "zrange", label = "zrange" },
+		{ key = "t_range", label = "t_range" },
+		{ key = "u_range", label = "u_range" },
+		{ key = "v_range", label = "v_range" },
+		{ key = "theta_range", label = "theta_range" },
+	}
+	local ranges
+	for _, entry in ipairs(keys) do
+		local value = plot_opts[entry.key]
+		if value ~= nil then
+			ranges = ranges or {}
+			ranges[entry.key] = vim.deepcopy(value)
+		end
+	end
+	return ranges
+end
+
+function M.get_queue_snapshot()
+	local snapshot = { active = {}, pending = {} }
+	local now = vim.loop.now()
+
+	for id, info in pairs(active_plot_jobs) do
+		local plot_opts = info.plot_opts or {}
+		local entry = {
+			id = id,
+			backend = plot_opts.backend,
+			dim = plot_opts.dim,
+			form = plot_opts.form,
+			expression = plot_opts.expression,
+			ranges = extract_ranges(plot_opts),
+			out_path = plot_opts.out_path,
+			started_at = info.started_at,
+		}
+		if info.start_time then
+			entry.elapsed = math.max(0, now - info.start_time) / 1000
+		end
+		snapshot.active[#snapshot.active + 1] = entry
+	end
+
+	table.sort(snapshot.active, function(a, b)
+		return (a.id or 0) < (b.id or 0)
+	end)
+
+	for _, job in ipairs(job_queue) do
+		local plot_opts = job.plot_opts or {}
+		snapshot.pending[#snapshot.pending + 1] = {
+			id = job.id,
+			backend = plot_opts.backend,
+			dim = plot_opts.dim,
+			form = plot_opts.form,
+			expression = plot_opts.expression,
+			ranges = extract_ranges(plot_opts),
+			out_path = plot_opts.out_path,
+		}
+	end
+
+	return snapshot
 end
 
 return M

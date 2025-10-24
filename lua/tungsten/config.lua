@@ -13,7 +13,7 @@ local config = {
 	process_timeout_ms = 30000,
 	result_separator = " = ",
 	result_display = "insert",
-	max_jobs = 5,
+	max_jobs = 3,
 	persistent_variable_assignment_operator = ":=",
 	backend = "wolfram",
 	backend_opts = {

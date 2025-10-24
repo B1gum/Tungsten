@@ -63,6 +63,9 @@ describe("Plotting Job Manager", function()
 			notify_error = function() end,
 			E_BACKEND_UNAVAILABLE = "E_BACKEND_UNAVAILABLE",
 			E_UNSUPPORTED_FORM = "E_UNSUPPORTED_FORM",
+			E_TIMEOUT = "E_TIMEOUT",
+			E_BACKEND_CRASH = "E_BACKEND_CRASH",
+			E_CANCELLED = "E_CANCELLED",
 		}
 		notify_error_spy = spy.on(mock_err_handler, "notify_error")
 		package.loaded["tungsten.util.error_handler"] = mock_err_handler
@@ -130,6 +133,29 @@ describe("Plotting Job Manager", function()
 		assert.is_false(error_called)
 	end)
 
+	it("notifies cancellation without invoking user error callback multiple times", function()
+		notify_error_spy:clear()
+		local error_call_count = 0
+		local received_err
+
+		local function on_error(err)
+			error_call_count = error_call_count + 1
+			received_err = err
+		end
+
+		JobManager.submit({ expression = "x^2", bufnr = 0 }, nil, on_error)
+		assert.are.equal(1, #mock_async.run_job_calls)
+		local opts = mock_async.run_job_calls[1][2]
+		opts.on_exit(-1, "", "")
+
+		assert.are.equal(1, error_call_count)
+		assert.is_table(received_err)
+		assert.are.equal(-1, received_err.code)
+		assert.is_true(received_err.cancelled)
+		assert.spy(notify_error_spy).was.called(1)
+		assert.spy(notify_error_spy).was.called_with("TungstenPlot", mock_err_handler.E_CANCELLED)
+	end)
+
 	it("queues jobs beyond the concurrency limit in FIFO order", function()
 		mock_config.max_jobs = 1
 		local order = {}
@@ -150,19 +176,62 @@ describe("Plotting Job Manager", function()
 		assert.are.same({ "job1", "job2", "job3" }, order)
 	end)
 
+	it("caps concurrent jobs at three even when configured higher", function()
+		mock_config.max_jobs = 10
+		local callbacks = {}
+
+		mock_async.set_callback(function(cmd, opts)
+			table.insert(callbacks, { cmd = cmd, opts = opts })
+		end)
+
+		JobManager.submit({ expression = "job1", bufnr = 0 })
+		JobManager.submit({ expression = "job2", bufnr = 0 })
+		JobManager.submit({ expression = "job3", bufnr = 0 })
+		JobManager.submit({ expression = "job4", bufnr = 0 })
+
+		assert.are.equal(3, #mock_async.run_job_calls)
+
+		callbacks[1].opts.on_exit(0, "ok", "")
+
+		wait_for(function()
+			return #mock_async.run_job_calls == 4
+		end, 500)
+	end)
+
 	it("shows and clears a progress indicator", function()
 		local ns = vim.api.nvim_create_namespace("tungsten_plot_spinner")
 
 		mock_async.set_callback(function(_, opts)
 			vim.defer_fn(function()
 				opts.on_exit(0, "done", "")
-			end, 10)
+			end, 200)
 		end)
 
 		JobManager.submit({ expression = "sin(x)", bufnr = 0 })
 
-		local marks = vim.api.nvim_buf_get_extmarks(0, ns, 0, -1, {})
-		assert.are.equal(1, #marks)
+		local function current_frame()
+			local marks = vim.api.nvim_buf_get_extmarks(0, ns, 0, -1, { details = true })
+			if #marks == 0 then
+				return nil
+			end
+			local details = marks[1][4]
+			if details and details.virt_text and details.virt_text[1] then
+				return details.virt_text[1][1]
+			end
+			return nil
+		end
+
+		wait_for(function()
+			return current_frame() ~= nil
+		end, 200)
+
+		local first_frame = current_frame()
+		assert.is_not_nil(first_frame)
+
+		wait_for(function()
+			local frame = current_frame()
+			return frame and frame ~= first_frame
+		end, 500)
 
 		wait_for(function()
 			return #vim.api.nvim_buf_get_extmarks(0, ns, 0, -1, {}) == 0

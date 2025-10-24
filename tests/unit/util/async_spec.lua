@@ -88,4 +88,59 @@ describe("tungsten.util.async.run_job", function()
 		end, 1000)
 		assert.falsy(state.active_jobs[handle.id])
 	end)
+
+	it("sends TERM then KILL when canceling a stuck job", function()
+		local original_job = package.loaded["plenary.job"]
+		local exit_cb
+		local signals = {}
+
+		local JobMock = {}
+		function JobMock:new(opts)
+			exit_cb = opts.on_exit
+			local job_instance
+			job_instance = {
+				pid = 4242,
+				start = function(_) end,
+				shutdown = function(_, signal)
+					table.insert(signals, signal)
+					if signal == 9 and exit_cb then
+						exit_cb(job_instance, -1)
+					end
+				end,
+				result = function()
+					return {}
+				end,
+				stderr_result = function()
+					return {}
+				end,
+			}
+			return job_instance
+		end
+
+		package.loaded["plenary.job"] = JobMock
+
+		local handle = async.run_job({ "fake", "command" }, {
+			cache_key = "stuck",
+			timeout = nil,
+			on_exit = function() end,
+		})
+
+		assert.is_not_nil(handle)
+		assert.are.same(0, #signals)
+
+		handle.cancel()
+
+		local info = state.active_jobs[handle.id]
+		assert.is_not_nil(info)
+		assert.is_number(info.cancellation_time)
+
+		wait_for(function()
+			return signals[2] == 9 and state.active_jobs[handle.id] == nil
+		end, 1500)
+
+		assert.are.same(15, signals[1])
+		assert.are.same(9, signals[2])
+
+		package.loaded["plenary.job"] = original_job
+	end)
 end)
