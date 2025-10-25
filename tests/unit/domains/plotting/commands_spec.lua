@@ -4,6 +4,7 @@
 local spy = require("luassert.spy")
 local mock_utils = require("tests.helpers.mock_utils")
 local vim_test_env = require("tests.helpers.vim_test_env")
+local wait_for = require("tests.helpers.wait").wait_for
 
 describe("Tungsten Plotting Commands", function()
 	local plot_commands
@@ -50,16 +51,18 @@ describe("Tungsten Plotting Commands", function()
 		reset_deps_spy = spy.on(mock_job_manager, "reset_deps_check")
 
 		mock_health_checker = mock_utils.create_empty_mock_module("tungsten.domains.plotting.health")
+		function mock_health_checker.check_dependencies(cb)
+			if cb then
+				cb({
+					wolframscript = { ok = true, version = "13.1.0" },
+					python = { ok = true, version = "3.10.0" },
+					numpy = { ok = true, version = "1.23.0" },
+					sympy = { ok = true, version = "1.12" },
+					matplotlib = { ok = true, version = "3.6.0" },
+				})
+			end
+		end
 		check_deps_spy = spy.on(mock_health_checker, "check_dependencies")
-		check_deps_spy = check_deps_spy:call_fake(function()
-			return {
-				wolframscript = { ok = true, version = "13.1.0" },
-				python = { ok = true, version = "3.10.0" },
-				numpy = { ok = true, version = "1.23.0" },
-				sympy = { ok = true, version = "1.12" },
-				matplotlib = { ok = true, version = "3.6.0" },
-			}
-		end)
 
 		mock_error_handler = mock_utils.create_empty_mock_module("tungsten.util.error_handler")
 		notify_error_spy = spy.on(mock_error_handler, "notify_error")
@@ -248,19 +251,24 @@ describe("Tungsten Plotting Commands", function()
 	describe(":TungstenPlotCheck", function()
 		it("should perform a dependency check and report structured status with hints", function()
 			assert.is_function(plot_commands.check_dependencies_command)
-			mock_health_checker.check_dependencies = function()
-				return {
-					wolframscript = { ok = false, message = "required 13.0+, found none" },
-					python = { ok = true, version = "3.10.0" },
-					numpy = { ok = true, version = "1.23.0" },
-					sympy = { ok = true, version = "1.12" },
-					matplotlib = { ok = false, message = "required 3.6+, found none" },
-				}
+			mock_health_checker.check_dependencies = function(cb)
+				vim.schedule(function()
+					cb({
+						wolframscript = { ok = false, message = "required 13.0+, found none" },
+						python = { ok = true, version = "3.10.0" },
+						numpy = { ok = true, version = "1.23.0" },
+						sympy = { ok = true, version = "1.12" },
+						matplotlib = { ok = false, message = "required 3.6+, found none" },
+					})
+				end)
 			end
 			check_deps_spy = spy.on(mock_health_checker, "check_dependencies")
 			plot_commands.check_dependencies_command()
-			assert.spy(check_deps_spy).was.called(1)
-			assert.spy(reset_deps_spy).was.called(1)
+			wait_for(function()
+				return #notify_spy.calls > 0
+			end, 200)
+			assert.spy(check_deps_spy).was.called()
+			assert.spy(reset_deps_spy).was.called()
 			assert.spy(notify_spy).was.called(1)
 			local msg = notify_spy.calls[1].vals[1]
 			assert.truthy(msg:match("1%. Wolfram"))

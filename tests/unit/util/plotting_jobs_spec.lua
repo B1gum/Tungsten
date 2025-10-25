@@ -81,16 +81,17 @@ describe("Plotting Job Manager", function()
 			end,
 		}
 
-		mock_health = {
-			check_dependencies = function()
-				return {
+		mock_health = {}
+		function mock_health.check_dependencies(cb)
+			if cb then
+				cb({
 					wolframscript = { ok = true },
 					python = { ok = true },
 					matplotlib = { ok = true },
 					sympy = { ok = true },
-				}
-			end,
-		}
+				})
+			end
+		end
 		check_deps_spy = spy.on(mock_health, "check_dependencies")
 		package.loaded["tungsten.domains.plotting.health"] = mock_health
 
@@ -198,6 +199,31 @@ describe("Plotting Job Manager", function()
 		end, 500)
 	end)
 
+	it("submissions return immediately while waiting for dependency checks", function()
+		check_deps_spy:clear()
+		local dependency_cb
+		mock_health.check_dependencies = function(cb)
+			dependency_cb = cb
+		end
+		check_deps_spy = spy.on(mock_health, "check_dependencies")
+
+		local id = JobManager.submit({ expression = "pending", bufnr = 0 })
+		assert.is_not_nil(id)
+		assert.spy(check_deps_spy).was.called(1)
+		assert.are.equal(0, #mock_async.run_job_calls)
+
+		dependency_cb({
+			wolframscript = { ok = true },
+			python = { ok = true },
+			matplotlib = { ok = true },
+			sympy = { ok = true },
+		})
+
+		wait_for(function()
+			return #mock_async.run_job_calls == 1
+		end, 500)
+	end)
+
 	it("shows and clears a progress indicator", function()
 		local ns = vim.api.nvim_create_namespace("tungsten_plot_spinner")
 
@@ -254,6 +280,82 @@ describe("Plotting Job Manager", function()
 		assert.is_true(handle_cancelled)
 	end)
 
+	it("cancels a deferred job queued by the async runner", function()
+		local on_exit_spy
+
+		mock_async.set_callback(function(_, opts)
+			local original_on_exit = opts.on_exit
+			on_exit_spy = spy.new(function(code, stdout, stderr)
+				original_on_exit(code, stdout, stderr)
+			end)
+			opts.on_exit = on_exit_spy
+
+			local handle = {}
+			function handle.cancel()
+				opts.on_exit(-1, "", "")
+			end
+			function handle.is_active()
+				return true
+			end
+			return handle
+		end)
+
+		local id = JobManager.submit({ expression = "queued", bufnr = 0 })
+
+		assert.is_table(JobManager.active_jobs[id])
+		assert.is_table(JobManager.active_jobs[id].handle)
+
+		local ok = JobManager.cancel(id)
+
+		assert.is_true(ok)
+
+		wait_for(function()
+			return JobManager.active_jobs[id] == nil
+		end, 500)
+
+		assert.spy(on_exit_spy).was.called(1)
+		assert.spy(on_exit_spy).was.called_with(-1, "", "")
+	end)
+
+	it("cancel_all removes deferred jobs before they spawn", function()
+		local exit_spies = {}
+
+		mock_async.set_callback(function(_, opts)
+			local original_on_exit = opts.on_exit
+			local on_exit_spy = spy.new(function(code, stdout, stderr)
+				original_on_exit(code, stdout, stderr)
+			end)
+			table.insert(exit_spies, on_exit_spy)
+			opts.on_exit = on_exit_spy
+
+			local handle = {}
+			function handle.cancel()
+				opts.on_exit(-1, "", "")
+			end
+			function handle.is_active()
+				return true
+			end
+			return handle
+		end)
+
+		local first = JobManager.submit({ expression = "job-a", bufnr = 0 })
+		local second = JobManager.submit({ expression = "job-b", bufnr = 0 })
+
+		assert.is_table(JobManager.active_jobs[first])
+		assert.is_table(JobManager.active_jobs[second])
+
+		JobManager.cancel_all()
+
+		wait_for(function()
+			return vim.tbl_count(JobManager.active_jobs) == 0
+		end, 500)
+
+		for _, exit_spy in ipairs(exit_spies) do
+			assert.spy(exit_spy).was.called(1)
+			assert.spy(exit_spy).was.called_with(-1, "", "")
+		end
+	end)
+
 	it("cancels all jobs and cleans up queued temp files", function()
 		mock_config.max_jobs = 1
 		local handle_cancelled = false
@@ -284,25 +386,32 @@ describe("Plotting Job Manager", function()
 
 	it("aborts submission when dependencies are missing", function()
 		check_deps_spy:clear()
-		check_deps_spy = check_deps_spy:call_fake(function()
-			return {
-				wolframscript = { ok = false, message = "required 13.0+, found none" },
-				python = { ok = true },
-				matplotlib = { ok = true },
-				sympy = { ok = true },
-			}
-		end)
+		local dependency_cb
+		mock_health.check_dependencies = function(cb)
+			dependency_cb = cb
+		end
+		check_deps_spy = spy.on(mock_health, "check_dependencies")
 
 		local id = JobManager.submit({ expression = "fail", bufnr = 0 })
-		assert.is_nil(id)
+		assert.is_not_nil(id)
 		assert.spy(check_deps_spy).was.called(1)
+		assert.are.equal(0, #mock_async.run_job_calls)
+
+		dependency_cb({
+			wolframscript = { ok = false, message = "required 13.0+, found none" },
+			python = { ok = true },
+			matplotlib = { ok = true },
+			sympy = { ok = true },
+		})
+
 		assert.spy(notify_error_spy).was.called(1)
 		assert
 			.spy(notify_error_spy).was
 			.called_with("TungstenPlot", "E_BACKEND_UNAVAILABLE", nil, "Missing dependencies: wolframscript none < 13.0")
 		assert.are.equal(0, #mock_async.run_job_calls)
 
-		JobManager.submit({ expression = "another", bufnr = 0 })
+		local second = JobManager.submit({ expression = "another", bufnr = 0 })
+		assert.is_nil(second)
 		assert.spy(check_deps_spy).was.called(1)
 	end)
 

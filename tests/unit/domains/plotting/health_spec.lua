@@ -1,23 +1,22 @@
 local mock_utils = require("tests.helpers.mock_utils")
+local wait_for = require("tests.helpers.wait").wait_for
 
 describe("Plotting dependency health", function()
 	local health
 	local original_executable
-	local original_jobstart
-	local original_jobwait
+	local original_system
 
 	before_each(function()
 		mock_utils.reset_modules({ "tungsten.domains.plotting.health" })
 		health = require("tungsten.domains.plotting.health")
 		original_executable = vim.fn.executable
-		original_jobstart = vim.fn.jobstart
-		original_jobwait = vim.fn.jobwait
+		original_system = vim.system
 	end)
 
 	after_each(function()
 		vim.fn.executable = original_executable
-		vim.fn.jobstart = original_jobstart
-		vim.fn.jobwait = original_jobwait
+		vim.system = original_system
+		health.reset_cache()
 	end)
 
 	it("reports all dependencies available", function()
@@ -27,34 +26,31 @@ describe("Plotting dependency health", function()
 			end
 			return 0
 		end
-		vim.fn.jobstart = function(cmd, opts)
-			if cmd[1] == "wolframscript" then
-				if opts.on_stdout then
-					opts.on_stdout(nil, { "13.1.0", "" })
-				end
-				if opts.on_exit then
-					opts.on_exit(nil, 0)
-				end
-				return 1
-			elseif cmd[1] == "python3" then
-				if opts.on_stdout then
-					opts.on_stdout(nil, {
-						'{"python":"3.11.0","numpy":"1.23.5","sympy":"1.12","matplotlib":"3.6.3"}',
-						"",
-					})
-				end
-				if opts.on_exit then
-					opts.on_exit(nil, 0)
-				end
-				return 2
+		vim.system = function(cmd, _, cb)
+			local name = cmd[1]
+			if name == "wolframscript" then
+				cb({ code = 0, stdout = "13.1.0\n", stderr = "" })
+			elseif name == "python3" and cmd[2] == "-c" then
+				cb({
+					code = 0,
+					stdout = '{"python":"3.11.0","numpy":"1.23.5","sympy":"1.12","matplotlib":"3.6.3"}',
+					stderr = "",
+				})
+			elseif name == "python3" and cmd[2] == "-V" then
+				cb({ code = 0, stdout = "Python 3.11.0\n", stderr = "" })
+			else
+				cb({ code = -1, stdout = "", stderr = "" })
 			end
-			return -1
-		end
-		vim.fn.jobwait = function(_)
-			return { 0 }
+			return {}
 		end
 
-		local report = health.check_dependencies()
+		local report
+		health.check_dependencies(function(r)
+			report = r
+		end)
+		wait_for(function()
+			return report ~= nil
+		end, 200)
 		assert.is_true(report.wolframscript.ok)
 		assert.is_true(report.python.ok)
 		assert.is_true(report.numpy.ok)
@@ -69,14 +65,18 @@ describe("Plotting dependency health", function()
 			end
 			return 0
 		end
-		vim.fn.jobstart = function()
-			return -1
-		end
-		vim.fn.jobwait = function()
-			return { -1 }
+		vim.system = function(_, _, cb)
+			cb({ code = -1, stdout = "", stderr = "" })
+			return {}
 		end
 
-		local report = health.check_dependencies()
+		local report
+		health.check_dependencies(function(r)
+			report = r
+		end)
+		wait_for(function()
+			return report ~= nil
+		end, 200)
 		assert.is_false(report.wolframscript.ok)
 		assert.is_false(report.python.ok)
 		assert.is_false(report.numpy.ok)

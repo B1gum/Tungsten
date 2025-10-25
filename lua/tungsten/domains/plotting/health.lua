@@ -1,5 +1,67 @@
 local M = {}
 
+local current_check
+
+local function run_system(cmd, opts, on_exit)
+	opts = opts or {}
+	opts.text = true
+
+	local function invoke_callback(obj)
+		if on_exit then
+			if vim.in_fast_event() then
+				vim.schedule(function()
+					on_exit(obj)
+				end)
+			else
+				on_exit(obj)
+			end
+		end
+	end
+
+	local ok, handle = pcall(vim.system, cmd, opts, function(obj)
+		invoke_callback(obj)
+	end)
+
+	if not ok then
+		invoke_callback({ code = -1, stdout = "", stderr = tostring(handle or "") })
+		return nil
+	end
+
+	return handle
+end
+
+local function wait_group(on_complete)
+	local pending = 0
+	local completed = false
+
+	local function maybe_finish()
+		if not completed and pending == 0 then
+			completed = true
+			vim.schedule(function()
+				on_complete()
+			end)
+		end
+	end
+
+	local function register()
+		if completed then
+			return function() end
+		end
+		pending = pending + 1
+		local done = false
+		return function()
+			if done then
+				return
+			end
+			done = true
+			pending = pending - 1
+			maybe_finish()
+		end
+	end
+
+	return register, maybe_finish
+end
+
 function M.version_at_least(found, required)
 	local function parse(v)
 		local main, pre = v:match("^([0-9]+%.[0-9]+%.[0-9]+)(.*)$")
@@ -63,27 +125,33 @@ local function evaluate_version(found, required)
 	return { ok = false, message = string.format("required %s+, found %s", required, found) }
 end
 
-function M.check_dependencies()
+local function start_check(callback)
 	local report = {}
 
 	report.wolframscript = evaluate_version(nil, "13.0")
+	report.python = evaluate_version(nil, "3.10")
+	report.numpy = evaluate_version(nil, "1.23")
+	report.sympy = evaluate_version(nil, "1.12")
+	report.matplotlib = evaluate_version(nil, "3.6")
+
+	local register, finalize = wait_group(function()
+		callback(report)
+	end)
+
+	local function complete_python_check()
+		local done = register()
+		done()
+	end
+
 	if vim.fn.executable("wolframscript") == 1 then
-		local output = {}
-		local job_id = vim.fn.jobstart({ "wolframscript", "-version" }, {
-			stdout_buffered = true,
-			on_stdout = function(_, data)
-				for _, line in ipairs(data) do
-					if line ~= "" then
-						table.insert(output, line)
-					end
-				end
-			end,
-		})
-		if job_id > 0 then
-			vim.fn.jobwait({ job_id }, 5000)
-			local version = table.concat(output, "\n"):match("%d+%.%d+%.?%d*")
-			report.wolframscript = evaluate_version(version, "13.0")
-		end
+		local finish = register()
+		run_system({ "wolframscript", "-version" }, {}, function(obj)
+			if obj.code == 0 then
+				local version = (obj.stdout or ""):match("%d+%.%d+%.?%d*")
+				report.wolframscript = evaluate_version(version, "13.0")
+			end
+			finish()
+		end)
 	end
 
 	local python_cmd
@@ -91,68 +159,71 @@ function M.check_dependencies()
 		python_cmd = "python3"
 	end
 
-	report.python = evaluate_version(nil, "3.10")
-	report.numpy = evaluate_version(nil, "1.23")
-	report.sympy = evaluate_version(nil, "1.12")
-	report.matplotlib = evaluate_version(nil, "3.6")
-
 	if python_cmd then
-		local stdout = {}
-		local job_id = vim.fn.jobstart({
+		local finish_python = register()
+		run_system({
 			python_cmd,
 			"-c",
 			[[import os; os.environ["MPLBACKEND"]="Agg"; import json,sys; import numpy, sympy; import matplotlib; matplotlib.use('Agg'); print(json.dumps({'python':sys.version,'numpy':numpy.__version__,'sympy':sympy.__version__,'matplotlib':matplotlib.__version__}))]],
-		}, {
-			stdout_buffered = true,
-			on_stdout = function(_, data)
-				for _, line in ipairs(data) do
-					if line ~= "" then
-						table.insert(stdout, line)
-					end
-				end
-			end,
-		})
+		}, { env = { MPLBACKEND = "Agg" } }, function(obj)
+			local ok, decoded
+			if obj.code == 0 then
+				ok, decoded = pcall(vim.json.decode, obj.stdout or "")
+			end
 
-		if job_id > 0 then
-			vim.fn.jobwait({ job_id }, 10000)
-			local ok, decoded = pcall(vim.fn.json_decode, table.concat(stdout, "\n"))
 			if ok and type(decoded) == "table" then
 				local py_ver = decoded.python:match("%d+%.%d+%.%d+") or decoded.python:match("%d+%.%d+")
 				report.python = evaluate_version(py_ver, "3.10")
 				report.numpy = evaluate_version(decoded.numpy, "1.23")
 				report.sympy = evaluate_version(decoded.sympy, "1.12")
 				report.matplotlib = evaluate_version(decoded.matplotlib, "3.6")
-			else
-				local py_output = {}
-				local ver_id = vim.fn.jobstart({ python_cmd, "-V" }, {
-					stdout_buffered = true,
-					stderr_buffered = true,
-					on_stdout = function(_, data)
-						for _, line in ipairs(data) do
-							if line ~= "" then
-								table.insert(py_output, line)
-							end
-						end
-					end,
-					on_stderr = function(_, data)
-						for _, line in ipairs(data) do
-							if line ~= "" then
-								table.insert(py_output, line)
-							end
-						end
-					end,
-				})
-				if ver_id > 0 then
-					vim.fn.jobwait({ ver_id }, 5000)
-					local ver_str = table.concat(py_output, "\n")
+				finish_python()
+				return
+			end
+
+			run_system({ python_cmd, "-V" }, {}, function(version_obj)
+				if version_obj.code == 0 then
+					local ver_str = version_obj.stdout ~= "" and version_obj.stdout or version_obj.stderr or ""
 					local py_ver = ver_str:match("%d+%.%d+%.%d+") or ver_str:match("%d+%.%d+")
 					report.python = evaluate_version(py_ver, "3.10")
 				end
-			end
-		end
+				finish_python()
+			end)
+		end)
+	else
+		complete_python_check()
 	end
 
-	return report
+	finalize()
+end
+
+function M.check_dependencies(callback)
+	callback = callback or function() end
+
+	if current_check then
+		if current_check.resolved then
+			callback(current_check.report)
+		else
+			table.insert(current_check.callbacks, callback)
+		end
+		return
+	end
+
+	current_check = { callbacks = { callback }, resolved = false }
+
+	start_check(function(report)
+		current_check.resolved = true
+		current_check.report = report
+		local listeners = current_check.callbacks
+		current_check.callbacks = {}
+		for _, cb in ipairs(listeners) do
+			cb(report)
+		end
+	end)
+end
+
+function M.reset_cache()
+	current_check = nil
 end
 
 return M

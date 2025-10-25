@@ -28,6 +28,74 @@ local spinner_interval = 80
 
 local deps_ok
 local missing_message
+local dependency_waiters = {}
+local dependency_check_in_flight = false
+local pending_dependency_jobs = {}
+local dependency_failure_notified = false
+
+local function resolve_dependency_waiters(ok, message, report)
+	deps_ok = ok
+	missing_message = message
+	dependency_failure_notified = false
+
+	local waiters = dependency_waiters
+	dependency_waiters = {}
+	for _, waiter in ipairs(waiters) do
+		waiter(ok, message, report)
+	end
+end
+
+local function evaluate_dependency_report(report)
+	local function fmt_missing(name, info)
+		if info and info.message then
+			local required, found = info.message:match("required%s+([%d%.]+)%+, found%s+([%w%.]+)")
+			if required and found then
+				return string.format("%s %s < %s", name, found, required)
+			end
+		end
+		return name
+	end
+
+	local missing = {}
+	if not report.wolframscript.ok then
+		table.insert(missing, fmt_missing("wolframscript", report.wolframscript))
+	end
+	if not report.python.ok then
+		table.insert(missing, fmt_missing("python", report.python))
+	end
+	if not report.matplotlib.ok then
+		table.insert(missing, fmt_missing("matplotlib", report.matplotlib))
+	end
+	if not report.sympy.ok then
+		table.insert(missing, fmt_missing("sympy", report.sympy))
+	end
+
+	if #missing > 0 then
+		return false, "Missing dependencies: " .. table.concat(missing, ", ")
+	end
+
+	return true, nil
+end
+
+local function on_dependencies_ready(callback)
+	if deps_ok ~= nil then
+		callback(deps_ok, missing_message)
+		return
+	end
+
+	table.insert(dependency_waiters, callback)
+
+	if dependency_check_in_flight then
+		return
+	end
+
+	dependency_check_in_flight = true
+	health.check_dependencies(function(report)
+		dependency_check_in_flight = false
+		local ok, message = evaluate_dependency_report(report)
+		resolve_dependency_waiters(ok, message, report)
+	end)
+end
 
 local function active_count()
 	local n = 0
@@ -199,9 +267,7 @@ local function _execute_plot(job)
 			end
 		end,
 	})
-	if handle then
-		info.handle = handle
-	end
+	info.handle = handle
 end
 
 _process_queue = function()
@@ -262,46 +328,6 @@ function M.submit(plot_opts, user_on_success, user_on_error)
 		end
 	end
 
-	if deps_ok == nil then
-		local report = health.check_dependencies()
-		local function fmt_missing(name, info)
-			if info and info.message then
-				local required, found = info.message:match("required%s+([%d%.]+)%+, found%s+([%w%.]+)")
-				if required and found then
-					return string.format("%s %s < %s", name, found, required)
-				end
-			end
-			return name
-		end
-		local missing = {}
-		if not report.wolframscript.ok then
-			table.insert(missing, fmt_missing("wolframscript", report.wolframscript))
-		end
-		if not report.python.ok then
-			table.insert(missing, fmt_missing("python", report.python))
-		end
-		if not report.matplotlib.ok then
-			table.insert(missing, fmt_missing("matplotlib", report.matplotlib))
-		end
-		if not report.sympy.ok then
-			table.insert(missing, fmt_missing("sympy", report.sympy))
-		end
-		if #missing > 0 then
-			deps_ok = false
-			missing_message = "Missing dependencies: " .. table.concat(missing, ", ")
-		else
-			deps_ok = true
-		end
-	end
-
-	if not deps_ok then
-		if missing_message then
-			logger.error("TungstenPlot", missing_message)
-		end
-		error_handler.notify_error("TungstenPlot", error_handler.E_BACKEND_UNAVAILABLE, nil, missing_message)
-		return nil
-	end
-
 	next_id = next_id + 1
 	local job = { id = next_id, plot_opts = plot_opts }
 
@@ -319,6 +345,41 @@ function M.submit(plot_opts, user_on_success, user_on_error)
 		end
 	end
 
+	if deps_ok == false then
+		if missing_message then
+			logger.error("TungstenPlot", missing_message)
+		end
+		error_handler.notify_error("TungstenPlot", error_handler.E_BACKEND_UNAVAILABLE, nil, missing_message)
+		return nil
+	end
+
+	if deps_ok == nil then
+		pending_dependency_jobs[job.id] = job
+		on_dependencies_ready(function(ok, message)
+			local pending_job = pending_dependency_jobs[job.id]
+			if not pending_job then
+				return
+			end
+			pending_dependency_jobs[job.id] = nil
+
+			if not ok then
+				cleanup_temp(pending_job)
+				if message and not dependency_failure_notified then
+					logger.error("TungstenPlot", message)
+				end
+				if not dependency_failure_notified then
+					error_handler.notify_error("TungstenPlot", error_handler.E_BACKEND_UNAVAILABLE, nil, message)
+					dependency_failure_notified = true
+				end
+				return
+			end
+
+			table.insert(job_queue, pending_job)
+			_process_queue()
+		end)
+		return job.id
+	end
+
 	table.insert(job_queue, job)
 	_process_queue()
 	return job.id
@@ -329,6 +390,12 @@ function M.cancel(job_id)
 	if info and info.handle and info.handle.cancel then
 		info.cancelled = true
 		info.handle.cancel()
+		return true
+	end
+	local pending_job = pending_dependency_jobs[job_id]
+	if pending_job then
+		cleanup_temp(pending_job)
+		pending_dependency_jobs[job_id] = nil
 		return true
 	end
 	return false
@@ -353,6 +420,10 @@ M._process_queue = _process_queue
 function M.reset_deps_check()
 	deps_ok = nil
 	missing_message = nil
+	dependency_waiters = {}
+	dependency_check_in_flight = false
+	pending_dependency_jobs = {}
+	dependency_failure_notified = false
 end
 
 local function extract_ranges(plot_opts)

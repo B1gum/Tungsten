@@ -22,54 +22,54 @@ function M.advanced_plot_command()
 end
 
 function M.check_dependencies_command()
-	local report = health.check_dependencies()
+	health.check_dependencies(function(report)
+		local required_versions = {
+			wolframscript = "13.0",
+			python = "3.10",
+			numpy = "1.23",
+			sympy = "1.12",
+			matplotlib = "3.6",
+		}
 
-	local required_versions = {
-		wolframscript = "13.0",
-		python = "3.10",
-		numpy = "1.23",
-		sympy = "1.12",
-		matplotlib = "3.6",
-	}
+		local backends = {
+			{ name = "Wolfram", deps = { "wolframscript" } },
+			{ name = "Python", deps = { "python", "numpy", "sympy", "matplotlib" } },
+		}
 
-	local backends = {
-		{ name = "Wolfram", deps = { "wolframscript" } },
-		{ name = "Python", deps = { "python", "numpy", "sympy", "matplotlib" } },
-	}
+		local lines = {}
+		for i, backend in ipairs(backends) do
+			table.insert(lines, string.format("%d. %s", i, backend.name))
+			for _, dep in ipairs(backend.deps) do
+				local info = report[dep] or {}
 
-	local lines = {}
-	for i, backend in ipairs(backends) do
-		table.insert(lines, string.format("%d. %s", i, backend.name))
-		for _, dep in ipairs(backend.deps) do
-			local info = report[dep] or {}
-
-			local detected = "none"
-			if info.version then
-				detected = info.version
-			elseif info.message then
-				detected = info.message:match("found ([%d%.]+)") or "none"
-			end
-
-			if info.ok then
-				table.insert(lines, string.format("  - %s: %s ✔", dep, detected))
-			else
-				local hint
-				if dep == "wolframscript" then
-					hint = string.format("install Wolfram Language ≥%s", required_versions[dep])
-				elseif dep == "python" then
-					hint = string.format("install Python ≥%s", required_versions[dep])
-				else
-					hint = string.format("install %s ≥%s via pip", dep, required_versions[dep])
+				local detected = "none"
+				if info.version then
+					detected = info.version
+				elseif info.message then
+					detected = info.message:match("found ([%d%.]+)") or "none"
 				end
-				table.insert(lines, string.format("  - %s: %s ✘ (%s)", dep, detected, hint))
+
+				if info.ok then
+					table.insert(lines, string.format("  - %s: %s ✔", dep, detected))
+				else
+					local hint
+					if dep == "wolframscript" then
+						hint = string.format("install Wolfram Language ≥%s", required_versions[dep])
+					elseif dep == "python" then
+						hint = string.format("install Python ≥%s", required_versions[dep])
+					else
+						hint = string.format("install %s ≥%s via pip", dep, required_versions[dep])
+					end
+					table.insert(lines, string.format("  - %s: %s ✘ (%s)", dep, detected, hint))
+				end
 			end
 		end
-	end
 
-	vim.notify(table.concat(lines, "\n"), vim.log.levels.INFO, { title = "Tungsten PlotCheck" })
-	if job_manager.reset_deps_check then
-		job_manager.reset_deps_check()
-	end
+		vim.notify(table.concat(lines, "\n"), vim.log.levels.INFO, { title = "Tungsten PlotCheck" })
+		if job_manager.reset_deps_check then
+			job_manager.reset_deps_check()
+		end
+	end)
 end
 
 function M.cancel_command(opts)

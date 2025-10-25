@@ -10,6 +10,77 @@ local M = {}
 local job_queue = {}
 local process_queue
 
+local function remove_from_queue(proxy)
+	for index, entry in ipairs(job_queue) do
+		if entry.handle == proxy then
+			table.remove(job_queue, index)
+			return true
+		end
+	end
+	return false
+end
+
+local function attach_real_handle(proxy, real_handle)
+	if not proxy then
+		return
+	end
+
+	proxy._real = real_handle
+	proxy._queued = false
+	proxy._opts = nil
+	if real_handle and real_handle.id then
+		proxy.id = real_handle.id
+	end
+
+	if proxy._pending_cancel then
+		proxy._pending_cancel = nil
+		if real_handle and real_handle.cancel then
+			real_handle.cancel()
+		end
+	end
+end
+
+local function create_proxy_handle(opts)
+	local proxy = {
+		_queued = true,
+		_opts = opts,
+	}
+
+	function proxy.cancel()
+		if proxy._real then
+			if proxy._real.cancel then
+				proxy._real.cancel()
+			end
+			return
+		end
+
+		local removed = remove_from_queue(proxy)
+		if removed then
+			proxy._queued = false
+			local pending_opts = proxy._opts
+			proxy._opts = nil
+			if pending_opts and pending_opts.on_exit then
+				local on_exit = pending_opts.on_exit
+				vim.schedule(function()
+					on_exit(-1, "", "")
+				end)
+			end
+			return
+		end
+
+		proxy._pending_cancel = true
+	end
+
+	function proxy.is_active()
+		if proxy._real and proxy._real.is_active then
+			return proxy._real.is_active()
+		end
+		return proxy._queued and not proxy._pending_cancel
+	end
+
+	return proxy
+end
+
 local function active_job_count()
 	local n = 0
 	for _ in pairs(state.active_jobs) do
@@ -125,7 +196,8 @@ process_queue = function()
 	while #job_queue > 0 and active_job_count() < (config.max_jobs or math.huge) do
 		local next_job = table.remove(job_queue, 1)
 		vim.schedule(function()
-			spawn_process(next_job.cmd, next_job.opts)
+			local handle = spawn_process(next_job.cmd, next_job.opts)
+			attach_real_handle(next_job.handle, handle)
 		end)
 	end
 end
@@ -139,8 +211,9 @@ function M.run_job(cmd, opts)
 	end
 	if active_job_count() >= (config.max_jobs or math.huge) then
 		logger.warn("Tungsten", string.format("Maximum of %d jobs reached; queuing job", config.max_jobs))
-		table.insert(job_queue, { cmd = cmd, opts = opts })
-		return nil
+		local proxy = create_proxy_handle(opts)
+		table.insert(job_queue, { cmd = cmd, opts = opts, handle = proxy })
+		return proxy
 	end
 	return spawn_process(cmd, opts)
 end
