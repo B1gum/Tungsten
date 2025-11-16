@@ -332,6 +332,64 @@ local function build_parametric_code(opts)
 	return code
 end
 
+local function extract_polar_expression(ast)
+	if not ast then
+		return nil
+	end
+	if ast.r then
+		return ast.r
+	end
+	if ast.type == "equality" and ast.rhs then
+		return ast.rhs
+	end
+	return ast
+end
+
+local function build_polar_code(opts)
+	local series = opts.series or {}
+	local exprs = {}
+	for _, s in ipairs(series) do
+		if s.kind == "function" then
+			local expr_ast = extract_polar_expression(s.ast)
+			local code = render_ast_to_wolfram(expr_ast)
+			if code then
+				table.insert(exprs, code)
+			end
+		end
+	end
+	if #exprs == 0 then
+		return nil, "No polar functions to plot"
+	end
+
+	local indep = series[1] and series[1].independent_vars or {}
+	local theta_var = indep[1] or "theta"
+	local theta_range = opts.theta_range or { 0, "2*Pi" }
+	local theta_min = theta_range[1] or 0
+	local theta_max = theta_range[2] or "2*Pi"
+	local domain = string.format("{%s, %s, %s}", theta_var, theta_min, theta_max)
+
+	local inner
+	if #exprs == 1 then
+		inner = exprs[1]
+	else
+		inner = "{" .. table.concat(exprs, ", ") .. "}"
+	end
+
+	local code = "PolarPlot[" .. inner .. ", " .. domain
+	local extra_opts = translate_opts_to_wolfram(opts)
+	if opts.samples then
+		extra_opts[#extra_opts + 1] = string.format("PlotPoints -> %d", opts.samples)
+	end
+	apply_series_styles(extra_opts, series)
+	apply_legend(extra_opts, opts)
+	if #extra_opts > 0 then
+		code = code .. ", " .. table.concat(extra_opts, ", ")
+	end
+	code = code .. "]"
+
+	return code
+end
+
 local function build_plot_code(opts)
 	if opts.form == "explicit" then
 		return build_explicit_code(opts)
@@ -339,6 +397,8 @@ local function build_plot_code(opts)
 		return build_implicit_code(opts)
 	elseif opts.form == "parametric" then
 		return build_parametric_code(opts)
+	elseif opts.form == "polar" then
+		return build_polar_code(opts)
 	else
 		return nil, "Unsupported plot form"
 	end
