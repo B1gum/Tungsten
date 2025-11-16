@@ -103,6 +103,57 @@ local function build_explicit_2d_python_code(opts)
 	return table.concat(lines, "\n"), nil
 end
 
+local function extract_polar_expression(ast)
+	if not ast then
+		return nil
+	end
+	if ast.r then
+		return ast.r
+	end
+	if ast.type == "equality" and ast.rhs then
+		return ast.rhs
+	end
+	return ast
+end
+
+local function build_polar_2d_python_code(opts)
+	local series = opts.series or {}
+	local exprs = {}
+	for _, s in ipairs(series) do
+		if s.kind == "function" then
+			local expr_ast = extract_polar_expression(s.ast)
+			local code = render_ast_to_python(expr_ast)
+			if code then
+				table.insert(exprs, { code = code, series = s })
+			end
+		end
+	end
+	if #exprs == 0 then
+		return nil, nil, "No polar functions to plot"
+	end
+
+	local indep = series[1] and series[1].independent_vars or {}
+	local theta_var = indep[1] or "theta"
+	local theta_range = opts.theta_range or { 0, "2*np.pi" }
+	local samples = opts.samples or 360
+	local theta_vals = theta_var == "theta" and "theta_vals" or (theta_var .. "_vals")
+
+	local lines = {}
+	table.insert(lines, string.format("%s = sp.symbols('%s')", theta_var, theta_var))
+	table.insert(
+		lines,
+		string.format("%s = np.linspace(%s, %s, %d)", theta_vals, theta_range[1], theta_range[2], samples)
+	)
+	for i, item in ipairs(exprs) do
+		local fname = "f" .. i
+		table.insert(lines, string.format("%s = sp.lambdify((%s,), %s, 'numpy')", fname, theta_var, item.code))
+		local style = build_style_args(item.series, "plot")
+		table.insert(lines, string.format("ax.plot(%s, %s(%s)%s)", theta_vals, fname, theta_vals, style))
+	end
+
+	return table.concat(lines, "\n"), nil
+end
+
 local function build_explicit_3d_python_code(opts)
 	local series = opts.series or {}
 	local exprs = {}
@@ -313,13 +364,15 @@ local function build_parametric_3d_py_code(opts)
 	return table.concat(lines, "\n"), surf_var
 end
 
-local function build_plot_code(opts)
+function M.build_plot_code(opts)
 	if opts.form == "explicit" then
 		if opts.dim == 3 then
 			return build_explicit_3d_python_code(opts)
 		else
 			return build_explicit_2d_python_code(opts)
 		end
+	elseif opts.form == "polar" then
+		return build_polar_2d_python_code(opts)
 	elseif opts.form == "implicit" then
 		if opts.dim == 3 then
 			return build_implicit_3d_py_code(opts)
@@ -336,8 +389,8 @@ local function build_plot_code(opts)
 	return nil, nil, "Unsupported plot form"
 end
 
-local function build_python_script(opts)
-	local plot_code, colorbar_var, err = build_plot_code(opts)
+function M.build_python_script(opts)
+	local plot_code, colorbar_var, err = M.build_plot_code(opts)
 	if not plot_code then
 		return nil, err
 	end
@@ -353,7 +406,9 @@ local function build_python_script(opts)
 		"from mpl_toolkits.mplot3d import Axes3D",
 		"fig = plt.figure()",
 	}
-	if opts.dim == 3 then
+	if opts.form == "polar" then
+		table.insert(lines, "ax = fig.add_subplot(111, projection='polar')")
+	elseif opts.dim == 3 then
 		table.insert(lines, "ax = fig.add_subplot(111, projection='3d')")
 	else
 		table.insert(lines, "ax = fig.add_subplot(111)")
@@ -437,7 +492,7 @@ function M.plot_async(opts, callback)
 		return
 	end
 
-	local script, err = build_python_script(opts)
+	local script, err = M.build_python_script(opts)
 	if not script then
 		callback(err or "Failed to build plot code", nil)
 		return
