@@ -3,6 +3,69 @@ local wolfram_plot = require("tungsten.backends.wolfram.plot")
 local executor = require("tungsten.backends.wolfram.executor")
 local async = require("tungsten.util.async")
 
+local function build_base_opts(overrides)
+        local opts = {
+                dim = 2,
+                form = "explicit",
+                xrange = { -5, 5 },
+                series = {
+                        {
+                                kind = "function",
+                                ast = { __code = "x^2" },
+                                independent_vars = { "x" },
+                                dependent_vars = { "y" },
+                        },
+                },
+        }
+        for k, v in pairs(overrides or {}) do
+                opts[k] = v
+        end
+        return opts
+end
+
+describe("wolfram plot option translation", function()
+        local ast_stub
+
+        before_each(function()
+                ast_stub = stub(executor, "ast_to_code", function(ast)
+                        if type(ast) == "table" and ast.__code then
+                                return ast.__code
+                        end
+                        return "expr"
+                end)
+        end)
+
+        after_each(function()
+                if ast_stub then
+                        ast_stub:revert()
+                        ast_stub = nil
+                end
+        end)
+
+        it("omits PlotRange when no clipping is requested", function()
+                local code, err = wolfram_plot.build_plot_code(build_base_opts())
+                assert.is_nil(err)
+                assert.is_truthy(code:match("^Plot%["))
+                assert.is_nil(code:match("PlotRange"))
+        end)
+
+        it("includes PlotRange when dependent axes are clipped", function()
+                local opts = build_base_opts({ clip_dependent_axes = true, yrange = { -2, 2 } })
+                local code, err = wolfram_plot.build_plot_code(opts)
+                assert.is_nil(err)
+                assert.is_truthy(code:match("PlotRange"))
+                assert.is_truthy(code:match("%{-2, 2%}"))
+        end)
+
+        it("respects explicit axis clipping overrides", function()
+                local opts = build_base_opts({ clip_axes = { x = true } })
+                local code, err = wolfram_plot.build_plot_code(opts)
+                assert.is_nil(err)
+                assert.is_truthy(code:match("PlotRange"))
+                assert.is_truthy(code:match("%{-5, 5%}"))
+        end)
+end)
+
 describe("wolfram polar plotting", function()
 	local ast_stub
 	local async_stub

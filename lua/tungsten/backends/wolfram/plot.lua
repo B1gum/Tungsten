@@ -17,21 +17,54 @@ local function render_ast_to_wolfram(ast)
 	return nil
 end
 
+local function axis_is_dependent(opts, axis_name)
+	for _, series in ipairs(opts.series or {}) do
+		for _, dep in ipairs(series.dependent_vars or {}) do
+			if dep == axis_name then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+local function axis_marked_for_clip(opts, axis_name)
+	local clip_axes = opts.clip_axes
+	if type(clip_axes) == "table" then
+		local flag = clip_axes[axis_name]
+		if flag ~= nil then
+			return flag and true or false
+		end
+	end
+
+	if axis_name ~= "x" and opts.clip_dependent_axes and axis_is_dependent(opts, axis_name) then
+		return true
+	end
+
+	return false
+end
+
 local function translate_opts_to_wolfram(opts)
 	local res = {}
 
-	if opts.xrange or opts.yrange or opts.zrange then
-		local ranges = {}
-		if opts.xrange then
-			table.insert(ranges, string.format("{%s, %s}", opts.xrange[1], opts.xrange[2]))
+	local plot_ranges = {}
+	local function maybe_add_plot_range(range_key, axis_name)
+		local range = opts[range_key]
+		if not range then
+			return
 		end
-		if opts.yrange then
-			table.insert(ranges, string.format("{%s, %s}", opts.yrange[1], opts.yrange[2]))
+		if not axis_marked_for_clip(opts, axis_name) then
+			return
 		end
-		if opts.zrange then
-			table.insert(ranges, string.format("{%s, %s}", opts.zrange[1], opts.zrange[2]))
-		end
-		table.insert(res, "PlotRange -> {" .. table.concat(ranges, ", ") .. "}")
+		table.insert(plot_ranges, string.format("{%s, %s}", range[1], range[2]))
+	end
+
+	maybe_add_plot_range("xrange", "x")
+	maybe_add_plot_range("yrange", "y")
+	maybe_add_plot_range("zrange", "z")
+
+	if #plot_ranges > 0 then
+		table.insert(res, "PlotRange -> {" .. table.concat(plot_ranges, ", ") .. "}")
 	end
 
 	if opts.aspect then
@@ -390,7 +423,7 @@ local function build_polar_code(opts)
 	return code
 end
 
-local function build_plot_code(opts)
+function M.build_plot_code(opts)
 	if opts.form == "explicit" then
 		return build_explicit_code(opts)
 	elseif opts.form == "implicit" then
@@ -429,7 +462,7 @@ function M.plot_async(opts, callback)
 		return
 	end
 
-	local plot_code, err = build_plot_code(opts)
+	local plot_code, err = M.build_plot_code(opts)
 	if not plot_code then
 		callback(err or "Failed to build plot code", nil)
 		return
