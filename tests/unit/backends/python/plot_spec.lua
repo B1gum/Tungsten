@@ -335,4 +335,29 @@ describe("python polar plotting", function()
 			assert.are.equal("Function besseli requires SciPy; use Wolfram backend", err.message)
 		end)
 	end)
+	it("applies log scales and masks sampled data", function()
+		local opts = {
+			dim = 2,
+			form = "explicit",
+			xrange = { -1, 1 },
+			samples = 10,
+			xscale = "log",
+			yscale = "log",
+			out_path = "plot.png",
+			series = {
+				{
+					kind = "function",
+					ast = { __code = "x" },
+					independent_vars = { "x" },
+				},
+			},
+		}
+
+		local script, err = plot_backend.build_python_script(opts)
+		assert.is_nil(err)
+		assert.is_truthy(script:find("ax.set_xscale('log')", 1, true))
+		assert.is_truthy(script:find("ax.set_yscale('log')", 1, true))
+		assert.is_truthy(script:find("xs = np.ma.masked_where(xs <= 0, xs)", 1, true))
+		assert.is_truthy(script:find("ys1 = np.ma.masked_where(ys1 <= 0, ys1)", 1, true))
+	end)
 end)

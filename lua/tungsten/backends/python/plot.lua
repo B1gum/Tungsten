@@ -20,6 +20,14 @@ local function render_ast_to_python(ast)
 	return nil
 end
 
+local function apply_log_mask(lines, axis, var, opts)
+	local scale_key = axis .. "scale"
+	local scale = opts and opts[scale_key]
+	if scale == "log" then
+		table.insert(lines, string.format("%s = np.ma.masked_where(%s <= 0, %s)", var, var, var))
+	end
+end
+
 local function python_string_literal(value)
 	if value == nil then
 		value = ""
@@ -103,11 +111,15 @@ local function build_explicit_2d_python_code(opts)
 	local lines = {}
 	table.insert(lines, string.format("%s = sp.symbols('%s')", xvar, xvar))
 	table.insert(lines, string.format("xs = np.linspace(%s, %s, %d)", xrange[1], xrange[2], samples))
+	apply_log_mask(lines, "x", "xs", opts)
 	for i, item in ipairs(exprs) do
 		local fname = "f" .. i
 		table.insert(lines, string.format("%s = sp.lambdify((%s,), %s, 'numpy')", fname, xvar, item.code))
 		local style = build_style_args(item.series, "plot")
-		table.insert(lines, string.format("ax.plot(xs, %s(xs)%s)", fname, style))
+		local y_var = string.format("ys%d", i)
+		table.insert(lines, string.format("%s = %s(xs)", y_var, fname))
+		apply_log_mask(lines, "y", y_var, opts)
+		table.insert(lines, string.format("ax.plot(xs, %s%s)", y_var, style))
 	end
 
 	return table.concat(lines, "\n"), nil
@@ -258,11 +270,14 @@ local function build_explicit_3d_python_code(opts)
 	table.insert(lines, string.format("x_vals = np.linspace(%s, %s, %d)", xrange[1], xrange[2], grid[1]))
 	table.insert(lines, string.format("y_vals = np.linspace(%s, %s, %d)", yrange[1], yrange[2], grid[2]))
 	table.insert(lines, "X, Y = np.meshgrid(x_vals, y_vals)")
+	apply_log_mask(lines, "x", "X", opts)
+	apply_log_mask(lines, "y", "Y", opts)
 	local surf_var = "surf"
 	for i, item in ipairs(exprs) do
 		local fname = "f" .. i
 		table.insert(lines, string.format("%s = sp.lambdify((%s,%s), %s, 'numpy')", fname, xvar, yvar, item.code))
 		table.insert(lines, string.format("Z = %s(X, Y)", fname))
+		apply_log_mask(lines, "z", "Z", opts)
 		local style = build_style_args(item.series, "surface")
 		table.insert(
 			lines,
@@ -300,6 +315,8 @@ local function build_implicit_2d_py_code(opts)
 	table.insert(lines, string.format("x_vals = np.linspace(%s, %s, %d)", xrange[1], xrange[2], grid_n))
 	table.insert(lines, string.format("y_vals = np.linspace(%s, %s, %d)", yrange[1], yrange[2], grid_n))
 	table.insert(lines, "X, Y = np.meshgrid(x_vals, y_vals)")
+	apply_log_mask(lines, "x", "X", opts)
+	apply_log_mask(lines, "y", "Y", opts)
 	local cont_var = "cs"
 	for i, item in ipairs(exprs) do
 		local fname = "f" .. i
@@ -342,7 +359,13 @@ local function build_parametric_2d_py_code(opts)
 		table.insert(lines, string.format("%s = sp.lambdify((%s,), %s, 'numpy')", fx, tvar, e.x))
 		table.insert(lines, string.format("%s = sp.lambdify((%s,), %s, 'numpy')", fy, tvar, e.y))
 		local style = build_style_args(e.series, "plot")
-		table.insert(lines, string.format("ax.plot(%s(t_vals), %s(t_vals)%s)", fx, fy, style))
+		local x_var = string.format("x_vals_%d", i)
+		local y_var = string.format("y_vals_%d", i)
+		table.insert(lines, string.format("%s = %s(t_vals)", x_var, fx))
+		apply_log_mask(lines, "x", x_var, opts)
+		table.insert(lines, string.format("%s = %s(t_vals)", y_var, fy))
+		apply_log_mask(lines, "y", y_var, opts)
+		table.insert(lines, string.format("ax.plot(%s, %s%s)", x_var, y_var, style))
 	end
 
 	return table.concat(lines, "\n"), nil
@@ -386,8 +409,11 @@ local function build_parametric_3d_py_code(opts)
 		table.insert(lines, string.format("%s = sp.lambdify((%s,%s), %s, 'numpy')", fy, uvar, vvar, e.y))
 		table.insert(lines, string.format("%s = sp.lambdify((%s,%s), %s, 'numpy')", fz, uvar, vvar, e.z))
 		table.insert(lines, string.format("X = %s(U, V)", fx))
+		apply_log_mask(lines, "x", "X", opts)
 		table.insert(lines, string.format("Y = %s(U, V)", fy))
+		apply_log_mask(lines, "y", "Y", opts)
 		table.insert(lines, string.format("Z = %s(U, V)", fz))
+		apply_log_mask(lines, "z", "Z", opts)
 		local style = build_style_args(e.series, "surface")
 		table.insert(
 			lines,
@@ -494,6 +520,16 @@ function M.build_python_script(opts)
 	end
 
 	table.insert(lines, plot_code)
+
+	if opts.xscale then
+		table.insert(lines, string.format("ax.set_xscale('%s')", opts.xscale))
+	end
+	if opts.yscale then
+		table.insert(lines, string.format("ax.set_yscale('%s')", opts.yscale))
+	end
+	if opts.zscale and opts.dim == 3 then
+		table.insert(lines, string.format("ax.set_zscale('%s')", opts.zscale))
+	end
 
 	if opts.figsize_in then
 		table.insert(lines, string.format("fig.set_size_inches(%s, %s)", opts.figsize_in[1], opts.figsize_in[2]))
