@@ -188,6 +188,12 @@ local function capture_backend_command(plot_opts)
 		return nil, backend_module
 	end
 
+	if type(backend_module.translate_plot_error) == "function" then
+		plot_opts._error_translator = backend_module.translate_plot_error
+	else
+		plot_opts._error_translator = nil
+	end
+
 	local plot_async = backend_module and backend_module.plot_async
 	if type(plot_async) ~= "function" then
 		return nil, string.format("Backend '%s' does not support plotting", backend_name)

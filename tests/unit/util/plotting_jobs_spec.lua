@@ -66,6 +66,8 @@ describe("Plotting Job Manager", function()
 			E_TIMEOUT = "E_TIMEOUT",
 			E_BACKEND_CRASH = "E_BACKEND_CRASH",
 			E_CANCELLED = "E_CANCELLED",
+			E_NO_CONTOUR = "E_NO_CONTOUR",
+			E_NO_ISOSURFACE = "E_NO_ISOSURFACE",
 		}
 		notify_error_spy = spy.on(mock_err_handler, "notify_error")
 		package.loaded["tungsten.util.error_handler"] = mock_err_handler
@@ -155,6 +157,23 @@ describe("Plotting Job Manager", function()
 		assert.is_true(received_err.cancelled)
 		assert.spy(notify_error_spy).was.called(1)
 		assert.spy(notify_error_spy).was.called_with("TungstenPlot", mock_err_handler.E_CANCELLED)
+	end)
+
+	it("surfaces backend contour diagnostics when available", function()
+		notify_error_spy:clear()
+		local translator = function()
+			return {
+				code = mock_err_handler.E_NO_CONTOUR,
+				message = "ContourPlot::cpcon: no contours",
+			}
+		end
+		JobManager.submit({ expression = "x^2", bufnr = 0, _error_translator = translator })
+		assert.are.equal(1, #mock_async.run_job_calls)
+		local opts = mock_async.run_job_calls[1][2]
+		opts.on_exit(1, "", "ContourPlot::cpcon: no contours")
+
+		assert.spy(notify_error_spy).was.called(1)
+		assert.spy(notify_error_spy).was.called_with("TungstenPlot", mock_err_handler.E_NO_CONTOUR)
 	end)
 
 	it("queues jobs beyond the concurrency limit in FIFO order", function()

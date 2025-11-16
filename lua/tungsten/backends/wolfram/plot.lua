@@ -3,6 +3,8 @@ local logger = require("tungsten.util.logger")
 local async = require("tungsten.util.async")
 local config = require("tungsten.config")
 local executor = require("tungsten.backends.wolfram.executor")
+local error_handler = require("tungsten.util.error_handler")
+local error_parser = require("tungsten.backends.wolfram.wolfram_error")
 
 local M = setmetatable({}, { __index = base })
 
@@ -468,6 +470,27 @@ local function build_export_code(opts, plot_code)
 	return export_str
 end
 
+function M.translate_plot_error(exit_code, stdout, stderr)
+	stdout = stdout or ""
+	stderr = stderr or ""
+	local msg = stderr ~= "" and stderr or stdout
+	if msg == "" then
+		msg = string.format("wolframscript exited with code %d", exit_code)
+	end
+	local normalized = error_parser.parse_wolfram_error(msg) or msg
+	local lowered = normalized and normalized:lower() or ""
+	local code
+	if lowered:find("contourplot::cpcon", 1, true) then
+		code = error_handler.E_NO_CONTOUR
+	elseif lowered:find("contourplot3d::ncvb", 1, true) then
+		code = error_handler.E_NO_ISOSURFACE
+	end
+	return {
+		code = code,
+		message = normalized,
+	}
+end
+
 function M.plot_async(opts, callback)
 	opts = opts or {}
 	assert(type(callback) == "function", "plot async expects a callback")
@@ -498,13 +521,15 @@ function M.plot_async(opts, callback)
 					callback(nil, stdout)
 				end
 			else
-				local msg = stderr ~= "" and stderr or stdout
-
-				if msg == "" then
-					msg = string.format("wolframscript exited with code %d", exit_code)
-				end
+				local translated = M.translate_plot_error(exit_code, stdout, stderr)
+				local errcb = {
+					code = exit_code,
+					exit_code = exit_code,
+					message = translated.message,
+					backend_error_code = translated.code,
+				}
 				if callback then
-					callback(msg, nil)
+					callback(errcb, nil)
 				end
 			end
 		end,

@@ -170,6 +170,7 @@ local function default_on_error(job, err)
 	local code = err and err.code
 	local msg = err and err.message or ""
 	local cancelled = err and err.cancelled
+	local backend_error_code = err and err.backend_error_code
 	local error_code
 	if cancelled or code == -1 then
 		error_code = error_handler.E_CANCELLED
@@ -177,6 +178,9 @@ local function default_on_error(job, err)
 		error_code = error_handler.E_BACKEND_UNAVAILABLE
 	elseif code == 124 or msg:lower():find("timeout") then
 		error_code = error_handler.E_TIMEOUT
+	elseif backend_error_code then
+		error_handler.notify_error("TungstenPlot", backend_error_code)
+		return
 	else
 		error_code = error_handler.E_BACKEND_CRASH
 	end
@@ -248,12 +252,30 @@ local function _execute_plot(job)
 					end
 				else
 					if job.on_error then
-						local msg = stderr ~= "" and stderr or stdout
+						local stdout_text = stdout or ""
+						local stderr_text = stderr or ""
+						local msg = stderr_text ~= "" and stderr_text or stdout_text
+						if msg == "" then
+							msg = string.format("Process exited with code %d", code)
+						end
+						local translated
+						local translator = job.plot_opts and job.plot_opts._error_translator
+						if type(translator) == "function" then
+							local ok, res = pcall(translator, code, stdout_text, stderr_text)
+							if ok and type(res) == "table" then
+								translated = res
+							end
+						end
+						if translated and translated.message and translated.message ~= "" then
+							msg = translated.message
+						end
 						local was_cancelled = (code == -1) or info.cancelled
 						job.on_error({
 							code = code,
+							exit_code = code,
 							message = msg,
 							cancelled = was_cancelled,
+							backend_error_code = translated and translated.code or nil,
 						})
 					end
 				end

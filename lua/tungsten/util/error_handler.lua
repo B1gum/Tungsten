@@ -4,6 +4,8 @@ local M = {
 	E_TIMEOUT = "E_TIMEOUT",
 	E_BACKEND_CRASH = "E_BACKEND_CRASH",
 	E_CANCELLED = "E_CANCELLED",
+	E_NO_CONTOUR = "E_NO_CONTOUR",
+	E_NO_ISOSURFACE = "E_NO_ISOSURFACE",
 }
 
 local function calc_line_col(input, pos)
