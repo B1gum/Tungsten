@@ -4,6 +4,7 @@ local lfs = require("lfs")
 local plot_backend = require("tungsten.backends.python.plot")
 local executor = require("tungsten.backends.python.executor")
 local config = require("tungsten.config")
+local error_handler = require("tungsten.util.error_handler")
 
 describe("python polar plotting", function()
 	local ast_stub
@@ -222,6 +223,116 @@ describe("python polar plotting", function()
 			assert.spy(run_job_stub).was.called(1)
 			local job_opts = run_job_stub.calls[1].vals[2]
 			assert.are.equal(temp_dir .. "/project/tungsten_plots", job_opts.cwd)
+		end)
+	end)
+
+	describe("python plot special function guard", function()
+		local ast_stub
+
+		local function make_function_call(name)
+			return {
+				type = "function_call",
+				name_node = { type = "variable", name = name },
+				args = { { type = "variable", name = "x" } },
+			}
+		end
+
+		before_each(function()
+			ast_stub = stub(executor, "ast_to_code", function(ast)
+				if type(ast) == "table" and ast.__code then
+					return ast.__code
+				end
+				return "expr"
+			end)
+		end)
+
+		after_each(function()
+			if ast_stub then
+				ast_stub:revert()
+			end
+		end)
+
+		it("allows whitelisted special functions", function()
+			local opts = {
+				dim = 2,
+				form = "explicit",
+				xrange = { 0, 1 },
+				series = {
+					{
+						kind = "function",
+						ast = make_function_call("erf"),
+						independent_vars = { "x" },
+					},
+				},
+			}
+
+			local code, _, err = plot_backend.build_plot_code(opts)
+			assert.is_nil(err)
+			assert.is_string(code)
+		end)
+
+		it("rejects disallowed special functions in explicit plots", function()
+			local opts = {
+				dim = 2,
+				form = "explicit",
+				xrange = { -1, 1 },
+				series = {
+					{
+						kind = "function",
+						ast = make_function_call("besselj"),
+						independent_vars = { "x" },
+					},
+				},
+			}
+
+			local code, _, err = plot_backend.build_plot_code(opts)
+			assert.is_nil(code)
+			assert.are.same(error_handler.E_UNSUPPORTED_FORM, err.code)
+			assert.are.equal("Function besselj requires SciPy; use Wolfram backend", err.message)
+		end)
+
+		it("rejects disallowed special functions in implicit plots", function()
+			local opts = {
+				dim = 2,
+				form = "implicit",
+				xrange = { -1, 1 },
+				yrange = { -1, 1 },
+				series = {
+					{
+						kind = "function",
+						ast = make_function_call("bessely"),
+						independent_vars = { "x", "y" },
+					},
+				},
+			}
+
+			local code, _, err = plot_backend.build_plot_code(opts)
+			assert.is_nil(code)
+			assert.are.same(error_handler.E_UNSUPPORTED_FORM, err.code)
+			assert.are.equal("Function bessely requires SciPy; use Wolfram backend", err.message)
+		end)
+
+		it("rejects disallowed special functions in parametric plots", function()
+			local opts = {
+				dim = 2,
+				form = "parametric",
+				t_range = { 0, 1 },
+				series = {
+					{
+						kind = "function",
+						ast = {
+							x = make_function_call("cos"),
+							y = make_function_call("besseli"),
+						},
+						independent_vars = { "t" },
+					},
+				},
+			}
+
+			local code, _, err = plot_backend.build_plot_code(opts)
+			assert.is_nil(code)
+			assert.are.same(error_handler.E_UNSUPPORTED_FORM, err.code)
+			assert.are.equal("Function besseli requires SciPy; use Wolfram backend", err.message)
 		end)
 	end)
 end)

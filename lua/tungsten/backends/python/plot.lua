@@ -5,6 +5,7 @@ local async = require("tungsten.util.async")
 local config = require("tungsten.config")
 local error_handler = require("tungsten.util.error_handler")
 local executor = require("tungsten.backends.python.executor")
+local special_function_guard = require("tungsten.backends.python.analyzers.special_function_guard")
 
 local M = setmetatable({}, { __index = base })
 
@@ -123,6 +124,69 @@ local function extract_polar_expression(ast)
 		return ast.rhs
 	end
 	return ast
+end
+
+local function validate_special_function_support(opts)
+	local offending
+	local function check_ast(ast)
+		if offending or not ast then
+			return
+		end
+		local name = special_function_guard.find_disallowed_special_function(ast)
+		if name then
+			offending = name
+		end
+	end
+
+	local series = opts.series or {}
+	if opts.form == "parametric" then
+		for _, s in ipairs(series) do
+			if s.kind == "function" and s.ast then
+				if opts.dim == 3 then
+					check_ast(s.ast.x)
+					check_ast(s.ast.y)
+					check_ast(s.ast.z)
+				else
+					check_ast(s.ast.x)
+					check_ast(s.ast.y)
+				end
+			end
+			if offending then
+				break
+			end
+		end
+	elseif opts.form == "polar" then
+		for _, s in ipairs(series) do
+			if s.kind == "function" then
+				check_ast(extract_polar_expression(s.ast))
+			end
+			if offending then
+				break
+			end
+		end
+	else
+		for _, s in ipairs(series) do
+			if s.kind == "function" then
+				local ast = s.ast
+				if opts.form == "explicit" and ast and ast.type == "equality" and ast.rhs then
+					ast = ast.rhs
+				end
+				check_ast(ast)
+			end
+			if offending then
+				break
+			end
+		end
+	end
+
+	if offending then
+		return {
+			code = error_handler.E_UNSUPPORTED_FORM,
+			message = string.format("Function %s requires SciPy; use Wolfram backend", offending),
+		}
+	end
+
+	return nil
 end
 
 local function build_polar_2d_python_code(opts)
@@ -335,6 +399,11 @@ local function build_parametric_3d_py_code(opts)
 end
 
 function M.build_plot_code(opts)
+	local guard_err = validate_special_function_support(opts)
+	if guard_err then
+		return nil, nil, guard_err
+	end
+
 	if opts.form == "explicit" then
 		if opts.dim == 3 then
 			return build_explicit_3d_python_code(opts)
