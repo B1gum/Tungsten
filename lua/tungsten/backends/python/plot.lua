@@ -18,6 +18,13 @@ local function render_ast_to_python(ast)
 	return nil
 end
 
+local function python_string_literal(value)
+	if value == nil then
+		value = ""
+	end
+	return string.format("%q", value)
+end
+
 local function build_style_args(series, context, default_color)
 	series = series or {}
 	local parts = {}
@@ -362,17 +369,52 @@ function M.build_python_script(opts)
 		return nil, err
 	end
 
+	local plotting_defaults = config.plotting or {}
+
+	local function get_or_default(val, fallback)
+		if val == nil then
+			return fallback
+		end
+		return val
+	end
+
+	local usetex = get_or_default(opts.usetex, plotting_defaults.usetex)
+	if usetex == nil then
+		usetex = false
+	end
+	local latex_engine = get_or_default(opts.latex_engine, plotting_defaults.latex_engine)
+	local latex_preamble = get_or_default(opts.latex_preamble, plotting_defaults.latex_preamble)
+	if latex_preamble == nil then
+		latex_preamble = ""
+	end
+
 	local lines = {
 		"import os",
 		"os.environ['MPLBACKEND'] = 'Agg'",
 		"import matplotlib",
 		"matplotlib.use('Agg')",
+		string.format("matplotlib.rcParams['text.usetex'] = %s", usetex and "True" or "False"),
+		string.format("matplotlib.rcParams['text.latex.preamble'] = %s", python_string_literal(latex_preamble)),
 		"import matplotlib.pyplot as plt",
 		"import numpy as np",
 		"import sympy as sp",
 		"from mpl_toolkits.mplot3d import Axes3D",
 		"fig = plt.figure()",
 	}
+
+	if latex_engine and latex_engine ~= "" then
+		table.insert(
+			lines,
+			5,
+			string.format("matplotlib.rcParams['pgf.texsystem'] = %s", python_string_literal(latex_engine))
+		)
+		if latex_engine == "pdflatex" then
+			table.insert(lines, "texinputs = os.environ.get('TEXINPUTS', '')")
+			table.insert(lines, "if texinputs and not texinputs.endswith(os.pathsep):")
+			table.insert(lines, "    texinputs = texinputs + os.pathsep")
+			table.insert(lines, "os.environ['TEXINPUTS'] = texinputs")
+		end
+	end
 	if opts.form == "polar" then
 		table.insert(lines, "ax = fig.add_subplot(111, projection='polar')")
 	elseif opts.dim == 3 then
