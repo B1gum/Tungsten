@@ -84,7 +84,12 @@ function M.cancel_command(opts)
 		end
 	end
 	if id then
-		job_manager.cancel(id)
+		local ok = job_manager.cancel(id)
+		if ok then
+			vim.notify(string.format("Cancelled plot job %d", id), vim.log.levels.INFO, { title = "TungstenPlotCancel" })
+		else
+			vim.notify(string.format("Plot job %d not found", id), vim.log.levels.WARN, { title = "TungstenPlotCancel" })
+		end
 	else
 		vim.notify("No active plot jobs", vim.log.levels.INFO, { title = "TungstenPlotCancel" })
 	end

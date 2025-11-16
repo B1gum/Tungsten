@@ -392,6 +392,15 @@ function M.cancel(job_id)
 		info.handle.cancel()
 		return true
 	end
+
+	for index, job in ipairs(job_queue) do
+		if job.id == job_id then
+			cleanup_temp(job)
+			table.remove(job_queue, index)
+			return true
+		end
+	end
+
 	local pending_job = pending_dependency_jobs[job_id]
 	if pending_job then
 		cleanup_temp(pending_job)

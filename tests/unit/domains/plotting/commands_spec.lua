@@ -47,6 +47,9 @@ describe("Tungsten Plotting Commands", function()
 
 		mock_job_manager = mock_utils.create_empty_mock_module("tungsten.domains.plotting.job_manager")
 		cancel_spy = spy.on(mock_job_manager, "cancel")
+		cancel_spy = cancel_spy:call_fake(function()
+			return true
+		end)
 		cancel_all_spy = spy.on(mock_job_manager, "cancel_all")
 		reset_deps_spy = spy.on(mock_job_manager, "reset_deps_check")
 
@@ -144,12 +147,119 @@ describe("Tungsten Plotting Commands", function()
 			plot_commands.cancel_command()
 			assert.spy(cancel_spy).was.called(1)
 			assert.spy(cancel_spy).was.called_with(3)
+			assert
+				.spy(notify_spy).was
+				.called_with("Cancelled plot job 3", vim.log.levels.INFO, { title = "TungstenPlotCancel" })
 		end)
 
 		it("should cancel all queued and running plot jobs when :TungstenPlotCancelAll is invoked", function()
 			assert.is_function(plot_commands.cancel_all_command)
 			plot_commands.cancel_all_command()
 			assert.spy(cancel_all_spy).was.called(1)
+		end)
+
+		it("cancels a queued plot job before it starts", function()
+			notify_spy:clear()
+			vim_test_env.cleanup()
+			vim_test_env.setup_buffer({ "queued" })
+
+			mock_utils.reset_modules(modules_to_reset)
+
+			local original_executable = vim.fn.executable
+			vim.fn.executable = function(bin)
+				if bin == "wolframscript" then
+					return 1
+				end
+				return original_executable(bin)
+			end
+
+			local original_new_timer = vim.loop.new_timer
+			vim.loop.new_timer = function()
+				return {
+					start = function() end,
+					stop = function() end,
+					close = function() end,
+				}
+			end
+
+			package.loaded["tungsten.domains.plotting.workflow"] = {
+				run_simple = function() end,
+				run_advanced = function() end,
+			}
+			package.loaded["tungsten.util.selection"] = {
+				get_visual_selection = function()
+					return "x"
+				end,
+			}
+			package.loaded["tungsten.util.error_handler"] = {
+				notify_error = function() end,
+				E_BACKEND_UNAVAILABLE = "E_BACKEND_UNAVAILABLE",
+				E_UNSUPPORTED_FORM = "E_UNSUPPORTED_FORM",
+				E_TIMEOUT = "E_TIMEOUT",
+				E_BACKEND_CRASH = "E_BACKEND_CRASH",
+				E_CANCELLED = "E_CANCELLED",
+			}
+			package.loaded["tungsten.ui.status_window"] = { open_queue = function() end }
+			package.loaded["tungsten.util.logger"] = { debug = function() end, error = function() end }
+			package.loaded["tungsten.util.plotting_io"] = {
+				find_math_block_end = function()
+					return 0
+				end,
+			}
+
+			local mock_health = {}
+			function mock_health.check_dependencies(cb)
+				if cb then
+					cb({
+						wolframscript = { ok = true },
+						python = { ok = true },
+						matplotlib = { ok = true },
+						sympy = { ok = true },
+					})
+				end
+			end
+			package.loaded["tungsten.domains.plotting.health"] = mock_health
+
+			local run_calls = {}
+			local mock_async = {}
+			function mock_async.run_job(cmd, opts)
+				table.insert(run_calls, { cmd = cmd, opts = opts })
+				return {
+					cancel = function()
+						opts.on_exit(-1, "", "")
+					end,
+				}
+			end
+			package.loaded["tungsten.util.async"] = mock_async
+
+			package.loaded["tungsten.config"] = { max_jobs = 1, plotting = {} }
+
+			local job_manager = require("tungsten.domains.plotting.job_manager")
+			plot_commands = require("tungsten.domains.plotting.commands")
+
+			job_manager.submit({ expression = "first", bufnr = 0 })
+			local second = job_manager.submit({ expression = "second", bufnr = 0 })
+			job_manager.submit({ expression = "third", bufnr = 0 })
+
+			assert.are.equal(1, #run_calls)
+			assert.are.equal("first", run_calls[1].cmd.expression)
+
+			plot_commands.cancel_command({ args = tostring(second) })
+
+			assert
+				.spy(notify_spy).was
+				.called_with(string.format("Cancelled plot job %d", second), vim.log.levels.INFO, { title = "TungstenPlotCancel" })
+
+			run_calls[1].opts.on_exit(0, "ok", "")
+
+			assert.are.equal(2, #run_calls)
+			assert.are.equal("third", run_calls[2].cmd.expression)
+			for _, call in ipairs(run_calls) do
+				assert.not_equal("second", call.cmd.expression)
+			end
+
+			vim.loop.new_timer = original_new_timer
+			vim.fn.executable = original_executable
 		end)
 	end)
 
@@ -269,8 +379,9 @@ describe("Tungsten Plotting Commands", function()
 			end, 200)
 			assert.spy(check_deps_spy).was.called()
 			assert.spy(reset_deps_spy).was.called()
-			assert.spy(notify_spy).was.called(1)
-			local msg = notify_spy.calls[1].vals[1]
+			assert.spy(notify_spy).was.called()
+			local last_call = notify_spy.calls[#notify_spy.calls]
+			local msg = last_call.vals[1]
 			assert.truthy(msg:match("1%. Wolfram"))
 			assert.truthy(msg:match("2%. Python"))
 			assert.truthy(msg:match("install matplotlib ≥3.6 via pip"))
