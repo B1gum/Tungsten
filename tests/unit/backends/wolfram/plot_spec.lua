@@ -4,66 +4,66 @@ local executor = require("tungsten.backends.wolfram.executor")
 local async = require("tungsten.util.async")
 
 local function build_base_opts(overrides)
-        local opts = {
-                dim = 2,
-                form = "explicit",
-                xrange = { -5, 5 },
-                series = {
-                        {
-                                kind = "function",
-                                ast = { __code = "x^2" },
-                                independent_vars = { "x" },
-                                dependent_vars = { "y" },
-                        },
-                },
-        }
-        for k, v in pairs(overrides or {}) do
-                opts[k] = v
-        end
-        return opts
+	local opts = {
+		dim = 2,
+		form = "explicit",
+		xrange = { -5, 5 },
+		series = {
+			{
+				kind = "function",
+				ast = { __code = "x^2" },
+				independent_vars = { "x" },
+				dependent_vars = { "y" },
+			},
+		},
+	}
+	for k, v in pairs(overrides or {}) do
+		opts[k] = v
+	end
+	return opts
 end
 
 describe("wolfram plot option translation", function()
-        local ast_stub
+	local ast_stub
 
-        before_each(function()
-                ast_stub = stub(executor, "ast_to_code", function(ast)
-                        if type(ast) == "table" and ast.__code then
-                                return ast.__code
-                        end
-                        return "expr"
-                end)
-        end)
+	before_each(function()
+		ast_stub = stub(executor, "ast_to_code", function(ast)
+			if type(ast) == "table" and ast.__code then
+				return ast.__code
+			end
+			return "expr"
+		end)
+	end)
 
-        after_each(function()
-                if ast_stub then
-                        ast_stub:revert()
-                        ast_stub = nil
-                end
-        end)
+	after_each(function()
+		if ast_stub then
+			ast_stub:revert()
+			ast_stub = nil
+		end
+	end)
 
-        it("omits PlotRange when no clipping is requested", function()
-                local code, err = wolfram_plot.build_plot_code(build_base_opts())
-                assert.is_nil(err)
-                assert.is_truthy(code:match("^Plot%["))
-                assert.is_nil(code:match("PlotRange"))
-        end)
+	it("omits PlotRange when no clipping is requested", function()
+		local code, err = wolfram_plot.build_plot_code(build_base_opts())
+		assert.is_nil(err)
+		assert.is_truthy(code:match("^Plot%["))
+		assert.is_nil(code:match("PlotRange"))
+	end)
 
-        it("includes PlotRange when dependent axes are clipped", function()
-                local opts = build_base_opts({ clip_dependent_axes = true, yrange = { -2, 2 } })
-                local code, err = wolfram_plot.build_plot_code(opts)
-                assert.is_nil(err)
-                assert.is_truthy(code:match("PlotRange"))
-                assert.is_truthy(code:match("%{-2, 2%}"))
-        end)
+	it("includes PlotRange when dependent axes are clipped", function()
+		local opts = build_base_opts({ clip_dependent_axes = true, yrange = { -2, 2 } })
+		local code, err = wolfram_plot.build_plot_code(opts)
+		assert.is_nil(err)
+		assert.is_truthy(code:match("PlotRange"))
+		assert.is_truthy(code:match("%{-2, 2%}"))
+	end)
 
-        it("respects explicit axis clipping overrides", function()
-                local opts = build_base_opts({ clip_axes = { x = true } })
-                local code, err = wolfram_plot.build_plot_code(opts)
-                assert.is_nil(err)
-                assert.is_truthy(code:match("PlotRange"))
-                assert.is_truthy(code:match("%{-5, 5%}"))
-        end)
+	it("respects explicit axis clipping overrides", function()
+		local opts = build_base_opts({ clip_axes = { x = true } })
+		local code, err = wolfram_plot.build_plot_code(opts)
+		assert.is_nil(err)
+		assert.is_truthy(code:match("PlotRange"))
+		assert.is_truthy(code:match("%{-5, 5%}"))
+	end)
 end)
 
 describe("wolfram polar plotting", function()
@@ -128,5 +128,89 @@ describe("wolfram polar plotting", function()
 		assert.is_truthy(captured_code:find("ImageSize -> {288, 288}", 1, true))
 		assert.is_truthy(captured_code:find("PlotStyle -> Directive[Red]", 1, true))
 		assert.is_truthy(captured_code:find('PlotLegends -> Placed[{"Cardioid"}, Scaled[{1, 1}]]', 1, true))
+	end)
+
+	describe("wolfram implicit plotting styles", function()
+		local ast_stub
+
+		before_each(function()
+			ast_stub = stub(executor, "ast_to_code", function(ast)
+				if type(ast) == "table" and ast.__code then
+					return ast.__code
+				end
+				return "expr"
+			end)
+		end)
+
+		after_each(function()
+			if ast_stub then
+				ast_stub:revert()
+				ast_stub = nil
+			end
+		end)
+
+		local function build_base_opts(overrides)
+			local opts = {
+				form = "implicit",
+				dim = 2,
+				xrange = { 0, 1 },
+				yrange = { 0, 1 },
+				series = {
+					{
+						kind = "inequality",
+						ast = { __code = "x > y" },
+						independent_vars = { "x", "y", "z" },
+					},
+				},
+			}
+			for k, v in pairs(overrides or {}) do
+				opts[k] = v
+			end
+			return opts
+		end
+
+		it("applies default opacity to inequality series", function()
+			local code, err = wolfram_plot.build_plot_code(build_base_opts())
+			assert.is_nil(err)
+			assert.is_truthy(code:find("Opacity[0.4]", 1, true))
+		end)
+
+		it("does not override explicit alpha on inequality series", function()
+			local opts = build_base_opts()
+			opts.series[1].alpha = 0.9
+			local code, err = wolfram_plot.build_plot_code(opts)
+			assert.is_nil(err)
+			assert.is_nil(code:find("Opacity[0.4]", 1, true))
+			assert.is_truthy(code:find("Opacity[0.9]", 1, true))
+		end)
+
+		it("suppresses RegionPlot3D boundaries to highlight volume", function()
+			local opts = build_base_opts({ dim = 3, zrange = { 0, 1 } })
+			local code, err = wolfram_plot.build_plot_code(opts)
+			assert.is_nil(err)
+			assert.is_truthy(code:find("RegionPlot3D", 1, true))
+			assert.is_truthy(code:find("BoundaryStyle -> None", 1, true))
+		end)
+
+		it("suppresses ContourPlot3D mesh outlines", function()
+			local opts = {
+				form = "implicit",
+				dim = 3,
+				xrange = { 0, 1 },
+				yrange = { 0, 1 },
+				zrange = { 0, 1 },
+				series = {
+					{
+						kind = "function",
+						ast = { __code = "x^2 + y^2 + z^2" },
+						independent_vars = { "x", "y", "z" },
+					},
+				},
+			}
+			local code, err = wolfram_plot.build_plot_code(opts)
+			assert.is_nil(err)
+			assert.is_truthy(code:find("ContourPlot3D", 1, true))
+			assert.is_truthy(code:find("Mesh -> None", 1, true))
+		end)
 	end)
 end)

@@ -106,6 +106,15 @@ local function translate_opts_to_wolfram(opts)
 	return res
 end
 
+local function ensure_option(extra_opts, needle, option_str)
+	for _, opt in ipairs(extra_opts or {}) do
+		if opt:find(needle, 1, true) then
+			return
+		end
+	end
+	extra_opts[#extra_opts + 1] = option_str
+end
+
 local function build_style_directive(series)
 	local parts = {}
 	if series.color then
@@ -250,6 +259,7 @@ local function build_implicit_code(opts)
 		if s.kind == "function" or s.kind == "inequality" then
 			if s.kind == "inequality" then
 				has_inequality = true
+				s.alpha = s.alpha or 0.4
 			end
 			local code = render_ast_to_wolfram(s.ast)
 			if code then
@@ -294,6 +304,13 @@ local function build_implicit_code(opts)
 	end
 	if opts.max_recursion then
 		extra_opts[#extra_opts + 1] = string.format("MaxRecursion -> %d", opts.max_recursion)
+	end
+	if opts.dim == 3 then
+		if fn == "RegionPlot3D" then
+			ensure_option(extra_opts, "BoundaryStyle", "BoundaryStyle -> None")
+		elseif fn == "ContourPlot3D" then
+			ensure_option(extra_opts, "Mesh", "Mesh -> None")
+		end
 	end
 	apply_series_styles(extra_opts, series)
 	apply_legend(extra_opts, opts)
