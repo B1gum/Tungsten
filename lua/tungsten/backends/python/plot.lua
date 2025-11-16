@@ -1,3 +1,4 @@
+local path = require("pl.path")
 local base = require("tungsten.backends.plot_base")
 local logger = require("tungsten.util.logger")
 local async = require("tungsten.util.async")
@@ -510,8 +511,20 @@ function M.plot_async(opts, callback)
 	local python_opts = config.backend_opts and config.backend_opts.python or {}
 	local python_path = python_opts.python_path or "python3"
 
+	local cwd
+	if opts.tex_root and opts.tex_root ~= "" then
+		if path.isdir(opts.tex_root) then
+			cwd = opts.tex_root
+		else
+			cwd = path.dirname(opts.tex_root)
+		end
+	elseif opts.out_path and opts.out_path ~= "" then
+		cwd = path.dirname(opts.out_path)
+	end
+
 	async.run_job({ python_path, "-c", script }, {
 		timeout = opts.timeout_ms,
+		cwd = cwd,
 		on_exit = function(exit_code, stdout, stderr)
 			if exit_code == 0 then
 				if callback then
