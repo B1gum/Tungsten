@@ -63,7 +63,7 @@ function M.evaluate_async(ast, opts, callback)
 	}, "; ")
 
 	local python_opts = (config.backend_opts and config.backend_opts.python) or {}
-	local python_path = python_opts.python_path or "python"
+	local python_path = python_opts.python_path or "python3"
 	async.run_job({ python_path, "-c", command }, {
 		cache_key = cache_key,
 		on_exit = function(exit_code, stdout, stderr)

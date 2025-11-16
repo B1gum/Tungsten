@@ -444,7 +444,7 @@ function M.plot_async(opts, callback)
 	end
 
 	local python_opts = config.backend_opts and config.backend_opts.python or {}
-	local python_path = python_opts.python_path or "python"
+	local python_path = python_opts.python_path or "python3"
 
 	async.run_job({ python_path, "-c", script }, {
 		timeout = opts.timeout_ms,
