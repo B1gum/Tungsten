@@ -2,6 +2,7 @@ local base = require("tungsten.backends.plot_base")
 local logger = require("tungsten.util.logger")
 local async = require("tungsten.util.async")
 local config = require("tungsten.config")
+local error_handler = require("tungsten.util.error_handler")
 local executor = require("tungsten.backends.python.executor")
 
 local M = setmetatable({}, { __index = base })
@@ -239,45 +240,6 @@ local function build_implicit_2d_py_code(opts)
 	return table.concat(lines, "\n"), cont_var
 end
 
-local function build_implicit_3d_py_code(opts)
-	local series = opts.series or {}
-	local expr
-	for _, s in ipairs(series) do
-		if s.kind == "function" then
-			expr = render_ast_to_python(s.ast)
-			if expr then
-				break
-			end
-		end
-	end
-	if not expr then
-		return nil, nil, "No expressions to plot"
-	end
-
-	local indep = series[1] and series[1].independent_vars or {}
-	local xvar = indep[1] or "x"
-	local yvar = indep[2] or "y"
-	local zvar = indep[3] or "z"
-	local xrange = opts.xrange or { -10, 10 }
-	local yrange = opts.yrange or { -10, 10 }
-	local zrange = opts.zrange or { -10, 10 }
-	local vol = opts.vol_3d or { 30, 30, 30 }
-
-	local lines = {}
-	table.insert(lines, string.format("%s, %s, %s = sp.symbols('%s %s %s')", xvar, yvar, zvar, xvar, yvar, zvar))
-	table.insert(lines, string.format("x_vals = np.linspace(%s, %s, %d)", xrange[1], xrange[2], vol[1]))
-	table.insert(lines, string.format("y_vals = np.linspace(%s, %s, %d)", yrange[1], yrange[2], vol[2]))
-	table.insert(lines, string.format("z_vals = np.linspace(%s, %s, %d)", zrange[1], zrange[2], vol[3]))
-	table.insert(lines, "X, Y, Z = np.meshgrid(x_vals, y_vals, z_vals)")
-	table.insert(lines, string.format("f = sp.lambdify((%s,%s,%s), %s, 'numpy')", xvar, yvar, zvar, expr))
-	table.insert(lines, "vals = f(X, Y, Z)")
-	table.insert(lines, "mask = np.isclose(vals, 0, atol=0.1)")
-	local style = build_style_args(series[1], "scatter")
-	table.insert(lines, string.format("ax.scatter(X[mask], Y[mask], Z[mask]%s)", style))
-
-	return table.concat(lines, "\n"), nil
-end
-
 local function build_parametric_2d_py_code(opts)
 	local series = opts.series or {}
 	local exprs = {}
@@ -375,7 +337,12 @@ function M.build_plot_code(opts)
 		return build_polar_2d_python_code(opts)
 	elseif opts.form == "implicit" then
 		if opts.dim == 3 then
-			return build_implicit_3d_py_code(opts)
+			return nil,
+				nil,
+				{
+					code = error_handler.E_UNSUPPORTED_FORM,
+					message = "Implicit 3D plots are not supported by the Python backend",
+				}
 		else
 			return build_implicit_2d_py_code(opts)
 		end

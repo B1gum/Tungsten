@@ -101,8 +101,10 @@ describe("Plotting workflow", function()
 		mock_job_manager.submit = spy.new(function() end)
 		package.loaded["tungsten.domains.plotting.job_manager"] = mock_job_manager
 
-		mock_error_handler = {}
-		mock_error_handler.notify_error = spy.new(function() end)
+		mock_error_handler = {
+			notify_error = spy.new(function() end),
+			E_UNSUPPORTED_FORM = "E_UNSUPPORTED_FORM",
+		}
 		package.loaded["tungsten.util.error_handler"] = mock_error_handler
 
 		mock_async = {}
@@ -183,10 +185,45 @@ describe("Plotting workflow", function()
 
 	it("trims leading and trailing whitespace before parsing", function()
 		vim.api.nvim_buf_set_name(0, "/tmp/project/main_trimmed.tex")
-
 		workflow.run_simple("  \n  sin(x)  \t\n")
-
 		assert.spy(mock_parser.parse).was.called_with("sin(x)", { simple_mode = true })
+	end)
+
+	it("surfaces E_UNSUPPORTED_FORM when Python backend lacks implicit 3D support", function()
+		vim.api.nvim_buf_set_name(0, unique_tex_path())
+
+		mock_classification.analyze = spy.new(function()
+			return {
+				dim = 3,
+				form = "implicit",
+				series = {
+					{
+						kind = "function",
+						ast = { type = "expr", body = "ast" },
+						independent_vars = { "x", "y", "z" },
+						dependent_vars = { "w" },
+					},
+				},
+			}
+		end)
+
+		mock_options_builder.build = spy.new(function(classification_data)
+			return {
+				dim = classification_data.dim,
+				form = classification_data.form,
+				backend = "python",
+				format = "png",
+				timeout_ms = 30000,
+				series = vim.deepcopy(classification_data.series),
+			}
+		end)
+
+		workflow.run_simple("sin(x)")
+
+		assert.spy(mock_job_manager.submit).was_not_called()
+		assert
+			.spy(mock_error_handler.notify_error).was
+			.called_with("TungstenPlot", mock_error_handler.E_UNSUPPORTED_FORM, nil, nil)
 	end)
 
 	it("reports parse errors", function()

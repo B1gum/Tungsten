@@ -93,13 +93,15 @@ local function notify_error(err, pos, input)
 	if err == nil then
 		err = "Unknown error"
 	end
+	local code
 	local message
 	if type(err) == "table" then
-		message = err.message or err.code or tostring(err)
+		code = err.code
+		message = err.message
 	else
 		message = tostring(err)
 	end
-	error_handler.notify_error("TungstenPlot", message, pos, input)
+	error_handler.notify_error("TungstenPlot", code or message or tostring(err), pos, input)
 end
 
 local function get_selection_range()
