@@ -102,7 +102,7 @@ end
 
 local E_TEX_ROOT_NOT_FOUND = {
 	code = "E_TEX_ROOT_NOT_FOUND",
-	message = "TeX root file not found",
+	message = "TeX root file not found. Add a '%!TEX root = <main.tex>' magic comment to your file to help Tungsten locate the main document.",
 }
 
 function M.find_tex_root(current_buf_path)

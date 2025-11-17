@@ -64,6 +64,7 @@ describe("Plotting I/O and File Management", function()
 			local root, err = plotting_io.find_tex_root(sub_tex_path)
 			assert.is_nil(root)
 			assert.are.equal("E_TEX_ROOT_NOT_FOUND", err.code)
+			assert.is_truthy(err.message:find("%%!TEX root"))
 		end)
 
 		it("prioritizes the magic comment over a \\documentclass in the same file", function()
