@@ -19,10 +19,10 @@ local function render_ast_to_wolfram(ast)
 	return nil
 end
 
-local function axis_is_dependent(opts, axis_name)
+local function axis_is_dependent(opts, axis_var)
 	for _, series in ipairs(opts.series or {}) do
 		for _, dep in ipairs(series.dependent_vars or {}) do
-			if dep == axis_name then
+			if dep == axis_var then
 				return true
 			end
 		end
@@ -30,43 +30,114 @@ local function axis_is_dependent(opts, axis_name)
 	return false
 end
 
-local function axis_marked_for_clip(opts, axis_name)
+local axis_keys = { "x", "y", "z" }
+
+local function axis_marked_for_clip(opts, axis_name, axis_var)
 	local clip_axes = opts.clip_axes
 	if type(clip_axes) == "table" then
 		local flag = clip_axes[axis_name]
+		if flag == nil and axis_var then
+			flag = clip_axes[axis_var]
+		end
 		if flag ~= nil then
 			return flag and true or false
 		end
 	end
 
-	if axis_name ~= "x" and opts.clip_dependent_axes and axis_is_dependent(opts, axis_name) then
+	local dep_check = axis_var or axis_name
+	if axis_name ~= "x" and opts.clip_dependent_axes and axis_is_dependent(opts, dep_check) then
 		return true
 	end
 
 	return false
 end
 
+local function determine_axis_variables(opts)
+	local axis_vars = { x = "x", y = "y", z = "z" }
+	if not opts or opts.form ~= "explicit" then
+		return axis_vars
+	end
+
+	local series = opts.series or {}
+	local first = series[1] or {}
+	local indep = first.independent_vars or {}
+	local dep = first.dependent_vars or {}
+
+	axis_vars.x = indep[1] or axis_vars.x
+	if opts.dim == 3 then
+		axis_vars.y = indep[2] or axis_vars.y
+		axis_vars.z = dep[1] or axis_vars.z
+	else
+		axis_vars.y = dep[1] or axis_vars.y
+	end
+
+	return axis_vars
+end
+
+local function invert_axis_variables(axis_vars)
+	local lookup = {}
+	for axis_name, var_name in pairs(axis_vars or {}) do
+		if type(var_name) == "string" then
+			lookup[var_name] = axis_name
+		end
+	end
+	return lookup
+end
+
+local function resolve_range_for_var(opts, axis_ranges, var_name, axis_name)
+	if var_name and axis_ranges[var_name] then
+		return axis_ranges[var_name]
+	end
+	if var_name then
+		local clip_axes = opts.clip_axes
+		if type(clip_axes) == "table" then
+			local alias = clip_axes[var_name]
+			if type(alias) == "string" and axis_ranges[alias] then
+				return axis_ranges[alias]
+			end
+		end
+	end
+	if axis_name and axis_ranges[axis_name] then
+		return axis_ranges[axis_name]
+	end
+	return nil
+end
+
 local function translate_opts_to_wolfram(opts)
 	local res = {}
 
+	local axis_vars = determine_axis_variables(opts)
+	local var_to_axis = invert_axis_variables(axis_vars)
+
 	local plot_ranges = {}
-	local function maybe_add_plot_range(range_key, axis_name)
+	local function maybe_add_plot_range(range_key, var_name, default_axis)
 		local range = opts[range_key]
 		if not range then
 			return
 		end
-		if not axis_marked_for_clip(opts, axis_name) then
+		local axis_name = (var_to_axis[var_name] or default_axis or var_name)
+		if not axis_name then
 			return
 		end
-		table.insert(plot_ranges, string.format("{%s, %s}", range[1], range[2]))
+		local axis_var = axis_vars[axis_name] or axis_name
+		if not axis_marked_for_clip(opts, axis_name, axis_var) then
+			return
+		end
+		plot_ranges[axis_name] = string.format("{%s, %s}", range[1], range[2])
 	end
 
-	maybe_add_plot_range("xrange", "x")
-	maybe_add_plot_range("yrange", "y")
-	maybe_add_plot_range("zrange", "z")
+	maybe_add_plot_range("xrange", "x", "x")
+	maybe_add_plot_range("yrange", "y", "y")
+	maybe_add_plot_range("zrange", "z", "z")
 
-	if #plot_ranges > 0 then
-		table.insert(res, "PlotRange -> {" .. table.concat(plot_ranges, ", ") .. "}")
+	local ordered = {}
+	for _, axis_name in ipairs(axis_keys) do
+		if plot_ranges[axis_name] then
+			table.insert(ordered, plot_ranges[axis_name])
+		end
+	end
+	if #ordered > 0 then
+		table.insert(res, "PlotRange -> {" .. table.concat(ordered, ", ") .. "}")
 	end
 
 	if opts.aspect then
@@ -225,12 +296,17 @@ local function build_explicit_code(opts)
 	end
 
 	local indep = series[1] and series[1].independent_vars or {}
+	local axis_vars = determine_axis_variables(opts)
+	local var_to_axis = invert_axis_variables(axis_vars)
+	local axis_ranges = { x = opts.xrange, y = opts.yrange, z = opts.zrange }
 	local ranges = {}
-	if indep[1] and opts.xrange then
-		table.insert(ranges, string.format("{%s, %s, %s}", indep[1], opts.xrange[1], opts.xrange[2]))
-	end
-	if indep[2] and opts.yrange then
-		table.insert(ranges, string.format("{%s, %s, %s}", indep[2], opts.yrange[1], opts.yrange[2]))
+	for i, var_name in ipairs(indep) do
+		local fallback_axis = axis_keys[i]
+		local axis_name = var_to_axis[var_name] or fallback_axis
+		local range = resolve_range_for_var(opts, axis_ranges, var_name, axis_name)
+		if range then
+			table.insert(ranges, string.format("{%s, %s, %s}", var_name, range[1], range[2]))
+		end
 	end
 
 	local func_expr

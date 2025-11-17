@@ -64,6 +64,50 @@ describe("wolfram plot option translation", function()
 		assert.is_truthy(code:match("PlotRange"))
 		assert.is_truthy(code:match("%{-5, 5%}"))
 	end)
+
+	it("uses the matching axis range for x = f(y) plots", function()
+		local opts = build_base_opts({
+			xrange = { -1, 1 },
+			yrange = { -3, 3 },
+			clip_axes = { x = true, y = true },
+		})
+		opts.series[1].independent_vars = { "y" }
+		opts.series[1].dependent_vars = { "x" }
+		opts.series[1].ast = {
+			type = "equality",
+			rhs = { __code = "y^2" },
+		}
+		local code, err = wolfram_plot.build_plot_code(opts)
+		assert.is_nil(err)
+		assert.is_truthy(code:find("Plot[", 1, true))
+		assert.is_truthy(code:find("{y, -3, 3}", 1, true))
+		assert.is_truthy(code:find("PlotRange -> {{-3, 3}, {-1, 1}}", 1, true))
+	end)
+
+	it("maps ranges to the correct axes for y = f(x, z)", function()
+		local opts = {
+			form = "explicit",
+			dim = 3,
+			xrange = { -1, 1 },
+			yrange = { -2, 2 },
+			zrange = { -4, 4 },
+			clip_axes = { x = true, y = true, z = true },
+			series = {
+				{
+					kind = "function",
+					ast = { __code = "x^2 + z" },
+					independent_vars = { "x", "z" },
+					dependent_vars = { "y" },
+				},
+			},
+		}
+		local code, err = wolfram_plot.build_plot_code(opts)
+		assert.is_nil(err)
+		assert.is_truthy(code:find("Plot3D", 1, true))
+		assert.is_truthy(code:find("{x, -1, 1}", 1, true))
+		assert.is_truthy(code:find("{z, -4, 4}", 1, true))
+		assert.is_truthy(code:find("PlotRange -> {{-1, 1}, {-4, 4}, {-2, 2}}", 1, true))
+	end)
 end)
 
 describe("wolfram polar plotting", function()
