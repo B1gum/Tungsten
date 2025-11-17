@@ -169,14 +169,20 @@ function M.get_output_directory(tex_root_path)
 	if file then
 		local content = file:read("*a") or ""
 		file:close()
-		local gp_block = content:match("\\graphicspath%s*{(%b{})}")
+		local gp_block = content:match("\\graphicspath%s*(%b{})")
 		if gp_block then
-			local first = gp_block:sub(2, -2)
-			if first and first ~= "" then
-				if path.isabs(first) then
-					target_base = path.normpath(first)
-				else
-					target_base = path.normpath(path.join(base_dir, first))
+			local inner = gp_block:sub(2, -2)
+			for entry in inner:gmatch("(%b{})") do
+				local first = entry:sub(2, -2)
+				first = first:gsub("^%s+", ""):gsub("%s+$", "")
+				if first ~= "" then
+					local normalized = path.normpath(first)
+					if path.isabs(normalized) then
+						target_base = normalized
+					else
+						target_base = path.normpath(path.join(base_dir, normalized))
+					end
+					break
 				end
 			end
 		end

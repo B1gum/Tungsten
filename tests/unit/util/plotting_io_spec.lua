@@ -103,6 +103,19 @@ describe("Plotting I/O and File Management", function()
 			assert.are.equal(temp_dir .. "/images/tungsten_plots", out_dir)
 		end)
 
+		it("handles multi-entry \\graphicspath declarations", function()
+			local main_tex_path = temp_dir .. "/project/main.tex"
+			local main_file = io.open(main_tex_path, "w")
+			main_file:write("\\documentclass{article}\n\\graphicspath{{../images/}{../other/}}")
+			main_file:close()
+
+			local out_dir, err = plotting_io.get_output_directory(main_tex_path)
+			assert.is_nil(err)
+			assert.are.equal(temp_dir .. "/images/tungsten_plots", out_dir)
+			assert.is_nil(out_dir:match("[{]"))
+			assert.is_nil(out_dir:match("[}]"))
+		end)
+
 		it("creates the output directory if it does not exist", function()
 			local main_tex_path = temp_dir .. "/project/main.tex"
 			local f = io.open(main_tex_path, "w")
