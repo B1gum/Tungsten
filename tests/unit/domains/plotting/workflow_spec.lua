@@ -99,6 +99,7 @@ describe("Plotting workflow", function()
 
 		mock_job_manager = {}
 		mock_job_manager.submit = spy.new(function() end)
+		mock_job_manager.apply_output = spy.new(function() end)
 		package.loaded["tungsten.domains.plotting.job_manager"] = mock_job_manager
 
 		mock_error_handler = {
@@ -187,6 +188,21 @@ describe("Plotting workflow", function()
 		vim.api.nvim_buf_set_name(0, "/tmp/project/main_trimmed.tex")
 		workflow.run_simple("  \n  sin(x)  \t\n")
 		assert.spy(mock_parser.parse).was.called_with("sin(x)", { simple_mode = true })
+	end)
+
+	it("reuses existing simple plots without starting the backend", function()
+		vim.api.nvim_buf_set_name(0, unique_tex_path())
+
+		mock_io.get_final_path = spy.new(function()
+			return "/tmp/project/tungsten_plots/plot.pdf", true
+		end)
+
+		workflow.run_simple("sin(x)")
+
+		assert.are.equal(0, backend_calls)
+		assert.spy(mock_job_manager.submit).was_not_called()
+		assert.spy(mock_job_manager.apply_output).was.called(1)
+		assert.spy(mock_io.get_final_path).was.called(1)
 	end)
 
 	it("surfaces E_UNSUPPORTED_FORM when Python backend lacks implicit 3D support", function()

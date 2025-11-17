@@ -293,6 +293,11 @@ function M.run_simple(text)
 	plot_opts.reused_output = reused
 	plot_opts.tex_root = tex_root
 
+	if reused then
+		job_manager.apply_output(plot_opts, out_path)
+		return
+	end
+
 	local command, command_opts = capture_backend_command(plot_opts)
 	if not command then
 		notify_error(command_opts)

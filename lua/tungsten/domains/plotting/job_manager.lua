@@ -113,18 +113,20 @@ local function cleanup_temp(job)
 	end
 end
 
-local function default_on_success(job, image_path)
-	cleanup_temp(job)
+local function apply_output(plot_opts, image_path)
+	if not plot_opts then
+		return
+	end
 
-	local bufnr = job.plot_opts.bufnr or vim.api.nvim_get_current_buf()
-	local outputmode = job.plot_opts.outputmode or "Latex"
+	local bufnr = plot_opts.bufnr or vim.api.nvim_get_current_buf()
+	local outputmode = plot_opts.outputmode or "Latex"
 
 	if outputmode == "latex" or outputmode == "both" then
-		local start_line = job.plot_opts.start_line or 0
+		local start_line = plot_opts.start_line or 0
 		local end_line = plotting_io.find_math_block_end(bufnr, start_line)
 
 		if not end_line then
-			end_line = job.plot_opts.end_line or start_line
+			end_line = plot_opts.end_line or start_line
 			logger.debug(
 				"TungstenPlot",
 				"Display math block is missing a closing delimiter; inserting plot snippet at selection end."
@@ -139,7 +141,7 @@ local function default_on_success(job, image_path)
 			rel_path = rp
 		end
 
-		local snippet_width = job.plot_opts.snippet_width or (config.plotting or {}).snippet_width or "0.8\\linewidth"
+		local snippet_width = plot_opts.snippet_width or (config.plotting or {}).snippet_width or "0.8\\linewidth"
 
 		local snippet_path = rel_path
 		local base, ext = path.splitext(rel_path)
@@ -153,15 +155,24 @@ local function default_on_success(job, image_path)
 
 	if outputmode == "viewer" or outputmode == "both" then
 		local viewer_cmd
-		if job.plot_opts.format == "png" then
-			viewer_cmd = job.plot_opts.viewer_cmd_png or (config.plotting or {}).viewer_cmd_png
+		if plot_opts.format == "png" then
+			viewer_cmd = plot_opts.viewer_cmd_png or (config.plotting or {}).viewer_cmd_png
 		else
-			viewer_cmd = job.plot_opts.viewer_cmd_pdf or (config.plotting or {}).viewer_cmd_pdf
+			viewer_cmd = plot_opts.viewer_cmd_pdf or (config.plotting or {}).viewer_cmd_pdf
 		end
 		if viewer_cmd and viewer_cmd ~= "" then
 			async.run_job({ viewer_cmd, image_path }, { on_exit = function() end })
 		end
 	end
+end
+
+function M.apply_output(plot_opts, image_path)
+	apply_output(plot_opts, image_path)
+end
+
+local function default_on_success(job, image_path)
+	cleanup_temp(job)
+	apply_output(job.plot_opts, image_path)
 end
 
 local function default_on_error(job, err)
