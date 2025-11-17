@@ -135,18 +135,37 @@ local function apply_output(plot_opts, image_path)
 
 		local buf_path = vim.api.nvim_buf_get_name(bufnr)
 		local cwd = vim.fn.fnamemodify(buf_path, ":p:h")
-		local rel_path = image_path
-		local ok, rp = pcall(path.relpath, image_path, cwd)
-		if ok and rp then
-			rel_path = rp
+		local tex_root_dir
+		if plot_opts.tex_root and plot_opts.tex_root ~= "" then
+			tex_root_dir = path.dirname(plot_opts.tex_root)
+		end
+		if not tex_root_dir or tex_root_dir == "" then
+			tex_root_dir = cwd
 		end
 
 		local snippet_width = plot_opts.snippet_width or (config.plotting or {}).snippet_width or "0.8\\linewidth"
 
-		local snippet_path = rel_path
-		local base, ext = path.splitext(rel_path)
-		if base and ext and ext ~= "" then
-			snippet_path = base
+		local snippet_path
+		if plot_opts.reused_output or plot_opts.uses_graphicspath then
+			local filename = path.basename(image_path) or image_path
+			local base, ext = path.splitext(filename)
+			local basename = filename
+			if base and ext and ext ~= "" then
+				basename = base
+			end
+			snippet_path = string.format("tungsten_plots/%s", basename)
+		else
+			local rel_path = image_path
+			local ok, rp = pcall(path.relpath, image_path, tex_root_dir)
+			if ok and rp then
+				rel_path = rp
+			end
+
+			local base, ext = path.splitext(rel_path)
+			snippet_path = rel_path
+			if base and ext and ext ~= "" then
+				snippet_path = base
+			end
 		end
 
 		local snippet = string.format("\\includegraphics[width=%s]{%s}", snippet_width, snippet_path)

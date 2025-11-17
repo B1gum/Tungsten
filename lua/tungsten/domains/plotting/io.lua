@@ -164,6 +164,7 @@ function M.get_output_directory(tex_root_path)
 
 	local base_dir = path.dirname(tex_root_path)
 	local target_base
+	local used_graphicspath = false
 
 	local file = io.open(tex_root_path, "r")
 	if file then
@@ -182,6 +183,7 @@ function M.get_output_directory(tex_root_path)
 					else
 						target_base = path.normpath(path.join(base_dir, normalized))
 					end
+					used_graphicspath = true
 					break
 				end
 			end
@@ -197,7 +199,7 @@ function M.get_output_directory(tex_root_path)
 	if not ok then
 		return nil, err
 	end
-	return final_dir, nil
+	return final_dir, nil, used_graphicspath
 end
 
 function M.get_final_path(output_dir, opts, plot_data)

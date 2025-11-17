@@ -275,7 +275,7 @@ function M.run_simple(text)
 		return
 	end
 
-	local output_dir, output_err = plot_io.get_output_directory(tex_root)
+	local output_dir, output_err, uses_graphicspath = plot_io.get_output_directory(tex_root)
 	if not output_dir then
 		notify_error(output_err)
 		return
@@ -291,6 +291,7 @@ function M.run_simple(text)
 
 	plot_opts.out_path = out_path
 	plot_opts.reused_output = reused
+	plot_opts.uses_graphicspath = uses_graphicspath
 	plot_opts.tex_root = tex_root
 
 	if reused then
@@ -373,7 +374,7 @@ function M.run_advanced()
 			return
 		end
 
-		local output_dir, output_err = plot_io.get_output_directory(tex_root)
+		local output_dir, output_err, uses_graphicspath = plot_io.get_output_directory(tex_root)
 		if not output_dir then
 			notify_error(output_err)
 			return
@@ -391,6 +392,7 @@ function M.run_advanced()
 
 		final_opts.out_path = out_path
 		final_opts.reused_output = reused
+		final_opts.uses_graphicspath = uses_graphicspath
 		final_opts.tex_root = tex_root
 
 		local command, command_opts = capture_backend_command(final_opts)

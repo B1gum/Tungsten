@@ -90,7 +90,7 @@ describe("Plotting workflow", function()
 			return "/tmp/project/main.tex"
 		end)
 		mock_io.get_output_directory = spy.new(function()
-			return "/tmp/project/tungsten_plots"
+			return "/tmp/project/tungsten_plots", nil, false
 		end)
 		mock_io.get_final_path = spy.new(function()
 			return "/tmp/project/tungsten_plots/plot.pdf", false
