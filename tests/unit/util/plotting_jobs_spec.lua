@@ -477,6 +477,35 @@ describe("Plotting Job Manager", function()
 		assert.are.equal(0, #mock_async.run_job_calls)
 	end)
 
+	it("submits y=f(x,z) surfaces with Wolfram backend", function()
+		local id = JobManager.submit({
+			expression = "expr",
+			bufnr = 0,
+			backend = "wolfram",
+			form = "explicit",
+			dim = 3,
+			series = { { dependent_vars = { "y" } } },
+		})
+		assert.is_not_nil(id)
+		assert.are.equal(1, #mock_async.run_job_calls)
+		assert.spy(notify_error_spy).was_not_called()
+	end)
+
+	it("returns E_UNSUPPORTED_FORM for y=f(x,z) surfaces with Python backend", function()
+		local id = JobManager.submit({
+			expression = "expr",
+			bufnr = 0,
+			backend = "python",
+			form = "explicit",
+			dim = 3,
+			series = { { dependent_vars = { "y" } } },
+		})
+		assert.is_nil(id)
+		assert.spy(notify_error_spy).was.called(1)
+		assert.spy(notify_error_spy).was.called_with("TungstenPlot", mock_err_handler.E_UNSUPPORTED_FORM)
+		assert.are.equal(0, #mock_async.run_job_calls)
+	end)
+
 	it("returns E_UNSUPPORTED_FORM when backend cannot handle inequalities", function()
 		local id = JobManager.submit({
 			expression = "expr",

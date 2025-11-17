@@ -37,6 +37,9 @@ function M.is_supported(backend_name, form, dim, opts)
 			if v == "x" then
 				return false
 			end
+			if dim == 3 and v == "y" then
+				return false
+			end
 		end
 	end
 	return true
