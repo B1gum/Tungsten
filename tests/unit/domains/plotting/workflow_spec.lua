@@ -325,10 +325,13 @@ describe("Plotting workflow", function()
 		assert.is_true(final_opts.reused_output)
 		assert.spy(mock_job_manager.submit).was_not_called()
 		assert.is_function(confirm_cb)
+		assert.are.equal(0, backend_calls)
+		assert.spy(mock_job_manager.apply_output).was_not_called()
 
 		confirm_cb()
 
 		assert.spy(mock_job_manager.submit).was.called(1)
+		assert.are.equal(1, backend_calls)
 	end)
 
 	it("allows skipping regeneration when declining the prompt", function()
@@ -364,6 +367,8 @@ describe("Plotting workflow", function()
 		cancel_cb()
 
 		assert.spy(mock_job_manager.submit).was_not_called()
+		assert.spy(mock_job_manager.apply_output).was.called(1)
+		assert.are.equal(0, backend_calls)
 		assert.is_function(confirm_cb)
 	end)
 end)

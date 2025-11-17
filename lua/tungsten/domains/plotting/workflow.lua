@@ -395,27 +395,29 @@ function M.run_advanced()
 		final_opts.uses_graphicspath = uses_graphicspath
 		final_opts.tex_root = tex_root
 
-		local command, command_opts = capture_backend_command(final_opts)
-		if not command then
-			notify_error(command_opts)
-			return
-		end
-
-		for i = 1, #command do
-			final_opts[i] = command[i]
-		end
-
-		if command_opts and command_opts.timeout then
-			final_opts.timeout_ms = command_opts.timeout
-		end
-
 		local function submit_job()
+			local command, command_opts = capture_backend_command(final_opts)
+			if not command then
+				notify_error(command_opts)
+				return
+			end
+
+			for i = 1, #command do
+				final_opts[i] = command[i]
+			end
+
+			if command_opts and command_opts.timeout then
+				final_opts.timeout_ms = command_opts.timeout
+			end
+
 			job_manager.submit(final_opts)
 		end
 
 		if reused then
 			local prompt_handler = M._show_regenerate_prompt or create_regenerate_prompt
-			prompt_handler(submit_job, function() end, final_opts)
+			prompt_handler(submit_job, function()
+				job_manager.apply_output(final_opts, out_path)
+			end, final_opts)
 		else
 			submit_job()
 		end
