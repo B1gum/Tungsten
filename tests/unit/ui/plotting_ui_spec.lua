@@ -13,6 +13,13 @@ local mock_config
 local mock_async
 local mock_io
 local mock_options_builder
+local mock_parser
+local mock_engine
+local mock_backend_manager
+
+local parser_overrides
+local eval_overrides
+local backend_available
 
 local plotting_ui
 
@@ -26,6 +33,9 @@ local function setup_test_environment()
 		"tungsten.util.async",
 		"tungsten.util.io",
 		"tungsten.domains.plotting.options_builder",
+		"tungsten.core.parser",
+		"tungsten.core.engine",
+		"tungsten.backends.manager",
 	})
 
 	mock_plotting_core = mock_utils.create_empty_mock_module("tungsten.core.plotting", {
@@ -35,6 +45,8 @@ local function setup_test_environment()
 	})
 	mock_error_handler = mock_utils.create_empty_mock_module("tungsten.util.error_handler", { "notify_error" })
 	mock_error_handler.E_VIEWER_FAILED = "E_VIEWER_FAILED"
+	mock_error_handler.E_BAD_OPTS = "E_BAD_OPTS"
+	mock_error_handler.E_BACKEND_UNAVAILABLE = "E_BACKEND_UNAVAILABLE"
 	mock_state = { persistent_variables = {} }
 	mock_config = {
 		plotting = {
@@ -66,6 +78,51 @@ local function setup_test_environment()
 			end
 		end
 		return result
+	end)
+
+	parser_overrides = {}
+	eval_overrides = {}
+	backend_available = true
+
+	mock_parser = mock_utils.create_empty_mock_module("tungsten.core.parser")
+	mock_parser.parse = stub.new(mock_parser, "parse", function(text)
+		local override = parser_overrides[text]
+		if override and override.error then
+			error(override.error)
+		end
+		local ast
+		if override and override.ast then
+			ast = override.ast
+		else
+			ast = { source = text, value = override and override.value or tonumber(text) }
+		end
+		return { series = { ast } }
+	end)
+
+	mock_engine = mock_utils.create_empty_mock_module("tungsten.core.engine")
+	mock_engine.evaluate_async = stub.new(mock_engine, "evaluate_async", function(ast, _, cb)
+		local override = eval_overrides[ast and ast.source]
+		if override and override.error then
+			cb(nil, override.error)
+			return
+		end
+		local output
+		if override and override.output ~= nil then
+			output = override.output
+		elseif ast and ast.value ~= nil then
+			output = tostring(ast.value)
+		else
+			output = ""
+		end
+		cb(output, nil)
+	end)
+
+	mock_backend_manager = mock_utils.create_empty_mock_module("tungsten.backends.manager")
+	mock_backend_manager.current = stub.new(mock_backend_manager, "current", function()
+		if backend_available then
+			return {}
+		end
+		return nil
 	end)
 
 	package.loaded["tungsten.state"] = mock_state
@@ -176,16 +233,14 @@ describe("Plotting UI and UX", function()
 		it("should parse definitions from the floating buffer contents", function()
 			mock_plotting_core.get_undefined_symbols:returns({
 				{ name = "a", type = "variable" },
-				{ name = "f(x)", type = "function" },
+				{ name = "b", type = "variable" },
 			})
 
 			local callback_spy = spy.new()
 			local user_lines = {
 				"Variables:",
 				"a: 10",
-				"",
-				"Functions:",
-				"f(x):= x^2",
+				"b:= 25",
 			}
 
 			plotting_ui.handle_undefined_symbols({}, callback_spy)
@@ -197,7 +252,9 @@ describe("Plotting UI and UX", function()
 			local definitions = callback_spy.calls[1].vals[1]
 			assert.is_table(definitions)
 			assert.are.same("10", definitions.a.latex)
-			assert.are.same("x^2", definitions["f(x)"].latex)
+			assert.are.equal(10, definitions.a.value)
+			assert.are.same("25", definitions.b.latex)
+			assert.are.equal(25, definitions.b.value)
 		end)
 
 		it("should only show each undefined symbol once", function()
@@ -227,6 +284,38 @@ describe("Plotting UI and UX", function()
 			assert.spy(mock_plotting_core.initiate_plot).was.called(1)
 			local final_plot_opts = mock_plotting_core.initiate_plot.calls[1].vals[1]
 			assert.are.same("9.8", final_plot_opts.definitions.k.latex)
+			assert.are.equal(9.8, final_plot_opts.definitions.k.value)
+		end)
+
+		it("should notify error if evaluating a definition does not yield a real number", function()
+			mock_plotting_core.get_undefined_symbols:returns({ { name = "c", type = "variable" } })
+			local callback_spy = spy.new()
+			plotting_ui.handle_undefined_symbols({}, callback_spy)
+			buffer_lines = { "Variables:", "c: 2" }
+			eval_overrides["2"] = { output = "1 + i" }
+
+			trigger_autocmd("BufWipeout")
+
+			assert
+				.spy(mock_error_handler.notify_error).was
+				.called_with("Plot Definitions", "E_BAD_OPTS", nil, nil, "Could not evaluate 'c' to a real number.")
+			assert.spy(callback_spy).was_not.called()
+		end)
+
+		it("should notify error if no backend is active when evaluating definitions", function()
+			backend_available = false
+			local callback_spy = spy.new()
+			mock_plotting_core.get_undefined_symbols:returns({ { name = "d", type = "variable" } })
+
+			plotting_ui.handle_undefined_symbols({}, callback_spy)
+			buffer_lines = { "Variables:", "d: 3" }
+
+			trigger_autocmd("BufWipeout")
+
+			assert
+				.spy(mock_error_handler.notify_error).was
+				.called_with("Plot Definitions", "E_BACKEND_UNAVAILABLE", nil, nil, match.has_match("No active backend"))
+			assert.spy(callback_spy).was_not.called()
 		end)
 
 		it("should notify error if a definition cannot be evaluated to a real number", function()

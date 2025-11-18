@@ -5,6 +5,9 @@ local config = require("tungsten.config")
 local async = require("tungsten.util.async")
 local io_util = require("tungsten.util.io")
 local options_builder = require("tungsten.domains.plotting.options_builder")
+local parser = require("tungsten.core.parser")
+local evaluator = require("tungsten.core.engine")
+local backend_manager = require("tungsten.backends.manager")
 
 local M = {}
 
@@ -68,6 +71,126 @@ local function parse_definitions(input)
 		end
 	end
 	return defs
+end
+
+local function parse_numeric_result(result)
+	if type(result) == "number" then
+		return result
+	end
+	if type(result) ~= "string" then
+		return nil
+	end
+	local trimmed = vim.trim(result)
+	if trimmed == "" then
+		return nil
+	end
+	trimmed = trimmed:gsub("\\,", "")
+	trimmed = trimmed:gsub("\\!", "")
+	trimmed = trimmed:gsub("\\;", "")
+	trimmed = trimmed:gsub("%s+", "")
+	local numeric = tonumber(trimmed)
+	if numeric then
+		return numeric
+	end
+	local mantissa, exponent = trimmed:match("^([%+%-]?[%d%.]+)\\times10%^{([%+%-]?%d+)}$")
+	if not mantissa then
+		mantissa, exponent = trimmed:match("^([%+%-]?[%d%.]+)\\cdot10%^{([%+%-]?%d+)}$")
+	end
+	if not mantissa then
+		mantissa, exponent = trimmed:match("^([%+%-]?[%d%.]+)10%^{([%+%-]?%d+)}$")
+	end
+	if mantissa and exponent then
+		local base_val = tonumber(mantissa)
+		local exp_val = tonumber(exponent)
+		if base_val and exp_val then
+			return base_val * (10 ^ exp_val)
+		end
+	end
+	local power_only = trimmed:match("^10%^{([%+%-]?%d+)}$")
+	if power_only then
+		local exp_only_val = tonumber(power_only)
+		if exp_only_val then
+			return 10 ^ exp_only_val
+		end
+	end
+	return nil
+end
+
+local function evaluate_definition(name, latex, handler)
+	if not latex or vim.trim(latex) == "" then
+		handler(false, error_handler.E_BAD_OPTS, string.format("Definition for '%s' cannot be empty.", tostring(name)))
+		return
+	end
+	local ok, parsed_or_err = pcall(parser.parse, latex, { simple_mode = true })
+	if not ok or not parsed_or_err then
+		handler(
+			false,
+			error_handler.E_BAD_OPTS,
+			string.format("Failed to parse definition for '%s': %s", tostring(name), tostring(parsed_or_err))
+		)
+		return
+	end
+	if not parsed_or_err.series or #parsed_or_err.series ~= 1 then
+		handler(false, error_handler.E_BAD_OPTS, string.format("Definition for '%s' must be a single expression.", name))
+		return
+	end
+	evaluator.evaluate_async(parsed_or_err.series[1], true, function(result, err)
+		if err or not result then
+			handler(
+				false,
+				error_handler.E_BAD_OPTS,
+				string.format("Failed to evaluate '%s': %s", tostring(name), tostring(err or "Unknown error"))
+			)
+			return
+		end
+		local numeric_value = parse_numeric_result(result)
+		if not numeric_value then
+			handler(false, error_handler.E_BAD_OPTS, string.format("Could not evaluate '%s' to a real number.", name))
+			return
+		end
+		handler(true, numeric_value)
+	end)
+end
+
+local function evaluate_definitions(defs, on_success, on_failure)
+	if not defs or vim.tbl_isempty(defs) then
+		if on_success then
+			on_success()
+		end
+		return
+	end
+	if not backend_manager.current() then
+		if on_failure then
+			on_failure(error_handler.E_BACKEND_UNAVAILABLE, "No active backend available for evaluating definitions.")
+		end
+		return
+	end
+	local names = {}
+	for name in pairs(defs) do
+		names[#names + 1] = name
+	end
+	table.sort(names)
+	local function step(index)
+		if index > #names then
+			if on_success then
+				on_success()
+			end
+			return
+		end
+		local name = names[index]
+		local entry = defs[name]
+		evaluate_definition(name, entry.latex, function(ok, value_or_code, err_msg)
+			if not ok then
+				if on_failure then
+					on_failure(value_or_code, err_msg)
+				end
+				return
+			end
+			entry.value = value_or_code
+			step(index + 1)
+		end)
+	end
+	step(1)
 end
 
 local function normalize_buffer_lines(lines)
@@ -182,19 +305,7 @@ function M.handle_undefined_symbols(opts, callback)
 	})
 
 	local resolved = false
-	local function finalize_definitions()
-		if resolved then
-			return
-		end
-		resolved = true
-		local buffer_lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-		local normalized = normalize_buffer_lines(buffer_lines)
-		if normalized then
-			local parsed = parse_definitions(normalized)
-			for name, def in pairs(parsed) do
-				definitions[name] = def
-			end
-		end
+	local function dispatch_definitions()
 		if next(opts) ~= nil then
 			opts.definitions = definitions
 			if callback then
@@ -204,6 +315,38 @@ function M.handle_undefined_symbols(opts, callback)
 			if callback then
 				callback(definitions)
 			end
+		end
+	end
+
+	local function finalize_definitions()
+		if resolved then
+			return
+		end
+		resolved = true
+		local buffer_lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+		local normalized = normalize_buffer_lines(buffer_lines)
+		local parsed
+		if normalized then
+			parsed = parse_definitions(normalized)
+		end
+
+		local function apply_and_dispatch()
+			if parsed then
+				for name, def in pairs(parsed) do
+					definitions[name] = def
+				end
+			end
+			dispatch_definitions()
+		end
+
+		if parsed and not vim.tbl_isempty(parsed) then
+			evaluate_definitions(parsed, function()
+				apply_and_dispatch()
+			end, function(err_code, err_message)
+				error_handler.notify_error("Plot Definitions", err_code or error_handler.E_BAD_OPTS, nil, nil, err_message)
+			end)
+		else
+			apply_and_dispatch()
 		end
 	end
 
