@@ -70,7 +70,11 @@ local function analyze_point2(point, opts)
 			end
 			local param = helpers.detect_point2_param(point)
 			if not param then
-				return nil, { code = error_handler.E_MIXED_COORD_SYS }
+				return nil,
+					{
+						code = error_handler.E_MIXED_COORD_SYS,
+						message = "Use the same parameter in both coordinates before plotting parametric points.",
+					}
 			end
 			return {
 				dim = 2,
@@ -79,12 +83,20 @@ local function analyze_point2(point, opts)
 			}
 		elseif opts.form == "polar" then
 			if not (point.y and (point.y.type == "variable" or point.y.type == "greek") and point.y.name == "theta") then
-				return nil, { code = error_handler.E_MIXED_COORD_SYS }
+				return nil,
+					{
+						code = error_handler.E_MIXED_COORD_SYS,
+						message = "Set the second coordinate to theta when plotting polar points.",
+					}
 			end
 			local x_params = helpers.extract_param_names(point.x)
 			for _, name in ipairs(x_params) do
 				if name ~= "theta" then
-					return nil, { code = error_handler.E_MIXED_COORD_SYS }
+					return nil,
+						{
+							code = error_handler.E_MIXED_COORD_SYS,
+							message = "Use theta as the only parameter in polar coordinates.",
+						}
 				end
 			end
 			local params = union_vars(find_free_variables(point.x), find_free_variables(point.y))
@@ -126,7 +138,11 @@ local function analyze_point3(point, opts)
 		end
 
 		if #param_names > 2 then
-			return nil, { code = error_handler.E_MIXED_COORD_SYS }
+			return nil,
+				{
+					code = error_handler.E_MIXED_COORD_SYS,
+					message = "Limit 3D parametric points to one or two parameters before plotting.",
+				}
 		end
 		local params = union_vars(find_free_variables(point.x), find_free_variables(point.y), find_free_variables(point.z))
 		return {
@@ -175,10 +191,18 @@ local function analyze_sequence(ast, opts)
 			end
 
 			if dim and dim ~= pdim then
-				return nil, { code = error_handler.E_UNSUPPORTED_DIM }
+				return nil,
+					{
+						code = error_handler.E_UNSUPPORTED_DIM,
+						message = "Select expressions of the same dimension before plotting.",
+					}
 			end
 			if form and form ~= "explicit" then
-				return nil, { code = error_handler.E_MIXED_COORD_SYS }
+				return nil,
+					{
+						code = error_handler.E_MIXED_COORD_SYS,
+						message = "Use the same coordinate system for all expressions before plotting.",
+					}
 			end
 			dim = pdim
 			form = "explicit"
@@ -189,10 +213,18 @@ local function analyze_sequence(ast, opts)
 				return nil, err
 			end
 			if dim and dim ~= sub.dim then
-				return nil, { code = error_handler.E_UNSUPPORTED_DIM }
+				return nil,
+					{
+						code = error_handler.E_UNSUPPORTED_DIM,
+						message = "Select expressions of the same dimension before plotting.",
+					}
 			end
 			if form and form ~= sub.form then
-				return nil, { code = error_handler.E_MIXED_COORD_SYS }
+				return nil,
+					{
+						code = error_handler.E_MIXED_COORD_SYS,
+						message = "Use the same coordinate system for all expressions before plotting.",
+					}
 			else
 				form = sub.form
 			end
@@ -251,7 +283,11 @@ end
 local function analyze_parametric2d(ast)
 	local params = union_vars(find_free_variables(ast.x), find_free_variables(ast.y))
 	if #params ~= 1 then
-		return nil, { code = error_handler.E_MIXED_COORD_SYS }
+		return nil,
+			{
+				code = error_handler.E_MIXED_COORD_SYS,
+				message = "Parametric 2D plots require exactly one parameter.",
+			}
 	end
 	return {
 		dim = 2,
@@ -270,7 +306,11 @@ end
 local function analyze_parametric3d(ast)
 	local params = union_vars(find_free_variables(ast.x), find_free_variables(ast.y), find_free_variables(ast.z))
 	if #params < 1 or #params > 2 then
-		return nil, { code = error_handler.E_MIXED_COORD_SYS }
+		return nil,
+			{
+				code = error_handler.E_MIXED_COORD_SYS,
+				message = "Parametric 3D plots require one or two parameters.",
+			}
 	end
 	return {
 		dim = 3,
@@ -289,7 +329,11 @@ end
 analyze_polar2d = function(ast)
 	local params = find_free_variables(ast.r)
 	if #params ~= 1 or params[1] ~= "theta" then
-		return nil, { code = error_handler.E_MIXED_COORD_SYS }
+		return nil,
+			{
+				code = error_handler.E_MIXED_COORD_SYS,
+				message = "Polar plots require theta as the independent variable.",
+			}
 	end
 	return {
 		dim = 2,

@@ -225,6 +225,7 @@ describe("Plot Classification Logic", function()
 
 		assert.is_nil(result)
 		assert.are.equal("E_MIXED_COORD_SYS", err.code)
+		assert.are.equal("Polar plots require theta as the independent variable.", err.message)
 	end)
 
 	it("should classify inequality expressions as region plots", function()
@@ -357,6 +358,7 @@ describe("Plot Classification Logic", function()
 
 		assert.is_nil(result)
 		assert.are.equal("E_MIXED_COORD_SYS", err.code)
+		assert.are.equal("Set the second coordinate to theta when plotting polar points.", err.message)
 	end)
 
 	it("merges consecutive Point3 nodes into one scatter series", function()
@@ -390,10 +392,10 @@ describe("Plot Classification Logic", function()
 					return { "x", "y" }
 				end
 			end
-
 			local result, err = classification.analyze(series)
 			assert.is_nil(result)
 			assert.are.equal("E_UNSUPPORTED_DIM", err.code)
+			assert.are.equal("Select expressions of the same dimension before plotting.", err.message)
 		end)
 
 		it("errors when simple polar equalities are mixed with Cartesian expressions", function()
@@ -418,6 +420,7 @@ describe("Plot Classification Logic", function()
 
 			assert.is_nil(result)
 			assert.are.equal("E_MIXED_COORD_SYS", err.code)
+			assert.are.equal("Use the same coordinate system for all expressions before plotting.", err.message)
 		end)
 
 		it("should throw an error if polar and Cartesian expressions are mixed", function()
@@ -425,13 +428,17 @@ describe("Plot Classification Logic", function()
 				ast_node("polar_2d", { r = "theta" }),
 				ast_node("function_call", { name = "sin" }),
 			})
-			free_vars.find = function()
+			free_vars.find = function(node)
+				if node == "theta" or (type(node) == "table" and node.type == "polar_2d") then
+					return { "theta" }
+				end
 				return { "x" }
 			end
 
 			local result, err = classification.analyze(series)
 			assert.is_nil(result)
 			assert.are.equal("E_MIXED_COORD_SYS", err.code)
+			assert.are.equal("Use the same coordinate system for all expressions before plotting.", err.message)
 		end)
 
 		it("should produce a hard error for coordinate system mismatches with points", function()
@@ -439,10 +446,17 @@ describe("Plot Classification Logic", function()
 				ast_node("polar_2d", { r = "theta" }),
 				ast_node("point_2d", { x = 1, y = 1 }),
 			})
+			free_vars.find = function(node)
+				if node == "theta" or (type(node) == "table" and node.type == "polar_2d") then
+					return { "theta" }
+				end
+				return {}
+			end
 
 			local result, err = classification.analyze(series)
 			assert.is_nil(result)
 			assert.are.equal("E_MIXED_COORD_SYS", err.code)
+			assert.are.equal("Use the same coordinate system for all expressions before plotting.", err.message)
 		end)
 
 		it("should throw an error for a 3D point in a 2D plot", function()
@@ -458,6 +472,7 @@ describe("Plot Classification Logic", function()
 			local result, err = classification.analyze(series)
 			assert.is_nil(result)
 			assert.are.equal("E_UNSUPPORTED_DIM", err.code)
+			assert.are.equal("Select expressions of the same dimension before plotting.", err.message)
 		end)
 	end)
 end)

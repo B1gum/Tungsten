@@ -161,10 +161,18 @@ local function merge_classifications(nodes)
 		end
 
 		if combined.dim and res.dim and combined.dim ~= res.dim then
-			return nil, { code = error_handler.E_UNSUPPORTED_DIM }
+			return nil,
+				{
+					code = error_handler.E_UNSUPPORTED_DIM,
+					message = "Select expressions of the same dimension before plotting.",
+				}
 		end
 		if combined.form and res.form and combined.form ~= res.form then
-			return nil, { code = error_handler.E_MIXED_COORD_SYS }
+			return nil,
+				{
+					code = error_handler.E_MIXED_COORD_SYS,
+					message = "Use the same coordinate system for all expressions before plotting.",
+				}
 		end
 
 		for key, value in pairs(res) do
