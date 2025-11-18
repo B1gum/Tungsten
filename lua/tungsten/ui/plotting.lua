@@ -120,10 +120,21 @@ end
 
 function M.insert_snippet(bufnr, selection_end_line, plot_path)
 	local width = (config.plotting or {}).snippet_width or "0.8\\linewidth"
-	local _, line = io_util.find_math_block_end(bufnr, selection_end_line)
-	line = line or selection_end_line
+	local first_result, second_result = io_util.find_math_block_end(bufnr, selection_end_line)
+	local math_block_end
+	if type(second_result) == "number" then
+		math_block_end = second_result
+	elseif type(first_result) == "number" then
+		math_block_end = first_result
+	end
 	local snippet = string.format("\\includegraphics[width=%s]{%s}", width, plot_path)
-	vim.api.nvim_buf_set_lines(bufnr, line, line, false, { snippet })
+	local lines_to_insert = { snippet }
+	local insert_line = selection_end_line
+	if math_block_end ~= nil then
+		insert_line = math_block_end + 1
+		lines_to_insert = { "", snippet }
+	end
+	vim.api.nvim_buf_set_lines(bufnr, insert_line, insert_line, false, lines_to_insert)
 end
 
 function M.handle_output(plot_path)

@@ -185,7 +185,7 @@ describe("Plotting UI and UX", function()
 
 			assert
 				.spy(set_lines_spy).was
-				.called_with(bufnr, 2, 2, false, { "\\includegraphics[width=0.8\\linewidth]{plots/myplot_123}" })
+				.called_with(bufnr, 3, 3, false, { "", "\\includegraphics[width=0.8\\linewidth]{plots/myplot_123}" })
 			set_lines_spy:revert()
 		end)
 
@@ -196,7 +196,8 @@ describe("Plotting UI and UX", function()
 
 			plotting_ui.insert_snippet(bufnr, 1, "myplot")
 
-			local inserted_text = set_lines_spy.calls[1].vals[5][1]
+			local inserted_lines = set_lines_spy.calls[1].vals[5]
+			local inserted_text = inserted_lines[#inserted_lines]
 			assert.truthy(inserted_text:find("width=0.8\\linewidth", 1, true))
 			set_lines_spy:revert()
 		end)
