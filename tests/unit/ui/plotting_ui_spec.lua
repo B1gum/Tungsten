@@ -257,6 +257,42 @@ describe("Plotting UI and UX", function()
 			assert.are.equal(25, definitions.b.value)
 		end)
 
+		it("should evaluate definitions in the order entered by the user", function()
+			mock_plotting_core.get_undefined_symbols:returns({
+				{ name = "z", type = "variable" },
+				{ name = "a", type = "variable" },
+			})
+
+			plotting_ui.handle_undefined_symbols({}, function() end)
+			buffer_lines = { "Variables:", "z: 100", "a: 200" }
+
+			trigger_autocmd("BufWipeout")
+
+			assert.equals("100", mock_engine.evaluate_async.calls[1].vals[1].source)
+			assert.equals("200", mock_engine.evaluate_async.calls[2].vals[1].source)
+		end)
+
+		it("should surface a reorder error when definitions depend on later symbols", function()
+			mock_plotting_core.get_undefined_symbols:returns({
+				{ name = "b", type = "variable" },
+				{ name = "a", type = "variable" },
+			})
+
+			plotting_ui.handle_undefined_symbols({}, function() end)
+			eval_overrides["a + 1"] = { error = "Unknown symbol: a" }
+			buffer_lines = { "Variables:", "b: a + 1", "a: 5" }
+
+			trigger_autocmd("BufWipeout")
+
+			assert.spy(mock_error_handler.notify_error).was.called_with(
+				"Plot Definitions",
+				mock_error_handler.E_BAD_OPTS,
+				nil,
+				nil,
+				match.has_match("Reorder or simplify your definitions")
+			)
+		end)
+
 		it("should only show each undefined symbol once", function()
 			mock_plotting_core.get_undefined_symbols:returns({
 				{ name = "a", type = "variable" },

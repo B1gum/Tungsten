@@ -61,14 +61,20 @@ end
 
 local function parse_definitions(input)
 	local defs = {}
+	local order
 	if not input or input == "" then
 		return defs
 	end
 	for line in input:gmatch("[^\n]+") do
 		local lhs, rhs = line:match("^%s*(.-)%s*:?=%s*(.-)%s*$")
 		if lhs and rhs and lhs ~= "" and rhs ~= "" then
+			order = order or {}
+			order[#order + 1] = lhs
 			defs[lhs] = { latex = rhs }
 		end
+	end
+	if order and #order > 0 then
+		defs.__order = order
 	end
 	return defs
 end
@@ -166,10 +172,34 @@ local function evaluate_definitions(defs, on_success, on_failure)
 		return
 	end
 	local names = {}
-	for name in pairs(defs) do
-		names[#names + 1] = name
+	local seen = {}
+	local order = defs.__order
+	if type(order) == "table" and #order > 0 then
+		for _, name in ipairs(order) do
+			if name ~= "__order" and defs[name] and not seen[name] then
+				seen[name] = true
+				names[#names + 1] = name
+			end
+		end
 	end
-	table.sort(names)
+	for name in pairs(defs) do
+		if name ~= "__order" and not seen[name] then
+			seen[name] = true
+			names[#names + 1] = name
+		end
+	end
+	if #names == 0 then
+		if on_success then
+			on_success()
+		end
+		return
+	end
+	local evaluated = {}
+	local function handle_failure(code, message)
+		if on_failure then
+			on_failure(code, message)
+		end
+	end
 	local function step(index)
 		if index > #names then
 			if on_success then
@@ -181,12 +211,27 @@ local function evaluate_definitions(defs, on_success, on_failure)
 		local entry = defs[name]
 		evaluate_definition(name, entry.latex, function(ok, value_or_code, err_msg)
 			if not ok then
-				if on_failure then
-					on_failure(value_or_code, err_msg)
+				local dependency_symbol
+				if type(err_msg) == "string" and err_msg:lower():find("unknown symbol", 1, true) then
+					dependency_symbol = err_msg:match("[Uu]nknown%s+[Ss]ymbol[:%s']+([%w_]+)")
+					if not dependency_symbol then
+						dependency_symbol = err_msg:match("[Uu]nknown%s+[Ss]ymbol[^%w]+([%w_]+)")
+					end
 				end
+				if dependency_symbol and defs[dependency_symbol] and not evaluated[dependency_symbol] then
+					local msg = string.format(
+						"Definition '%s' depends on '%s', which has not been defined yet. Reorder or simplify your definitions.",
+						name,
+						dependency_symbol
+					)
+					handle_failure(error_handler.E_BAD_OPTS, msg)
+					return
+				end
+				handle_failure(value_or_code, err_msg)
 				return
 			end
 			entry.value = value_or_code
+			evaluated[name] = true
 			step(index + 1)
 		end)
 	end
@@ -333,7 +378,9 @@ function M.handle_undefined_symbols(opts, callback)
 		local function apply_and_dispatch()
 			if parsed then
 				for name, def in pairs(parsed) do
-					definitions[name] = def
+					if name ~= "__order" then
+						definitions[name] = def
+					end
 				end
 			end
 			dispatch_definitions()
