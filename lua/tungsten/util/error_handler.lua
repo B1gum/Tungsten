@@ -13,6 +13,7 @@ local M = {
 	E_BACKEND_CRASH = "E_BACKEND_CRASH",
 	E_TIMEOUT = "E_TIMEOUT",
 	E_IO = "E_IO",
+	E_INVALID_CLASSIFICATION = "E_INVALID_CLASSIFICATION",
 }
 
 local function calc_line_col(input, pos)

@@ -105,6 +105,7 @@ describe("Plotting workflow", function()
 		mock_error_handler = {
 			notify_error = spy.new(function() end),
 			E_UNSUPPORTED_FORM = "E_UNSUPPORTED_FORM",
+			E_INVALID_CLASSIFICATION = "E_INVALID_CLASSIFICATION",
 		}
 		package.loaded["tungsten.util.error_handler"] = mock_error_handler
 

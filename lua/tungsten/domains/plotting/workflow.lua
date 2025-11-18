@@ -164,7 +164,7 @@ local function merge_classifications(nodes)
 	end
 
 	if not combined.dim or not combined.form or #combined.series == 0 then
-		return nil, { code = "E_INVALID_CLASSIFICATION" }
+		return nil, { code = error_handler.E_INVALID_CLASSIFICATION }
 	end
 
 	return combined
