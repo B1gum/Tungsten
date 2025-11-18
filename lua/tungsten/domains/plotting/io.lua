@@ -8,6 +8,48 @@ local M = {}
 
 local sequential_counter = 0
 
+local function normalize_classification(classification)
+	if type(classification) ~= "table" then
+		return nil
+	end
+
+	local normalized = {}
+	for key, value in pairs(classification) do
+		if key ~= "series" then
+			normalized[key] = value
+		end
+	end
+
+	local series = classification.series
+	if type(series) == "table" then
+		local normalized_series = {}
+		for _, item in ipairs(series) do
+			local entry = {}
+			for key, value in pairs(item) do
+				if key == "ast" and value then
+					entry.ast = ast.canonical(value)
+				else
+					entry[key] = value
+				end
+			end
+			normalized_series[#normalized_series + 1] = entry
+		end
+		table.sort(normalized_series, function(a, b)
+			local a_label = a.label and tostring(a.label) or ""
+			local b_label = b.label and tostring(b.label) or ""
+			if a_label == b_label then
+				local a_ast = a.ast or ""
+				local b_ast = b.ast or ""
+				return a_ast < b_ast
+			end
+			return a_label < b_label
+		end)
+		normalized.series = normalized_series
+	end
+
+	return normalized
+end
+
 local function is_array(tbl)
 	if type(tbl) ~= "table" then
 		return false
@@ -66,6 +108,11 @@ local function build_signature(opts, plot_data)
 		parts[#parts + 1] = serialize(plot_data.variables)
 	elseif plot_data.var_defs then
 		parts[#parts + 1] = serialize(plot_data.var_defs)
+	end
+
+	local normalized_classification = normalize_classification(plot_data.classification)
+	if normalized_classification then
+		parts[#parts + 1] = serialize(normalized_classification)
 	end
 
 	parts[#parts + 1] = tostring(opts.backend or "")

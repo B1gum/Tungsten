@@ -4,10 +4,10 @@
 local mock_utils = require("tests.helpers.mock_utils")
 
 describe("tungsten.setup", function()
-	local tungsten = require("tungsten")
+	local tungsten
 	local defaults
 
-	local function reload_modules()
+	local function reset_modules()
 		mock_utils.reset_modules({
 			"tungsten",
 			"tungsten.config",
@@ -18,11 +18,32 @@ describe("tungsten.setup", function()
 			"tungsten.ui.which_key",
 			"tungsten.ui",
 			"tungsten.core",
+			"tungsten.backends.manager",
+			"tungsten.backends.wolfram",
 		})
 	end
 
-	before_each(reload_modules)
-	after_each(reload_modules)
+	local function stub_backend_environment()
+		local stub_backend = { load_handlers = function() end }
+		package.loaded["tungsten.backends.wolfram"] = stub_backend
+		package.loaded["tungsten.backends.manager"] = {
+			activate = function()
+				return stub_backend
+			end,
+			current = function()
+				return stub_backend
+			end,
+		}
+	end
+
+	before_each(function()
+		reset_modules()
+		stub_backend_environment()
+		tungsten = require("tungsten")
+		defaults = vim.deepcopy(tungsten.config)
+	end)
+
+	after_each(reset_modules)
 
 	it("keeps config unchanged with nil opts", function()
 		local before = vim.deepcopy(tungsten.config)
@@ -101,11 +122,19 @@ describe("tungsten.setup", function()
 	end)
 
 	it("activates configured backend with options", function()
-		local tungsten = require("tungsten")
 		local spy = require("luassert.spy")
 
-		local mock_manager = { activate = spy.new(function() end) }
+		local backend_instance = { load_handlers = function() end }
+		local mock_manager = {
+			activate = spy.new(function()
+				return backend_instance
+			end),
+			current = function()
+				return backend_instance
+			end,
+		}
 		package.loaded["tungsten.backends.manager"] = mock_manager
+		package.loaded["tungsten.backends.demo"] = backend_instance
 
 		tungsten.setup({
 			backend = "demo",

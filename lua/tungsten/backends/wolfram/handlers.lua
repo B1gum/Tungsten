@@ -109,10 +109,11 @@ function M.init_handlers(domains, registry)
 	end
 
 	if next(handlerRegistry) == nil then
-		logger.error(
+		logger.warn(
 			"Tungsten Backend Error",
 			"Wolfram Backend: No Wolfram handlers were loaded. AST to string conversion will likely fail or produce incorrect results."
 		)
+		return
 	end
 
 	renderableHandlers = {}
