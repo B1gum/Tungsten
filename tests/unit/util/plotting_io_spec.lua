@@ -179,6 +179,46 @@ describe("Plotting I/O and File Management", function()
 			local name4 = plotting_io.generate_filename(opts, plot_data)
 			assert.are_not.equal(name1, name4)
 		end)
+
+		describe("hashes series without order sensitivity", function()
+			it("produces the same hash regardless of series ordering", function()
+				local ast = require("tungsten.core.ast")
+				local opts = {
+					filename_mode = "hash",
+					backend = "wolfram",
+					format = "pdf",
+					form = "explicit",
+					dim = 2,
+				}
+				local node_a = ast.create_number_node(1)
+				local node_b = ast.create_number_node(2)
+				local plot_data = {
+					classification = {
+						series = {
+							{
+								label = "first",
+								ast = node_a,
+							},
+							{
+								label = "second",
+								ast = node_b,
+							},
+						},
+					},
+				}
+
+				local original_hash = plotting_io.generate_filename(opts, plot_data)
+				local reversed = vim.deepcopy(plot_data)
+				reversed.classification.series[1], reversed.classification.series[2] =
+					reversed.classification.series[2], reversed.classification.series[1]
+				local reversed_hash = plotting_io.generate_filename(opts, reversed)
+				assert.are.equal(original_hash, reversed_hash)
+
+				reversed.classification.series[1].ast = ast.create_number_node(999)
+				local different_hash = plotting_io.generate_filename(opts, reversed)
+				assert.are_not.equal(original_hash, different_hash)
+			end)
+		end)
 	end)
 
 	describe("Final Path Assembly and Atomic Writes", function()
