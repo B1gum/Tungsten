@@ -23,11 +23,33 @@ describe("plotting_io.find_math_block_end", function()
 		assert.are.equal(2, end_line)
 	end)
 
+	it("detects the closing $ delimiter", function()
+		bufnr = vim_env.setup_buffer({
+			"$f(x) = x^2$",
+			"next line",
+		})
+
+		local end_line = plotting_io.find_math_block_end(bufnr, 0)
+		assert.are.equal(0, end_line)
+	end)
+
 	it("detects the closing \\] delimiter", function()
 		bufnr = vim_env.setup_buffer({
 			"\\[",
 			"f(x) = x^2",
 			"\\]",
+			"next line",
+		})
+
+		local end_line = plotting_io.find_math_block_end(bufnr, 0)
+		assert.are.equal(2, end_line)
+	end)
+
+	it("detects the closing \\) delimiter", function()
+		bufnr = vim_env.setup_buffer({
+			"\\(",
+			"f(x) = x^2",
+			"\\)",
 			"next line",
 		})
 
