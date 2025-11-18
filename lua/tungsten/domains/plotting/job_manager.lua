@@ -192,7 +192,7 @@ local function apply_output(plot_opts, image_path)
 						if not err or err == "" then
 							err = stdout
 						end
-						error_handler.notify_error("Plot Viewer", "E_VIEWER_FAILED: " .. (err or ""))
+						error_handler.notify_error("Plot Viewer", string.format("%s: %s", error_handler.E_VIEWER_FAILED, err or ""))
 					end
 				end,
 			})

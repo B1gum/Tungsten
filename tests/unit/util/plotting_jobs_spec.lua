@@ -69,6 +69,7 @@ describe("Plotting Job Manager", function()
 			E_CANCELLED = "E_CANCELLED",
 			E_NO_CONTOUR = "E_NO_CONTOUR",
 			E_NO_ISOSURFACE = "E_NO_ISOSURFACE",
+			E_VIEWER_FAILED = "E_VIEWER_FAILED",
 		}
 		notify_error_spy = spy.on(mock_err_handler, "notify_error")
 		package.loaded["tungsten.util.error_handler"] = mock_err_handler

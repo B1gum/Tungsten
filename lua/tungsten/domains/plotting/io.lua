@@ -2,6 +2,7 @@ local lfs = require("lfs")
 local path = require("pl.path")
 local dir = require("pl.dir")
 local ast = require("tungsten.core.ast")
+local error_handler = require("tungsten.util.error_handler")
 
 local M = {}
 
@@ -101,7 +102,7 @@ function M.generate_filename(opts, plot_data)
 end
 
 local E_TEX_ROOT_NOT_FOUND = {
-	code = "E_TEX_ROOT_NOT_FOUND",
+	code = error_handler.E_TEX_ROOT_NOT_FOUND,
 	message = "TeX root file not found. Add a '%!TEX root = <main.tex>' magic comment to your file to help Tungsten locate the main document.",
 }
 
@@ -159,7 +160,7 @@ end
 
 function M.get_output_directory(tex_root_path)
 	if not tex_root_path or tex_root_path == "" then
-		return nil, { code = "E_INVALID_PATH", message = "Invalid TeX root path" }
+		return nil, { code = error_handler.E_BAD_OPTS, message = "Invalid TeX root path" }
 	end
 
 	local base_dir = path.dirname(tex_root_path)

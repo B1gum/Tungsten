@@ -393,7 +393,7 @@ describe("Plot Classification Logic", function()
 
 			local result, err = classification.analyze(series)
 			assert.is_nil(result)
-			assert.are.equal("E_MIXED_DIMENSIONS", err.code)
+			assert.are.equal("E_UNSUPPORTED_DIM", err.code)
 		end)
 
 		it("errors when simple polar equalities are mixed with Cartesian expressions", function()
@@ -457,7 +457,7 @@ describe("Plot Classification Logic", function()
 
 			local result, err = classification.analyze(series)
 			assert.is_nil(result)
-			assert.are.equal("E_MIXED_DIMENSIONS", err.code)
+			assert.are.equal("E_UNSUPPORTED_DIM", err.code)
 		end)
 	end)
 end)

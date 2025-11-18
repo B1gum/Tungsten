@@ -146,10 +146,10 @@ local function merge_classifications(nodes)
 		end
 
 		if combined.dim and res.dim and combined.dim ~= res.dim then
-			return nil, { code = "E_MIXED_DIMENSIONS" }
+			return nil, { code = error_handler.E_UNSUPPORTED_DIM }
 		end
 		if combined.form and res.form and combined.form ~= res.form then
-			return nil, { code = "E_MIXED_COORD_SYS" }
+			return nil, { code = error_handler.E_MIXED_COORD_SYS }
 		end
 
 		for key, value in pairs(res) do

@@ -34,6 +34,7 @@ local function setup_test_environment()
 		"generate_hash",
 	})
 	mock_error_handler = mock_utils.create_empty_mock_module("tungsten.util.error_handler", { "notify_error" })
+	mock_error_handler.E_VIEWER_FAILED = "E_VIEWER_FAILED"
 	mock_state = { persistent_variables = {} }
 	mock_config = {
 		plotting = {

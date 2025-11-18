@@ -172,7 +172,7 @@ function M.handle_output(plot_path)
 	async.run_job({ cmd, plot_path }, {
 		on_exit = function(code, err)
 			if code ~= 0 then
-				error_handler.notify_error("Plot Viewer", "E_VIEWER_FAILED: " .. (err or ""))
+				error_handler.notify_error("Plot Viewer", string.format("%s: %s", error_handler.E_VIEWER_FAILED, err or ""))
 			end
 		end,
 	})
