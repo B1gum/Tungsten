@@ -9,6 +9,26 @@ local special_function_guard = require("tungsten.backends.python.analyzers.speci
 
 local M = setmetatable({}, { __index = base })
 
+local function unsupported_error(message)
+	return {
+		code = error_handler.E_UNSUPPORTED_FORM,
+		message = message,
+	}
+end
+
+local function normalize_error(err, fallback_code)
+	if not err then
+		return nil
+	end
+	if type(err) == "string" then
+		return {
+			code = fallback_code or error_handler.E_BACKEND_CRASH,
+			message = err,
+		}
+	end
+	return err
+end
+
 local function render_ast_to_python(ast)
 	if not ast then
 		return nil
@@ -100,7 +120,7 @@ local function build_explicit_2d_python_code(opts)
 		end
 	end
 	if #exprs == 0 then
-		return nil, nil, "No functions to plot"
+		return nil, nil, unsupported_error("No functions to plot")
 	end
 
 	local indep = series[1] and series[1].independent_vars or {}
@@ -214,7 +234,7 @@ local function build_polar_2d_python_code(opts)
 		end
 	end
 	if #exprs == 0 then
-		return nil, nil, "No polar functions to plot"
+		return nil, nil, unsupported_error("No polar functions to plot")
 	end
 
 	local indep = series[1] and series[1].independent_vars or {}
@@ -255,7 +275,7 @@ local function build_explicit_3d_python_code(opts)
 		end
 	end
 	if #exprs == 0 then
-		return nil, nil, "No functions to plot"
+		return nil, nil, unsupported_error("No functions to plot")
 	end
 
 	local indep = series[1] and series[1].independent_vars or {}
@@ -300,7 +320,7 @@ local function build_implicit_2d_py_code(opts)
 		end
 	end
 	if #exprs == 0 then
-		return nil, nil, "No expressions to plot"
+		return nil, nil, unsupported_error("No expressions to plot")
 	end
 
 	local indep = series[1] and series[1].independent_vars or {}
@@ -342,7 +362,7 @@ local function build_parametric_2d_py_code(opts)
 		end
 	end
 	if #exprs == 0 then
-		return nil, nil, "No parametric expressions"
+		return nil, nil, unsupported_error("No parametric expressions")
 	end
 
 	local tvar = exprs[1].indep[1] or "t"
@@ -385,7 +405,7 @@ local function build_parametric_3d_py_code(opts)
 		end
 	end
 	if #exprs == 0 then
-		return nil, nil, "No parametric expressions"
+		return nil, nil, unsupported_error("No parametric expressions")
 	end
 
 	local indep = series[1] and series[1].independent_vars or {}
@@ -456,7 +476,7 @@ function M.build_plot_code(opts)
 			return build_parametric_2d_py_code(opts)
 		end
 	end
-	return nil, nil, "Unsupported plot form"
+	return nil, nil, unsupported_error("Unsupported plot form")
 end
 
 function M.build_python_script(opts)
@@ -603,13 +623,20 @@ function M.plot_async(opts, callback)
 	logger.debug("Python plot", "plot_async called")
 
 	if not opts.out_path then
-		callback("Missing out_path", nil)
+		callback({
+			code = error_handler.E_BAD_OPTS,
+			message = "Missing out_path",
+		}, nil)
 		return
 	end
 
 	local script, err = M.build_python_script(opts)
 	if not script then
-		callback(err or "Failed to build plot code", nil)
+		local normalized_err = normalize_error(err, error_handler.E_UNSUPPORTED_FORM)
+		callback(normalized_err or {
+			code = error_handler.E_BACKEND_CRASH,
+			message = "Failed to build plot code",
+		}, nil)
 		return
 	end
 
@@ -640,8 +667,9 @@ function M.plot_async(opts, callback)
 				if msg == "" then
 					msg = string.format("python exited with code %d", exit_code)
 				end
+				local error_payload = normalize_error(msg, error_handler.E_BACKEND_CRASH)
 				if callback then
-					callback(msg, nil)
+					callback(error_payload, nil)
 				end
 			end
 		end,

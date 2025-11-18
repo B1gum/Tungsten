@@ -65,6 +65,42 @@ describe("python polar plotting", function()
 		assert.is_nil(err)
 		assert.is_truthy(script:find("projection='polar'", 1, true))
 	end)
+
+	describe("python plot error handling", function()
+		it("returns structured errors when no explicit functions exist", function()
+			local opts = {
+				dim = 2,
+				form = "explicit",
+				series = {},
+			}
+
+			local code, _, err = plot_backend.build_plot_code(opts)
+			assert.is_nil(code)
+			assert.is_table(err)
+			assert.are.same(error_handler.E_UNSUPPORTED_FORM, err.code)
+			assert.are.equal("No functions to plot", err.message)
+		end)
+
+		it("propagates structured build errors through plot_async callbacks", function()
+			local opts = {
+				dim = 2,
+				form = "explicit",
+				out_path = "plot.png",
+				series = {},
+			}
+
+			local received_err, received_stdout = nil, nil
+			plot_backend.plot_async(opts, function(err, stdout)
+				received_err = err
+				received_stdout = stdout
+			end)
+
+			assert.is_table(received_err)
+			assert.are.same(error_handler.E_UNSUPPORTED_FORM, received_err.code)
+			assert.is_nil(received_stdout)
+		end)
+	end)
+
 	describe("python rcParams configuration", function()
 		local ast_stub
 		local original_plotting
