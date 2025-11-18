@@ -106,6 +106,7 @@ describe("Plotting workflow", function()
 			notify_error = spy.new(function() end),
 			E_UNSUPPORTED_FORM = "E_UNSUPPORTED_FORM",
 			E_INVALID_CLASSIFICATION = "E_INVALID_CLASSIFICATION",
+			E_NO_PLOTTABLE_SERIES = "E_NO_PLOTTABLE_SERIES",
 		}
 		package.loaded["tungsten.util.error_handler"] = mock_error_handler
 
@@ -259,6 +260,22 @@ describe("Plotting workflow", function()
 
 		assert.spy(mock_error_handler.notify_error).was.called()
 		assert.spy(mock_job_manager.submit).was_not_called()
+	end)
+
+	it("surfaces E_NO_PLOTTABLE_SERIES when classification omits dimension or series", function()
+		vim.api.nvim_buf_set_name(0, unique_tex_path())
+
+		mock_classification.analyze = spy.new(function()
+			return {
+				form = nil,
+				series = {},
+			}
+		end)
+
+		workflow.run_simple("sin(x)")
+
+		assert.spy(mock_job_manager.submit).was_not_called()
+		assert.spy(mock_error_handler.notify_error)
 	end)
 
 	it("computes advanced plotting context from the visual selection", function()

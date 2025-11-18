@@ -14,6 +14,7 @@ local M = {
 	E_TIMEOUT = "E_TIMEOUT",
 	E_IO = "E_IO",
 	E_INVALID_CLASSIFICATION = "E_INVALID_CLASSIFICATION",
+	E_NO_PLOTTABLE_SERIES = "E_NO_PLOTTABLE_SERIES",
 }
 
 local function calc_line_col(input, pos)

@@ -169,7 +169,11 @@ local function merge_classifications(nodes)
 	end
 
 	if not combined.dim or not combined.form or #combined.series == 0 then
-		return nil, { code = error_handler.E_INVALID_CLASSIFICATION }
+		return nil,
+			{
+				code = error_handler.E_NO_PLOTTABLE_SERIES,
+				message = "Select an expression with a plottable series so Tungsten can detect the dimension and coordinate form.",
+			}
 	end
 
 	return combined
