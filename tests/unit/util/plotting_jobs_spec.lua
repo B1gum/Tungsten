@@ -2,6 +2,7 @@ local mock_utils = require("tests.helpers.mock_utils")
 local wait_for = require("tests.helpers.wait").wait_for
 local spy = require("luassert.spy")
 local stub = require("luassert.stub")
+local match = require("luassert.match")
 
 describe("Plotting Job Manager", function()
 	local JobManager
@@ -174,6 +175,23 @@ describe("Plotting Job Manager", function()
 
 		assert.spy(notify_error_spy).was.called(1)
 		assert.spy(notify_error_spy).was.called_with("TungstenPlot", mock_err_handler.E_NO_CONTOUR)
+	end)
+
+	it("notifies viewer failures when running in viewer-only mode", function()
+		notify_error_spy:clear()
+
+		JobManager.apply_output({
+			bufnr = 0,
+			outputmode = "viewer",
+			format = "png",
+			viewer_cmd_png = "open",
+		}, "/tmp/plot.png")
+
+		assert.are.equal(1, #mock_async.run_job_calls)
+		local opts = mock_async.run_job_calls[1][2]
+		opts.on_exit(127, "", "viewer crashed")
+
+		assert.spy(notify_error_spy).was.called_with("Plot Viewer", match.matches("E_VIEWER_FAILED"))
 	end)
 
 	it("queues jobs beyond the concurrency limit in FIFO order", function()

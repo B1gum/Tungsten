@@ -180,7 +180,17 @@ local function apply_output(plot_opts, image_path)
 			viewer_cmd = plot_opts.viewer_cmd_pdf or (config.plotting or {}).viewer_cmd_pdf
 		end
 		if viewer_cmd and viewer_cmd ~= "" then
-			async.run_job({ viewer_cmd, image_path }, { on_exit = function() end })
+			async.run_job({ viewer_cmd, image_path }, {
+				on_exit = function(code, stdout, stderr)
+					if code ~= 0 then
+						local err = stderr
+						if not err or err == "" then
+							err = stdout
+						end
+						error_handler.notify_error("Plot Viewer", "E_VIEWER_FAILED: " .. (err or ""))
+					end
+				end,
+			})
 		end
 	end
 end

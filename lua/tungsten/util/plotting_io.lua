@@ -34,63 +34,63 @@ local function make_plain_finder(token)
 end
 
 local function is_escaped(line, idx)
-        local backslash_count = 0
-        local pos = idx - 1
-        while pos > 0 and line:sub(pos, pos) == "\\" do
-                backslash_count = backslash_count + 1
-                pos = pos - 1
-        end
-        return backslash_count % 2 == 1
+	local backslash_count = 0
+	local pos = idx - 1
+	while pos > 0 and line:sub(pos, pos) == "\\" do
+		backslash_count = backslash_count + 1
+		pos = pos - 1
+	end
+	return backslash_count % 2 == 1
 end
 
 local function make_single_dollar_finder()
-        return function(line, from)
-                local search_from = from or 1
-                while true do
-                        local start_idx = line:find("$", search_from, true)
-                        if not start_idx then
-                                return nil
-                        end
-                        if not is_escaped(line, start_idx) then
-                                local next_char = line:sub(start_idx + 1, start_idx + 1)
-                                if next_char == "$" and not is_escaped(line, start_idx + 1) then
-                                        search_from = start_idx + 2
-                                else
-                                        return start_idx, start_idx
-                                end
-                        else
-                                search_from = start_idx + 1
-                        end
-                end
-        end
+	return function(line, from)
+		local search_from = from or 1
+		while true do
+			local start_idx = line:find("$", search_from, true)
+			if not start_idx then
+				return nil
+			end
+			if not is_escaped(line, start_idx) then
+				local next_char = line:sub(start_idx + 1, start_idx + 1)
+				if next_char == "$" and not is_escaped(line, start_idx + 1) then
+					search_from = start_idx + 2
+				else
+					return start_idx, start_idx
+				end
+			else
+				search_from = start_idx + 1
+			end
+		end
+	end
 end
 
 local function count_unmatched_single_dollars(line)
-        if not line or line == "" then
-                return 0
-        end
+	if not line or line == "" then
+		return 0
+	end
 
-        local count = 0
-        local search_from = 1
-        while true do
-                local idx = line:find("$", search_from, true)
-                if not idx then
-                        break
-                end
-                if not is_escaped(line, idx) then
-                        local next_char = line:sub(idx + 1, idx + 1)
-                        if next_char == "$" and not is_escaped(line, idx + 1) then
-                                search_from = idx + 2
-                        else
-                                count = count + 1
-                                search_from = idx + 1
-                        end
-                else
-                        search_from = idx + 1
-                end
-        end
+	local count = 0
+	local search_from = 1
+	while true do
+		local idx = line:find("$", search_from, true)
+		if not idx then
+			break
+		end
+		if not is_escaped(line, idx) then
+			local next_char = line:sub(idx + 1, idx + 1)
+			if next_char == "$" and not is_escaped(line, idx + 1) then
+				search_from = idx + 2
+			else
+				count = count + 1
+				search_from = idx + 1
+			end
+		else
+			search_from = idx + 1
+		end
+	end
 
-        return count % 2
+	return count % 2
 end
 
 local function make_env_finder(env)
@@ -109,64 +109,63 @@ end
 local single_dollar_finder = make_single_dollar_finder()
 
 local function build_closers(start_line_text)
-        local closers = {}
-        local added = {}
+	local closers = {}
+	local added = {}
 
-        local function add_closer(key, finder, skip)
-                closers[#closers + 1] = { find = finder, remaining_skip = skip or 0 }
-                added[key] = true
-        end
+	local function add_closer(key, finder, skip)
+		closers[#closers + 1] = { find = finder, remaining_skip = skip or 0 }
+		added[key] = true
+	end
 
-		if start_line_text then
-			if start_line_text:find("\\[", 1, true) then
-				add_closer("\\]", make_plain_finder("\\]"))
-			end
+	if start_line_text then
+		if start_line_text:find("\\[", 1, true) then
+			add_closer("\\]", make_plain_finder("\\]"))
+		end
 
-			if start_line_text:find("\\(", 1, true) then
-				add_closer("\\)", make_plain_finder("\\)"))
-			end
+		if start_line_text:find("\\(", 1, true) then
+			add_closer("\\)", make_plain_finder("\\)"))
+		end
 
-                local env = start_line_text:match("\\begin%s*{%s*([%w%*%-]+)%s*}")
-                if env then
-                        add_closer("\\end{" .. env .. "}", make_env_finder(env))
-                end
+		local env = start_line_text:match("\\begin%s*{%s*([%w%*%-]+)%s*}")
+		if env then
+			add_closer("\\end{" .. env .. "}", make_env_finder(env))
+		end
 
-                if start_line_text:find("$$", 1, true) then
-                        add_closer("$$", make_plain_finder("$$"), 1)
-                end
+		if start_line_text:find("$$", 1, true) then
+			add_closer("$$", make_plain_finder("$$"), 1)
+		end
 
-                local unmatched_inline_dollars = count_unmatched_single_dollars(start_line_text)
-                if unmatched_inline_dollars > 0 then
-                        add_closer("$", single_dollar_finder, unmatched_inline_dollars)
-                end
-        end
+		local unmatched_inline_dollars = count_unmatched_single_dollars(start_line_text)
+		if unmatched_inline_dollars > 0 then
+			add_closer("$", single_dollar_finder, unmatched_inline_dollars)
+		end
+	end
 
-        if not added["\\]"] then
-                add_closer("\\]", make_plain_finder("\\]"))
-        end
+	if not added["\\]"] then
+		add_closer("\\]", make_plain_finder("\\]"))
+	end
 
-        if not added["\\)"] then
-                add_closer("\\)", make_plain_finder("\\)"))
-        end
+	if not added["\\)"] then
+		add_closer("\\)", make_plain_finder("\\)"))
+	end
 
-        if not added["$$"] then
-                add_closer("$$", make_plain_finder("$$"))
-        end
+	if not added["$$"] then
+		add_closer("$$", make_plain_finder("$$"))
+	end
 
-        if not added["$"] then
-                add_closer("$", single_dollar_finder)
-        end
+	if not added["$"] then
+		add_closer("$", single_dollar_finder)
+	end
 
-        for _, env in ipairs(display_envs) do
-                local key = "\\end{" .. env .. "}"
-                if not added[key] then
-                        add_closer(key, make_env_finder(env))
-                end
-        end
+	for _, env in ipairs(display_envs) do
+		local key = "\\end{" .. env .. "}"
+		if not added[key] then
+			add_closer(key, make_env_finder(env))
+		end
+	end
 
-        return closers
+	return closers
 end
-
 
 function M.find_math_block_end(bufnr, start_line)
 	bufnr = bufnr or 0
