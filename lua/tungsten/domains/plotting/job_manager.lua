@@ -107,9 +107,34 @@ end
 
 local _process_queue
 
-local function cleanup_temp(job)
-	if job and job.plot_opts and job.plot_opts.temp_file then
-		pcall(vim.loop.fs_unlink, job.plot_opts.temp_file)
+local function cleanup_temp(job, include_outputs)
+	if not job or not job.plot_opts then
+		return
+	end
+
+	local function unlink(pathname)
+		if pathname and pathname ~= "" then
+			pcall(vim.loop.fs_unlink, pathname)
+		end
+	end
+
+	if job.plot_opts.temp_file then
+		unlink(job.plot_opts.temp_file)
+	end
+
+	if include_outputs then
+		local out_path = job.plot_opts.out_path
+		if out_path and out_path ~= "" then
+			unlink(out_path)
+
+			local format = job.plot_opts.format
+			if format and format ~= "" then
+				local has_extension = out_path:match("%.[^/%.]+$") ~= nil
+				if not has_extension then
+					unlink(string.format("%s.%s", out_path, format))
+				end
+			end
+		end
 	end
 end
 
@@ -210,7 +235,7 @@ local function default_on_success(job, image_path)
 end
 
 local function default_on_error(job, err)
-	cleanup_temp(job)
+	cleanup_temp(job, true)
 
 	local code = err and err.code
 	local msg = err and err.message or ""
@@ -430,7 +455,7 @@ function M.submit(plot_opts, user_on_success, user_on_error)
 			pending_dependency_jobs[job.id] = nil
 
 			if not ok then
-				cleanup_temp(pending_job)
+				cleanup_temp(pending_job, true)
 				if message and not dependency_failure_notified then
 					logger.error("TungstenPlot", message)
 				end
@@ -462,7 +487,7 @@ function M.cancel(job_id)
 
 	for index, job in ipairs(job_queue) do
 		if job.id == job_id then
-			cleanup_temp(job)
+			cleanup_temp(job, true)
 			table.remove(job_queue, index)
 			return true
 		end
@@ -470,7 +495,7 @@ function M.cancel(job_id)
 
 	local pending_job = pending_dependency_jobs[job_id]
 	if pending_job then
-		cleanup_temp(pending_job)
+		cleanup_temp(pending_job, true)
 		pending_dependency_jobs[job_id] = nil
 		return true
 	end
@@ -485,7 +510,7 @@ function M.cancel_all()
 		end
 	end
 	for _, job in ipairs(job_queue) do
-		cleanup_temp(job)
+		cleanup_temp(job, true)
 	end
 	job_queue = {}
 end

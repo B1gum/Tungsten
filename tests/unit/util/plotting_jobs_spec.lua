@@ -195,6 +195,31 @@ describe("Plotting Job Manager", function()
 		assert.spy(notify_error_spy).was.called_with("Plot Viewer", match.matches("E_VIEWER_FAILED"))
 	end)
 
+	it("cleans up temporary and final outputs when a backend fails", function()
+		local temp_file = vim.fn.tempname()
+		vim.fn.writefile({ "tmp" }, temp_file)
+		local out_base = vim.fn.tempname()
+		vim.fn.writefile({ "base" }, out_base)
+		local suffixed = out_base .. ".png"
+		vim.fn.writefile({ "png" }, suffixed)
+
+		JobManager.submit({
+			expression = "explode",
+			bufnr = 0,
+			temp_file = temp_file,
+			out_path = out_base,
+			format = "png",
+		})
+
+		assert.are.equal(1, #mock_async.run_job_calls)
+		local opts = mock_async.run_job_calls[1][2]
+		opts.on_exit(1, "", "backend failed")
+
+		assert.is_nil(vim.loop.fs_stat(temp_file))
+		assert.is_nil(vim.loop.fs_stat(out_base))
+		assert.is_nil(vim.loop.fs_stat(suffixed))
+	end)
+
 	it("normalizes output modes and defaults to latex snippets", function()
 		local bufnr = vim.api.nvim_create_buf(false, true)
 		vim.api.nvim_buf_set_name(bufnr, "/tmp/plotting.tex")
@@ -451,7 +476,7 @@ describe("Plotting Job Manager", function()
 		end
 	end)
 
-	it("cancels all jobs and cleans up queued temp files", function()
+	it("cancels all jobs and cleans up queued artifacts", function()
 		mock_config.max_jobs = 1
 		local handle_cancelled = false
 		local handle = {
@@ -465,12 +490,18 @@ describe("Plotting Job Manager", function()
 
 		local tmp = vim.fn.tempname()
 		vim.fn.writefile({ "tmp" }, tmp)
-		JobManager.submit({ temp_file = tmp, bufnr = 0 })
+		local out_base = vim.fn.tempname()
+		vim.fn.writefile({ "out" }, out_base)
+		local suffixed = out_base .. ".png"
+		vim.fn.writefile({ "fmt" }, suffixed)
+		JobManager.submit({ temp_file = tmp, bufnr = 0, out_path = out_base, format = "png" })
 
 		JobManager.cancel_all()
 
 		assert.is_true(handle_cancelled)
 		assert.is_nil(vim.loop.fs_stat(tmp))
+		assert.is_nil(vim.loop.fs_stat(out_base))
+		assert.is_nil(vim.loop.fs_stat(suffixed))
 	end)
 
 	it("checks dependencies only once before submitting jobs", function()
@@ -487,7 +518,18 @@ describe("Plotting Job Manager", function()
 		end
 		check_deps_spy = spy.on(mock_health, "check_dependencies")
 
-		local id = JobManager.submit({ expression = "fail", bufnr = 0 })
+		local temp_file = vim.fn.tempname()
+		vim.fn.writefile({ "tmp" }, temp_file)
+		local out_file = vim.fn.tempname()
+		vim.fn.writefile({ "out" }, out_file)
+
+		local id = JobManager.submit({
+			expression = "fail",
+			bufnr = 0,
+			temp_file = temp_file,
+			out_path = out_file,
+			format = "pdf",
+		})
 		assert.is_not_nil(id)
 		assert.spy(check_deps_spy).was.called(1)
 		assert.are.equal(0, #mock_async.run_job_calls)
@@ -508,6 +550,9 @@ describe("Plotting Job Manager", function()
 		local second = JobManager.submit({ expression = "another", bufnr = 0 })
 		assert.is_nil(second)
 		assert.spy(check_deps_spy).was.called(1)
+
+		assert.is_nil(vim.loop.fs_stat(temp_file))
+		assert.is_nil(vim.loop.fs_stat(out_file))
 	end)
 
 	it("raises backend unavailable when wolframscript missing", function()
