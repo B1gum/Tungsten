@@ -594,4 +594,46 @@ describe("Plotting Job Manager", function()
 		assert.spy(notify_error_spy).was.called_with("TungstenPlot", mock_err_handler.E_UNSUPPORTED_FORM)
 		assert.are.equal(0, #mock_async.run_job_calls)
 	end)
+
+	it("uses TeX-root-relative snippets when reusing outputs without \\graphicspath", function()
+		local bufnr = vim.api.nvim_create_buf(false, true)
+		local project_dir = vim.fn.tempname()
+		local tex_root = string.format("%s/main.tex", project_dir)
+		vim.api.nvim_buf_set_name(bufnr, tex_root)
+		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "$$ x $$" })
+
+		local set_lines_stub = stub(vim.api, "nvim_buf_set_lines")
+
+		local function cleanup()
+			if set_lines_stub then
+				set_lines_stub:revert()
+				set_lines_stub = nil
+			end
+			if bufnr and vim.api.nvim_buf_is_valid(bufnr) then
+				vim.api.nvim_buf_delete(bufnr, { force = true })
+				bufnr = nil
+			end
+		end
+
+		local ok, err = pcall(function()
+			JobManager.apply_output({
+				bufnr = bufnr,
+				start_line = 0,
+				outputmode = "latex",
+				reused_output = true,
+				uses_graphicspath = false,
+				tex_root = tex_root,
+			}, string.format("%s/tungsten_plots/plot_reuse.pdf", project_dir))
+
+			assert.stub(set_lines_stub).was.called(1)
+			local snippet = set_lines_stub.calls[1].vals[5][1]
+			assert.are.equal("\\includegraphics[width=0.8\\linewidth]{tungsten_plots/plot_reuse}", snippet)
+		end)
+
+		cleanup()
+
+		if not ok then
+			error(err)
+		end
+	end)
 end)

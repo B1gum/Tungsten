@@ -146,7 +146,7 @@ local function apply_output(plot_opts, image_path)
 		local snippet_width = plot_opts.snippet_width or (config.plotting or {}).snippet_width or "0.8\\linewidth"
 
 		local snippet_path
-		if plot_opts.reused_output or plot_opts.uses_graphicspath then
+		if plot_opts.uses_graphicspath then
 			local filename = path.basename(image_path) or image_path
 			local base, ext = path.splitext(filename)
 			local basename = filename
