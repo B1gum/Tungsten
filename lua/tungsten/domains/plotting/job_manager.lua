@@ -138,6 +138,24 @@ local function cleanup_temp(job, include_outputs)
 	end
 end
 
+local function notify_job_cancelled(job)
+	if not job then
+		return
+	end
+
+	local err = {
+		code = -1,
+		exit_code = -1,
+		cancelled = true,
+	}
+
+	if job.on_error then
+		job.on_error(err)
+	else
+		cleanup_temp(job, true)
+	end
+end
+
 local function apply_output(plot_opts, image_path)
 	if not plot_opts then
 		return
@@ -503,16 +521,16 @@ function M.cancel(job_id)
 
 	for index, job in ipairs(job_queue) do
 		if job.id == job_id then
-			cleanup_temp(job, true)
 			table.remove(job_queue, index)
+			notify_job_cancelled(job)
 			return true
 		end
 	end
 
 	local pending_job = pending_dependency_jobs[job_id]
 	if pending_job then
-		cleanup_temp(pending_job, true)
 		pending_dependency_jobs[job_id] = nil
+		notify_job_cancelled(pending_job)
 		return true
 	end
 	return false
@@ -526,9 +544,15 @@ function M.cancel_all()
 		end
 	end
 	for _, job in ipairs(job_queue) do
-		cleanup_temp(job, true)
+		notify_job_cancelled(job)
 	end
 	job_queue = {}
+
+	for job_id, job in pairs(pending_dependency_jobs) do
+		pending_dependency_jobs[job_id] = nil
+		notify_job_cancelled(job)
+	end
+	pending_dependency_jobs = {}
 end
 
 M.active_jobs = active_plot_jobs

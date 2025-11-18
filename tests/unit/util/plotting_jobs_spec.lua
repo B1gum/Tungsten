@@ -440,6 +440,31 @@ describe("Plotting Job Manager", function()
 		assert.spy(on_exit_spy).was.called_with(-1, "", "")
 	end)
 
+	it("invokes error handlers when cancelling queued jobs", function()
+		notify_error_spy:clear()
+		mock_config.max_jobs = 1
+
+		local handle = {
+			cancel = function() end,
+		}
+		mock_async.set_returns(handle)
+
+		JobManager.submit({ expression = "active", bufnr = 0 })
+
+		local received_err
+		local second = JobManager.submit({ expression = "queued", bufnr = 0 }, nil, function(err)
+			received_err = err
+		end)
+
+		local ok = JobManager.cancel(second)
+
+		assert.is_true(ok)
+		assert.is_table(received_err)
+		assert.are.equal(-1, received_err.code)
+		assert.is_true(received_err.cancelled)
+		assert.spy(notify_error_spy).was.called_with("TungstenPlot", mock_err_handler.E_CANCELLED)
+	end)
+
 	it("cancel_all removes deferred jobs before they spawn", function()
 		local exit_spies = {}
 
@@ -556,6 +581,44 @@ describe("Plotting Job Manager", function()
 
 		assert.is_nil(vim.loop.fs_stat(temp_file))
 		assert.is_nil(vim.loop.fs_stat(out_file))
+	end)
+
+	it("invokes error handlers when cancelling jobs waiting on dependencies", function()
+		notify_error_spy:clear()
+		check_deps_spy:clear()
+
+		local dependency_cb
+		mock_health.check_dependencies = function(cb)
+			dependency_cb = cb
+		end
+		check_deps_spy = spy.on(mock_health, "check_dependencies")
+
+		local received_err
+		local id = JobManager.submit({ expression = "pending", bufnr = 0 }, nil, function(err)
+			received_err = err
+		end)
+
+		assert.is_not_nil(id)
+		assert.spy(check_deps_spy).was.called(1)
+
+		local ok = JobManager.cancel(id)
+
+		assert.is_true(ok)
+		assert.is_table(received_err)
+		assert.are.equal(-1, received_err.code)
+		assert.is_true(received_err.cancelled)
+		assert.spy(notify_error_spy).was.called_with("TungstenPlot", mock_err_handler.E_CANCELLED)
+
+		if dependency_cb then
+			dependency_cb({
+				wolframscript = { ok = true },
+				python = { ok = true },
+				matplotlib = { ok = true },
+				sympy = { ok = true },
+			})
+		end
+
+		assert.are.equal(0, #mock_async.run_job_calls)
 	end)
 
 	it("raises backend unavailable when wolframscript missing", function()
