@@ -8,6 +8,22 @@ local options_builder = require("tungsten.domains.plotting.options_builder")
 
 local M = {}
 
+local missing_math_block_warning_shown = false
+
+local function warn_missing_math_block_end()
+	if missing_math_block_warning_shown then
+		return
+	end
+	missing_math_block_warning_shown = true
+	local message =
+		"Tungsten[plotting] Could not find a closing math delimiter; inserting snippet after the current selection."
+	if vim and vim.notify_once then
+		vim.notify_once(message, vim.log.levels.WARN)
+	elseif vim and vim.notify then
+		vim.notify(message, vim.log.levels.WARN)
+	end
+end
+
 local DEPENDENTS_HINT = " (blank or auto to recompute)"
 
 local function strip_dependents_hint(value)
@@ -129,10 +145,12 @@ function M.insert_snippet(bufnr, selection_end_line, plot_path)
 	end
 	local snippet = string.format("\\includegraphics[width=%s]{%s}", width, plot_path)
 	local lines_to_insert = { snippet }
-	local insert_line = selection_end_line
+	local insert_line = selection_end_line + 1
 	if math_block_end ~= nil then
 		insert_line = math_block_end + 1
 		lines_to_insert = { "", snippet }
+	else
+		warn_missing_math_block_end()
 	end
 	vim.api.nvim_buf_set_lines(bufnr, insert_line, insert_line, false, lines_to_insert)
 end
