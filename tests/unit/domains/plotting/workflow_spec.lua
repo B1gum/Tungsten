@@ -107,6 +107,8 @@ describe("Plotting workflow", function()
 			E_UNSUPPORTED_FORM = "E_UNSUPPORTED_FORM",
 			E_INVALID_CLASSIFICATION = "E_INVALID_CLASSIFICATION",
 			E_NO_PLOTTABLE_SERIES = "E_NO_PLOTTABLE_SERIES",
+			E_BAD_OPTS = "E_BAD_OPTS",
+			E_BACKEND_CRASH = "E_BACKEND_CRASH",
 		}
 		package.loaded["tungsten.util.error_handler"] = mock_error_handler
 
@@ -260,6 +262,31 @@ describe("Plotting workflow", function()
 
 		assert.spy(mock_error_handler.notify_error).was.called()
 		assert.spy(mock_job_manager.submit).was_not_called()
+	end)
+
+	it("tags missing simple input as E_BAD_OPTS and surfaces the human message", function()
+		workflow.run_simple("")
+
+		assert
+			.spy(mock_error_handler.notify_error).was
+			.called_with("TungstenPlot", mock_error_handler.E_BAD_OPTS, nil, nil, "Simple plot requires an expression")
+	end)
+
+	it("maps backend command failures to E_BACKEND_CRASH without clobbering the message", function()
+		vim.api.nvim_buf_set_name(0, unique_tex_path())
+
+		mock_backend.plot_async = function(_, cb)
+			backend_calls = backend_calls + 1
+			if cb then
+				cb("Backend exploded")
+			end
+		end
+
+		workflow.run_simple("sin(x)")
+
+		assert
+			.spy(mock_error_handler.notify_error).was
+			.called_with("TungstenPlot", mock_error_handler.E_BACKEND_CRASH, nil, nil, "Backend exploded")
 	end)
 
 	it("surfaces E_NO_PLOTTABLE_SERIES when classification omits dimension or series", function()

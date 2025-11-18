@@ -89,24 +89,34 @@ end
 
 M._show_regenerate_prompt = create_regenerate_prompt
 
-local function notify_error(err, pos, input)
+local DEFAULT_ERROR_CODE = error_handler.E_BAD_OPTS or "E_BAD_OPTS"
+local BACKEND_FAILURE_CODE = error_handler.E_BACKEND_CRASH or "E_BACKEND_CRASH"
+
+local function normalize_error(err)
 	if err == nil then
-		err = "Unknown error"
+		return nil, nil
 	end
-	local code
-	local message
-	if type(err) == "table" then
-		code = err.code
-		message = err.message
+	if type(err) ~= "table" then
+		return nil, tostring(err)
+	end
+	local code = err.code
+	local message = err.message or err.msg or err.error or err.reason
+	if message ~= nil then
+		message = tostring(message)
+	end
+	return code, message
+end
+
+local function notify_error(err, pos, input, fallback_code)
+	local code, message = normalize_error(err)
+	local selected_code = code or fallback_code or DEFAULT_ERROR_CODE
+	local suffix = message
+	if suffix ~= nil and suffix ~= "" then
+		suffix = tostring(suffix)
 	else
-		message = tostring(err)
+		suffix = nil
 	end
-	local error_code = code or message or tostring(err)
-	if code and message then
-		error_handler.notify_error("TungstenPlot", error_code, pos, input, message)
-	else
-		error_handler.notify_error("TungstenPlot", error_code, pos, input)
-	end
+	error_handler.notify_error("TungstenPlot", selected_code, pos, input, suffix)
 end
 
 local function get_selection_range()
@@ -310,7 +320,7 @@ function M.run_simple(text)
 
 	local command, command_opts = capture_backend_command(plot_opts)
 	if not command then
-		notify_error(command_opts)
+		notify_error(command_opts, nil, nil, BACKEND_FAILURE_CODE)
 		return
 	end
 
@@ -407,7 +417,7 @@ function M.run_advanced()
 		local function submit_job()
 			local command, command_opts = capture_backend_command(final_opts)
 			if not command then
-				notify_error(command_opts)
+				notify_error(command_opts, nil, nil, BACKEND_FAILURE_CODE)
 				return
 			end
 
