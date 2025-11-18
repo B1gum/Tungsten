@@ -6,6 +6,7 @@ local plot_io = require("tungsten.domains.plotting.io")
 local job_manager = require("tungsten.domains.plotting.job_manager")
 local error_handler = require("tungsten.util.error_handler")
 local selection = require("tungsten.util.selection")
+local plotting_ui = require("tungsten.ui.plotting")
 
 local M = {}
 
@@ -309,43 +310,62 @@ function M.run_simple(text)
 	end
 
 	local plot_ast = build_plot_ast(parsed.series)
-	local out_path, reused = plot_io.get_final_path(output_dir, plot_opts, { ast = plot_ast })
 
-	if not out_path or out_path == "" then
-		notify_error("Unable to determine output path")
-		return
+	local function continue_with_definitions(symbol_opts)
+		if type(symbol_opts) ~= "table" then
+			symbol_opts = {}
+		end
+		local definitions = symbol_opts.definitions
+		if type(definitions) ~= "table" then
+			definitions = {}
+		end
+
+		plot_opts.definitions = definitions
+
+		local out_path, reused = plot_io.get_final_path(output_dir, plot_opts, {
+			ast = plot_ast,
+			var_defs = definitions,
+		})
+
+		if not out_path or out_path == "" then
+			notify_error("Unable to determine output path")
+			return
+		end
+
+		plot_opts.out_path = out_path
+		plot_opts.reused_output = reused
+		plot_opts.uses_graphicspath = uses_graphicspath
+		plot_opts.tex_root = tex_root
+
+		if reused then
+			job_manager.apply_output(plot_opts, out_path)
+			return
+		end
+
+		local command, command_opts = capture_backend_command(plot_opts)
+		if not command then
+			notify_error(command_opts, nil, nil, BACKEND_FAILURE_CODE)
+			return
+		end
+
+		for i = 1, #command do
+			plot_opts[i] = command[i]
+		end
+
+		if command_opts and command_opts.timeout then
+			plot_opts.timeout_ms = command_opts.timeout
+		end
+
+		job_manager.submit(plot_opts)
 	end
 
-	plot_opts.out_path = out_path
-	plot_opts.reused_output = reused
-	plot_opts.uses_graphicspath = uses_graphicspath
-	plot_opts.tex_root = tex_root
-
-	if reused then
-		job_manager.apply_output(plot_opts, out_path)
-		return
-	end
-
-	local command, command_opts = capture_backend_command(plot_opts)
-	if not command then
-		notify_error(command_opts, nil, nil, BACKEND_FAILURE_CODE)
-		return
-	end
-
-	for i = 1, #command do
-		plot_opts[i] = command[i]
-	end
-
-	if command_opts and command_opts.timeout then
-		plot_opts.timeout_ms = command_opts.timeout
-	end
-
-	job_manager.submit(plot_opts)
+	plotting_ui.handle_undefined_symbols({
+		expression = text,
+		ast = plot_ast,
+	}, continue_with_definitions)
 end
 
 function M.run_advanced()
-	local plotting_ui = require("tungsten.ui.plotting")
-
 	local text = selection.get_visual_selection()
 	if type(text) ~= "string" then
 		text = ""

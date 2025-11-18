@@ -138,6 +138,15 @@ describe("Plotting workflow", function()
 		mock_ui = {
 			start_plot_workflow = spy.new(function() end),
 			open_advanced_config = spy.new(function() end),
+			handle_undefined_symbols = spy.new(function(opts, cb)
+				if type(opts) ~= "table" then
+					opts = {}
+				end
+				opts.definitions = opts.definitions or {}
+				if cb then
+					cb(opts)
+				end
+			end),
 		}
 		package.loaded["tungsten.ui.plotting"] = mock_ui
 
@@ -207,6 +216,35 @@ describe("Plotting workflow", function()
 		assert.spy(mock_job_manager.submit).was_not_called()
 		assert.spy(mock_job_manager.apply_output).was.called(1)
 		assert.spy(mock_io.get_final_path).was.called(1)
+	end)
+
+	it("prompts for definitions when simple plots have undefined symbols", function()
+		vim.api.nvim_buf_set_name(0, unique_tex_path())
+
+		local captured_opts
+		local resolver
+		mock_ui.handle_undefined_symbols = spy.new(function(opts, cb)
+			captured_opts = opts
+			resolver = cb
+		end)
+
+		workflow.run_simple("sin(x)")
+
+		assert.spy(mock_ui.handle_undefined_symbols).was.called(1)
+		assert.are.equal("sin(x)", captured_opts.expression)
+		assert.is_not_nil(captured_opts.ast)
+		assert.spy(mock_job_manager.submit).was_not_called()
+
+		local definitions = { c = { latex = "2" } }
+		assert.is_function(resolver)
+		resolver({ definitions = definitions })
+
+		assert.spy(mock_job_manager.submit).was.called(1)
+		local submitted = mock_job_manager.submit.calls[1].vals[1]
+		assert.are.same(definitions, submitted.definitions)
+
+		local final_plot_data = mock_io.get_final_path.calls[1].vals[3]
+		assert.are.same(definitions, final_plot_data.var_defs)
 	end)
 
 	it("surfaces E_UNSUPPORTED_FORM when Python backend lacks implicit 3D support", function()
