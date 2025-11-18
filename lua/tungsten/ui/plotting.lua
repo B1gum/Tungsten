@@ -128,7 +128,13 @@ function M.start_plot_workflow(opts)
 	opts = opts or {}
 	M.handle_undefined_symbols(opts, function(final_opts)
 		final_opts.on_error = function(code, msg)
-			error_handler.notify_error("Plot Error", string.format("%s: %s", code, msg))
+			local error_code = code or msg or error_handler.E_BACKEND_CRASH
+			local message_suffix = code and msg or nil
+			if message_suffix then
+				error_handler.notify_error("Plot Error", error_code, nil, nil, message_suffix)
+			else
+				error_handler.notify_error("Plot Error", error_code)
+			end
 		end
 		core.initiate_plot(final_opts)
 	end)
@@ -170,9 +176,17 @@ function M.handle_output(plot_path)
 		cmd = "open"
 	end
 	async.run_job({ cmd, plot_path }, {
-		on_exit = function(code, err)
+		on_exit = function(code, stdout, stderr)
 			if code ~= 0 then
-				error_handler.notify_error("Plot Viewer", string.format("%s: %s", error_handler.E_VIEWER_FAILED, err or ""))
+				local err = stderr
+				if not err or err == "" then
+					err = stdout
+				end
+				if err and err ~= "" then
+					error_handler.notify_error("Plot Viewer", error_handler.E_VIEWER_FAILED, nil, nil, err)
+				else
+					error_handler.notify_error("Plot Viewer", error_handler.E_VIEWER_FAILED)
+				end
 			end
 		end,
 	})

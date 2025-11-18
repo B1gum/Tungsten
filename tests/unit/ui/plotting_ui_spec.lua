@@ -172,7 +172,7 @@ describe("Plotting UI and UX", function()
 
 			assert
 				.spy(mock_error_handler.notify_error).was
-				.called_with("Plot Error", "E_EVAL_FAILED: Could not evaluate 'a' to a real number.")
+				.called_with("Plot Error", "E_EVAL_FAILED", nil, nil, "Could not evaluate 'a' to a real number.")
 		end)
 	end)
 
@@ -262,7 +262,9 @@ describe("Plotting UI and UX", function()
 
 			plotting_ui.handle_output("/tmp/plot.pdf")
 
-			assert.spy(mock_error_handler.notify_error).was.called_with("Plot Viewer", match.matches("E_VIEWER_FAILED"))
+			assert
+				.spy(mock_error_handler.notify_error).was
+				.called_with("Plot Viewer", mock_error_handler.E_VIEWER_FAILED, nil, nil, "command not found")
 		end)
 	end)
 

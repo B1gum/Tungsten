@@ -238,9 +238,13 @@ describe("Plotting workflow", function()
 		workflow.run_simple("sin(x)")
 
 		assert.spy(mock_job_manager.submit).was_not_called()
-		assert
-			.spy(mock_error_handler.notify_error).was
-			.called_with("TungstenPlot", mock_error_handler.E_UNSUPPORTED_FORM, nil, nil)
+		assert.spy(mock_error_handler.notify_error).was.called_with(
+			"TungstenPlot",
+			mock_error_handler.E_UNSUPPORTED_FORM,
+			nil,
+			nil,
+			"Implicit 3D plots are not supported by the Python backend"
+		)
 	end)
 
 	it("reports parse errors", function()

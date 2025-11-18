@@ -217,7 +217,11 @@ local function apply_output(plot_opts, image_path)
 						if not err or err == "" then
 							err = stdout
 						end
-						error_handler.notify_error("Plot Viewer", string.format("%s: %s", error_handler.E_VIEWER_FAILED, err or ""))
+						if err and err ~= "" then
+							error_handler.notify_error("Plot Viewer", error_handler.E_VIEWER_FAILED, nil, nil, err)
+						else
+							error_handler.notify_error("Plot Viewer", error_handler.E_VIEWER_FAILED)
+						end
 					end
 				end,
 			})
@@ -249,12 +253,21 @@ local function default_on_error(job, err)
 	elseif code == 124 or msg:lower():find("timeout") then
 		error_code = error_handler.E_TIMEOUT
 	elseif backend_error_code then
-		error_handler.notify_error("TungstenPlot", backend_error_code)
+		if msg and msg ~= "" then
+			error_handler.notify_error("TungstenPlot", backend_error_code, nil, nil, msg)
+		else
+			error_handler.notify_error("TungstenPlot", backend_error_code)
+		end
 		return
 	else
 		error_code = error_handler.E_BACKEND_CRASH
 	end
-	error_handler.notify_error("TungstenPlot", error_code)
+	local message_suffix = (not cancelled and msg ~= "") and msg or nil
+	if message_suffix then
+		error_handler.notify_error("TungstenPlot", error_code, nil, nil, message_suffix)
+	else
+		error_handler.notify_error("TungstenPlot", error_code)
+	end
 end
 
 local function _execute_plot(job)
@@ -414,7 +427,10 @@ function M.submit(plot_opts, user_on_success, user_on_error)
 		if vim.fn.executable(wolfram_path) ~= 1 then
 			error_handler.notify_error(
 				"TungstenPlot",
-				error_handler.E_BACKEND_UNAVAILABLE .. ": Install Wolfram or configure Python backend"
+				error_handler.E_BACKEND_UNAVAILABLE,
+				nil,
+				nil,
+				"Install Wolfram or configure Python backend"
 			)
 			return nil
 		end
@@ -441,7 +457,7 @@ function M.submit(plot_opts, user_on_success, user_on_error)
 		if missing_message then
 			logger.error("TungstenPlot", missing_message)
 		end
-		error_handler.notify_error("TungstenPlot", error_handler.E_BACKEND_UNAVAILABLE, nil, missing_message)
+		error_handler.notify_error("TungstenPlot", error_handler.E_BACKEND_UNAVAILABLE, nil, nil, missing_message)
 		return nil
 	end
 
@@ -460,7 +476,7 @@ function M.submit(plot_opts, user_on_success, user_on_error)
 					logger.error("TungstenPlot", message)
 				end
 				if not dependency_failure_notified then
-					error_handler.notify_error("TungstenPlot", error_handler.E_BACKEND_UNAVAILABLE, nil, message)
+					error_handler.notify_error("TungstenPlot", error_handler.E_BACKEND_UNAVAILABLE, nil, nil, message)
 					dependency_failure_notified = true
 				end
 				return

@@ -38,12 +38,17 @@ function M.format_line_col(input, pos)
 	return string.format("line %d, column %d", line, col)
 end
 
-function M.notify_error(context, error_code, err_pos, input)
+function M.notify_error(context, error_code, err_pos, input, message_suffix)
 	local location_suffix = ""
 	if err_pos and input then
 		location_suffix = " (" .. M.format_line_col(input, err_pos) .. ")"
 	end
-	local message = string.format("Tungsten[%s] %s%s", tostring(context), tostring(error_code), location_suffix)
+	local human_message = ""
+	if message_suffix and tostring(message_suffix) ~= "" then
+		human_message = ": " .. tostring(message_suffix)
+	end
+	local message =
+		string.format("Tungsten[%s] %s%s%s", tostring(context), tostring(error_code), location_suffix, human_message)
 	if vim and vim.notify then
 		vim.schedule(function()
 			vim.notify(message, vim.log.levels.ERROR)

@@ -39,6 +39,22 @@ describe("util.error_handler.notify_error", function()
 		assert.spy(notify_spy).was.called_with("Tungsten[Ctx] Err", _G.vim.log.levels.ERROR)
 	end)
 
+	it("appends a message suffix when provided", function()
+		local notify_spy = spy.new(function() end)
+		local schedule_spy = spy.new(function(fn)
+			fn()
+		end)
+
+		_G.vim.notify = notify_spy
+		_G.vim.schedule = schedule_spy
+
+		error_handler = require("tungsten.util.error_handler")
+		error_handler.notify_error("Ctx", "Err", nil, nil, "More context")
+
+		assert.spy(schedule_spy).was.called(1)
+		assert.spy(notify_spy).was.called_with("Tungsten[Ctx] Err: More context", _G.vim.log.levels.ERROR)
+	end)
+
 	it("falls back to print when vim.notify is absent", function()
 		local print_spy = spy.new(function() end)
 		local schedule_spy = spy.new(function(fn)

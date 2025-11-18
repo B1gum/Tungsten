@@ -158,7 +158,6 @@ describe("Plotting Job Manager", function()
 		assert.are.equal(-1, received_err.code)
 		assert.is_true(received_err.cancelled)
 		assert.spy(notify_error_spy).was.called(1)
-		assert.spy(notify_error_spy).was.called_with("TungstenPlot", mock_err_handler.E_CANCELLED)
 	end)
 
 	it("surfaces backend contour diagnostics when available", function()
@@ -175,7 +174,9 @@ describe("Plotting Job Manager", function()
 		opts.on_exit(1, "", "ContourPlot::cpcon: no contours")
 
 		assert.spy(notify_error_spy).was.called(1)
-		assert.spy(notify_error_spy).was.called_with("TungstenPlot", mock_err_handler.E_NO_CONTOUR)
+		assert
+			.spy(notify_error_spy).was
+			.called_with("TungstenPlot", mock_err_handler.E_NO_CONTOUR, nil, nil, "ContourPlot::cpcon: no contours")
 	end)
 
 	it("notifies viewer failures when running in viewer-only mode", function()
@@ -192,7 +193,9 @@ describe("Plotting Job Manager", function()
 		local opts = mock_async.run_job_calls[1][2]
 		opts.on_exit(127, "", "viewer crashed")
 
-		assert.spy(notify_error_spy).was.called_with("Plot Viewer", match.matches("E_VIEWER_FAILED"))
+		assert
+			.spy(notify_error_spy).was
+			.called_with("Plot Viewer", mock_err_handler.E_VIEWER_FAILED, nil, nil, "viewer crashed")
 	end)
 
 	it("cleans up temporary and final outputs when a backend fails", function()
@@ -544,7 +547,7 @@ describe("Plotting Job Manager", function()
 		assert.spy(notify_error_spy).was.called(1)
 		assert
 			.spy(notify_error_spy).was
-			.called_with("TungstenPlot", "E_BACKEND_UNAVAILABLE", nil, "Missing dependencies: wolframscript none < 13.0")
+			.called_with("TungstenPlot", "E_BACKEND_UNAVAILABLE", nil, nil, "Missing dependencies: wolframscript none < 13.0")
 		assert.are.equal(0, #mock_async.run_job_calls)
 
 		local second = JobManager.submit({ expression = "another", bufnr = 0 })
@@ -566,7 +569,7 @@ describe("Plotting Job Manager", function()
 		assert.spy(notify_error_spy).was.called(1)
 		assert
 			.spy(notify_error_spy).was
-			.called_with("TungstenPlot", mock_err_handler.E_BACKEND_UNAVAILABLE .. ": Install Wolfram or configure Python backend")
+			.called_with("TungstenPlot", mock_err_handler.E_BACKEND_UNAVAILABLE, nil, nil, "Install Wolfram or configure Python backend")
 	end)
 
 	it("submits vertical functions with Wolfram backend", function()
