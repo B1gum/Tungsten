@@ -78,62 +78,120 @@ describe("Plotting UI and UX", function()
 	before_each(setup_test_environment)
 
 	describe("Undefined Symbol Prompt", function()
-		local original_vim_ui_input
+		local original_api
+		local mock_bufnr = 30
+		local mock_winid = 40
+		local autocmds
+		local buffer_lines
+
+		local function register_autocmd(event, opts)
+			table.insert(autocmds, { event = event, callback = opts.callback })
+		end
+
+		local function trigger_autocmd(event)
+			for _, entry in ipairs(autocmds) do
+				if entry.event == event and entry.callback then
+					entry.callback()
+				end
+			end
+		end
 
 		before_each(function()
-			original_vim_ui_input = vim.ui.input
+			autocmds = {}
+			buffer_lines = {}
+			original_api = {
+				nvim_create_buf = vim.api.nvim_create_buf,
+				nvim_buf_set_lines = vim.api.nvim_buf_set_lines,
+				nvim_buf_set_option = vim.api.nvim_buf_set_option,
+				nvim_open_win = vim.api.nvim_open_win,
+				nvim_create_autocmd = vim.api.nvim_create_autocmd,
+				nvim_buf_get_lines = vim.api.nvim_buf_get_lines,
+				nvim_buf_is_valid = vim.api.nvim_buf_is_valid,
+				nvim_buf_delete = vim.api.nvim_buf_delete,
+			}
+			vim.api.nvim_create_buf = stub.new(vim.api, "nvim_create_buf", function()
+				return mock_bufnr
+			end)
+			vim.api.nvim_buf_set_lines = stub.new(vim.api, "nvim_buf_set_lines", function(_, _, _, _, lines)
+				buffer_lines = vim.deepcopy(lines)
+			end)
+			vim.api.nvim_buf_set_option = stub.new(vim.api, "nvim_buf_set_option")
+			vim.api.nvim_open_win = stub.new(vim.api, "nvim_open_win", function()
+				return mock_winid
+			end)
+			vim.api.nvim_create_autocmd = stub.new(vim.api, "nvim_create_autocmd", register_autocmd)
+			vim.api.nvim_buf_get_lines = stub.new(vim.api, "nvim_buf_get_lines", function()
+				return vim.deepcopy(buffer_lines)
+			end)
+			vim.api.nvim_buf_is_valid = stub.new(vim.api, "nvim_buf_is_valid", function()
+				return true
+			end)
+			vim.api.nvim_buf_delete = stub.new(vim.api, "nvim_buf_delete")
 		end)
 
 		after_each(function()
-			vim.ui.input = original_vim_ui_input
+			vim.api.nvim_create_buf = original_api.nvim_create_buf
+			vim.api.nvim_buf_set_lines = original_api.nvim_buf_set_lines
+			vim.api.nvim_buf_set_option = original_api.nvim_buf_set_option
+			vim.api.nvim_open_win = original_api.nvim_open_win
+			vim.api.nvim_create_autocmd = original_api.nvim_create_autocmd
+			vim.api.nvim_buf_get_lines = original_api.nvim_buf_get_lines
+			vim.api.nvim_buf_is_valid = original_api.nvim_buf_is_valid
+			vim.api.nvim_buf_delete = original_api.nvim_buf_delete
 		end)
 
-		it("should prompt the user to define values for undefined variables", function()
+		it("should open a floating buffer listing undefined variables", function()
 			mock_plotting_core.get_undefined_symbols:returns({
 				{ name = "a", type = "variable" },
 				{ name = "b", type = "variable" },
+				{ name = "f(x)", type = "function" },
 			})
-			vim.ui.input = stub.new(vim.ui, "input", function(opts, on_confirm)
-				on_confirm(nil)
-			end)
 
 			plotting_ui.handle_undefined_symbols({}, function() end)
 
-			assert.spy(vim.ui.input).was.called(1)
-			local prompt_opts = vim.ui.input.calls[1].vals[1]
-			assert.truthy(prompt_opts.prompt:find("Define symbols for plot:"))
-			assert.truthy(prompt_opts.default:find("a = "))
-			assert.truthy(prompt_opts.default:find("b = "))
+			assert.spy(vim.api.nvim_create_buf).was.called(1)
+			assert.spy(vim.api.nvim_open_win).was.called(1)
+			local prompt_lines = vim.api.nvim_buf_set_lines.calls[1].vals[5]
+			assert.are.same("Variables:", prompt_lines[1])
+			assert.are.same("a:", prompt_lines[2])
+			assert.are.same("b:", prompt_lines[3])
+			assert.are.same("Functions:", prompt_lines[#prompt_lines - 1])
+			assert.are.same("f(x):=", prompt_lines[#prompt_lines])
+			assert.spy(vim.api.nvim_buf_set_option).was.called_with(mock_bufnr, "filetype", "tex")
 		end)
 
 		it("should first apply persistent variables before prompting", function()
 			mock_state.persistent_variables = { a = "5" }
-			mock_plotting_core.get_undefined_symbols:returns({ { name = "b", type = "variable" } })
-			vim.ui.input = stub.new(vim.ui, "input", function(_, on_confirm)
-				on_confirm(nil)
-			end)
+			mock_plotting_core.get_undefined_symbols:returns({
+				{ name = "a", type = "variable" },
+				{ name = "b", type = "variable" },
+			})
 
 			plotting_ui.handle_undefined_symbols({}, function() end)
 
-			assert.spy(vim.ui.input).was.called(1)
-			local prompt_default = vim.ui.input.calls[1].vals[1].default
-			assert.falsy(prompt_default:find("a ="))
-			assert.truthy(prompt_default:find("b = "))
+			local prompt_lines = vim.api.nvim_buf_set_lines.calls[1].vals[5]
+			assert.same({ "Variables:", "b:" }, prompt_lines)
 		end)
 
-		it("should parse definitions from the user input", function()
+		it("should parse definitions from the floating buffer contents", function()
 			mock_plotting_core.get_undefined_symbols:returns({
 				{ name = "a", type = "variable" },
-				{ name = "f", type = "function" },
+				{ name = "f(x)", type = "function" },
 			})
 
-			vim.ui.input = stub.new(vim.ui, "input", function(_, on_confirm)
-				on_confirm("a = 10\nf(x) := x^2")
-			end)
-
 			local callback_spy = spy.new()
+			local user_lines = {
+				"Variables:",
+				"a: 10",
+				"",
+				"Functions:",
+				"f(x):= x^2",
+			}
 
 			plotting_ui.handle_undefined_symbols({}, callback_spy)
+			buffer_lines = user_lines
+
+			trigger_autocmd("BufWipeout")
 
 			assert.spy(callback_spy).was.called(1)
 			local definitions = callback_spy.calls[1].vals[1]
@@ -142,17 +200,29 @@ describe("Plotting UI and UX", function()
 			assert.are.same("x^2", definitions["f(x)"].latex)
 		end)
 
+		it("should only show each undefined symbol once", function()
+			mock_plotting_core.get_undefined_symbols:returns({
+				{ name = "a", type = "variable" },
+				{ name = "a", type = "variable" },
+				{ name = "g(x)", type = "function" },
+				{ name = "g(x)", type = "function" },
+			})
+
+			plotting_ui.handle_undefined_symbols({}, function() end)
+
+			local prompt_lines = vim.api.nvim_buf_set_lines.calls[1].vals[5]
+			assert.are.same({ "Variables:", "a:", "", "Functions:", "g(x):=" }, prompt_lines)
+		end)
 		it("should include one-time definitions in the options passed for hashing and plotting", function()
 			local callback_spy = spy.new(function(plot_opts)
 				mock_plotting_core.initiate_plot(plot_opts)
 			end)
 			mock_plotting_core.get_undefined_symbols:returns({ { name = "k", type = "variable" } })
 
-			vim.ui.input = stub.new(vim.ui, "input", function(_, on_confirm)
-				on_confirm("k = 9.8")
-			end)
-
 			plotting_ui.handle_undefined_symbols({ original_ast = "some_ast" }, callback_spy)
+			buffer_lines = { "Variables:", "k: 9.8" }
+
+			trigger_autocmd("BufWipeout")
 
 			assert.spy(mock_plotting_core.initiate_plot).was.called(1)
 			local final_plot_opts = mock_plotting_core.initiate_plot.calls[1].vals[1]

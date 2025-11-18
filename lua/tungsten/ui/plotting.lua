@@ -70,6 +70,64 @@ local function parse_definitions(input)
 	return defs
 end
 
+local function normalize_buffer_lines(lines)
+	local cleaned = {}
+	for _, line in ipairs(lines or {}) do
+		local trimmed = vim.trim(line)
+		if trimmed ~= "" and not trimmed:match("^Variables:?$") and not trimmed:match("^Functions:?$") then
+			if not trimmed:match(":?=") then
+				local replaced, substitutions = trimmed:gsub(":%s*", ":=", 1)
+				if substitutions == 0 then
+					replaced = trimmed .. ":="
+				end
+				trimmed = replaced
+			end
+			table.insert(cleaned, trimmed)
+		end
+	end
+	if #cleaned == 0 then
+		return nil
+	end
+	return table.concat(cleaned, "\n")
+end
+
+local function populate_symbol_buffer(symbols)
+	local seen = {}
+	local variables, functions = {}, {}
+	for _, sym in ipairs(symbols) do
+		local name = sym.name
+		if name and name ~= "" and not seen[name] then
+			seen[name] = true
+			if sym.type == "function" then
+				table.insert(functions, name)
+			else
+				table.insert(variables, name)
+			end
+		end
+	end
+
+	local lines = {}
+	if #variables > 0 then
+		table.insert(lines, "Variables:")
+		for _, name in ipairs(variables) do
+			table.insert(lines, string.format("%s:", name))
+		end
+	end
+	if #functions > 0 then
+		if #lines > 0 then
+			table.insert(lines, "")
+		end
+		table.insert(lines, "Functions:")
+		for _, name in ipairs(functions) do
+			table.insert(lines, string.format("%s:=", name))
+		end
+	end
+	if #lines == 0 then
+		lines = { "Variables:" }
+	end
+	return lines
+end
+
 function M.handle_undefined_symbols(opts, callback)
 	opts = opts or {}
 	local definitions = {}
@@ -100,16 +158,42 @@ function M.handle_undefined_symbols(opts, callback)
 		return
 	end
 
-	local lines = {}
-	for _, sym in ipairs(to_define) do
-		lines[#lines + 1] = sym.name .. " = "
-	end
-	local default = table.concat(lines, "\n")
+	local bufnr = vim.api.nvim_create_buf(false, true)
+	local lines = populate_symbol_buffer(to_define)
+	vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+	vim.api.nvim_buf_set_option(bufnr, "filetype", "tex")
+	vim.api.nvim_buf_set_option(bufnr, "buftype", "acwrite")
+	vim.api.nvim_buf_set_option(bufnr, "bufhidden", "wipe")
+	vim.api.nvim_buf_set_option(bufnr, "swapfile", false)
 
-	vim.ui.input({ prompt = "Define symbols for plot:", default = default }, function(user_input)
-		local parsed = parse_definitions(user_input)
-		for name, def in pairs(parsed) do
-			definitions[name] = def
+	local width = 0
+	for _, line in ipairs(lines) do
+		width = math.max(width, #line)
+	end
+	width = math.max(width + 4, 40)
+	local height = math.max(#lines, 3)
+	vim.api.nvim_open_win(bufnr, true, {
+		relative = "editor",
+		width = width,
+		height = height,
+		row = 1,
+		col = 1,
+		border = "rounded",
+	})
+
+	local resolved = false
+	local function finalize_definitions()
+		if resolved then
+			return
+		end
+		resolved = true
+		local buffer_lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+		local normalized = normalize_buffer_lines(buffer_lines)
+		if normalized then
+			local parsed = parse_definitions(normalized)
+			for name, def in pairs(parsed) do
+				definitions[name] = def
+			end
 		end
 		if next(opts) ~= nil then
 			opts.definitions = definitions
@@ -121,7 +205,23 @@ function M.handle_undefined_symbols(opts, callback)
 				callback(definitions)
 			end
 		end
-	end)
+	end
+
+	vim.api.nvim_create_autocmd("BufWriteCmd", {
+		buffer = bufnr,
+		once = true,
+		callback = function()
+			finalize_definitions()
+			if vim.api.nvim_buf_is_valid(bufnr) then
+				vim.api.nvim_buf_delete(bufnr, { force = true })
+			end
+		end,
+	})
+
+	vim.api.nvim_create_autocmd("BufWipeout", {
+		buffer = bufnr,
+		callback = finalize_definitions,
+	})
 end
 
 function M.start_plot_workflow(opts)
