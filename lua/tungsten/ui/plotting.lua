@@ -80,26 +80,50 @@ local function parse_definitions(input)
 end
 
 local function parse_numeric_result(result)
-	if type(result) == "number" then
-		return result
-	end
-	if type(result) ~= "string" then
-		return nil
-	end
-	local trimmed = vim.trim(result)
-	if trimmed == "" then
-		return nil
-	end
-	trimmed = trimmed:gsub("\\,", "")
-	trimmed = trimmed:gsub("\\!", "")
-	trimmed = trimmed:gsub("\\;", "")
-	trimmed = trimmed:gsub("%s+", "")
-	local numeric = tonumber(trimmed)
-	if numeric then
-		return numeric
-	end
-	local mantissa, exponent = trimmed:match("^([%+%-]?[%d%.]+)\\times10%^{([%+%-]?%d+)}$")
-	if not mantissa then
+        if type(result) == "number" then
+                return result
+        end
+        if type(result) ~= "string" then
+                return nil
+        end
+        local trimmed = vim.trim(result)
+        if trimmed == "" then
+                return nil
+        end
+        trimmed = trimmed:gsub("\\,", "")
+        trimmed = trimmed:gsub("\\!", "")
+        trimmed = trimmed:gsub("\\;", "")
+        trimmed = trimmed:gsub("%s+", "")
+        local numeric = tonumber(trimmed)
+        if numeric then
+                return numeric
+        end
+        local tuple_body = trimmed:match("^\\left%((.+)\\right%)$")
+                or trimmed:match("^%((.+)%)$")
+        if tuple_body then
+                local components = vim.split(tuple_body, ",", { plain = true, trimempty = false })
+                if #components == 3 then
+                        local tuple = {}
+                        for _, component in ipairs(components) do
+                                if component == nil or component == "" then
+                                        return nil
+                                end
+                                local value = parse_numeric_result(component)
+                                if type(value) ~= "number" then
+                                        return nil
+                                end
+                                table.insert(tuple, value)
+                        end
+                        return tuple
+                else
+                        return nil
+                end
+        end
+        local mantissa, exponent = trimmed:match("^([%+%-]?[%d%.]+)\\times10%^{([%+%-]?%d+)}$")
+        if not mantissa then
+                mantissa, exponent = trimmed:match("^([%+%-]?[%d%.]+)\\cdot10%^{([%+%-]?%d+)}$")
+        end
+        if not mantissa then
 		mantissa, exponent = trimmed:match("^([%+%-]?[%d%.]+)\\cdot10%^{([%+%-]?%d+)}$")
 	end
 	if not mantissa then
@@ -122,17 +146,19 @@ local function parse_numeric_result(result)
 	return nil
 end
 
-local function evaluate_definition(name, latex, handler)
-	if not latex or vim.trim(latex) == "" then
-		handler(false, error_handler.E_BAD_OPTS, string.format("Definition for '%s' cannot be empty.", tostring(name)))
-		return
-	end
-	local ok, parsed_or_err = pcall(parser.parse, latex, { simple_mode = true })
-	if not ok or not parsed_or_err then
-		handler(
-			false,
-			error_handler.E_BAD_OPTS,
-			string.format("Failed to parse definition for '%s': %s", tostring(name), tostring(parsed_or_err))
+local function evaluate_definition(name, entry, handler)
+        entry = entry or {}
+        local latex = entry.latex
+        if not latex or vim.trim(latex) == "" then
+                handler(false, error_handler.E_BAD_OPTS, string.format("Definition for '%s' cannot be empty.", tostring(name)))
+                return
+        end
+        local ok, parsed_or_err = pcall(parser.parse, latex, { simple_mode = true })
+        if not ok or not parsed_or_err then
+                handler(
+                        false,
+                        error_handler.E_BAD_OPTS,
+                        string.format("Failed to parse definition for '%s': %s", tostring(name), tostring(parsed_or_err))
 		)
 		return
 	end
@@ -149,13 +175,32 @@ local function evaluate_definition(name, latex, handler)
 			)
 			return
 		end
-		local numeric_value = parse_numeric_result(result)
-		if not numeric_value then
-			handler(false, error_handler.E_BAD_OPTS, string.format("Could not evaluate '%s' to a real number.", name))
-			return
-		end
-		handler(true, numeric_value)
-	end)
+                local numeric_value = parse_numeric_result(result)
+                local requires_point3 = entry.requires_point3
+                if requires_point3 then
+                        if type(numeric_value) ~= "table" then
+                                handler(false, error_handler.E_BAD_OPTS, "3D points must be (x,y,z)")
+                                return
+                        end
+                        if #numeric_value ~= 3 then
+                                handler(false, error_handler.E_BAD_OPTS, "3D points must be (x,y,z)")
+                                return
+                        end
+                        for _, component in ipairs(numeric_value) do
+                                if type(component) ~= "number" then
+                                        handler(false, error_handler.E_BAD_OPTS, "3D points must be (x,y,z)")
+                                        return
+                                end
+                        end
+                        handler(true, numeric_value)
+                        return
+                end
+                if type(numeric_value) ~= "number" then
+                        handler(false, error_handler.E_BAD_OPTS, string.format("Could not evaluate '%s' to a real number.", name))
+                        return
+                end
+                handler(true, numeric_value)
+        end)
 end
 
 local function evaluate_definitions(defs, on_success, on_failure)
@@ -209,7 +254,7 @@ local function evaluate_definitions(defs, on_success, on_failure)
 		end
 		local name = names[index]
 		local entry = defs[name]
-		evaluate_definition(name, entry.latex, function(ok, value_or_code, err_msg)
+		evaluate_definition(name, entry, function(ok, value_or_code, err_msg)
 			if not ok then
 				local dependency_symbol
 				if type(err_msg) == "string" and err_msg:lower():find("unknown symbol", 1, true) then
@@ -296,21 +341,49 @@ local function populate_symbol_buffer(symbols)
 	return lines
 end
 
-function M.handle_undefined_symbols(opts, callback)
-	opts = opts or {}
-	local definitions = {}
-	for name, val in pairs(state.persistent_variables or {}) do
-		definitions[name] = { latex = val }
-	end
+local function symbol_requires_point3(sym)
+        if type(sym) ~= "table" then
+                return false
+        end
+        if sym.requires_point3 ~= nil then
+                return sym.requires_point3
+        end
+        local symbol_type = sym.type or sym.kind or ""
+        local dim = sym.point_dim or sym.dimension or sym.dim or sym.expected_dim
+        if type(symbol_type) == "string" then
+                local lowered = symbol_type:lower()
+                if lowered == "point3" or lowered == "point_3d" or lowered == "point3d" then
+                        return true
+                end
+                if (lowered == "point" or lowered == "points" or lowered == "point_variable") and dim == 3 then
+                        return true
+                end
+                if lowered:find("point", 1, true) and dim == 3 then
+                        return true
+                end
+        end
+        return false
+end
 
-	local _, undefined = core.get_undefined_symbols(opts)
-	undefined = undefined or {}
-	local to_define = {}
-	for _, sym in ipairs(undefined) do
-		if not definitions[sym.name] then
-			table.insert(to_define, sym)
-		end
-	end
+function M.handle_undefined_symbols(opts, callback)
+        opts = opts or {}
+        local definitions = {}
+        local point3_requirements = {}
+        for name, val in pairs(state.persistent_variables or {}) do
+                definitions[name] = { latex = val }
+        end
+
+        local _, undefined = core.get_undefined_symbols(opts)
+        undefined = undefined or {}
+        local to_define = {}
+        for _, sym in ipairs(undefined) do
+                if not definitions[sym.name] then
+                        table.insert(to_define, sym)
+                end
+                if sym.name and symbol_requires_point3(sym) then
+                        point3_requirements[sym.name] = true
+                end
+        end
 
 	if #to_define == 0 then
 		if next(opts) ~= nil then
@@ -369,11 +442,19 @@ function M.handle_undefined_symbols(opts, callback)
 		end
 		resolved = true
 		local buffer_lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-		local normalized = normalize_buffer_lines(buffer_lines)
-		local parsed
-		if normalized then
-			parsed = parse_definitions(normalized)
-		end
+                local normalized = normalize_buffer_lines(buffer_lines)
+                local parsed
+                if normalized then
+                        parsed = parse_definitions(normalized)
+                end
+
+                if parsed then
+                        for name, def in pairs(parsed) do
+                                if name ~= "__order" and point3_requirements[name] then
+                                        def.requires_point3 = true
+                                end
+                        end
+                end
 
 		local function apply_and_dispatch()
 			if parsed then

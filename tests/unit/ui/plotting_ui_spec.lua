@@ -323,25 +323,56 @@ describe("Plotting UI and UX", function()
 			assert.are.equal(9.8, final_plot_opts.definitions.k.value)
 		end)
 
-		it("should notify error if evaluating a definition does not yield a real number", function()
-			mock_plotting_core.get_undefined_symbols:returns({ { name = "c", type = "variable" } })
-			local callback_spy = spy.new()
-			plotting_ui.handle_undefined_symbols({}, callback_spy)
-			buffer_lines = { "Variables:", "c: 2" }
-			eval_overrides["2"] = { output = "1 + i" }
+                it("should notify error if evaluating a definition does not yield a real number", function()
+                        mock_plotting_core.get_undefined_symbols:returns({ { name = "c", type = "variable" } })
+                        local callback_spy = spy.new()
+                        plotting_ui.handle_undefined_symbols({}, callback_spy)
+                        buffer_lines = { "Variables:", "c: 2" }
+                        eval_overrides["2"] = { output = "1 + i" }
 
-			trigger_autocmd("BufWipeout")
+                        trigger_autocmd("BufWipeout")
 
-			assert
-				.spy(mock_error_handler.notify_error).was
-				.called_with("Plot Definitions", "E_BAD_OPTS", nil, nil, "Could not evaluate 'c' to a real number.")
-			assert.spy(callback_spy).was_not.called()
-		end)
+                        assert
+                                .spy(mock_error_handler.notify_error).was
+                                .called_with("Plot Definitions", "E_BAD_OPTS", nil, nil, "Could not evaluate 'c' to a real number.")
+                        assert.spy(callback_spy).was_not.called()
+                end)
 
-		it("should notify error if no backend is active when evaluating definitions", function()
-			backend_available = false
-			local callback_spy = spy.new()
-			mock_plotting_core.get_undefined_symbols:returns({ { name = "d", type = "variable" } })
+                it("should accept LaTeX tuples for required 3D points", function()
+                        local callback_spy = spy.new()
+                        mock_plotting_core.get_undefined_symbols:returns({ { name = "p0", type = "point", dim = 3 } })
+
+                        plotting_ui.handle_undefined_symbols({}, callback_spy)
+                        buffer_lines = { "Variables:", "p0: (1,2,3)" }
+                        eval_overrides["(1,2,3)"] = { output = "\\left(1,2,3\\right)" }
+
+                        trigger_autocmd("BufWipeout")
+
+                        assert.spy(callback_spy).was.called(1)
+                        local definitions = callback_spy.calls[1].vals[1]
+                        assert.is_table(definitions.p0.value)
+                        assert.are.same({ 1, 2, 3 }, definitions.p0.value)
+                end)
+
+                it("should reject malformed tuples for required 3D points", function()
+                        local callback_spy = spy.new()
+                        mock_plotting_core.get_undefined_symbols:returns({ { name = "p1", type = "point", dim = 3 } })
+
+                        plotting_ui.handle_undefined_symbols({}, callback_spy)
+                        buffer_lines = { "Variables:", "p1: (1,2)" }
+                        eval_overrides["(1,2)"] = { output = "(1,2)" }
+
+                        trigger_autocmd("BufWipeout")
+
+                        assert.spy(mock_error_handler.notify_error)
+                                .was.called_with("Plot Definitions", mock_error_handler.E_BAD_OPTS, nil, nil, "3D points must be (x,y,z)")
+                        assert.spy(callback_spy).was_not.called()
+                end)
+
+                it("should notify error if no backend is active when evaluating definitions", function()
+                        backend_available = false
+                        local callback_spy = spy.new()
+                        mock_plotting_core.get_undefined_symbols:returns({ { name = "d", type = "variable" } })
 
 			plotting_ui.handle_undefined_symbols({}, callback_spy)
 			buffer_lines = { "Variables:", "d: 3" }
