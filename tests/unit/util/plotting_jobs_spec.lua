@@ -194,6 +194,63 @@ describe("Plotting Job Manager", function()
 		assert.spy(notify_error_spy).was.called_with("Plot Viewer", match.matches("E_VIEWER_FAILED"))
 	end)
 
+	it("normalizes output modes and defaults to latex snippets", function()
+		local bufnr = vim.api.nvim_create_buf(false, true)
+		vim.api.nvim_buf_set_name(bufnr, "/tmp/plotting.tex")
+		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "$$ f(x) $$" })
+
+		local set_lines_stub = stub(vim.api, "nvim_buf_set_lines")
+
+		local function cleanup()
+			if set_lines_stub then
+				set_lines_stub:revert()
+				set_lines_stub = nil
+			end
+			if bufnr and vim.api.nvim_buf_is_valid(bufnr) then
+				vim.api.nvim_buf_delete(bufnr, { force = true })
+				bufnr = nil
+			end
+		end
+
+		local ok, err = pcall(function()
+			JobManager.apply_output({
+				bufnr = bufnr,
+				start_line = 0,
+			}, "/tmp/plot-default.pdf")
+
+			assert.stub(set_lines_stub).was.called(1)
+			assert.are.equal(0, #mock_async.run_job_calls)
+
+			JobManager.apply_output({
+				bufnr = bufnr,
+				start_line = 0,
+				outputmode = "VIEWER",
+				format = "png",
+				viewer_cmd_png = "open",
+			}, "/tmp/plot-viewer.png")
+
+			assert.stub(set_lines_stub).was.called(1)
+			assert.are.equal(1, #mock_async.run_job_calls)
+
+			JobManager.apply_output({
+				bufnr = bufnr,
+				start_line = 0,
+				outputmode = "BoTh",
+				format = "png",
+				viewer_cmd_png = "open",
+			}, "/tmp/plot-both.png")
+
+			assert.stub(set_lines_stub).was.called(2)
+			assert.are.equal(2, #mock_async.run_job_calls)
+		end)
+
+		cleanup()
+
+		if not ok then
+			error(err)
+		end
+	end)
+
 	it("queues jobs beyond the concurrency limit in FIFO order", function()
 		mock_config.max_jobs = 1
 		local order = {}

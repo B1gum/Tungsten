@@ -119,7 +119,12 @@ local function apply_output(plot_opts, image_path)
 	end
 
 	local bufnr = plot_opts.bufnr or vim.api.nvim_get_current_buf()
-	local outputmode = plot_opts.outputmode or "Latex"
+	local outputmode = plot_opts.outputmode
+	if type(outputmode) == "string" then
+		outputmode = string.lower(outputmode)
+	else
+		outputmode = "latex"
+	end
 
 	if outputmode == "latex" or outputmode == "both" then
 		local start_line = plot_opts.start_line or 0

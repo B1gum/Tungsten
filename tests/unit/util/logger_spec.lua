@@ -3,6 +3,7 @@
 local logger_module
 local vim_notify_spy
 local original_print
+local original_schedule
 local spy = require("luassert.spy")
 local mock_utils = require("tests.helpers.mock_utils")
 
@@ -12,6 +13,7 @@ describe("util.logger", function()
 		vim_notify_spy = spy.new(function() end)
 		_G.vim = _G.vim or {}
 		_G.vim.notify = vim_notify_spy
+		original_schedule = _G.vim.schedule
 		_G.vim.schedule = function(fn)
 			fn()
 		end
@@ -23,6 +25,7 @@ describe("util.logger", function()
 
 	after_each(function()
 		_G.print = original_print
+		_G.vim.schedule = original_schedule
 	end)
 
 	it("info() calls vim.notify with INFO level", function()
