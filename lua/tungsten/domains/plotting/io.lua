@@ -104,6 +104,24 @@ local function build_signature(opts, plot_data)
 		parts[#parts + 1] = ast.canonical(plot_data.ast)
 	end
 
+	local classification = plot_data.classification
+	if classification and type(classification.series) == "table" then
+		local series_parts = {}
+		for _, series in ipairs(classification.series) do
+			local normalized = {}
+			for key, value in pairs(series) do
+				if key == "ast" and value then
+					normalized.ast = ast.canonical(value)
+				else
+					normalized[key] = value
+				end
+			end
+			series_parts[#series_parts + 1] = serialize(normalized)
+		end
+		table.sort(series_parts)
+		parts[#parts + 1] = table.concat(series_parts, ";")
+	end
+
 	if plot_data.variables then
 		parts[#parts + 1] = serialize(plot_data.variables)
 	elseif plot_data.var_defs then
