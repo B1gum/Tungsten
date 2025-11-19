@@ -217,6 +217,32 @@ describe("Plotting UI and UX", function()
 			assert.spy(vim.api.nvim_buf_set_option).was.called_with(mock_bufnr, "filetype", "tex")
 		end)
 
+		it("should open the prompt when core detection finds new symbols", function()
+			local real_core = dofile("lua/tungsten/core/plotting.lua")
+			mock_plotting_core.get_undefined_symbols = spy.new(function(symbol_opts)
+				return real_core.get_undefined_symbols(symbol_opts)
+			end)
+
+			local ast = {
+				type = "function_call",
+				name_node = { type = "variable", name = "sin" },
+				args = {
+					{
+						type = "binary",
+						operator = "*",
+						left = { type = "variable", name = "k" },
+						right = { type = "variable", name = "x" },
+					},
+				},
+			}
+
+			plotting_ui.handle_undefined_symbols({ ast = ast }, function() end)
+
+			assert.spy(vim.api.nvim_create_buf).was.called(1)
+			local prompt_lines = vim.api.nvim_buf_set_lines.calls[1].vals[5]
+			assert.are.same("k:", prompt_lines[2])
+		end)
+
 		it("should first apply persistent variables before prompting", function()
 			mock_state.persistent_variables = { a = "5" }
 			mock_plotting_core.get_undefined_symbols:returns({
