@@ -303,6 +303,27 @@ local function _execute_plot(job)
 	local bufnr = job.plot_opts.bufnr or vim.api.nvim_get_current_buf()
 	local row = job.plot_opts.end_line or job.plot_opts.start_line or 0
 	local col = job.plot_opts.end_col or job.plot_opts.start_col or 0
+
+	local line_count = vim.api.nvim_buf_line_count(bufnr)
+	if line_count < 1 then
+		line_count = 1
+	end
+	if row < 0 then
+		row = 0
+	elseif row > line_count then
+		row = line_count
+	end
+	if row == line_count then
+		col = 0
+	else
+		local line_text = vim.api.nvim_buf_get_lines(bufnr, row, row + 1, false)[1] or ""
+		local max_col = #line_text
+		if col < 0 then
+			col = 0
+		elseif col > max_col then
+			col = max_col
+		end
+	end
 	local frame_index = 1
 	local extmark_id = vim.api.nvim_buf_set_extmark(bufnr, spinner_ns, row, col, {
 		virt_text = { { spinner_frames[frame_index] } },

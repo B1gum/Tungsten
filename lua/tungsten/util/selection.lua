@@ -16,15 +16,57 @@ function M.create_selection_extmarks()
 	local start_col = start_pos[3] - 1
 	local end_col = end_pos[3]
 
-	local line_len = #(vim.api.nvim_buf_get_lines(bufnr, end_line, end_line + 1, false)[1] or "")
-	if end_col > line_len then
-		end_col = line_len
+	local line_count = vim.api.nvim_buf_line_count(bufnr)
+	if line_count < 1 then
+		line_count = 1
 	end
+
+	local function clamp_line(line, allow_endpoint)
+		if allow_endpoint then
+			if line < 0 then
+				return 0
+			end
+			if line > line_count then
+				return line_count
+			end
+			return line
+		end
+		if line < 0 then
+			return 0
+		end
+		if line >= line_count then
+			return line_count - 1
+		end
+		return line
+	end
+
+	local function clamp_col(line, col)
+		if line < 0 then
+			line = 0
+		end
+		if line >= line_count then
+			return 0
+		end
+		local text = vim.api.nvim_buf_get_lines(bufnr, line, line + 1, false)[1] or ""
+		local max_col = #text
+		if col < 0 then
+			return 0
+		end
+		if col > max_col then
+			return max_col
+		end
+		return col
+	end
+
+	start_line = clamp_line(start_line, false)
+	end_line = clamp_line(end_line, false)
+	start_col = clamp_col(start_line, start_col)
+	end_col = clamp_col(end_line, end_col)
 
 	if mode == "V" then
 		start_col = 0
 		end_col = 0
-		end_line = end_line + 1
+		end_line = clamp_line(end_line + 1, true)
 	end
 
 	local start_id = vim.api.nvim_buf_set_extmark(bufnr, state.ns, start_line, start_col, { right_gravity = false })

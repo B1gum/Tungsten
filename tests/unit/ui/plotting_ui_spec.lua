@@ -413,7 +413,7 @@ describe("Plotting UI and UX", function()
 
 			assert
 				.spy(set_lines_spy).was
-				.called_with(bufnr, 3, 3, false, { "", "\\includegraphics[width=0.8\\linewidth]{plots/myplot_123}" })
+				.called_with(bufnr, 3, 3, false, { "\\includegraphics[width=0.8\\linewidth]{plots/myplot_123}" })
 			set_lines_spy:revert()
 		end)
 
