@@ -65,6 +65,27 @@ describe("wolfram plot option translation", function()
 		assert.is_truthy(code:match("%{-5, 5%}"))
 	end)
 
+	it("unwraps Equality nodes before rendering explicit plots", function()
+		ast_stub:revert()
+		local equality_error = "Equality node leaked to renderer"
+		ast_stub = stub(executor, "ast_to_code", function(ast)
+			if type(ast) == "table" and ast.type == "Equality" then
+				error(equality_error)
+			end
+			if type(ast) == "table" and ast.__code then
+				return ast.__code
+			end
+			return "expr"
+		end)
+
+		local opts = build_base_opts()
+		opts.series[1].ast = { type = "Equality", rhs = { __code = "2*x" } }
+
+		local code, err = wolfram_plot.build_plot_code(opts)
+		assert.is_nil(err)
+		assert.is_truthy(code:find("Plot[2*x", 1, true))
+	end)
+
 	it("uses the matching axis range for x = f(y) plots", function()
 		local opts = build_base_opts({
 			xrange = { -1, 1 },

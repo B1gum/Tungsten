@@ -24,7 +24,7 @@ end
 function M.check_dependencies_command()
 	health.check_dependencies(function(report)
 		local required_versions = {
-			wolframscript = "13.0",
+			wolframscript = "1.10.0",
 			python = "3.10",
 			numpy = "1.23",
 			sympy = "1.12",

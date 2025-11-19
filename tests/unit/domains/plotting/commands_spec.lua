@@ -366,7 +366,7 @@ describe("Tungsten Plotting Commands", function()
 			mock_health_checker.check_dependencies = function(cb)
 				vim.schedule(function()
 					cb({
-						wolframscript = { ok = false, message = "required 13.0+, found none" },
+						wolframscript = { ok = false, message = "required 1.10.0+, found none" },
 						python = { ok = true, version = "3.10.0" },
 						numpy = { ok = true, version = "1.23.0" },
 						sympy = { ok = true, version = "1.12" },

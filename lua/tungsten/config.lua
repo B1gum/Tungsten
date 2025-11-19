@@ -3,7 +3,7 @@
 
 local config = {
 	numeric_mode = false,
-	debug = false,
+	debug = true,
 	log_level = "INFO",
 	cache_enabled = true,
 	cache_max_entries = 100,

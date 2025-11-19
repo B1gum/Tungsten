@@ -11,9 +11,9 @@ local handlers_initialized = false
 local domain_aliases = { plotting = "plot" }
 
 local function _process_domain_handlers(domain_name, registry)
-local module_name = domain_aliases[domain_name] or domain_name
-local handler_module_path = "tungsten.backends.python.domains." .. module_name
-local ok, domain_module = pcall(require, handler_module_path)
+	local module_name = domain_aliases[domain_name] or domain_name
+	local handler_module_path = "tungsten.backends.python.domains." .. module_name
+	local ok, domain_module = pcall(require, handler_module_path)
 
 	if ok and domain_module and domain_module.handlers then
 		local domain_priority = registry.get_domain_priority(domain_name)

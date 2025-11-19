@@ -662,7 +662,7 @@ describe("Plotting Job Manager", function()
 		assert.are.equal(0, #mock_async.run_job_calls)
 
 		dependency_cb({
-			wolframscript = { ok = false, message = "required 13.0+, found none" },
+			wolframscript = { ok = false, message = "required 1.10.0+, found none" },
 			python = { ok = true },
 			numpy = { ok = true },
 			matplotlib = { ok = true },
@@ -672,7 +672,7 @@ describe("Plotting Job Manager", function()
 		assert.spy(notify_error_spy).was.called(1)
 		assert
 			.spy(notify_error_spy).was
-			.called_with("TungstenPlot", "E_BACKEND_UNAVAILABLE", nil, nil, "Missing dependencies (wolfram): wolframscript none < 13.0")
+			.called_with("TungstenPlot", "E_BACKEND_UNAVAILABLE", nil, nil, "Missing dependencies (wolfram): wolframscript none < 1.10.0")
 		assert.are.equal(0, #mock_async.run_job_calls)
 
 		local second = JobManager.submit({ expression = "another", bufnr = 0 })
@@ -740,7 +740,7 @@ describe("Plotting Job Manager", function()
 		assert.are.equal(0, #mock_async.run_job_calls)
 
 		dependency_cb({
-			wolframscript = { ok = false, message = "required 13.0+, found none" },
+			wolframscript = { ok = false, message = "required 1.10.0+, found none" },
 			python = { ok = true },
 			numpy = { ok = true },
 			sympy = { ok = true },
@@ -753,7 +753,7 @@ describe("Plotting Job Manager", function()
 
 		assert
 			.spy(notify_error_spy).was
-			.called_with("TungstenPlot", "E_BACKEND_UNAVAILABLE", nil, nil, "Missing dependencies (wolfram): wolframscript none < 13.0")
+			.called_with("TungstenPlot", "E_BACKEND_UNAVAILABLE", nil, nil, "Missing dependencies (wolfram): wolframscript none < 1.10.0")
 	end)
 
 	it("invokes error handlers when cancelling jobs waiting on dependencies", function()

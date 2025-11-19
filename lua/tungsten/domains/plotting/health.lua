@@ -128,7 +128,7 @@ end
 local function start_check(callback)
 	local report = {}
 
-	report.wolframscript = evaluate_version(nil, "13.0")
+	report.wolframscript = evaluate_version(nil, "1.10.0")
 	report.python = evaluate_version(nil, "3.10")
 	report.numpy = evaluate_version(nil, "1.23")
 	report.sympy = evaluate_version(nil, "1.12")
@@ -148,7 +148,7 @@ local function start_check(callback)
 		run_system({ "wolframscript", "-version" }, {}, function(obj)
 			if obj.code == 0 then
 				local version = (obj.stdout or ""):match("%d+%.%d+%.?%d*")
-				report.wolframscript = evaluate_version(version, "13.0")
+				report.wolframscript = evaluate_version(version, "1.10.0")
 			end
 			finish()
 		end)

@@ -18,6 +18,48 @@ describe("python polar plotting", function()
 		end)
 	end)
 
+	describe("python explicit plotting", function()
+		local ast_stub
+
+		before_each(function()
+			ast_stub = stub(executor, "ast_to_code", function(ast)
+				if type(ast) == "table" and ast.type == "Equality" then
+					error("Equality node leaked to python renderer")
+				end
+				if type(ast) == "table" and ast.__code then
+					return ast.__code
+				end
+				return "expr"
+			end)
+		end)
+
+		after_each(function()
+			if ast_stub then
+				ast_stub:revert()
+			end
+		end)
+
+		it("unwraps Equality nodes before rendering", function()
+			local opts = {
+				dim = 2,
+				form = "explicit",
+				xrange = { -1, 1 },
+				samples = 50,
+				series = {
+					{
+						kind = "function",
+						ast = { type = "Equality", rhs = { __code = "2*x" } },
+						independent_vars = { "x" },
+					},
+				},
+			}
+
+			local code, _, err = plot_backend.build_plot_code(opts)
+			assert.is_nil(err)
+			assert.is_truthy(code:find("2*x", 1, true))
+		end)
+	end)
+
 	after_each(function()
 		if ast_stub then
 			ast_stub:revert()

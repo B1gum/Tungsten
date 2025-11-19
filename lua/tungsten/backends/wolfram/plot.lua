@@ -32,6 +32,21 @@ end
 
 local axis_keys = { "x", "y", "z" }
 
+local function is_equality_node(ast)
+	if type(ast) ~= "table" then
+		return false
+	end
+	local t = ast.type
+	return t == "equality" or t == "Equality"
+end
+
+local function unwrap_equality_rhs(ast)
+	if is_equality_node(ast) and ast.rhs then
+		return ast.rhs
+	end
+	return ast
+end
+
 local function axis_marked_for_clip(opts, axis_name, axis_var)
 	local clip_axes = opts.clip_axes
 	if type(clip_axes) == "table" then
@@ -281,10 +296,7 @@ local function build_explicit_code(opts)
 	local functions = {}
 	for _, s in ipairs(series) do
 		if s.kind == "function" then
-			local ast = s.ast
-			if ast and ast.type == "equality" and ast.rhs then
-				ast = ast.rhs
-			end
+			local ast = unwrap_equality_rhs(s.ast)
 			local code = render_ast_to_wolfram(ast)
 			if code then
 				table.insert(functions, code)
@@ -467,10 +479,7 @@ local function extract_polar_expression(ast)
 	if ast.r then
 		return ast.r
 	end
-	if ast.type == "equality" and ast.rhs then
-		return ast.rhs
-	end
-	return ast
+	return unwrap_equality_rhs(ast)
 end
 
 local function build_polar_code(opts)
