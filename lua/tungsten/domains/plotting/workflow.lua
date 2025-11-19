@@ -10,86 +10,6 @@ local plotting_ui = require("tungsten.ui.plotting")
 
 local M = {}
 
-local function create_regenerate_prompt(on_confirm, on_cancel)
-	local prompt_text = "Regenerate? [y/n]"
-	local buf = vim.api.nvim_create_buf(false, true)
-	vim.api.nvim_buf_set_lines(buf, 0, -1, false, { prompt_text })
-	vim.api.nvim_buf_set_option(buf, "modifiable", false)
-	vim.api.nvim_buf_set_option(buf, "bufhidden", "wipe")
-	vim.api.nvim_buf_set_option(buf, "filetype", "tungsten_prompt")
-
-	local width = math.max(#prompt_text + 2, 18)
-	local height = 1
-	local row = math.floor((vim.o.lines - height) / 2)
-	local col = math.floor((vim.o.columns - width) / 2)
-
-	local prev_win = vim.api.nvim_get_current_win()
-	local win = vim.api.nvim_open_win(buf, true, {
-		relative = "editor",
-		width = width,
-		height = height,
-		row = row,
-		col = col,
-		border = "rounded",
-		style = "minimal",
-	})
-
-	local closed = false
-
-	local function close_window()
-		if closed then
-			return
-		end
-		closed = true
-		if win and vim.api.nvim_win_is_valid(win) then
-			pcall(vim.api.nvim_win_close, win, true)
-		end
-		if prev_win and vim.api.nvim_win_is_valid(prev_win) then
-			pcall(vim.api.nvim_set_current_win, prev_win)
-		end
-	end
-
-	local function confirm()
-		if closed then
-			return
-		end
-		close_window()
-		if on_confirm then
-			on_confirm()
-		end
-	end
-
-	local function cancel()
-		if closed then
-			return
-		end
-		close_window()
-		if on_cancel then
-			on_cancel()
-		end
-	end
-
-	vim.keymap.set("n", "y", confirm, { buffer = buf, nowait = true, noremap = true, silent = true })
-	vim.keymap.set("n", "Y", confirm, { buffer = buf, nowait = true, noremap = true, silent = true })
-	for _, key in ipairs({ "n", "N", "<Esc>", "q" }) do
-		vim.keymap.set("n", key, cancel, { buffer = buf, nowait = true, noremap = true, silent = true })
-	end
-
-	vim.api.nvim_create_autocmd("WinClosed", {
-		once = true,
-		pattern = tostring(win),
-		callback = function(args)
-			if tonumber(args.match) == win then
-				cancel()
-			end
-		end,
-	})
-
-	return { buf = buf, win = win }
-end
-
-M._show_regenerate_prompt = create_regenerate_prompt
-
 local DEFAULT_ERROR_CODE = error_handler.E_BAD_OPTS or "E_BAD_OPTS"
 local BACKEND_FAILURE_CODE = error_handler.E_BACKEND_CRASH or "E_BACKEND_CRASH"
 
@@ -322,7 +242,7 @@ function M.run_simple(text)
 
 		plot_opts.definitions = definitions
 
-		local out_path, reused = plot_io.get_final_path(output_dir, plot_opts, {
+		local out_path = plot_io.get_final_path(output_dir, plot_opts, {
 			ast = plot_ast,
 			var_defs = definitions,
 		})
@@ -333,14 +253,8 @@ function M.run_simple(text)
 		end
 
 		plot_opts.out_path = out_path
-		plot_opts.reused_output = reused
 		plot_opts.uses_graphicspath = uses_graphicspath
 		plot_opts.tex_root = tex_root
-
-		if reused then
-			job_manager.apply_output(plot_opts, out_path)
-			return
-		end
 
 		local command, command_opts = capture_backend_command(plot_opts)
 		if not command then
@@ -427,7 +341,7 @@ function M.run_advanced()
 			return
 		end
 
-		local out_path, reused = plot_io.get_final_path(output_dir, final_opts, {
+		local out_path = plot_io.get_final_path(output_dir, final_opts, {
 			ast = final_opts.ast,
 			var_defs = final_opts.definitions,
 		})
@@ -438,7 +352,6 @@ function M.run_advanced()
 		end
 
 		final_opts.out_path = out_path
-		final_opts.reused_output = reused
 		final_opts.uses_graphicspath = uses_graphicspath
 		final_opts.tex_root = tex_root
 
@@ -460,14 +373,7 @@ function M.run_advanced()
 			job_manager.submit(final_opts)
 		end
 
-		if reused then
-			local prompt_handler = M._show_regenerate_prompt or create_regenerate_prompt
-			prompt_handler(submit_job, function()
-				job_manager.apply_output(final_opts, out_path)
-			end, final_opts)
-		else
-			submit_job()
-		end
+		submit_job()
 	end
 
 	plotting_ui.open_advanced_config({

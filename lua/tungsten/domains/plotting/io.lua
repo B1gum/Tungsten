@@ -5,10 +5,54 @@ local error_handler = require("tungsten.util.error_handler")
 
 local M = {}
 
-local sequential_counter = 0
+local sequential_counters = {}
+local fallback_counter = 0
 
-function M.generate_filename(opts)
+local function determine_next_available(dir_path)
+	local max_index = 0
+
+	if not dir_path or dir_path == "" then
+		return 1
+	end
+
+	local ok = pcall(function()
+		for entry in lfs.dir(dir_path) do
+			if entry ~= "." and entry ~= ".." then
+				local number = entry:match("^plot_(%d+)")
+				if number then
+					local value = tonumber(number)
+					if value and value > max_index then
+						max_index = value
+					end
+				end
+			end
+		end
+	end)
+
+	if not ok then
+		return 1
+	end
+
+	return max_index + 1
+end
+
+local function next_sequential_value(dir_path)
+	if dir_path and dir_path ~= "" then
+		local next_value = sequential_counters[dir_path]
+		if not next_value then
+			next_value = determine_next_available(dir_path)
+		end
+		sequential_counters[dir_path] = next_value + 1
+		return next_value
+	end
+
+	fallback_counter = fallback_counter + 1
+	return fallback_counter
+end
+
+function M.generate_filename(opts, context)
 	opts = opts or {}
+	context = context or {}
 	local mode = opts.filename_mode or "sequential"
 
 	if mode == "timestamp" then
@@ -16,8 +60,8 @@ function M.generate_filename(opts)
 		return "plot_" .. stamp
 	end
 
-	sequential_counter = sequential_counter + 1
-	return string.format("plot_%03d", sequential_counter)
+	local seq = next_sequential_value(context.output_dir)
+	return string.format("plot_%03d", seq)
 end
 
 local E_TEX_ROOT_NOT_FOUND = {
@@ -126,17 +170,14 @@ function M.get_final_path(output_dir, opts, plot_data)
 	opts = opts or {}
 	plot_data = plot_data or {}
 
-	local base = M.generate_filename(opts, plot_data)
+	local base = M.generate_filename(opts, {
+		output_dir = output_dir,
+		plot_data = plot_data,
+	})
 	local ext = opts.format or "pdf"
 	local final_path = path.normpath(path.join(output_dir, base .. "." .. ext))
-	local reused = false
 
-	local attr = lfs.attributes(final_path)
-	if attr and attr.mode == "file" then
-		reused = true
-	end
-
-	return final_path, reused
+	return final_path
 end
 
 function M.write_atomically(final_path, image_data)
