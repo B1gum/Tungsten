@@ -91,6 +91,7 @@ describe("Plotting Job Manager", function()
 				cb({
 					wolframscript = { ok = true },
 					python = { ok = true },
+					numpy = { ok = true },
 					matplotlib = { ok = true },
 					sympy = { ok = true },
 				})
@@ -435,6 +436,7 @@ describe("Plotting Job Manager", function()
 		dependency_cb({
 			wolframscript = { ok = true },
 			python = { ok = true },
+			numpy = { ok = true },
 			matplotlib = { ok = true },
 			sympy = { ok = true },
 		})
@@ -662,6 +664,7 @@ describe("Plotting Job Manager", function()
 		dependency_cb({
 			wolframscript = { ok = false, message = "required 13.0+, found none" },
 			python = { ok = true },
+			numpy = { ok = true },
 			matplotlib = { ok = true },
 			sympy = { ok = true },
 		})
@@ -669,7 +672,7 @@ describe("Plotting Job Manager", function()
 		assert.spy(notify_error_spy).was.called(1)
 		assert
 			.spy(notify_error_spy).was
-			.called_with("TungstenPlot", "E_BACKEND_UNAVAILABLE", nil, nil, "Missing dependencies: wolframscript none < 13.0")
+			.called_with("TungstenPlot", "E_BACKEND_UNAVAILABLE", nil, nil, "Missing dependencies (wolfram): wolframscript none < 13.0")
 		assert.are.equal(0, #mock_async.run_job_calls)
 
 		local second = JobManager.submit({ expression = "another", bufnr = 0 })
@@ -677,7 +680,80 @@ describe("Plotting Job Manager", function()
 		assert.spy(check_deps_spy).was.called(1)
 
 		assert.is_nil(vim.loop.fs_stat(temp_file))
+
 		assert.is_nil(vim.loop.fs_stat(out_file))
+	end)
+
+	it("permits Wolfram jobs when Python dependencies are missing", function()
+		notify_error_spy:clear()
+		check_deps_spy:clear()
+		local dependency_cb
+		mock_health.check_dependencies = function(cb)
+			dependency_cb = cb
+		end
+		check_deps_spy = spy.on(mock_health, "check_dependencies")
+
+		local wolfram_id = JobManager.submit({ expression = "wolfram-ok", bufnr = 0, backend = "wolfram" })
+		local python_id = JobManager.submit({ expression = "python-fail", bufnr = 0, backend = "python" })
+
+		assert.is_not_nil(wolfram_id)
+		assert.is_not_nil(python_id)
+		assert.spy(check_deps_spy).was.called(1)
+		assert.are.equal(0, #mock_async.run_job_calls)
+
+		dependency_cb({
+			wolframscript = { ok = true },
+			python = { ok = false, message = "required 3.10+, found none" },
+			numpy = { ok = false, message = "required 1.23+, found none" },
+			sympy = { ok = false, message = "required 1.12+, found none" },
+			matplotlib = { ok = false, message = "required 3.6+, found none" },
+		})
+
+		wait_for(function()
+			return #mock_async.run_job_calls == 1
+		end, 500)
+
+		assert.spy(notify_error_spy).was.called_with(
+			"TungstenPlot",
+			"E_BACKEND_UNAVAILABLE",
+			nil,
+			nil,
+			"Missing dependencies (python): python none < 3.10, numpy none < 1.23, sympy none < 1.12, matplotlib none < 3.6"
+		)
+	end)
+
+	it("permits Python jobs when Wolfram dependencies are missing", function()
+		notify_error_spy:clear()
+		check_deps_spy:clear()
+		local dependency_cb
+		mock_health.check_dependencies = function(cb)
+			dependency_cb = cb
+		end
+		check_deps_spy = spy.on(mock_health, "check_dependencies")
+
+		local wolfram_id = JobManager.submit({ expression = "wolfram-fail", bufnr = 0, backend = "wolfram" })
+		local python_id = JobManager.submit({ expression = "python-ok", bufnr = 0, backend = "python" })
+
+		assert.is_not_nil(wolfram_id)
+		assert.is_not_nil(python_id)
+		assert.spy(check_deps_spy).was.called(1)
+		assert.are.equal(0, #mock_async.run_job_calls)
+
+		dependency_cb({
+			wolframscript = { ok = false, message = "required 13.0+, found none" },
+			python = { ok = true },
+			numpy = { ok = true },
+			sympy = { ok = true },
+			matplotlib = { ok = true },
+		})
+
+		wait_for(function()
+			return #mock_async.run_job_calls == 1
+		end, 500)
+
+		assert
+			.spy(notify_error_spy).was
+			.called_with("TungstenPlot", "E_BACKEND_UNAVAILABLE", nil, nil, "Missing dependencies (wolfram): wolframscript none < 13.0")
 	end)
 
 	it("invokes error handlers when cancelling jobs waiting on dependencies", function()
@@ -710,6 +786,7 @@ describe("Plotting Job Manager", function()
 			dependency_cb({
 				wolframscript = { ok = true },
 				python = { ok = true },
+				numpy = { ok = true },
 				matplotlib = { ok = true },
 				sympy = { ok = true },
 			})
