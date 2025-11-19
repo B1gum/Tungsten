@@ -32,6 +32,43 @@ end
 
 local axis_keys = { "x", "y", "z" }
 
+local function resolve_figsize_inches(figsize)
+	if type(figsize) ~= "table" then
+		return nil, nil
+	end
+
+	local width = figsize[1] or figsize.width or figsize.w
+	local height = figsize[2] or figsize.height or figsize.h
+
+	width = tonumber(width)
+	height = tonumber(height)
+
+	if width and width <= 0 then
+		width = nil
+	end
+	if height and height <= 0 then
+		height = nil
+	end
+
+	return width, height
+end
+
+local function inches_to_points(value)
+	if not value then
+		return nil
+	end
+	return math.floor(value * 72 + 0.5)
+end
+
+local function axes_for_plot_range(opts)
+	if not opts or not opts.dim or opts.dim <= 1 then
+		return { "x" }
+	elseif opts.dim >= 3 then
+		return { "x", "y", "z" }
+	end
+	return { "x", "y" }
+end
+
 local function is_equality_node(ast)
 	if type(ast) ~= "table" then
 		return false
@@ -146,24 +183,34 @@ local function translate_opts_to_wolfram(opts)
 	maybe_add_plot_range("zrange", "z", "z")
 
 	local ordered = {}
-	for _, axis_name in ipairs(axis_keys) do
-		if plot_ranges[axis_name] then
-			table.insert(ordered, plot_ranges[axis_name])
+	local axes_to_emit = axes_for_plot_range(opts)
+	local has_range = false
+	for _, axis_name in ipairs(axes_to_emit) do
+		local range = plot_ranges[axis_name]
+		if range then
+			has_range = true
+			ordered[#ordered + 1] = range
+		else
+			ordered[#ordered + 1] = "Automatic"
 		end
 	end
-	if #ordered > 0 then
+	if has_range then
 		table.insert(res, "PlotRange -> {" .. table.concat(ordered, ", ") .. "}")
 	end
 
-	if opts.aspect then
+	local aspect = opts.aspect
+	if aspect == "auto" then
+		aspect = nil
+	end
+	if aspect then
 		if opts.dim == 3 then
-			if opts.aspect == "equal" then
+			if aspect == "equal" then
 				table.insert(res, "BoxRatios -> {1,1,1}")
 			else
 				table.insert(res, "BoxRatios -> Automatic")
 			end
 		else
-			if opts.aspect == "equal" then
+			if aspect == "equal" then
 				table.insert(res, "AspectRatio -> 1")
 			else
 				table.insert(res, "AspectRatio -> Automatic")
@@ -180,9 +227,14 @@ local function translate_opts_to_wolfram(opts)
 	end
 
 	if opts.figsize_in then
-		local w = math.floor((opts.figsize_in[1] or 0) * 72 + 0.5)
-		local h = math.floor((opts.figsize_in[2] or 0) * 72 + 0.5)
-		table.insert(res, string.format("ImageSize -> {%d, %d}", w, h))
+		local width_in, height_in = resolve_figsize_inches(opts.figsize_in)
+		local width_pt = inches_to_points(width_in)
+		local height_pt = inches_to_points(height_in)
+		if width_pt or height_pt then
+			local width_str = width_pt and tostring(width_pt) or "Automatic"
+			local height_str = height_pt and tostring(height_pt) or "Automatic"
+			table.insert(res, string.format("ImageSize -> {%s, %s}", width_str, height_str))
+		end
 	end
 
 	if opts.crop then

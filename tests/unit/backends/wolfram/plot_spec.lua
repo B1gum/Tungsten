@@ -65,6 +65,49 @@ describe("wolfram plot option translation", function()
 		assert.is_truthy(code:match("%{-5, 5%}"))
 	end)
 
+	it("keeps axis order when only dependent axes are clipped", function()
+		local opts = build_base_opts({ clip_axes = { y = true }, yrange = { -2, 2 } })
+		local code, err = wolfram_plot.build_plot_code(opts)
+		assert.is_nil(err)
+		assert.is_truthy(code:find("PlotRange -> {Automatic, {-2, 2}}", 1, true))
+	end)
+
+	it("uses keyed figsize entries when emitting ImageSize", function()
+		local opts = build_base_opts({
+			clip_axes = { y = true },
+			yrange = { -2, 2 },
+			figsize_in = { width = 5, height = 3 },
+		})
+		local code, err = wolfram_plot.build_plot_code(opts)
+		assert.is_nil(err)
+		assert.is_truthy(code:find("ImageSize -> {360, 216}", 1, true))
+	end)
+
+	it("falls back to Automatic for missing figsize dimensions", function()
+		local opts = build_base_opts({
+			clip_axes = { y = true },
+			yrange = { -2, 2 },
+			figsize_in = { height = 5 },
+		})
+		local code, err = wolfram_plot.build_plot_code(opts)
+		assert.is_nil(err)
+		assert.is_truthy(code:find("ImageSize -> {Automatic, 360}", 1, true))
+	end)
+
+	it("omits AspectRatio overrides when aspect is auto", function()
+		local opts = build_base_opts({ aspect = "auto" })
+		local code, err = wolfram_plot.build_plot_code(opts)
+		assert.is_nil(err)
+		assert.is_nil(code:match("AspectRatio"))
+	end)
+
+	it("emits AspectRatio -> 1 when aspect is equal", function()
+		local opts = build_base_opts({ aspect = "equal" })
+		local code, err = wolfram_plot.build_plot_code(opts)
+		assert.is_nil(err)
+		assert.is_truthy(code:find("AspectRatio -> 1", 1, true))
+	end)
+
 	it("unwraps Equality nodes before rendering explicit plots", function()
 		ast_stub:revert()
 		local equality_error = "Equality node leaked to renderer"
@@ -128,6 +171,29 @@ describe("wolfram plot option translation", function()
 		assert.is_truthy(code:find("{x, -1, 1}", 1, true))
 		assert.is_truthy(code:find("{z, -4, 4}", 1, true))
 		assert.is_truthy(code:find("PlotRange -> {{-1, 1}, {-4, 4}, {-2, 2}}", 1, true))
+	end)
+
+	it("pads un-clipped axes with Automatic in 3D plots", function()
+		local opts = {
+			form = "explicit",
+			dim = 3,
+			xrange = { -1, 1 },
+			yrange = { -2, 2 },
+			zrange = { -4, 4 },
+			clip_axes = { z = true },
+			series = {
+				{
+					kind = "function",
+					ast = { __code = "x^2 + y" },
+					independent_vars = { "x", "y" },
+					dependent_vars = { "z" },
+				},
+			},
+		}
+		local code, err = wolfram_plot.build_plot_code(opts)
+		assert.is_nil(err)
+		assert.is_truthy(code:find("Plot3D", 1, true))
+		assert.is_truthy(code:find("PlotRange -> {Automatic, Automatic, {-4, 4}}", 1, true))
 	end)
 end)
 
