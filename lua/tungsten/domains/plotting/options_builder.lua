@@ -79,7 +79,7 @@ function M.build(classification, user_overrides)
 		latex_engine = get_default(defaults.latex_engine, "pdflatex"),
 		latex_preamble = get_default(defaults.latex_preamble, ""),
 		outputmode = get_default(defaults.outputmode, "latex"),
-		filename_mode = get_default(defaults.filename_mode, "hash"),
+		filename_mode = get_default(defaults.filename_mode, "sequential"),
 		viewer_cmd_pdf = get_default(defaults.viewer_cmd_pdf, "open"),
 		viewer_cmd_png = get_default(defaults.viewer_cmd_png, "open"),
 		crop = true,

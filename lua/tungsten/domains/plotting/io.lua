@@ -1,169 +1,23 @@
 local lfs = require("lfs")
 local path = require("pl.path")
 local dir = require("pl.dir")
-local ast = require("tungsten.core.ast")
 local error_handler = require("tungsten.util.error_handler")
 
 local M = {}
 
 local sequential_counter = 0
 
-local function normalize_classification(classification)
-	if type(classification) ~= "table" then
-		return nil
-	end
-
-	local normalized = {}
-	for key, value in pairs(classification) do
-		if key ~= "series" then
-			normalized[key] = value
-		end
-	end
-
-	local series = classification.series
-	if type(series) == "table" then
-		local normalized_series = {}
-		for _, item in ipairs(series) do
-			local entry = {}
-			for key, value in pairs(item) do
-				if key == "ast" and value then
-					entry.ast = ast.canonical(value)
-				else
-					entry[key] = value
-				end
-			end
-			normalized_series[#normalized_series + 1] = entry
-		end
-		table.sort(normalized_series, function(a, b)
-			local a_label = a.label and tostring(a.label) or ""
-			local b_label = b.label and tostring(b.label) or ""
-			if a_label == b_label then
-				local a_ast = a.ast or ""
-				local b_ast = b.ast or ""
-				return a_ast < b_ast
-			end
-			return a_label < b_label
-		end)
-		normalized.series = normalized_series
-	end
-
-	return normalized
-end
-
-local function is_array(tbl)
-	if type(tbl) ~= "table" then
-		return false
-	end
-	local n = 0
-	for k, _ in pairs(tbl) do
-		if type(k) ~= "number" then
-			return false
-		end
-		n = n + 1
-	end
-	return n == #tbl
-end
-
-local function serialize(value)
-	local t = type(value)
-	if t == "table" then
-		if is_array(value) then
-			local parts = {}
-			for i = 1, #value do
-				parts[#parts + 1] = serialize(value[i])
-			end
-			return "[" .. table.concat(parts, ",") .. "]"
-		else
-			local keys = {}
-			for k in pairs(value) do
-				if type(k) == "string" then
-					keys[#keys + 1] = k
-				end
-			end
-			table.sort(keys)
-			local parts = {}
-			for _, k in ipairs(keys) do
-				parts[#parts + 1] = k .. "=" .. serialize(value[k])
-			end
-			return "{" .. table.concat(parts, ",") .. "}"
-		end
-	elseif t == "boolean" or t == "number" then
-		return tostring(value)
-	elseif t == "string" then
-		return value
-	end
-	return ""
-end
-
-local function build_signature(opts, plot_data)
+function M.generate_filename(opts)
 	opts = opts or {}
-	plot_data = plot_data or {}
-	local parts = {}
+	local mode = opts.filename_mode or "sequential"
 
-	if plot_data.ast then
-		parts[#parts + 1] = ast.canonical(plot_data.ast)
-	end
-
-	local classification = plot_data.classification
-	if classification and type(classification.series) == "table" then
-		local series_parts = {}
-		for _, series in ipairs(classification.series) do
-			local normalized = {}
-			for key, value in pairs(series) do
-				if key == "ast" and value then
-					normalized.ast = ast.canonical(value)
-				else
-					normalized[key] = value
-				end
-			end
-			series_parts[#series_parts + 1] = serialize(normalized)
-		end
-		table.sort(series_parts)
-		parts[#parts + 1] = table.concat(series_parts, ";")
-	end
-
-	if plot_data.variables then
-		parts[#parts + 1] = serialize(plot_data.variables)
-	elseif plot_data.var_defs then
-		parts[#parts + 1] = serialize(plot_data.var_defs)
-	end
-
-	local normalized_classification = normalize_classification(plot_data.classification)
-	if normalized_classification then
-		parts[#parts + 1] = serialize(normalized_classification)
-	end
-
-	parts[#parts + 1] = tostring(opts.backend or "")
-	parts[#parts + 1] = tostring(opts.format or "")
-	parts[#parts + 1] = tostring(opts.form or "")
-	parts[#parts + 1] = tostring(opts.dim or "")
-
-	local filtered_opts = {}
-	for k, v in pairs(opts) do
-		if k ~= "filename_mode" then
-			filtered_opts[k] = v
-		end
-	end
-	parts[#parts + 1] = serialize(filtered_opts)
-
-	return table.concat(parts, "|")
-end
-
-function M.generate_filename(opts, plot_data)
-	opts = opts or {}
-	local mode = opts.filename_mode or "hash"
-
-	if mode == "sequential" then
-		sequential_counter = sequential_counter + 1
-		return string.format("plot_%03d", sequential_counter)
-	elseif mode == "timestamp" then
+	if mode == "timestamp" then
 		local stamp = os.date("%Y-%m-%d_%H-%M-%S")
 		return "plot_" .. stamp
-	else
-		local signature = build_signature(opts, plot_data)
-		local digest = vim.fn.sha256(signature)
-		return "plot_" .. digest:sub(1, 12)
 	end
+
+	sequential_counter = sequential_counter + 1
+	return string.format("plot_%03d", sequential_counter)
 end
 
 local E_TEX_ROOT_NOT_FOUND = {
@@ -277,11 +131,9 @@ function M.get_final_path(output_dir, opts, plot_data)
 	local final_path = path.normpath(path.join(output_dir, base .. "." .. ext))
 	local reused = false
 
-	if opts.filename_mode == "hash" then
-		local attr = lfs.attributes(final_path)
-		if attr and attr.mode == "file" then
-			reused = true
-		end
+	local attr = lfs.attributes(final_path)
+	if attr and attr.mode == "file" then
+		reused = true
 	end
 
 	return final_path, reused

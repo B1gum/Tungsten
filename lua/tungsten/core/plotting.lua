@@ -1,5 +1,4 @@
 local job_manager = require("tungsten.domains.plotting.job_manager")
-local plotting_io = require("tungsten.domains.plotting.io")
 local free_vars = require("tungsten.domains.plotting.free_vars")
 local classification = require("tungsten.domains.plotting.classification")
 local parser = require("tungsten.core.parser")
@@ -424,12 +423,6 @@ function M.get_undefined_symbols(opts)
 		ordered[#ordered + 1] = entry
 	end
 	return true, ordered
-end
-
-function M.generate_hash(plot_data)
-	local opts = { filename_mode = "hash" }
-	local generated = plotting_io.generate_filename(opts, plot_data or {})
-	return generated:gsub("^plot_", "")
 end
 
 return M

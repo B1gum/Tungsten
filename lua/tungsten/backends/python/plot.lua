@@ -209,8 +209,8 @@ local function validate_special_function_support(opts)
 		for _, s in ipairs(series) do
 			if s.kind == "function" then
 				local ast = s.ast
-				if opts.form == "explicit" then
-					ast = ast.rhs
+				if opts.form == "explicit" and ast then
+					ast = ast.rhs or ast
 				end
 				check_ast(ast)
 			end

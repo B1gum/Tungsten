@@ -41,7 +41,6 @@ local function setup_test_environment()
 	mock_plotting_core = mock_utils.create_empty_mock_module("tungsten.core.plotting", {
 		"initiate_plot",
 		"get_undefined_symbols",
-		"generate_hash",
 	})
 	mock_error_handler = mock_utils.create_empty_mock_module("tungsten.util.error_handler", { "notify_error" })
 	mock_error_handler.E_VIEWER_FAILED = "E_VIEWER_FAILED"
@@ -332,7 +331,7 @@ describe("Plotting UI and UX", function()
 			local prompt_lines = vim.api.nvim_buf_set_lines.calls[1].vals[5]
 			assert.are.same({ "Variables:", "a:", "", "Functions:", "g(x):=" }, prompt_lines)
 		end)
-		it("should include one-time definitions in the options passed for hashing and plotting", function()
+		it("should include one-time definitions in the options passed for plotting", function()
 			local callback_spy = spy.new(function(plot_opts)
 				mock_plotting_core.initiate_plot(plot_opts)
 			end)

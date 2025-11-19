@@ -136,6 +136,13 @@ describe("Plotting I/O and File Management", function()
 	end)
 
 	describe("Filename Generation", function()
+		it("defaults to sequential filenames", function()
+			local n1 = plotting_io.generate_filename({}, {})
+			local n2 = plotting_io.generate_filename({}, {})
+			assert.are.equal("plot_001", n1)
+			assert.are.equal("plot_002", n2)
+		end)
+
 		it("generates sequential filenames with zero padding", function()
 			local opts = { filename_mode = "sequential" }
 			local n1 = plotting_io.generate_filename(opts, {})
@@ -149,90 +156,23 @@ describe("Plotting I/O and File Management", function()
 			local name = plotting_io.generate_filename(opts, {})
 			assert.is_truthy(name:match("^plot_%d%d%d%d%-%d%d%-%d%d_%d%d%-%d%d%-%d%d$"))
 		end)
-
-		it("generates hash-based filenames sensitive to inputs", function()
-			local ast = require("tungsten.core.ast")
-			local plot_data = { ast = ast.create_number_node(1), variables = { a = 1 } }
-			local opts = {
-				filename_mode = "hash",
-				backend = "wolfram",
-				format = "pdf",
-				form = "explicit",
-				dim = 2,
-			}
-			local name1 = plotting_io.generate_filename(opts, plot_data)
-			local name1b = plotting_io.generate_filename(opts, plot_data)
-			assert.are.equal(name1, name1b)
-			assert.is_truthy(name1:match("^plot_%x%x%x%x%x%x%x%x%x%x%x%x$"))
-
-			plot_data.ast = ast.create_number_node(2)
-			local name2 = plotting_io.generate_filename(opts, plot_data)
-			assert.are_not.equal(name1, name2)
-
-			plot_data.ast = ast.create_number_node(1)
-			opts.format = "png"
-			local name3 = plotting_io.generate_filename(opts, plot_data)
-			assert.are_not.equal(name1, name3)
-
-			opts.format = "pdf"
-			plot_data.variables.a = 2
-			local name4 = plotting_io.generate_filename(opts, plot_data)
-			assert.are_not.equal(name1, name4)
-		end)
-
-		describe("hashes series without order sensitivity", function()
-			it("produces the same hash regardless of series ordering", function()
-				local ast = require("tungsten.core.ast")
-				local opts = {
-					filename_mode = "hash",
-					backend = "wolfram",
-					format = "pdf",
-					form = "explicit",
-					dim = 2,
-				}
-				local node_a = ast.create_number_node(1)
-				local node_b = ast.create_number_node(2)
-				local plot_data = {
-					classification = {
-						series = {
-							{
-								label = "first",
-								ast = node_a,
-							},
-							{
-								label = "second",
-								ast = node_b,
-							},
-						},
-					},
-				}
-
-				local original_hash = plotting_io.generate_filename(opts, plot_data)
-				local reversed = vim.deepcopy(plot_data)
-				reversed.classification.series[1], reversed.classification.series[2] =
-					reversed.classification.series[2], reversed.classification.series[1]
-				local reversed_hash = plotting_io.generate_filename(opts, reversed)
-				assert.are.equal(original_hash, reversed_hash)
-
-				reversed.classification.series[1].ast = ast.create_number_node(999)
-				local different_hash = plotting_io.generate_filename(opts, reversed)
-				assert.are_not.equal(original_hash, different_hash)
-			end)
-		end)
 	end)
 
 	describe("Final Path Assembly and Atomic Writes", function()
-		it("reuses existing files in hash mode", function()
+		it("detects when an output would overwrite an existing file", function()
 			local out_dir = temp_dir .. "/project/tungsten_plots"
 			lfs.mkdir(out_dir)
 
-			local opts = { filename_mode = "hash", format = "pdf" }
+			local opts = { filename_mode = "sequential", format = "pdf" }
 			local path1, reused1 = plotting_io.get_final_path(out_dir, opts, {})
 			assert.is_false(reused1)
 
 			local f = io.open(path1, "w")
 			f:write("dummy")
 			f:close()
+
+			package.loaded["tungsten.domains.plotting.io"] = nil
+			plotting_io = require("tungsten.domains.plotting.io")
 
 			local path2, reused2 = plotting_io.get_final_path(out_dir, opts, {})
 			assert.is_true(reused2)
