@@ -1169,7 +1169,11 @@ function M.open_advanced_config(opts)
 							final_opts.series[idx].dependent_vars = nil
 						end
 					end
-					core.initiate_plot(final_opts)
+					if type(opts.on_submit) == "function" then
+						opts.on_submit(final_opts)
+					else
+						core.initiate_plot(final_opts)
+					end
 				end
 			end)
 		end,

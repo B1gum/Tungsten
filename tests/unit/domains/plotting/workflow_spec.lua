@@ -361,6 +361,25 @@ describe("Plotting workflow", function()
 		assert.is_function(advanced_opts.on_submit)
 	end)
 
+	it("drives advanced submissions through the UI callback", function()
+		vim.api.nvim_buf_set_name(0, unique_tex_path())
+
+		mock_ui.open_advanced_config = spy.new(function(opts)
+			assert.is_function(opts.on_submit)
+			local final_opts = vim.deepcopy(opts)
+			final_opts.backend = "wolfram"
+			final_opts.format = "pdf"
+			final_opts.timeout_ms = 30000
+			opts.on_submit(final_opts)
+		end)
+
+		workflow.run_advanced()
+
+		assert.spy(mock_job_manager.submit).was.called(1)
+		local submitted = mock_job_manager.submit.calls[1].vals[1]
+		assert.are.equal("wolfram", submitted.backend)
+	end)
+
 	it("submits advanced plots immediately when not reusing an artifact", function()
 		vim.api.nvim_buf_set_name(0, unique_tex_path())
 

@@ -753,6 +753,96 @@ describe("Plotting UI and UX", function()
 			assert.are.same("sin(x)", final_opts.expression)
 		end)
 
+		it("should invoke the provided on_submit callback with parsed options", function()
+			local classification = {
+				form = "explicit",
+				dim = 2,
+				series = {
+					{
+						ast = "sin(x)",
+						dependent_vars = { "y" },
+						independent_vars = { "x" },
+					},
+				},
+			}
+
+			local submit_calls = 0
+			local captured_opts
+			local function on_submit(final_opts)
+				submit_calls = submit_calls + 1
+				captured_opts = final_opts
+			end
+
+			plotting_ui.open_advanced_config({
+				classification = classification,
+				series = classification.series,
+				expression = "sin(x)",
+				on_submit = on_submit,
+			})
+
+			local wq_callback
+			for _, call in ipairs(vim.api.nvim_create_autocmd.calls) do
+				if call.vals[1] == "BufWriteCmd" then
+					wq_callback = call.vals[2].callback
+				end
+			end
+
+			assert.is_function(wq_callback)
+
+			local defaults = vim.deepcopy(vim.api.nvim_buf_set_lines.calls[1].vals[5])
+			local mutated = vim.deepcopy(defaults)
+			set_field(mutated, "Backend", "python")
+			set_field(mutated, "Output mode", "viewer")
+			set_field(mutated, "Legend", "off")
+			set_field(mutated, "Legend placement", "upper left")
+			set_field(mutated, "X-range", "[0, 5]")
+			set_field(mutated, "Grid", "off")
+			set_field(mutated, "Colorbar", "on")
+			set_series_field(mutated, 1, "Color", "red")
+			set_series_field(mutated, 1, "Linewidth", "3.5")
+			set_series_field(mutated, 1, "Alpha", "0.5")
+			buffer_lines = mutated
+
+			mock_options_builder.build = stub.new(mock_options_builder, "build", function(classification_arg, overrides)
+				assert.are.same(classification, classification_arg)
+				local base = {
+					dim = classification_arg.dim,
+					form = classification_arg.form,
+					backend = "wolfram",
+					outputmode = "latex",
+					legend_auto = true,
+					legend_pos = "best",
+					grids = true,
+					colorbar = false,
+					series = { {} },
+				}
+				if overrides then
+					for k, v in pairs(overrides) do
+						base[k] = v
+					end
+				end
+				return base
+			end)
+
+			wq_callback()
+
+			assert.are.equal(1, submit_calls)
+			assert.spy(mock_plotting_core.initiate_plot).was_not_called()
+
+			local final_opts = captured_opts
+			assert.are.same("python", final_opts.backend)
+			assert.are.same("viewer", final_opts.outputmode)
+			assert.is_false(final_opts.legend_auto)
+			assert.are.same("upper left", final_opts.legend_pos)
+			assert.are.same({ 0, 5 }, final_opts.xrange)
+			assert.is_false(final_opts.grids)
+			assert.is_true(final_opts.colorbar)
+			assert.are.same("red", final_opts.series[1].color)
+			assert.are.same(3.5, final_opts.series[1].linewidth)
+			assert.are.same(0.5, final_opts.series[1].alpha)
+			assert.are.same("sin(x)", final_opts.expression)
+		end)
+
 		it("should allow dependents to be reset for recomputation", function()
 			local classification = {
 				form = "explicit",
