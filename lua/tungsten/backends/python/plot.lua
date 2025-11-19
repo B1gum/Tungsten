@@ -612,6 +612,7 @@ function M.build_python_script(opts)
 	else
 		table.insert(lines, string.format("plt.savefig(r'%s', dpi=%d)", out_path, dpi))
 	end
+	table.insert(lines, string.format("print(r'%s')", out_path))
 
 	return table.concat(lines, "\n")
 end
@@ -659,8 +660,15 @@ function M.plot_async(opts, callback)
 		cwd = cwd,
 		on_exit = function(exit_code, stdout, stderr)
 			if exit_code == 0 then
+				local trimmed
+				if type(stdout) == "string" then
+					trimmed = stdout:match("^%s*(.-)%s*$")
+					if trimmed == "" then
+						trimmed = nil
+					end
+				end
 				if callback then
-					callback(nil, stdout)
+					callback(nil, trimmed or opts.out_path)
 				end
 			else
 				local msg = stderr ~= "" and stderr or stdout

@@ -280,6 +280,103 @@ describe("Plotting Job Manager", function()
 		end
 	end)
 
+	it("builds snippets from backend-returned image paths", function()
+		local project_dir = vim.fn.tempname()
+		local tex_root = string.format("%s/main.tex", project_dir)
+		local bufnr = vim.api.nvim_create_buf(false, true)
+		vim.api.nvim_buf_set_name(bufnr, tex_root)
+		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "$$ x $$" })
+
+		local set_lines_stub = stub(vim.api, "nvim_buf_set_lines")
+
+		local function cleanup()
+			if set_lines_stub then
+				set_lines_stub:revert()
+				set_lines_stub = nil
+			end
+			if bufnr and vim.api.nvim_buf_is_valid(bufnr) then
+				vim.api.nvim_buf_delete(bufnr, { force = true })
+				bufnr = nil
+			end
+		end
+
+		local ok, err = pcall(function()
+			local backend_path = string.format("%s/tungsten_plots/backend_output.pdf", project_dir)
+			JobManager.apply_output({
+				bufnr = bufnr,
+				start_line = 0,
+				outputmode = "latex",
+				tex_root = tex_root,
+				out_path = project_dir .. "/unused/output.pdf",
+			}, backend_path)
+
+			assert.stub(set_lines_stub).was.called(1)
+			local snippet = set_lines_stub.calls[1].vals[5][1]
+			assert.are.equal("\\includegraphics[width=0.8\\linewidth]{tungsten_plots/backend_output}", snippet)
+		end)
+
+		cleanup()
+
+		if not ok then
+			error(err)
+		end
+	end)
+
+	it("passes backend-returned paths to viewer commands", function()
+		mock_async.run_job_calls = {}
+		JobManager.apply_output({
+			bufnr = 0,
+			outputmode = "viewer",
+			format = "png",
+			viewer_cmd_png = "open",
+		}, "/tmp/backend-image.png")
+
+		assert.are.equal(1, #mock_async.run_job_calls)
+		assert.are.same({ "open", "/tmp/backend-image.png" }, mock_async.run_job_calls[1][1])
+	end)
+
+	it("falls back to plot_opts.out_path when no backend path is provided", function()
+		local project_dir = vim.fn.tempname()
+		local tex_root = string.format("%s/project.tex", project_dir)
+		local bufnr = vim.api.nvim_create_buf(false, true)
+		vim.api.nvim_buf_set_name(bufnr, tex_root)
+		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "$$ y $$" })
+
+		local set_lines_stub = stub(vim.api, "nvim_buf_set_lines")
+
+		local function cleanup()
+			if set_lines_stub then
+				set_lines_stub:revert()
+				set_lines_stub = nil
+			end
+			if bufnr and vim.api.nvim_buf_is_valid(bufnr) then
+				vim.api.nvim_buf_delete(bufnr, { force = true })
+				bufnr = nil
+			end
+		end
+
+		local ok, err = pcall(function()
+			local fallback = string.format("%s/tungsten_plots/fallback.pdf", project_dir)
+			JobManager.apply_output({
+				bufnr = bufnr,
+				start_line = 0,
+				outputmode = "latex",
+				tex_root = tex_root,
+				out_path = fallback,
+			}, nil)
+
+			assert.stub(set_lines_stub).was.called(1)
+			local snippet = set_lines_stub.calls[1].vals[5][1]
+			assert.are.equal("\\includegraphics[width=0.8\\linewidth]{tungsten_plots/fallback}", snippet)
+		end)
+
+		cleanup()
+
+		if not ok then
+			error(err)
+		end
+	end)
+
 	it("queues jobs beyond the concurrency limit in FIFO order", function()
 		mock_config.max_jobs = 1
 		local order = {}

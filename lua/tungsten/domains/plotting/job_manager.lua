@@ -161,6 +161,13 @@ local function apply_output(plot_opts, image_path)
 		return
 	end
 
+	if (not image_path or image_path == "") and plot_opts.out_path and plot_opts.out_path ~= "" then
+		image_path = plot_opts.out_path
+	end
+	if not image_path or image_path == "" then
+		return
+	end
+
 	local bufnr = plot_opts.bufnr or vim.api.nvim_get_current_buf()
 	local outputmode = plot_opts.outputmode
 	if type(outputmode) == "string" then
@@ -369,8 +376,15 @@ local function _execute_plot(job)
 				active_plot_jobs[job.id] = nil
 
 				if code == 0 then
+					local trimmed = stdout
+					if type(trimmed) == "string" then
+						trimmed = trimmed:match("^%s*(.-)%s*$")
+						if trimmed == "" then
+							trimmed = nil
+						end
+					end
 					if job.on_success then
-						job.on_success(stdout)
+						job.on_success(trimmed)
 					end
 				else
 					if job.on_error then

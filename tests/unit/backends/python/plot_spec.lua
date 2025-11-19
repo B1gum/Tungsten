@@ -66,6 +66,28 @@ describe("python polar plotting", function()
 		assert.is_truthy(script:find("projection='polar'", 1, true))
 	end)
 
+	it("prints the output path after saving the figure", function()
+		local opts = {
+			dim = 2,
+			form = "explicit",
+			out_path = "/tmp/backend_plot",
+			series = {
+				{
+					kind = "function",
+					ast = { __code = "x" },
+					independent_vars = { "x" },
+				},
+			},
+		}
+
+		local script, err = plot_backend.build_python_script(opts)
+		assert.is_nil(err)
+		local save_idx = assert(script:find("plt.savefig", 1, true))
+		local print_stmt = string.format("print(r'%s')", opts.out_path .. ".png")
+		local print_idx = assert(script:find(print_stmt, 1, true))
+		assert.is_true(print_idx > save_idx)
+	end)
+
 	describe("python plot error handling", function()
 		it("returns structured errors when no explicit functions exist", function()
 			local opts = {
