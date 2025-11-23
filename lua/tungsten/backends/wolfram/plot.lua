@@ -307,6 +307,7 @@ end
 local function build_explicit_code(opts)
 	local series = opts.series or {}
 	local functions = {}
+	local point_sets = {}
 	for _, s in ipairs(series) do
 		if s.kind == "function" then
 			local ast = unwrap_equality_rhs(s.ast)
@@ -314,9 +315,26 @@ local function build_explicit_code(opts)
 			if code then
 				table.insert(functions, code)
 			end
+		elseif s.kind == "points" then
+			local coords = {}
+			for _, p in ipairs(s.points or {}) do
+				local x = render_ast_to_wolfram(p.x)
+				local y = render_ast_to_wolfram(p.y)
+				local z = p.z and render_ast_to_wolfram(p.z)
+				if x and y and (opts.dim ~= 3 or z) then
+					if opts.dim == 3 then
+						coords[#coords + 1] = string.format("{%s, %s, %s}", x, y, z)
+					else
+						coords[#coords + 1] = string.format("{%s, %s}", x, y)
+					end
+				end
+			end
+			if #coords > 0 then
+				point_sets[#point_sets + 1] = coords
+			end
 		end
 	end
-	if #functions == 0 then
+	if #functions == 0 and #point_sets == 0 then
 		return nil, "No functions to plot"
 	end
 
@@ -334,24 +352,76 @@ local function build_explicit_code(opts)
 		end
 	end
 
-	local func_expr
-	if #functions == 1 then
-		func_expr = functions[1]
-	else
-		func_expr = "{" .. table.concat(functions, ", ") .. "}"
+	local plots = {}
+	if #functions > 0 then
+		local func_expr
+		if #functions == 1 then
+			func_expr = functions[1]
+		else
+			func_expr = "{" .. table.concat(functions, ", ") .. "}"
+		end
+
+		local plot_fun = opts.dim == 3 and "Plot3D" or "Plot"
+		local code = plot_fun .. "[" .. func_expr .. ", " .. table.concat(ranges, ", ")
+
+		local extra_opts = translate_opts_to_wolfram(opts)
+		apply_series_styles(extra_opts, series)
+		if #extra_opts > 0 then
+			code = code .. ", " .. table.concat(extra_opts, ", ")
+		end
+		code = code .. "]"
+		plots[#plots + 1] = code
 	end
 
-	local plot_fun = opts.dim == 3 and "Plot3D" or "Plot"
-	local code = plot_fun .. "[" .. func_expr .. ", " .. table.concat(ranges, ", ")
+	if #point_sets > 0 then
+		local list_expr
+		if #point_sets == 1 then
+			list_expr = "{" .. table.concat(point_sets[1], ", ") .. "}"
+		else
+			local wrapped = {}
+			for _, set in ipairs(point_sets) do
+				wrapped[#wrapped + 1] = "{" .. table.concat(set, ", ") .. "}"
+			end
+			list_expr = "{" .. table.concat(wrapped, ", ") .. "}"
+		end
 
-	local extra_opts = translate_opts_to_wolfram(opts)
-	apply_series_styles(extra_opts, series)
-	if #extra_opts > 0 then
-		code = code .. ", " .. table.concat(extra_opts, ", ")
+		local plot_fun = opts.dim == 3 and "ListPointPlot3D" or "ListPlot"
+		local plot_range
+		if opts.dim == 3 then
+			if opts.xrange or opts.yrange or opts.zrange then
+				local xr = opts.xrange or { "Automatic", "Automatic" }
+				local yr = opts.yrange or { "Automatic", "Automatic" }
+				local zr = opts.zrange or { "Automatic", "Automatic" }
+				plot_range =
+					string.format("PlotRange -> {{%s, %s}, {%s, %s}, {%s, %s}}", xr[1], xr[2], yr[1], yr[2], zr[1], zr[2])
+			end
+		elseif opts.xrange or opts.yrange then
+			local xr = opts.xrange or { "Automatic", "Automatic" }
+			local yr = opts.yrange or { "Automatic", "Automatic" }
+			plot_range = string.format("PlotRange -> {{%s, %s}, {%s, %s}}", xr[1], xr[2], yr[1], yr[2])
+		end
+
+		local extras = {}
+		if plot_range then
+			extras[#extras + 1] = plot_range
+		end
+		if opts.legend_auto == false and opts.legend_pos then
+			extras[#extras + 1] = string.format("PlotLegends -> Placed[{}, %s]", translate_legend_pos(opts.legend_pos))
+		end
+
+		local point_plot = plot_fun .. "[" .. list_expr
+		if #extras > 0 then
+			point_plot = point_plot .. ", " .. table.concat(extras, ", ")
+		end
+		point_plot = point_plot .. "]"
+		plots[#plots + 1] = point_plot
 	end
-	code = code .. "]"
 
-	return code
+	if #plots == 1 then
+		return plots[1]
+	end
+
+	return string.format("Show[{%s}]", table.concat(plots, ", "))
 end
 
 local function build_implicit_code(opts)

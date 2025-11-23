@@ -90,6 +90,24 @@ describe("wolfram plot option translation", function()
 		assert.is_nil(code:match("AspectRatio"))
 	end)
 
+	it("overlays explicit plots with point collections", function()
+		local opts = build_base_opts()
+		opts.series[#opts.series + 1] = {
+			kind = "points",
+			points = {
+				{ x = { __code = "-2" }, y = { __code = "-2" } },
+				{ x = { __code = "0" }, y = { __code = "0" } },
+				{ x = { __code = "2" }, y = { __code = "2" } },
+			},
+		}
+
+		local code, err = wolfram_plot.build_plot_code(opts)
+		assert.is_nil(err)
+		assert.is_truthy(code:find("Show[{", 1, true), code)
+		assert.is_truthy(code:find("ListPlot", 1, true), code)
+		assert.is_truthy(code:find("{-2, -2}", 1, true), code)
+	end)
+
 	it("emits AspectRatio -> 1 when aspect is equal", function()
 		local opts = build_base_opts({ aspect = "equal" })
 		local code, err = wolfram_plot.build_plot_code(opts)

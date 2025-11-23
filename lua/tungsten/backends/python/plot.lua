@@ -122,6 +122,7 @@ end
 local function build_explicit_2d_python_code(opts)
 	local series = opts.series or {}
 	local exprs = {}
+	local point_series = {}
 	for _, s in ipairs(series) do
 		if s.kind == "function" then
 			local ast = unwrap_equality_rhs(s.ast)
@@ -129,9 +130,21 @@ local function build_explicit_2d_python_code(opts)
 			if code then
 				table.insert(exprs, { code = code, series = s })
 			end
+		elseif s.kind == "points" then
+			local coords = {}
+			for _, p in ipairs(s.points or {}) do
+				local x = render_ast_to_python(p.x)
+				local y = render_ast_to_python(p.y)
+				if x and y then
+					coords[#coords + 1] = { x = x, y = y }
+				end
+			end
+			if #coords > 0 then
+				point_series[#point_series + 1] = { coords = coords, series = s }
+			end
 		end
 	end
-	if #exprs == 0 then
+	if #exprs == 0 and #point_series == 0 then
 		return nil, nil, unsupported_error("No functions to plot")
 	end
 
@@ -152,6 +165,22 @@ local function build_explicit_2d_python_code(opts)
 		table.insert(lines, string.format("%s = %s(xs)", y_var, fname))
 		apply_log_mask(lines, "y", y_var, opts)
 		table.insert(lines, string.format("ax.plot(xs, %s%s)", y_var, style))
+	end
+
+	for i, points in ipairs(point_series) do
+		local xs, ys = {}, {}
+		for _, p in ipairs(points.coords) do
+			xs[#xs + 1] = p.x
+			ys[#ys + 1] = p.y
+		end
+		local x_name = string.format("x_pts_%d", i)
+		local y_name = string.format("y_pts_%d", i)
+		table.insert(lines, string.format("%s = np.array([%s], dtype=float)", x_name, table.concat(xs, ", ")))
+		table.insert(lines, string.format("%s = np.array([%s], dtype=float)", y_name, table.concat(ys, ", ")))
+		apply_log_mask(lines, "x", x_name, opts)
+		apply_log_mask(lines, "y", y_name, opts)
+		local style = build_style_args(points.series, "scatter")
+		table.insert(lines, string.format("ax.scatter(%s, %s%s)", x_name, y_name, style))
 	end
 
 	return table.concat(lines, "\n"), nil
@@ -271,6 +300,7 @@ end
 local function build_explicit_3d_python_code(opts)
 	local series = opts.series or {}
 	local exprs = {}
+	local point_series = {}
 	for _, s in ipairs(series) do
 		if s.kind == "function" then
 			local ast = unwrap_equality_rhs(s.ast)
@@ -278,10 +308,23 @@ local function build_explicit_3d_python_code(opts)
 			if code then
 				table.insert(exprs, { code = code, series = s })
 			end
+		elseif s.kind == "points" then
+			local coords = {}
+			for _, p in ipairs(s.points or {}) do
+				local x = render_ast_to_python(p.x)
+				local y = render_ast_to_python(p.y)
+				local z = render_ast_to_python(p.z)
+				if x and y and z then
+					coords[#coords + 1] = { x = x, y = y, z = z }
+				end
+			end
+			if #coords > 0 then
+				point_series[#point_series + 1] = { coords = coords, series = s }
+			end
 		end
 	end
-	if #exprs == 0 then
-		return nil, nil, unsupported_error("No functions to plot")
+	if #exprs == 0 and #point_series == 0 then
+		return nil, nil, unsupported_error("No expressions to plot")
 	end
 
 	local indep = series[1] and series[1].independent_vars or {}
@@ -309,6 +352,26 @@ local function build_explicit_3d_python_code(opts)
 			lines,
 			string.format("%s = ax.plot_surface(X, Y, Z, cmap='%s'%s)", surf_var, opts.colormap or "viridis", style)
 		)
+	end
+
+	for i, points in ipairs(point_series) do
+		local xs, ys, zs = {}, {}, {}
+		for _, p in ipairs(points.coords) do
+			xs[#xs + 1] = p.x
+			ys[#ys + 1] = p.y
+			zs[#zs + 1] = p.z
+		end
+		local x_name = string.format("x_pts_%d", i)
+		local y_name = string.format("y_pts_%d", i)
+		local z_name = string.format("z_pts_%d", i)
+		table.insert(lines, string.format("%s = np.array([%s], dtype=float)", x_name, table.concat(xs, ", ")))
+		table.insert(lines, string.format("%s = np.array([%s], dtype=float)", y_name, table.concat(ys, ", ")))
+		table.insert(lines, string.format("%s = np.array([%s], dtype=float)", z_name, table.concat(zs, ", ")))
+		apply_log_mask(lines, "x", x_name, opts)
+		apply_log_mask(lines, "y", y_name, opts)
+		apply_log_mask(lines, "z", z_name, opts)
+		local style = build_style_args(points.series, "scatter")
+		table.insert(lines, string.format("ax.scatter(%s, %s, %s%s)", x_name, y_name, z_name, style))
 	end
 
 	return table.concat(lines, "\n"), surf_var
