@@ -399,6 +399,7 @@ function M.handle_undefined_symbols(opts, callback)
 	end
 
 	local bufnr = vim.api.nvim_create_buf(false, true)
+	vim.api.nvim_buf_set_name(bufnr, "TungstenPlotDefinitions")
 	local lines = populate_symbol_buffer(to_define)
 	vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
 	vim.api.nvim_buf_set_option(bufnr, "filetype", "tex")
