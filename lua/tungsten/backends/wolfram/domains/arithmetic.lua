@@ -1,6 +1,7 @@
 local M = {}
 
 local config = require("tungsten.config")
+local constants = require("tungsten.core.constants")
 
 local op_attributes = {
 	["+"] = { prec = 1, assoc = "L", wolfram = "+" },
@@ -86,6 +87,13 @@ end
 M.handlers = {
 	number = function(node)
 		return tostring(node.value)
+	end,
+	constant = function(node)
+		local constant_info = constants.get(node.name)
+		if constant_info and constant_info.wolfram then
+			return constant_info.wolfram
+		end
+		return tostring(node.name)
 	end,
 	variable = function(node)
 		return node.name

@@ -4,6 +4,8 @@
 local lpeg = require("lpeglabel")
 local P, R, S, C = lpeg.P, lpeg.R, lpeg.S, lpeg.C
 
+local constants = require("tungsten.core.constants")
+
 local ast = require("tungsten.core.ast")
 local latex_spacing = P("\\,")
 local space = (S(" \t\n\r") + latex_spacing) ^ 0
@@ -14,9 +16,13 @@ local letter = R("az", "AZ")
 local number = C(digit ^ 1 * (P(".") * digit ^ 1) ^ -1) / function(n)
 	return ast.create_number_node(tonumber(n))
 end
-local variable = C(letter * (letter + digit) ^ 0) / function(v)
-	return ast.create_variable_node(v)
-end
+local variable = C(letter * (letter + digit) ^ 0)
+	/ function(v)
+		if constants.is_constant(v) then
+			return ast.create_constant_node(v)
+		end
+		return ast.create_variable_node(v)
+	end
 
 local greek_list = {
 	"alpha",
@@ -47,9 +53,15 @@ local greek_name_patterns = P(false)
 for _, name in ipairs(greek_list) do
 	greek_name_patterns = greek_name_patterns + P(name)
 end
-local Greek = P("\\") * C(greek_name_patterns) * -letter / function(g_name)
-	return ast.create_greek_node(g_name)
-end
+local Greek = P("\\")
+	* C(greek_name_patterns)
+	* -letter
+	/ function(g_name)
+		if constants.is_constant(g_name) then
+			return ast.create_constant_node(g_name)
+		end
+		return ast.create_greek_node(g_name)
+	end
 
 local matrix_env_name_capture = C(P("pmatrix") + P("bmatrix") + P("vmatrix"))
 

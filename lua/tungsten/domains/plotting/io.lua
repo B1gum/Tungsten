@@ -9,9 +9,9 @@ local sequential_counters = {}
 local fallback_counter = 0
 
 local function find_latest_existing(dir_path, ext)
-        if not dir_path or dir_path == "" then
-                return nil
-        end
+	if not dir_path or dir_path == "" then
+		return nil
+	end
 
 	local pattern
 	if ext and ext ~= "" then
@@ -20,25 +20,25 @@ local function find_latest_existing(dir_path, ext)
 		pattern = "^plot_(%d+)"
 	end
 
-        local max_index = 0
+	local max_index = 0
 
-        local ok = pcall(function()
-                for entry in lfs.dir(dir_path) do
-                        local number = entry:match(pattern)
-                        if number then
-                                local value = tonumber(number)
-                                if value and value > max_index then
-                                        max_index = value
-                                end
-                        end
-                end
-        end)
+	local ok = pcall(function()
+		for entry in lfs.dir(dir_path) do
+			local number = entry:match(pattern)
+			if number then
+				local value = tonumber(number)
+				if value and value > max_index then
+					max_index = value
+				end
+			end
+		end
+	end)
 
-        if not ok or max_index == 0 then
-                return nil
-        end
+	if not ok or max_index == 0 then
+		return nil
+	end
 
-        return path.normpath(path.join(dir_path, string.format("plot_%03d.%s", max_index, ext or "pdf")))
+	return path.normpath(path.join(dir_path, string.format("plot_%03d.%s", max_index, ext or "pdf")))
 end
 
 local function determine_next_available(dir_path)
@@ -200,30 +200,30 @@ function M.get_output_directory(tex_root_path)
 end
 
 function M.get_final_path(output_dir, opts, plot_data)
-        opts = opts or {}
-        plot_data = plot_data or {}
+	opts = opts or {}
+	plot_data = plot_data or {}
 
-        local had_counter = sequential_counters[output_dir] ~= nil
+	local had_counter = sequential_counters[output_dir] ~= nil
 
-        local base = M.generate_filename(opts, {
-                output_dir = output_dir,
-                plot_data = plot_data,
-        })
-        local ext = opts.format or "pdf"
-        local final_path = path.normpath(path.join(output_dir, base .. "." .. ext))
+	local base = M.generate_filename(opts, {
+		output_dir = output_dir,
+		plot_data = plot_data,
+	})
+	local ext = opts.format or "pdf"
+	local final_path = path.normpath(path.join(output_dir, base .. "." .. ext))
 
-        local reused = false
-        if lfs.attributes(final_path) then
-                reused = true
-        elseif not had_counter then
-                local existing = find_latest_existing(output_dir, ext)
-                if existing then
-                        final_path = existing
-                        reused = true
-                end
-        end
+	local reused = false
+	if lfs.attributes(final_path) then
+		reused = true
+	elseif not had_counter then
+		local existing = find_latest_existing(output_dir, ext)
+		if existing then
+			final_path = existing
+			reused = true
+		end
+	end
 
-        return final_path, reused
+	return final_path, reused
 end
 
 function M.write_atomically(final_path, image_data)

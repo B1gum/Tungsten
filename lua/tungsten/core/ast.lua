@@ -18,6 +18,10 @@ function M.create_variable_node(name)
 	return node("variable", { name = name })
 end
 
+function M.create_constant_node(name)
+	return node("constant", { name = name })
+end
+
 function M.create_greek_node(name)
 	return node("greek", { name = name })
 end

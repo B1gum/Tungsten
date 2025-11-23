@@ -1,4 +1,5 @@
 local M = {}
+local constants = require("tungsten.core.constants")
 
 local function collect(node, bound, acc)
 	if type(node) ~= "table" then
@@ -8,8 +9,15 @@ local function collect(node, bound, acc)
 	bound = bound or {}
 
 	local t = node.type
+	if t == "constant" then
+		return
+	end
+
 	if t == "variable" or t == "symbol" or t == "greek" then
 		local name = node.name
+		if constants.is_constant(name) then
+			return
+		end
 		if name and not bound[name] then
 			acc[name] = true
 		end
