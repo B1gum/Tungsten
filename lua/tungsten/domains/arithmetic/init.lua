@@ -57,6 +57,18 @@ c[#c + 1] = {
 	category = "AtomBaseItem",
 	priority = prio,
 }
+c[#c + 1] = {
+	name = "CosFunction",
+	pattern = require("tungsten.domains.arithmetic.rules.trig_functions").CosRule,
+	category = "AtomBaseItem",
+	priority = prio,
+}
+c[#c + 1] = {
+	name = "TanFunction",
+	pattern = require("tungsten.domains.arithmetic.rules.trig_functions").TanRule,
+	category = "AtomBaseItem",
+	priority = prio,
+}
 c[#c + 1] = { name = "Equality", pattern = relation_rules.Equality, category = "TopLevelRule", priority = prio + 5 }
 c[#c + 1] = { name = "Inequality", pattern = relation_rules.Inequality, category = "TopLevelRule", priority = prio + 5 }
 c[#c + 1] = {

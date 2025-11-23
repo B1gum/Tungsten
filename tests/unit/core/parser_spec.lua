@@ -289,6 +289,7 @@ describe("tungsten.core.parser.parse with combined grammar", function()
 			)
 			assert.are.same(expected_ast, parse_input(input))
 		end)
+
 		it("should parse 2\\alpha as 2 \\cdot \\alpha (implicitly)", function()
 			local input = "2\\alpha"
 			local expected_ast = ast_utils.create_binary_operation_node(
@@ -296,6 +297,21 @@ describe("tungsten.core.parser.parse with combined grammar", function()
 				{ type = "number", value = 2 },
 				{ type = "greek", name = "alpha" }
 			)
+			assert.are.same(expected_ast, parse_input(input))
+		end)
+
+		it("should parse \\sin(x) \\cos(y) as implicit multiplication", function()
+			local input = "\\sin(x) \\cos(y)"
+			local expected_ast = ast_utils.create_binary_operation_node(
+				"*",
+				ast_utils.create_function_call_node({ type = "variable", name = "sin" }, {
+					{ type = "variable", name = "x" },
+				}),
+				ast_utils.create_function_call_node({ type = "variable", name = "cos" }, {
+					{ type = "variable", name = "y" },
+				})
+			)
+
 			assert.are.same(expected_ast, parse_input(input))
 		end)
 	end)
