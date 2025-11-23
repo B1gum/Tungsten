@@ -94,6 +94,20 @@ local function gather_nodes(root)
 	return { root }
 end
 
+local function extract_function_name(node)
+        if type(node) ~= "table" then
+                return nil
+        end
+        if type(node.name) == "string" and node.name ~= "" then
+                return node.name
+        end
+        local name_node = node.name_node
+        if type(name_node) == "table" and type(name_node.name) == "string" then
+                return name_node.name
+        end
+        return nil
+end
+
 local function mark_defined(defined, name)
 	if type(name) ~= "string" then
 		return
@@ -317,20 +331,6 @@ local function collect_function_calls(node, acc, seen)
 	end
 end
 
-local function extract_function_name(node)
-	if type(node) ~= "table" then
-		return nil
-	end
-	if type(node.name) == "string" and node.name ~= "" then
-		return node.name
-	end
-	local name_node = node.name_node
-	if type(name_node) == "table" and type(name_node.name) == "string" then
-		return name_node.name
-	end
-	return nil
-end
-
 local function build_function_entries(nodes, defined, ignored)
 	local entries = {}
 	local seen = {}
@@ -381,17 +381,50 @@ function M.get_undefined_symbols(opts)
 	if #nodes == 0 then
 		return true, {}
 	end
-	local defined = build_defined_names(opts)
-	local ignored = build_ignore_set(opts)
-	local axis_overrides = build_axis_overrides(opts)
-	local candidate_vars = {}
-	local plot_dim = opts.dim or opts.dimension or opts.expected_dim
-	local classification_opts = { simple_mode = true, mode = "simple" }
-	for _, node in ipairs(nodes) do
-		local ok_class, class_res = pcall(classification.analyze, node, classification_opts)
-		if ok_class and type(class_res) == "table" and type(class_res.dim) == "number" then
-			if type(plot_dim) ~= "number" or class_res.dim > plot_dim then
-				plot_dim = class_res.dim
+        local defined = build_defined_names(opts)
+        local ignored = build_ignore_set(opts)
+        local axis_overrides = build_axis_overrides(opts)
+        local candidate_vars = {}
+        local plot_dim = opts.dim or opts.dimension or opts.expected_dim
+        local classification_opts = { simple_mode = true, mode = "simple" }
+        local function mark_function_definitions()
+                local function walk(node)
+                        if type(node) ~= "table" then
+                                return
+                        end
+                        if node.type == "Equality" and type(node.lhs) == "table" and node.lhs.type == "function_call" then
+                                local signature = ast_mod.canonical(node.lhs)
+                                if signature and signature ~= "" then
+                                        mark_defined(defined, signature)
+                                else
+                                        local name = extract_function_name(node.lhs)
+                                        if name then
+                                                mark_defined(defined, name)
+                                        end
+                                end
+                        end
+                        for _, child in pairs(node) do
+                                if type(child) == "table" then
+                                        if child.type then
+                                                walk(child)
+                                        else
+                                                for _, nested in pairs(child) do
+                                                        walk(nested)
+                                                end
+                                        end
+                                end
+                        end
+                end
+                for _, node in ipairs(nodes) do
+                        walk(node)
+                end
+        end
+        mark_function_definitions()
+        for _, node in ipairs(nodes) do
+                local ok_class, class_res = pcall(classification.analyze, node, classification_opts)
+                if ok_class and type(class_res) == "table" and type(class_res.dim) == "number" then
+                        if type(plot_dim) ~= "number" or class_res.dim > plot_dim then
+                                plot_dim = class_res.dim
 			end
 		end
 		local free = free_vars.find(node) or {}
