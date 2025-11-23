@@ -72,34 +72,23 @@ describe("wolfram plot option translation", function()
 		assert.is_truthy(code:find("PlotRange -> {Automatic, {-2, 2}}", 1, true))
 	end)
 
-	it("uses keyed figsize entries when emitting ImageSize", function()
-		local opts = build_base_opts({
-			clip_axes = { y = true },
-			yrange = { -2, 2 },
-			figsize_in = { width = 5, height = 3 },
-		})
-		local code, err = wolfram_plot.build_plot_code(opts)
-		assert.is_nil(err)
-		assert.is_truthy(code:find("ImageSize -> {360, 216}", 1, true))
-	end)
+        it("ignores figsize_in and defers to Wolfram defaults", function()
+                local opts = build_base_opts({
+                        clip_axes = { y = true },
+                        yrange = { -2, 2 },
+                        figsize_in = { width = 5, height = 3 },
+                })
+                local code, err = wolfram_plot.build_plot_code(opts)
+                assert.is_nil(err)
+                assert.is_nil(code:match("ImageSize"))
+        end)
 
-	it("falls back to Automatic for missing figsize dimensions", function()
-		local opts = build_base_opts({
-			clip_axes = { y = true },
-			yrange = { -2, 2 },
-			figsize_in = { height = 5 },
-		})
-		local code, err = wolfram_plot.build_plot_code(opts)
-		assert.is_nil(err)
-		assert.is_truthy(code:find("ImageSize -> {Automatic, 360}", 1, true))
-	end)
-
-	it("omits AspectRatio overrides when aspect is auto", function()
-		local opts = build_base_opts({ aspect = "auto" })
-		local code, err = wolfram_plot.build_plot_code(opts)
-		assert.is_nil(err)
-		assert.is_nil(code:match("AspectRatio"))
-	end)
+        it("omits AspectRatio overrides when aspect is auto", function()
+                local opts = build_base_opts({ aspect = "auto" })
+                local code, err = wolfram_plot.build_plot_code(opts)
+                assert.is_nil(err)
+                assert.is_nil(code:match("AspectRatio"))
+        end)
 
 	it("emits AspectRatio -> 1 when aspect is equal", function()
 		local opts = build_base_opts({ aspect = "equal" })
@@ -233,14 +222,13 @@ describe("wolfram polar plotting", function()
 			out_path = "polar.png",
 			dim = 2,
 			form = "polar",
-			theta_range = { 0, "2*Pi" },
-			samples = 180,
-			figsize_in = { 4, 4 },
-			legend_auto = false,
-			legend_pos = "upper right",
-			series = {
-				{
-					kind = "function",
+                        theta_range = { 0, "2*Pi" },
+                        samples = 180,
+                        legend_auto = false,
+                        legend_pos = "upper right",
+                        series = {
+                                {
+                                        kind = "function",
 					ast = { r = { __code = "1 + Cos[theta]" } },
 					independent_vars = { "theta" },
 					label = "Cardioid",
@@ -252,13 +240,13 @@ describe("wolfram polar plotting", function()
 			callback_called = true
 		end)
 
-		assert.is_true(callback_called)
-		assert.is_truthy(captured_code)
-		assert.is_truthy(captured_code:find("PolarPlot[1 + Cos[theta], {theta, 0, 2*Pi}", 1, true))
-		assert.is_truthy(captured_code:find("PlotPoints -> 180", 1, true))
-		assert.is_truthy(captured_code:find("ImageSize -> {288, 288}", 1, true))
-		assert.is_truthy(captured_code:find("PlotStyle -> Directive[Red]", 1, true))
-		assert.is_truthy(captured_code:find('PlotLegends -> Placed[{"Cardioid"}, Scaled[{1, 1}]]', 1, true))
+                assert.is_true(callback_called)
+                assert.is_truthy(captured_code)
+                assert.is_truthy(captured_code:find("PolarPlot[1 + Cos[theta], {theta, 0, 2*Pi}", 1, true))
+                assert.is_truthy(captured_code:find("PlotPoints -> 180", 1, true))
+                assert.is_nil(captured_code:match("ImageSize"))
+                assert.is_truthy(captured_code:find("PlotStyle -> Directive[Red]", 1, true))
+                assert.is_truthy(captured_code:find('PlotLegends -> Placed[{"Cardioid"}, Scaled[{1, 1}]]', 1, true))
 	end)
 
 	describe("wolfram implicit plotting styles", function()

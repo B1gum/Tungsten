@@ -32,34 +32,6 @@ end
 
 local axis_keys = { "x", "y", "z" }
 
-local function resolve_figsize_inches(figsize)
-	if type(figsize) ~= "table" then
-		return nil, nil
-	end
-
-	local width = figsize[1] or figsize.width or figsize.w
-	local height = figsize[2] or figsize.height or figsize.h
-
-	width = tonumber(width)
-	height = tonumber(height)
-
-	if width and width <= 0 then
-		width = nil
-	end
-	if height and height <= 0 then
-		height = nil
-	end
-
-	return width, height
-end
-
-local function inches_to_points(value)
-	if not value then
-		return nil
-	end
-	return math.floor(value * 72 + 0.5)
-end
-
 local function axes_for_plot_range(opts)
 	if not opts or not opts.dim or opts.dim <= 1 then
 		return { "x" }
@@ -226,20 +198,9 @@ local function translate_opts_to_wolfram(opts)
 		end
 	end
 
-	if opts.figsize_in then
-		local width_in, height_in = resolve_figsize_inches(opts.figsize_in)
-		local width_pt = inches_to_points(width_in)
-		local height_pt = inches_to_points(height_in)
-		if width_pt or height_pt then
-			local width_str = width_pt and tostring(width_pt) or "Automatic"
-			local height_str = height_pt and tostring(height_pt) or "Automatic"
-			table.insert(res, string.format("ImageSize -> {%s, %s}", width_str, height_str))
-		end
-	end
-
 	if opts.crop then
 		table.insert(res, "ImageMargins -> 0")
-		table.insert(res, "ImagePadding -> 0")
+		table.insert(res, "ImagePadding -> All")
 		table.insert(res, "PlotRangePadding -> Scaled[0.02]")
 	end
 
