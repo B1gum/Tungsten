@@ -114,9 +114,9 @@ local vbar = P("|") * -P("|") / function()
 	return { type = "vbar" }
 end
 
-local lbrace, rbrace = P("{"), P("}")
-local lparen, rparen = P("("), P(")")
-local lbrack, rbrack = P("["), P("]")
+local lbrace, rbrace = P("\\left\\{") + P("{"), P("\\right\\}") + P("}")
+local lparen, rparen = P("\\left(") + P("("), P("\\right)") + P(")")
+local lbrack, rbrack = P("\\left[") + P("["), P("\\right]") + P("]")
 
 local cdot_command = create_cmd_token("cdot", "cdot_command")
 

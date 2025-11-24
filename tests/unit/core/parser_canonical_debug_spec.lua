@@ -58,6 +58,16 @@ describe("parser canonical debug strings", function()
 		assert.are.equal("Inequality(x,≤,y)", ast.canonical(res.series[1]))
 	end)
 
+	it("parses \\left...\\right parentheses equivalently to standard delimiters", function()
+		local without_left = parser.parse("\\frac{\\sin(\\sqrt{x^2 + y^2})}{\\sqrt{x^2 + y^2}}")
+		local with_left = parser.parse("\\frac{\\sin \\left( \\sqrt{x^2 + y^2} \\right)}{\\sqrt{x^2 + y^2}}")
+
+		assert.is_not_nil(with_left)
+		assert.is_not_nil(without_left)
+
+		assert.are.equal(ast.canonical(without_left.series[1]), ast.canonical(with_left.series[1]))
+	end)
+
 	it("errors on chained inequalities", function()
 		local res, err = parser.parse("a < b < c")
 		assert.is_nil(res)
