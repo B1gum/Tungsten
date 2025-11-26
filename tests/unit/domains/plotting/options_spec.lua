@@ -25,7 +25,7 @@ describe("Plotting Options and Defaults", function()
 				default_yrange = { -10, 10 },
 				default_zrange = { -10, 10 },
 				default_t_range = { -10, 10 },
-				default_theta_range = { 0, "2*pi" },
+				default_theta_range = { 0, "2*Pi" },
 				default_urange = { -10, 10 },
 				default_vrange = { -10, 10 },
 			},
@@ -79,7 +79,7 @@ describe("Plotting Options and Defaults", function()
 			assert.are.same({ -10, 10 }, para3.v_range)
 
 			local polar = options_builder.build({ dim = 2, form = "polar" }, {})
-			assert.are.same({ 0, "2*pi" }, polar.theta_range)
+			assert.are.same({ 0, "2*Pi" }, polar.theta_range)
 		end)
 	end)
 

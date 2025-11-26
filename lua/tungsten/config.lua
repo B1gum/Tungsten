@@ -54,7 +54,7 @@ local config = {
 		default_yrange = { -10, 10 },
 		default_zrange = { -10, 10 },
 		default_t_range = { -10, 10 },
-		default_theta_range = { 0, "2*pi" },
+		default_theta_range = { 0, "2*Pi" },
 		default_urange = { -10, 10 },
 		default_vrange = { -10, 10 },
 	},
