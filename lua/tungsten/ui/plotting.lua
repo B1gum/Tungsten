@@ -658,6 +658,7 @@ local function build_default_lines(opts)
 	local classification = opts.classification or {}
 	local form = classification.form or opts.form or "explicit"
 	local dim = classification.dim or opts.dim or 2
+	local show_colormap = not (form == "explicit" and dim == 2)
 	local backend = opts.backend or defaults.backend or "wolfram"
 	local outputmode = opts.outputmode or defaults.outputmode or "latex"
 	local aspect
@@ -732,7 +733,9 @@ local function build_default_lines(opts)
 		lines[#lines + 1] = "View elevation: " .. tostring(opts.view_elev or 30)
 		lines[#lines + 1] = "View azimuth: " .. tostring(opts.view_azim or -60)
 	end
-	lines[#lines + 1] = "Colormap: " .. tostring(opts.colormap or "viridis")
+	if show_colormap then
+		lines[#lines + 1] = "Colormap: " .. tostring(opts.colormap or "viridis")
+	end
 	lines[#lines + 1] = "Colorbar: " .. (opts.colorbar == nil and "off" or to_on_off(opts.colorbar))
 	lines[#lines + 1] = "Background: " .. tostring(opts.bg_color or "white")
 	lines[#lines + 1] = ""
@@ -835,6 +838,8 @@ local function parse_advanced_buffer(lines, opts)
 	local allowed_backends = { wolfram = true, python = true }
 	local allowed_output_modes = { latex = true, viewer = true, both = true }
 
+	local show_colormap = not (form == "explicit" and dim == 2)
+
 	local expected_global_keys = {
 		["Form"] = true,
 		["Backend"] = true,
@@ -844,10 +849,13 @@ local function parse_advanced_buffer(lines, opts)
 		["Legend placement"] = true,
 		["Dependents"] = true,
 		["Grid"] = true,
-		["Colormap"] = true,
 		["Colorbar"] = true,
 		["Background"] = true,
 	}
+
+	if show_colormap then
+		expected_global_keys["Colormap"] = true
+	end
 
 	if dim >= 1 then
 		expected_global_keys["X-range"] = true
