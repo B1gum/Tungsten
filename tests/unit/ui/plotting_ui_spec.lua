@@ -538,6 +538,7 @@ describe("Plotting UI and UX", function()
 				nvim_open_win = vim.api.nvim_open_win,
 				nvim_create_autocmd = vim.api.nvim_create_autocmd,
 				nvim_buf_get_lines = vim.api.nvim_buf_get_lines,
+				nvim_win_close = vim.api.nvim_win_close,
 			}
 			original_vim_ui_input = vim.ui.input
 			vim.api.nvim_create_buf = stub.new(vim.api, "nvim_create_buf", function()
@@ -555,6 +556,7 @@ describe("Plotting UI and UX", function()
 			vim.api.nvim_buf_get_lines = stub.new(vim.api, "nvim_buf_get_lines", function()
 				return vim.deepcopy(buffer_lines or {})
 			end)
+			vim.api.nvim_win_close = stub.new(vim.api, "nvim_win_close")
 			vim.ui.input = stub.new(vim.ui, "input")
 		end)
 
@@ -566,6 +568,7 @@ describe("Plotting UI and UX", function()
 			vim.api.nvim_open_win = original_api.nvim_open_win
 			vim.api.nvim_create_autocmd = original_api.nvim_create_autocmd
 			vim.api.nvim_buf_get_lines = original_api.nvim_buf_get_lines
+			vim.api.nvim_win_close = original_api.nvim_win_close
 			vim.ui.input = original_vim_ui_input
 		end)
 
@@ -658,6 +661,7 @@ describe("Plotting UI and UX", function()
 			wq_callback()
 			assert.spy(vim.ui.input).was_not.called()
 			assert.spy(mock_plotting_core.initiate_plot).was.called(1)
+			assert.spy(vim.api.nvim_win_close).was.called_with(mock_winid, true)
 
 			mock_plotting_core.initiate_plot:clear()
 			q_callback()

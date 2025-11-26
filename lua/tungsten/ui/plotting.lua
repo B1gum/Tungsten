@@ -1134,7 +1134,8 @@ function M.open_advanced_config(opts)
 	vim.api.nvim_buf_set_option(bufnr, "swapfile", false)
 	local lines = build_default_lines(opts)
 	vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
-	vim.api.nvim_open_win(bufnr, true, { relative = "editor", width = 60, height = #lines, row = 1, col = 1 })
+	local winid =
+		vim.api.nvim_open_win(bufnr, true, { relative = "editor", width = 60, height = #lines, row = 1, col = 1 })
 	vim.api.nvim_create_autocmd("BufWriteCmd", {
 		buffer = bufnr,
 		callback = function()
@@ -1185,6 +1186,8 @@ function M.open_advanced_config(opts)
 			else
 				core.initiate_plot(final_opts)
 			end
+			pcall(vim.api.nvim_buf_set_option, bufnr, "modified", false)
+			pcall(vim.api.nvim_win_close, winid, true)
 		end,
 	})
 	vim.api.nvim_create_autocmd("BufWipeout", { buffer = bufnr, callback = function() end })
