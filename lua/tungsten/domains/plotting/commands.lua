@@ -113,7 +113,7 @@ M.commands = {
 	{
 		name = "TungstenPlotAdvanced",
 		func = M.advanced_plot_command,
-		opts = { desc = "Open advanced plotting configuration" },
+		opts = { range = true, desc = "Open advanced plotting configuration" },
 	},
 	{
 		name = "TungstenPlotCancel",
