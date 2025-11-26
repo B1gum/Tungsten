@@ -45,6 +45,10 @@ function M.create_function_call_node(name_node, args_table)
 	return node("function_call", { name_node = name_node, args = args_table })
 end
 
+function M.create_abs_node(expression)
+	return M.create_function_call_node(M.create_variable_node("abs"), { expression })
+end
+
 function M.create_symbol_node(name)
 	return node("symbol", { name = name })
 end

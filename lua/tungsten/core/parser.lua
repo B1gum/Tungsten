@@ -37,6 +37,8 @@ local delimiter_open_cmds = {
 	["\\langle"] = true,
 	["\\lfloor"] = true,
 	["\\lceil"] = true,
+	["\\lvert"] = true,
+	["\\left|"] = true,
 	["|"] = true,
 }
 
@@ -44,12 +46,18 @@ local delimiter_close_cmds = {
 	["\\rangle"] = true,
 	["\\rfloor"] = true,
 	["\\rceil"] = true,
+	["\\rvert"] = true,
+	["\\right|"] = true,
 	["|"] = true,
 }
 
 local delimiter_replacements = {
 	["\\langle"] = "(",
 	["\\rangle"] = ")",
+	["\\lvert"] = "|",
+	["\\rvert"] = "|",
+	["\\left|"] = "|",
+	["\\right|"] = "|",
 	["."] = "",
 }
 

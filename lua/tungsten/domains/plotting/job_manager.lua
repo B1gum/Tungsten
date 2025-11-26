@@ -181,6 +181,17 @@ local function notify_job_cancelled(job)
 	end
 end
 
+local function sanitize_path(path_str)
+	if type(path_str) ~= "string" then
+		return path_str
+	end
+	local cleaned = path_str:gsub("\r", "")
+	cleaned = cleaned:gsub("\n", "")
+	cleaned = cleaned:gsub("^%s+", "")
+	cleaned = cleaned:gsub("%s+$", "")
+	return cleaned
+end
+
 local function apply_output(plot_opts, image_path)
 	if not plot_opts then
 		return
@@ -189,6 +200,7 @@ local function apply_output(plot_opts, image_path)
 	if (not image_path or image_path == "") and plot_opts.out_path and plot_opts.out_path ~= "" then
 		image_path = plot_opts.out_path
 	end
+	image_path = sanitize_path(image_path)
 	if not image_path or image_path == "" then
 		return
 	end

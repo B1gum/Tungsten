@@ -26,6 +26,30 @@ local function matrix_to_vector_str(node, render)
 	return render(node)
 end
 
+local function is_matrix_like(node)
+	if type(node) ~= "table" then
+		return false
+	end
+	if
+		node.type == "matrix"
+		or node.type == "vector"
+		or node.type == "symbolic_vector"
+		or node.type == "cross_product"
+	then
+		return true
+	end
+	if type(node.type) == "string" and node.type:match("_placeholder$") then
+		return true
+	end
+	if (node.type == "variable" or node.type == "symbol" or node.type == "greek") and type(node.name) == "string" then
+		return node.name:match("^[A-Z]") ~= nil
+	end
+	if node.type == "function_call" then
+		return is_matrix_like(node.name_node)
+	end
+	return false
+end
+
 local M = {}
 
 M.matrix_to_vector_str = matrix_to_vector_str
@@ -56,7 +80,11 @@ M.handlers = {
 	end,
 
 	determinant = function(node, recur_render)
-		return ("Det[%s]"):format(recur_render(node.expression))
+		local expr_str = recur_render(node.expression)
+		if not is_matrix_like(node.expression) then
+			return ("Abs[%s]"):format(expr_str)
+		end
+		return ("Det[%s]"):format(expr_str)
 	end,
 
 	transpose = function(node, recur_render)
@@ -81,12 +109,16 @@ M.handlers = {
 
 	norm = function(node, recur_render)
 		local expr_str = recur_render(node.expression)
+		if not is_matrix_like(node.expression) then
+			return ("Abs[%s]"):format(expr_str)
+		end
+
 		if node.p_value then
 			local p_val_str = recur_render(node.p_value)
 			return ("Norm[%s, %s]"):format(expr_str, p_val_str)
-		else
-			return ("Norm[%s]"):format(expr_str)
 		end
+
+		return ("Norm[%s]"):format(expr_str)
 	end,
 
 	matrix_power = function(node, recur_render)
