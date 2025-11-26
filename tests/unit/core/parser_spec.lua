@@ -314,6 +314,33 @@ describe("tungsten.core.parser.parse with combined grammar", function()
 
 			assert.are.same(expected_ast, parse_input(input))
 		end)
+
+		it("should parse \\ln x as a natural log function call", function()
+			local input = "\\ln x"
+			local expected_ast = ast_utils.create_function_call_node({ type = "variable", name = "ln" }, {
+				{ type = "variable", name = "x" },
+			})
+
+			assert.are.same(expected_ast, parse_input(input))
+		end)
+
+		it("should parse \\ln(x) as a natural log function call", function()
+			local input = "\\ln(x)"
+			local expected_ast = ast_utils.create_function_call_node({ type = "variable", name = "ln" }, {
+				{ type = "variable", name = "x" },
+			})
+
+			assert.are.same(expected_ast, parse_input(input))
+		end)
+
+		it("should parse \\log x as a logarithm function call", function()
+			local input = "\\log x"
+			local expected_ast = ast_utils.create_function_call_node({ type = "variable", name = "log" }, {
+				{ type = "variable", name = "x" },
+			})
+
+			assert.are.same(expected_ast, parse_input(input))
+		end)
 	end)
 
 	describe("relations", function()

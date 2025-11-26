@@ -12,6 +12,7 @@ M.grammar = { contributions = {}, extensions = {} }
 
 local prio = M.priority
 local supersub = require("tungsten.domains.arithmetic.rules.supersub")
+local log_functions = require("tungsten.domains.arithmetic.rules.log_functions")
 
 local relation_rules = require("tungsten.domains.arithmetic.rules.relation")
 
@@ -37,6 +38,8 @@ c[#c + 1] = {
 	category = "AtomBaseItem",
 	priority = prio,
 }
+c[#c + 1] = { name = "LnFunction", pattern = log_functions.LnRule, category = "AtomBaseItem", priority = prio }
+c[#c + 1] = { name = "LogFunction", pattern = log_functions.LogRule, category = "AtomBaseItem", priority = prio }
 c[#c + 1] = { name = "SupSub", pattern = supersub.SupSub, category = "SupSub", priority = prio }
 c[#c + 1] = { name = "Unary", pattern = supersub.Unary, category = "Unary", priority = prio }
 c[#c + 1] = {
