@@ -14,6 +14,7 @@ describe("Plotting Job Manager", function()
 	local notify_error_spy
 	local logger_error_spy
 	local original_executable
+	local original_buf_set_name
 
 	local modules_to_clear = {
 		"tungsten.domains.plotting.job_manager",
@@ -29,6 +30,7 @@ describe("Plotting Job Manager", function()
 		mock_utils.reset_modules(modules_to_clear)
 
 		original_executable = vim.fn.executable
+		original_buf_set_name = vim.api.nvim_buf_set_name
 		vim.fn.executable = function(bin)
 			if bin == "wolframscript" then
 				return 1
@@ -100,6 +102,7 @@ describe("Plotting Job Manager", function()
 		check_deps_spy = spy.on(mock_health, "check_dependencies")
 		package.loaded["tungsten.domains.plotting.health"] = mock_health
 
+		vim.api.nvim_buf_set_name = stub.new(vim.api, "nvim_buf_set_name", function() end)
 		JobManager = require("tungsten.domains.plotting.job_manager")
 		local ns = vim.api.nvim_create_namespace("tungsten_plot_spinner")
 		vim.api.nvim_buf_clear_namespace(0, ns, 0, -1)
@@ -111,6 +114,7 @@ describe("Plotting Job Manager", function()
 		logger_error_spy:clear()
 		local ns = vim.api.nvim_create_namespace("tungsten_plot_spinner")
 		vim.api.nvim_buf_clear_namespace(0, ns, 0, -1)
+		vim.api.nvim_buf_set_name = original_buf_set_name
 		vim.fn.executable = original_executable
 		mock_utils.reset_modules(modules_to_clear)
 	end)

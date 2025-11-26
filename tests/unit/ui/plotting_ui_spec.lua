@@ -157,6 +157,7 @@ describe("Plotting UI and UX", function()
 			buffer_lines = {}
 			original_api = {
 				nvim_create_buf = vim.api.nvim_create_buf,
+				nvim_buf_set_name = vim.api.nvim_buf_set_name,
 				nvim_buf_set_lines = vim.api.nvim_buf_set_lines,
 				nvim_buf_set_option = vim.api.nvim_buf_set_option,
 				nvim_open_win = vim.api.nvim_open_win,
@@ -168,6 +169,7 @@ describe("Plotting UI and UX", function()
 			vim.api.nvim_create_buf = stub.new(vim.api, "nvim_create_buf", function()
 				return mock_bufnr
 			end)
+			vim.api.nvim_buf_set_name = stub.new(vim.api, "nvim_buf_set_name", function() end)
 			vim.api.nvim_buf_set_lines = stub.new(vim.api, "nvim_buf_set_lines", function(_, _, _, _, lines)
 				buffer_lines = vim.deepcopy(lines)
 			end)
@@ -530,7 +532,9 @@ describe("Plotting UI and UX", function()
 		before_each(function()
 			original_api = {
 				nvim_create_buf = vim.api.nvim_create_buf,
+				nvim_buf_set_name = vim.api.nvim_buf_set_name,
 				nvim_buf_set_lines = vim.api.nvim_buf_set_lines,
+				nvim_buf_set_option = vim.api.nvim_buf_set_option,
 				nvim_open_win = vim.api.nvim_open_win,
 				nvim_create_autocmd = vim.api.nvim_create_autocmd,
 				nvim_buf_get_lines = vim.api.nvim_buf_get_lines,
@@ -539,9 +543,11 @@ describe("Plotting UI and UX", function()
 			vim.api.nvim_create_buf = stub.new(vim.api, "nvim_create_buf", function()
 				return mock_bufnr
 			end)
+			vim.api.nvim_buf_set_name = stub.new(vim.api, "nvim_buf_set_name", function() end)
 			vim.api.nvim_buf_set_lines = stub.new(vim.api, "nvim_buf_set_lines", function(_, _, _, _, lines)
 				buffer_lines = vim.deepcopy(lines)
 			end)
+			vim.api.nvim_buf_set_option = stub.new(vim.api, "nvim_buf_set_option")
 			vim.api.nvim_open_win = stub.new(vim.api, "nvim_open_win", function()
 				return mock_winid
 			end)
@@ -549,16 +555,14 @@ describe("Plotting UI and UX", function()
 			vim.api.nvim_buf_get_lines = stub.new(vim.api, "nvim_buf_get_lines", function()
 				return vim.deepcopy(buffer_lines or {})
 			end)
-			vim.ui.input = stub.new(vim.ui, "input", function(_, on_confirm)
-				if on_confirm then
-					on_confirm("y")
-				end
-			end)
+			vim.ui.input = stub.new(vim.ui, "input")
 		end)
 
 		after_each(function()
 			vim.api.nvim_create_buf = original_api.nvim_create_buf
+			vim.api.nvim_buf_set_name = original_api.nvim_buf_set_name
 			vim.api.nvim_buf_set_lines = original_api.nvim_buf_set_lines
+			vim.api.nvim_buf_set_option = original_api.nvim_buf_set_option
 			vim.api.nvim_open_win = original_api.nvim_open_win
 			vim.api.nvim_create_autocmd = original_api.nvim_create_autocmd
 			vim.api.nvim_buf_get_lines = original_api.nvim_buf_get_lines
@@ -597,6 +601,14 @@ describe("Plotting UI and UX", function()
 			assert.truthy(table.concat(buffer_content, "\n"):find("Form: explicit"))
 		end)
 
+		it("should prepare a writable scratch buffer for configuration", function()
+			plotting_ui.open_advanced_config({})
+			assert.spy(vim.api.nvim_buf_set_name).was.called_with(mock_bufnr, match.is_string())
+			assert.spy(vim.api.nvim_buf_set_option).was.called_with(mock_bufnr, "buftype", "acwrite")
+			assert.spy(vim.api.nvim_buf_set_option).was.called_with(mock_bufnr, "bufhidden", "wipe")
+			assert.spy(vim.api.nvim_buf_set_option).was.called_with(mock_bufnr, "swapfile", false)
+		end)
+
 		it("should auto-select the plot form based on input classification", function()
 			plotting_ui.open_advanced_config({ classification = { form = "polar" } })
 			local buffer_content = vim.api.nvim_buf_set_lines.calls[1].vals[5]
@@ -628,7 +640,7 @@ describe("Plotting UI and UX", function()
 			assert.truthy(content:find("Linewidth:"))
 		end)
 
-		it("should trigger a plot on :wq and cancel on :q", function()
+		it("should trigger a plot on :wq and cancel on :q without prompting", function()
 			plotting_ui.open_advanced_config({})
 			local wq_callback, q_callback
 
@@ -644,32 +656,12 @@ describe("Plotting UI and UX", function()
 			assert.is_function(q_callback, "BufWipeout callback was not defined.")
 
 			wq_callback()
-			assert.spy(vim.ui.input).was.called(1)
+			assert.spy(vim.ui.input).was_not.called()
 			assert.spy(mock_plotting_core.initiate_plot).was.called(1)
 
 			mock_plotting_core.initiate_plot:clear()
 			q_callback()
 			assert.spy(mock_plotting_core.initiate_plot).was_not.called()
-		end)
-
-		it("should only plot when the user confirms", function()
-			plotting_ui.open_advanced_config({})
-			local wq_callback
-
-			for _, call in ipairs(vim.api.nvim_create_autocmd.calls) do
-				if call.vals[1] == "BufWriteCmd" then
-					wq_callback = call.vals[2].callback
-				end
-			end
-
-			vim.ui.input = stub.new(vim.ui, "input", function(_, on_confirm)
-				if on_confirm then
-					on_confirm(nil)
-				end
-			end)
-
-			wq_callback()
-			assert.spy(mock_plotting_core.initiate_plot).was_not_called()
 		end)
 
 		it("should parse buffer edits into plotting options", function()

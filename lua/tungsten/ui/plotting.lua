@@ -1128,6 +1128,10 @@ end
 function M.open_advanced_config(opts)
 	opts = opts or {}
 	local bufnr = vim.api.nvim_create_buf(false, true)
+	vim.api.nvim_buf_set_name(bufnr, string.format("tungsten://plot-config/%d", bufnr))
+	vim.api.nvim_buf_set_option(bufnr, "buftype", "acwrite")
+	vim.api.nvim_buf_set_option(bufnr, "bufhidden", "wipe")
+	vim.api.nvim_buf_set_option(bufnr, "swapfile", false)
 	local lines = build_default_lines(opts)
 	vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
 	vim.api.nvim_open_win(bufnr, true, { relative = "editor", width = 60, height = #lines, row = 1, col = 1 })
@@ -1139,52 +1143,48 @@ function M.open_advanced_config(opts)
 			if not parsed then
 				return
 			end
-			vim.ui.input({ prompt = "Generate plot with current configuration? (y/N): " }, function(answer)
-				if answer and answer:match("^%s*[Yy]") then
-					local classification = vim.deepcopy(opts.classification or {})
-					local builder_overrides = vim.deepcopy(parsed.overrides or {})
-					local dependents_mode = builder_overrides.dependents_mode
-					builder_overrides.dependents_mode = nil
-					local built = options_builder.build(classification, builder_overrides)
-					local final_opts = vim.deepcopy(opts)
-					final_opts.series = {}
-					if built.series then
-						for i, series_entry in ipairs(built.series) do
-							final_opts.series[i] = vim.deepcopy(series_entry)
-						end
-					end
-					local series_dependents = {}
-					for i, edit in ipairs(parsed.series) do
-						final_opts.series[i] = final_opts.series[i] or {}
-						if edit.dependents_mode == "auto" then
-							series_dependents[i] = true
-						end
-						for key, value in pairs(edit) do
-							if key ~= "dependents_mode" then
-								final_opts.series[i][key] = value
-							end
-						end
-					end
-					for key, value in pairs(built) do
-						if key ~= "series" then
-							final_opts[key] = value
-						end
-					end
-					if dependents_mode == "auto" then
-						final_opts.dependent_vars = nil
-					end
-					for idx in pairs(series_dependents) do
-						if final_opts.series[idx] then
-							final_opts.series[idx].dependent_vars = nil
-						end
-					end
-					if type(opts.on_submit) == "function" then
-						opts.on_submit(final_opts)
-					else
-						core.initiate_plot(final_opts)
+			local classification = vim.deepcopy(opts.classification or {})
+			local builder_overrides = vim.deepcopy(parsed.overrides or {})
+			local dependents_mode = builder_overrides.dependents_mode
+			builder_overrides.dependents_mode = nil
+			local built = options_builder.build(classification, builder_overrides)
+			local final_opts = vim.deepcopy(opts)
+			final_opts.series = {}
+			if built.series then
+				for i, series_entry in ipairs(built.series) do
+					final_opts.series[i] = vim.deepcopy(series_entry)
+				end
+			end
+			local series_dependents = {}
+			for i, edit in ipairs(parsed.series) do
+				final_opts.series[i] = final_opts.series[i] or {}
+				if edit.dependents_mode == "auto" then
+					series_dependents[i] = true
+				end
+				for key, value in pairs(edit) do
+					if key ~= "dependents_mode" then
+						final_opts.series[i][key] = value
 					end
 				end
-			end)
+			end
+			for key, value in pairs(built) do
+				if key ~= "series" then
+					final_opts[key] = value
+				end
+			end
+			if dependents_mode == "auto" then
+				final_opts.dependent_vars = nil
+			end
+			for idx in pairs(series_dependents) do
+				if final_opts.series[idx] then
+					final_opts.series[idx].dependent_vars = nil
+				end
+			end
+			if type(opts.on_submit) == "function" then
+				opts.on_submit(final_opts)
+			else
+				core.initiate_plot(final_opts)
+			end
 		end,
 	})
 	vim.api.nvim_create_autocmd("BufWipeout", { buffer = bufnr, callback = function() end })
