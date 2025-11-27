@@ -70,6 +70,25 @@ local function python_string_literal(value)
 	return string.format("%q", value)
 end
 
+local function normalize_legend_position(pos)
+	if type(pos) ~= "string" then
+		return pos
+	end
+	local normalized = pos:lower()
+	local map = {
+		n = "upper center",
+		ne = "upper right",
+		e = "center right",
+		se = "lower right",
+		s = "lower center",
+		sw = "lower left",
+		w = "center left",
+		nw = "upper left",
+		c = "center",
+	}
+	return map[normalized] or pos
+end
+
 local function build_style_args(series, context, default_color)
 	series = series or {}
 	local parts = {}
@@ -661,8 +680,13 @@ function M.build_python_script(opts)
 		end
 	end
 	if has_labels then
-		if opts.legend_auto == false and opts.legend_pos then
-			table.insert(lines, string.format("ax.legend(loc='%s')", opts.legend_pos))
+		local legend_pos = normalize_legend_position(opts.legend_pos)
+		if opts.legend_auto == false then
+			if legend_pos then
+				table.insert(lines, string.format("ax.legend(loc='%s')", legend_pos))
+			end
+		elseif legend_pos then
+			table.insert(lines, string.format("ax.legend(loc='%s')", legend_pos))
 		else
 			table.insert(lines, "ax.legend()")
 		end

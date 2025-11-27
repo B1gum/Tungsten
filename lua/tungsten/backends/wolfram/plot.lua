@@ -280,18 +280,18 @@ local function build_style_directive(series)
 end
 
 local function series_supports_markers(series)
-        return series and series.kind == "points"
+	return series and series.kind == "points"
 end
 
 local function build_marker_spec(series)
-        if not series_supports_markers(series) then
-                return nil
-        end
-        local marker = series.marker
-        if type(marker) == "string" then
-                local lowered = marker:lower()
-                if lowered == "none" or lowered == "off" then
-                        return nil
+	if not series_supports_markers(series) then
+		return nil
+	end
+	local marker = series.marker
+	if type(marker) == "string" then
+		local lowered = marker:lower()
+		if lowered == "none" or lowered == "off" then
+			return nil
 		end
 	end
 
@@ -333,6 +333,21 @@ local function apply_series_styles(extra_opts, series)
 end
 
 local function translate_legend_pos(pos)
+	if type(pos) == "string" then
+		local lowered = pos:lower()
+		local compass = {
+			n = "upper center",
+			ne = "upper right",
+			e = "center right",
+			se = "lower right",
+			s = "lower center",
+			sw = "lower left",
+			w = "center left",
+			nw = "upper left",
+			c = "center",
+		}
+		pos = compass[lowered] or pos
+	end
 	local map = {
 		["upper right"] = "Scaled[{1, 1}]",
 		["upper left"] = "Scaled[{0, 1}]",

@@ -24,6 +24,19 @@ end
 function M.build(classification, user_overrides)
 	user_overrides = user_overrides or {}
 
+	if user_overrides.legend_position and user_overrides.legend_pos == nil then
+		user_overrides.legend_pos = user_overrides.legend_position
+	end
+
+	if user_overrides.legend ~= nil and user_overrides.legend_auto == nil then
+		local toggle = user_overrides.legend
+		if type(toggle) == "string" then
+			local lowered = toggle:lower()
+			toggle = lowered == "on" or lowered == "true" or lowered == "yes"
+		end
+		user_overrides.legend_auto = toggle and true or false
+	end
+
 	local defaults = (config.plotting or {})
 
 	local function get_default(val, fallback)

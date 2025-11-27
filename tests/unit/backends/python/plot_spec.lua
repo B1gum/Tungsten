@@ -130,6 +130,33 @@ describe("python polar plotting", function()
 		assert.is_true(print_idx > save_idx)
 	end)
 
+	it("applies legend location aliases when provided", function()
+		local opts = {
+			dim = 2,
+			form = "explicit",
+			out_path = "legend.png",
+			legend_pos = "ne",
+			series = {
+				{
+					kind = "function",
+					ast = { __code = "x" },
+					independent_vars = { "x" },
+					label = "sin",
+				},
+				{
+					kind = "function",
+					ast = { __code = "x**2" },
+					independent_vars = { "x" },
+					label = "cos",
+				},
+			},
+		}
+
+		local script, err = plot_backend.build_python_script(opts)
+		assert.is_nil(err)
+		assert.is_truthy(script:find("ax.legend(loc='upper right')", 1, true))
+	end)
+
 	describe("python plot error handling", function()
 		it("returns structured errors when no explicit functions exist", function()
 			local opts = {

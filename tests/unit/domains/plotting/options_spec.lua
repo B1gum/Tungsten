@@ -145,6 +145,13 @@ describe("Plotting Options and Defaults", function()
 		assert.is_true(opts.colorbar)
 	end)
 
+	it("normalizes legacy legend keys", function()
+		local opts = options_builder.build({ dim = 2, form = "explicit" }, { legend = "on", legend_position = "ne" })
+
+		assert.is_true(opts.legend_auto)
+		assert.are.same("ne", opts.legend_pos)
+	end)
+
 	describe("legend_auto", function()
 		it("is nil by default", function()
 			local opts = options_builder.build({ dim = 2, form = "explicit" }, {})
