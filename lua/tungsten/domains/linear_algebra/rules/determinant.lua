@@ -9,23 +9,6 @@ local tk = require("tungsten.core.tokenizer")
 local ast = require("tungsten.core.ast")
 local space = tk.space
 
-local function is_matrix_like(node)
-	return type(node) == "table" and node.type == "matrix"
-end
-
-local function is_symbolic_matrix(node)
-	if type(node) ~= "table" then
-		return false
-	end
-	if (node.type == "variable" or node.type == "symbol" or node.type == "greek") and type(node.name) == "string" then
-		return node.name:match("^[A-Z]") ~= nil
-	end
-	if node.type == "function_call" then
-		return is_symbolic_matrix(node.name_node)
-	end
-	return false
-end
-
 local function determinant_or_abs(expr_ast)
 	return ast.create_determinant_node(expr_ast)
 end
