@@ -279,12 +279,19 @@ local function build_style_directive(series)
 	return nil
 end
 
+local function series_supports_markers(series)
+        return series and series.kind == "points"
+end
+
 local function build_marker_spec(series)
-	local marker = series.marker
-	if type(marker) == "string" then
-		local lowered = marker:lower()
-		if lowered == "none" or lowered == "off" then
-			return nil
+        if not series_supports_markers(series) then
+                return nil
+        end
+        local marker = series.marker
+        if type(marker) == "string" then
+                local lowered = marker:lower()
+                if lowered == "none" or lowered == "off" then
+                        return nil
 		end
 	end
 

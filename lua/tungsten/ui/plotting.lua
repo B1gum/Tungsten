@@ -641,15 +641,19 @@ local function collect_dependents(series, dim, form)
 end
 
 local function get_series_defaults(series)
-	local parsed = parse_style_tokens(series.style_tokens or series.style)
-	return {
-		color = series.color or parsed.color or "auto",
-		linewidth = series.linewidth or parsed.linewidth or "1.5",
-		linestyle = series.linestyle or parsed.linestyle or "solid",
-		marker = series.marker or parsed.marker or "none",
-		markersize = series.markersize or parsed.markersize or "6",
-		alpha = series.alpha or parsed.alpha or "1.0",
-	}
+        local parsed = parse_style_tokens(series.style_tokens or series.style)
+        return {
+                color = series.color or parsed.color or "auto",
+                linewidth = series.linewidth or parsed.linewidth or "1.5",
+                linestyle = series.linestyle or parsed.linestyle or "solid",
+                marker = series.marker or parsed.marker or "none",
+                markersize = series.markersize or parsed.markersize or "6",
+                alpha = series.alpha or parsed.alpha or "1.0",
+        }
+end
+
+local function series_supports_markers(series)
+        return series and series.kind == "points"
 end
 
 local function build_default_lines(opts)
@@ -739,21 +743,24 @@ local function build_default_lines(opts)
 	lines[#lines + 1] = "Colorbar: " .. (opts.colorbar == nil and "off" or to_on_off(opts.colorbar))
 	lines[#lines + 1] = "Background: " .. tostring(opts.bg_color or "white")
 	lines[#lines + 1] = ""
-	for i, s in ipairs(series) do
-		local defaults_for_series = get_series_defaults(s)
-		lines[#lines + 1] = string.format("--- Series %d: %s ---", i, s.ast or "")
-		lines[#lines + 1] = "Label: " .. (s.label or "")
-		lines[#lines + 1] = string.format("Dependents: %s%s", collect_dependents({ s }, dim, form), DEPENDENTS_HINT)
-		lines[#lines + 1] = "Color: " .. tostring(defaults_for_series.color)
-		lines[#lines + 1] = "Linewidth: " .. tostring(defaults_for_series.linewidth)
-		lines[#lines + 1] = "Linestyle: " .. tostring(defaults_for_series.linestyle)
-		lines[#lines + 1] = "Marker: " .. tostring(defaults_for_series.marker)
-		lines[#lines + 1] = "Markersize: " .. tostring(defaults_for_series.markersize)
-		lines[#lines + 1] = "Alpha: " .. tostring(defaults_for_series.alpha)
-		if i < #series then
-			lines[#lines + 1] = ""
-		end
-	end
+        for i, s in ipairs(series) do
+                local defaults_for_series = get_series_defaults(s)
+                local supports_markers = series_supports_markers(s)
+                lines[#lines + 1] = string.format("--- Series %d: %s ---", i, s.ast or "")
+                lines[#lines + 1] = "Label: " .. (s.label or "")
+                lines[#lines + 1] = string.format("Dependents: %s%s", collect_dependents({ s }, dim, form), DEPENDENTS_HINT)
+                lines[#lines + 1] = "Color: " .. tostring(defaults_for_series.color)
+                lines[#lines + 1] = "Linewidth: " .. tostring(defaults_for_series.linewidth)
+                lines[#lines + 1] = "Linestyle: " .. tostring(defaults_for_series.linestyle)
+                if supports_markers then
+                        lines[#lines + 1] = "Marker: " .. tostring(defaults_for_series.marker)
+                        lines[#lines + 1] = "Markersize: " .. tostring(defaults_for_series.markersize)
+                end
+                lines[#lines + 1] = "Alpha: " .. tostring(defaults_for_series.alpha)
+                if i < #series then
+                        lines[#lines + 1] = ""
+                end
+        end
 	return lines
 end
 
@@ -880,16 +887,22 @@ local function parse_advanced_buffer(lines, opts)
 		expected_global_keys["Theta-range"] = true
 	end
 
-	local expected_series_keys = {
-		["Label"] = true,
-		["Dependents"] = true,
-		["Color"] = true,
-		["Linewidth"] = true,
-		["Linestyle"] = true,
-		["Marker"] = true,
-		["Markersize"] = true,
-		["Alpha"] = true,
-	}
+        local expected_series_keys = {}
+        for i, s in ipairs(base_series) do
+                local keys = {
+                        ["Label"] = true,
+                        ["Dependents"] = true,
+                        ["Color"] = true,
+                        ["Linewidth"] = true,
+                        ["Linestyle"] = true,
+                        ["Alpha"] = true,
+                }
+                if series_supports_markers(s) then
+                        keys["Marker"] = true
+                        keys["Markersize"] = true
+                end
+                expected_series_keys[i] = keys
+        end
 
 	local seen_global_keys = {}
 	local seen_series_keys = {}
@@ -930,12 +943,13 @@ local function parse_advanced_buffer(lines, opts)
 			return nil
 		end
 
-		if current_series then
-			if not expected_series_keys[key] then
-				error_handler.notify_error("Plot Config", string.format("Unknown series key '%s'", key))
-				return nil
-			end
-			seen_series_keys[current_series][key] = true
+                if current_series then
+                        local series_keys = expected_series_keys[current_series] or {}
+                        if not series_keys[key] then
+                                error_handler.notify_error("Plot Config", string.format("Unknown series key '%s'", key))
+                                return nil
+                        end
+                        seen_series_keys[current_series][key] = true
 			local trimmed = vim.trim(value or "")
 			if key == "Label" then
 				series_overrides[current_series].label = trimmed
@@ -1109,17 +1123,18 @@ local function parse_advanced_buffer(lines, opts)
 		end
 	end
 
-	for i = 1, #base_series do
-		if not seen_series_keys[i] then
-			error_handler.notify_error("Plot Config", string.format("Missing configuration for series %d", i))
-			return nil
-		end
-		for key in pairs(expected_series_keys) do
-			if not seen_series_keys[i][key] then
-				error_handler.notify_error("Plot Config", string.format("Missing key '%s' for series %d", key, i))
-				return nil
-			end
-		end
+        for i = 1, #base_series do
+                if not seen_series_keys[i] then
+                        error_handler.notify_error("Plot Config", string.format("Missing configuration for series %d", i))
+                        return nil
+                end
+                local expected_keys = expected_series_keys[i] or {}
+                for key in pairs(expected_keys) do
+                        if not seen_series_keys[i][key] then
+                                error_handler.notify_error("Plot Config", string.format("Missing key '%s' for series %d", key, i))
+                                return nil
+                        end
+                end
 	end
 
 	return { overrides = overrides, series = series_overrides }
