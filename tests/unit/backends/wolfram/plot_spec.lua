@@ -49,6 +49,16 @@ describe("wolfram plot option translation", function()
 		assert.is_nil(code:match("PlotRange"))
 	end)
 
+	it("omits PlotMarkers when markers are disabled", function()
+		local opts = build_base_opts()
+		opts.series[1].marker = "none"
+		opts.series[1].markersize = "6"
+
+		local code, err = wolfram_plot.build_plot_code(opts)
+		assert.is_nil(err)
+		assert.is_nil(code:match("PlotMarkers"))
+	end)
+
 	it("includes PlotRange when dependent axes are clipped", function()
 		local opts = build_base_opts({ clip_dependent_axes = true, yrange = { -2, 2 } })
 		local code, err = wolfram_plot.build_plot_code(opts)

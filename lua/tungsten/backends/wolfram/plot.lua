@@ -240,10 +240,18 @@ local function build_style_directive(series)
 end
 
 local function build_marker_spec(series)
-	if series.marker or series.markersize then
-		local marker = series.marker and string.format('"%s"', series.marker) or "Automatic"
+	local marker = series.marker
+	if type(marker) == "string" then
+		local lowered = marker:lower()
+		if lowered == "none" or lowered == "off" then
+			return nil
+		end
+	end
+
+	if marker or series.markersize then
+		local marker_spec = marker and string.format('"%s"', marker) or "Automatic"
 		local size = series.markersize and tostring(series.markersize) or "Automatic"
-		return string.format("{%s, %s}", marker, size)
+		return string.format("{%s, %s}", marker_spec, size)
 	end
 	return nil
 end
