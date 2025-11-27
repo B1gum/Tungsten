@@ -6,6 +6,10 @@ local constants = {
 		python = "E",
 		wolfram = "E",
 	},
+	pi = {
+		python = "sp.pi",
+		wolfram = "Pi",
+	},
 }
 
 local M = {}

@@ -2,6 +2,7 @@ local stub = require("luassert.stub")
 local wolfram_plot = require("tungsten.backends.wolfram.plot")
 local executor = require("tungsten.backends.wolfram.executor")
 local async = require("tungsten.util.async")
+local ast = require("tungsten.core.ast")
 
 local function build_base_opts(overrides)
 	local opts = {
@@ -359,5 +360,29 @@ describe("wolfram polar plotting", function()
 			assert.is_truthy(code:find("ContourPlot3D", 1, true))
 			assert.is_truthy(code:find("Mesh -> None", 1, true))
 		end)
+	end)
+end)
+
+describe("wolfram plot ranges", function()
+	it("converts latex constants in range endpoints", function()
+		local sin_ast = ast.create_function_call_node(ast.create_variable_node("sin"), {
+			ast.create_variable_node("x"),
+		})
+
+		local code = assert(wolfram_plot.build_plot_code({
+			form = "explicit",
+			dim = 2,
+			xrange = { "-\\pi", "\\pi" },
+			series = {
+				{
+					kind = "function",
+					ast = sin_ast,
+					independent_vars = { "x" },
+				},
+			},
+			legend_auto = true,
+		}))
+
+		assert.is_true(code:find("{x, -Pi, Pi}", 1, true) ~= nil)
 	end)
 end)

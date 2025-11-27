@@ -41,3 +41,16 @@ vim.opt.rtp:prepend(plenary_path)
 if project_root and project_root ~= "" then
 	vim.opt.rtp:prepend(project_root)
 end
+
+vim.treesitter = vim.treesitter or {}
+vim.treesitter.get_parser = vim.treesitter.get_parser or function()
+	return { parse = function() end }
+end
+vim.treesitter.start = vim.treesitter.start or function() end
+vim.treesitter.query = vim.treesitter.query or {}
+vim.treesitter.query.get = vim.treesitter.query.get or function()
+	return nil
+end
+vim.treesitter.query.parse = vim.treesitter.query.parse or function()
+	return nil
+end

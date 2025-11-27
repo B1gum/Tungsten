@@ -40,6 +40,13 @@ describe("Plotting workflow", function()
 	before_each(function()
 		mock_utils.reset_modules(modules_to_reset)
 
+		vim.treesitter = {
+			get_parser = function()
+				return { parse = function() end }
+			end,
+			query = {},
+		}
+
 		vim_test_env.setup_buffer({ "sin(x)" })
 		vim_test_env.set_visual_selection(1, 1, 1, 7)
 		original_mode = vim.fn.mode

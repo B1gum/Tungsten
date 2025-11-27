@@ -5,6 +5,8 @@ local config = require("tungsten.config")
 local executor = require("tungsten.backends.wolfram.executor")
 local error_handler = require("tungsten.util.error_handler")
 local error_parser = require("tungsten.backends.wolfram.wolfram_error")
+local parser = require("tungsten.core.parser")
+local constants = require("tungsten.core.constants")
 
 local M = setmetatable({}, { __index = base })
 
@@ -54,6 +56,44 @@ local function unwrap_equality_rhs(ast)
 		return ast.rhs
 	end
 	return ast
+end
+
+local function to_wolfram_value(value)
+	if value == nil or type(value) == "number" then
+		return value
+	end
+	if type(value) ~= "string" then
+		return value
+	end
+
+	local ok, parsed_ast = pcall(parser.parse, value, { simple_mode = true })
+	if ok and parsed_ast then
+		local rendered = render_ast_to_wolfram(parsed_ast)
+		if rendered and not tostring(rendered):match("^Error") then
+			return rendered
+		end
+	end
+
+	local const_name = value:match("^%-?\\([A-Za-z]+)$")
+	if const_name then
+		local const_info = constants.get(const_name)
+		if const_info and const_info.wolfram then
+			local prefix = value:sub(1, 1) == "-" and "-" or ""
+			return prefix .. const_info.wolfram
+		end
+	end
+
+	return value
+end
+
+local function normalize_ranges(opts)
+	local keys = { "xrange", "yrange", "zrange", "t_range", "u_range", "v_range", "theta_range" }
+	for _, key in ipairs(keys) do
+		local range = opts[key]
+		if type(range) == "table" then
+			opts[key] = { to_wolfram_value(range[1]), to_wolfram_value(range[2]) }
+		end
+	end
 end
 
 local function axis_marked_for_clip(opts, axis_name, axis_var)
@@ -619,6 +659,7 @@ local function build_polar_code(opts)
 end
 
 function M.build_plot_code(opts)
+	normalize_ranges(opts)
 	if opts.form == "explicit" then
 		return build_explicit_code(opts)
 	elseif opts.form == "implicit" then
@@ -677,6 +718,8 @@ function M.plot_async(opts, callback)
 		callback("Missing out_path", nil)
 		return
 	end
+
+	normalize_ranges(opts)
 
 	local plot_code, err = M.build_plot_code(opts)
 	if not plot_code then

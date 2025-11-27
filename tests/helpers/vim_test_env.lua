@@ -76,9 +76,13 @@ end
 
 function M.setup_buffer(lines)
 	lines = lines or { "" }
-	local bufnr = vim.api.nvim_create_buf(false, true)
-	vim.api.nvim_set_current_buf(bufnr)
-	vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+	local ok, bufnr = pcall(vim.api.nvim_create_buf, false, true)
+	if not ok then
+		return nil
+	end
+
+	pcall(vim.api.nvim_set_current_buf, bufnr)
+	pcall(vim.api.nvim_buf_set_lines, bufnr, 0, -1, false, lines)
 	return bufnr
 end
 

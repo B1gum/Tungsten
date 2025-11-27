@@ -153,6 +153,9 @@ describe("tungsten.core.tokenizer", function()
 			it("should match '\\" .. letter_name .. "' and produce correct AST node", function()
 				local input = "\\" .. letter_name
 				local expected_ast = { type = "greek", name = letter_name }
+				if letter_name == "pi" then
+					expected_ast = { type = "constant", name = "pi" }
+				end
 				assert.are.same(expected_ast, lpeg.match(tokenizer.Greek, input))
 			end)
 		end
