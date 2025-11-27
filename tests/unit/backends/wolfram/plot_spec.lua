@@ -50,6 +50,27 @@ describe("wolfram plot option translation", function()
 		assert.is_nil(code:match("PlotRange"))
 	end)
 
+	it("normalizes common style names for directives", function()
+		local opts = build_base_opts({
+			series = {
+				{
+					kind = "function",
+					ast = { __code = "Sin[x]" },
+					independent_vars = { "x" },
+					dependent_vars = { "y" },
+					color = "red",
+					linewidth = 2,
+					linestyle = "dashed",
+				},
+			},
+		})
+
+		local code, err = wolfram_plot.build_plot_code(opts)
+
+		assert.is_nil(err)
+		assert.is_truthy(code:find("PlotStyle%s*->%s*Directive%[Red,%s*AbsoluteThickness%[2%],%s*Dashed%]"))
+	end)
+
 	it("omits PlotMarkers when markers are disabled", function()
 		local opts = build_base_opts()
 		opts.series[1].marker = "none"

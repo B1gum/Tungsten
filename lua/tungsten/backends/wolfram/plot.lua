@@ -256,16 +256,58 @@ local function ensure_option(extra_opts, needle, option_str)
 	extra_opts[#extra_opts + 1] = option_str
 end
 
+local function normalize_color(value)
+	if type(value) ~= "string" then
+		return value
+	end
+
+	local map = {
+		red = "Red",
+		blue = "Blue",
+		green = "Green",
+		black = "Black",
+		white = "White",
+		gray = "Gray",
+		grey = "Gray",
+		orange = "Orange",
+		purple = "Purple",
+		yellow = "Yellow",
+		brown = "Brown",
+	}
+
+	local lowered = value:lower()
+	return map[lowered] or value
+end
+
+local function normalize_linestyle(value)
+	if type(value) ~= "string" then
+		return value
+	end
+
+	local map = {
+		solid = nil,
+		dashed = "Dashed",
+		dotted = "Dotted",
+		dashdot = "DotDashed",
+		dotdash = "DotDashed",
+	}
+
+	local lowered = value:lower()
+	return map[lowered]
+end
+
 local function build_style_directive(series)
 	local parts = {}
-	if series.color then
-		parts[#parts + 1] = series.color
+	local color = normalize_color(series.color)
+	if color then
+		parts[#parts + 1] = color
 	end
 	if series.linewidth then
 		parts[#parts + 1] = string.format("AbsoluteThickness[%s]", series.linewidth)
 	end
-	if series.linestyle then
-		parts[#parts + 1] = series.linestyle
+	local linestyle = normalize_linestyle(series.linestyle)
+	if linestyle then
+		parts[#parts + 1] = linestyle
 	end
 	if series.alpha then
 		parts[#parts + 1] = string.format("Opacity[%s]", series.alpha)
