@@ -81,20 +81,69 @@ describe("wolfram plot option translation", function()
 		assert.is_nil(code:match("PlotMarkers"))
 	end)
 
-	it("omits PlotMarkers for explicit function plots", function()
-		local opts = build_base_opts()
-		opts.series[1].marker = "o"
-		opts.series[1].markersize = "3"
+        it("omits PlotMarkers for explicit function plots", function()
+                local opts = build_base_opts()
+                opts.series[1].marker = "o"
+                opts.series[1].markersize = "3"
 
-		local code, err = wolfram_plot.build_plot_code(opts)
-		assert.is_nil(err)
-		assert.is_nil(code:match("PlotMarkers"))
-	end)
+                local code, err = wolfram_plot.build_plot_code(opts)
+                assert.is_nil(err)
+                assert.is_nil(code:match("PlotMarkers"))
+        end)
 
-	it("includes PlotRange when dependent axes are clipped", function()
-		local opts = build_base_opts({ clip_dependent_axes = true, yrange = { -2, 2 } })
-		local code, err = wolfram_plot.build_plot_code(opts)
-		assert.is_nil(err)
+        it("inserts PlotLegends for labeled explicit function plots", function()
+                local opts = build_base_opts({
+                        legend_auto = true,
+                        series = {
+                                {
+                                        kind = "function",
+                                        ast = { __code = "Sin[x]" },
+                                        independent_vars = { "x" },
+                                        dependent_vars = { "y" },
+                                        label = "sin(x)",
+                                },
+                                {
+                                        kind = "function",
+                                        ast = { __code = "Cos[x]" },
+                                        independent_vars = { "x" },
+                                        dependent_vars = { "y" },
+                                        label = "cos(x)",
+                                },
+                        },
+                })
+
+                local code, err = wolfram_plot.build_plot_code(opts)
+
+                assert.is_nil(err)
+                assert.is_truthy(code:find('PlotLegends -> {"sin(x)", "cos(x)"}', 1, true), code)
+        end)
+
+        it("places legends for explicit point plots", function()
+                local opts = build_base_opts({
+                        legend_auto = false,
+                        legend_pos = "ne",
+                        series = {
+                                {
+                                        kind = "points",
+                                        label = "Samples",
+                                        points = {
+                                                { x = { __code = "0" }, y = { __code = "0" } },
+                                                { x = { __code = "1" }, y = { __code = "1" } },
+                                        },
+                                },
+                        },
+                })
+
+                local code, err = wolfram_plot.build_plot_code(opts)
+
+                assert.is_nil(err)
+                assert.is_truthy(code:find('PlotLegends -> Placed[{"Samples"}, Scaled[{1, 1}]]', 1, true), code)
+        end)
+
+        it("includes PlotRange when dependent axes are clipped", function()
+                local opts = build_base_opts({ clip_dependent_axes = true, yrange = { -2, 2 } })
+                local code, err = wolfram_plot.build_plot_code(opts)
+                assert.is_nil(err)
 		assert.is_truthy(code:match("PlotRange"))
 		assert.is_truthy(code:match("%{-2, 2%}"))
 	end)

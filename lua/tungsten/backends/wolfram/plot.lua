@@ -476,13 +476,14 @@ local function build_explicit_code(opts)
 		local plot_fun = opts.dim == 3 and "Plot3D" or "Plot"
 		local code = plot_fun .. "[" .. func_expr .. ", " .. table.concat(ranges, ", ")
 
-		local extra_opts = translate_opts_to_wolfram(opts)
-		apply_series_styles(extra_opts, series)
-		if #extra_opts > 0 then
-			code = code .. ", " .. table.concat(extra_opts, ", ")
-		end
-		code = code .. "]"
-		plots[#plots + 1] = code
+                local extra_opts = translate_opts_to_wolfram(opts)
+                apply_series_styles(extra_opts, series)
+                apply_legend(extra_opts, opts)
+                if #extra_opts > 0 then
+                        code = code .. ", " .. table.concat(extra_opts, ", ")
+                end
+                code = code .. "]"
+                plots[#plots + 1] = code
 	end
 
 	if #point_sets > 0 then
@@ -513,13 +514,11 @@ local function build_explicit_code(opts)
 			plot_range = string.format("PlotRange -> {{%s, %s}, {%s, %s}}", xr[1], xr[2], yr[1], yr[2])
 		end
 
-		local extras = {}
-		if plot_range then
-			extras[#extras + 1] = plot_range
-		end
-		if opts.legend_auto == false and opts.legend_pos then
-			extras[#extras + 1] = string.format("PlotLegends -> Placed[{}, %s]", translate_legend_pos(opts.legend_pos))
-		end
+                local extras = {}
+                if plot_range then
+                        extras[#extras + 1] = plot_range
+                end
+                apply_legend(extras, opts)
 
 		local point_plot = plot_fun .. "[" .. list_expr
 		if #extras > 0 then
