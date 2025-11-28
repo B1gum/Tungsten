@@ -681,7 +681,7 @@ local function build_default_lines(opts)
 	end
 	local legend_auto = determine_legend_auto(opts, classification, series)
 	local legend_state = legend_auto and "auto" or "off"
-	local legend_placement = opts.legend_placement or opts.legend_position or "best"
+	local legend_placement = opts.legend_placement or opts.legend_position or "ne"
 	local dependents = collect_dependents(series, dim, form)
 	local lines = {}
 	lines[#lines + 1] = "Form: " .. form
