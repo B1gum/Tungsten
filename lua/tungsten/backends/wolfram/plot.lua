@@ -375,29 +375,43 @@ local function apply_series_styles(extra_opts, series)
 end
 
 local function translate_legend_pos(pos)
+	if type(pos) == "table" then
+		local x, y = pos[1], pos[2]
+		if x and y then
+			return string.format("{%s, %s}", tostring(x), tostring(y))
+		end
+		return nil
+	end
+
 	if type(pos) == "string" then
 		local lowered = pos:lower()
 		local compass = {
-			n = "upper center",
-			ne = "upper right",
-			e = "center right",
-			se = "lower right",
-			s = "lower center",
-			sw = "lower left",
-			w = "center left",
-			nw = "upper left",
-			c = "center",
+			n = { 0.0, 0.8 },
+			ne = { 0.8, 0.8 },
+			e = { 0.8, 0.0 },
+			se = { 0.8, -0.8 },
+			s = { 0.0, -0.8 },
+			sw = { -0.8, -0.8 },
+			w = { -0.8, 0.0 },
+			nw = { -0.8, 0.8 },
+			c = { 0.0, 0.0 },
+			["upper right"] = { 0.8, 0.8 },
+			["upper left"] = { -0.8, 0.8 },
+			["lower left"] = { -0.8, -0.8 },
+			["lower right"] = { 0.8, -0.8 },
+			["upper center"] = { 0.0, 0.8 },
+			["center right"] = { 0.8, 0.0 },
+			["lower center"] = { 0.0, -0.8 },
+			["center left"] = { -0.8, 0.0 },
+			center = { 0.0, 0.0 },
 		}
-		pos = compass[lowered] or pos
+		local coords = compass[lowered]
+		if coords then
+			return string.format("{%s, %s}", coords[1], coords[2])
+		end
 	end
-	local map = {
-		["upper right"] = "Scaled[{1, 1}]",
-		["upper left"] = "Scaled[{0, 1}]",
-		["lower left"] = "Scaled[{0, 0}]",
-		["lower right"] = "Scaled[{1, 0}]",
-		["center"] = "Scaled[{0.5, 0.5}]",
-	}
-	return map[pos] or pos
+
+	return pos
 end
 
 local function apply_legend(extra_opts, opts)
@@ -409,8 +423,9 @@ local function apply_legend(extra_opts, opts)
 	end
 	if #labels > 0 then
 		local legend = "{" .. table.concat(labels, ", ") .. "}"
-		if opts.legend_auto == false and opts.legend_pos then
-			legend = string.format("Placed[%s, %s]", legend, translate_legend_pos(opts.legend_pos))
+		local legend_pos = opts.legend_pos and translate_legend_pos(opts.legend_pos)
+		if legend_pos then
+			legend = string.format("Placed[%s, %s]", legend, legend_pos)
 		end
 		extra_opts[#extra_opts + 1] = "PlotLegends -> " .. legend
 	end
@@ -476,14 +491,14 @@ local function build_explicit_code(opts)
 		local plot_fun = opts.dim == 3 and "Plot3D" or "Plot"
 		local code = plot_fun .. "[" .. func_expr .. ", " .. table.concat(ranges, ", ")
 
-                local extra_opts = translate_opts_to_wolfram(opts)
-                apply_series_styles(extra_opts, series)
-                apply_legend(extra_opts, opts)
-                if #extra_opts > 0 then
-                        code = code .. ", " .. table.concat(extra_opts, ", ")
-                end
-                code = code .. "]"
-                plots[#plots + 1] = code
+		local extra_opts = translate_opts_to_wolfram(opts)
+		apply_series_styles(extra_opts, series)
+		apply_legend(extra_opts, opts)
+		if #extra_opts > 0 then
+			code = code .. ", " .. table.concat(extra_opts, ", ")
+		end
+		code = code .. "]"
+		plots[#plots + 1] = code
 	end
 
 	if #point_sets > 0 then
@@ -514,11 +529,11 @@ local function build_explicit_code(opts)
 			plot_range = string.format("PlotRange -> {{%s, %s}, {%s, %s}}", xr[1], xr[2], yr[1], yr[2])
 		end
 
-                local extras = {}
-                if plot_range then
-                        extras[#extras + 1] = plot_range
-                end
-                apply_legend(extras, opts)
+		local extras = {}
+		if plot_range then
+			extras[#extras + 1] = plot_range
+		end
+		apply_legend(extras, opts)
 
 		local point_plot = plot_fun .. "[" .. list_expr
 		if #extras > 0 then
