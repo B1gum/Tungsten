@@ -12,6 +12,7 @@ local M = {
 	solve_async = executor.solve_async,
 	load_handlers = handlers.load_handlers,
 	reload_handlers = handlers.reload_handlers,
+	build_plot_command = plot.build_plot_command,
 	plot_async = plot.plot_async,
 }
 

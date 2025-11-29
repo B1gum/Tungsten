@@ -779,23 +779,22 @@ function M.build_python_script(opts)
 	return table.concat(lines, "\n")
 end
 
-function M.plot_async(opts, callback)
-	local normalized_opts, err = M.prepare_opts(opts, callback)
+function M.build_plot_command(opts, callback)
+	local normalized_opts, err = M.prepare_opts(opts, callback or function() end)
 	if not normalized_opts then
-		callback(err, nil)
-		return
+		return nil, err
 	end
 
-	logger.debug("Python plot", "plot_async called")
+	logger.debug("Python plot", "build_plot_command called")
 
 	local script, build_err = M.build_python_script(normalized_opts)
 	if not script then
 		local normalized_err = normalize_error(build_err, error_handler.E_UNSUPPORTED_FORM)
-		callback(normalized_err or {
-			code = error_handler.E_BACKEND_CRASH,
-			message = "Failed to build plot code",
-		}, nil)
-		return
+		return nil,
+			normalized_err or {
+				code = error_handler.E_BACKEND_CRASH,
+				message = "Failed to build plot code",
+			}
 	end
 
 	local python_opts = config.backend_opts and config.backend_opts.python or {}
@@ -812,10 +811,14 @@ function M.plot_async(opts, callback)
 		cwd = path.dirname(normalized_opts.out_path)
 	end
 
-	async.run_job({ python_path, "-c", script }, {
+	local command = { python_path, "-c", script }
+	local command_opts = {
 		timeout = normalized_opts.timeout_ms,
 		cwd = cwd,
-		on_exit = function(exit_code, stdout, stderr)
+	}
+
+	if callback then
+		command_opts.on_exit = function(exit_code, stdout, stderr)
 			if exit_code == 0 then
 				local trimmed
 				if type(stdout) == "string" then
@@ -825,21 +828,31 @@ function M.plot_async(opts, callback)
 					end
 				end
 				local out_path = normalized_opts.out_path
-				if callback then
-					callback(nil, trimmed or out_path)
-				end
+				callback(nil, trimmed or out_path)
 			else
 				local msg = stderr ~= "" and stderr or stdout
 				if msg == "" then
 					msg = string.format("python exited with code %d", exit_code)
 				end
 				local error_payload = normalize_error(msg, error_handler.E_BACKEND_CRASH)
-				if callback then
-					callback(error_payload, nil)
-				end
+				callback(error_payload, nil)
 			end
-		end,
-	})
+		end
+	end
+
+	return command, command_opts
+end
+
+function M.plot_async(opts, callback)
+	local command, command_opts_or_err = M.build_plot_command(opts, callback)
+	if not command then
+		if callback then
+			callback(command_opts_or_err, nil)
+		end
+		return
+	end
+
+	async.run_job(command, command_opts_or_err)
 end
 
 return M

@@ -142,39 +142,20 @@ local function capture_backend_command(plot_opts)
 		plot_opts._error_translator = nil
 	end
 
-	local plot_async = backend_module and backend_module.plot_async
-	if type(plot_async) ~= "function" then
+	local build_plot_command = backend_module and backend_module.build_plot_command
+	if type(build_plot_command) ~= "function" then
 		return nil, string.format("Backend '%s' does not support plotting", backend_name)
 	end
 
-	local async = require("tungsten.util.async")
-	local original = async.run_job
-	local captured_cmd, captured_opts
-	local backend_err
-
-	async.run_job = function(cmd, opts)
-		captured_cmd = vim.deepcopy(cmd)
-		captured_opts = opts
-		return {}
-	end
-
-	local ok_call, call_err = pcall(plot_async, vim.deepcopy(plot_opts), function(err)
-		backend_err = backend_err or err
-	end)
-
-	async.run_job = original
-
+	local ok_call, command, command_opts_or_err = pcall(build_plot_command, vim.deepcopy(plot_opts))
 	if not ok_call then
-		return nil, call_err
+		return nil, command
 	end
-	if backend_err then
-		return nil, backend_err
-	end
-	if not captured_cmd then
-		return nil, "Failed to prepare plot command"
+	if not command then
+		return nil, command_opts_or_err or "Failed to prepare plot command"
 	end
 
-	return captured_cmd, captured_opts
+	return command, command_opts_or_err
 end
 
 function M.run_simple(text)

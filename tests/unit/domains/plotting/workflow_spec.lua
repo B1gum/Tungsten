@@ -125,10 +125,20 @@ describe("Plotting workflow", function()
 		package.loaded["tungsten.util.async"] = mock_async
 
 		mock_backend = {}
-		function mock_backend.plot_async(opts, cb)
+		function mock_backend.build_plot_command(opts, cb)
 			backend_calls = backend_calls + 1
+			return { "wolfram", "-code", "plot" }, { timeout = opts.timeout_ms, on_exit = cb }
+		end
+		function mock_backend.plot_async(opts, cb)
+			local command, command_opts = mock_backend.build_plot_command(opts, cb)
+			if not command then
+				if cb then
+					cb(command_opts, nil)
+				end
+				return
+			end
 			local async_mod = require("tungsten.util.async")
-			async_mod.run_job({ "wolfram", "-code", "plot" }, { timeout = opts.timeout_ms })
+			async_mod.run_job(command, command_opts)
 			if cb then
 				cb(nil, opts.out_path)
 			end
@@ -300,11 +310,9 @@ describe("Plotting workflow", function()
 	it("maps backend command failures to E_BACKEND_CRASH without clobbering the message", function()
 		vim.api.nvim_buf_set_name(0, unique_tex_path())
 
-		mock_backend.plot_async = function(_, cb)
+		mock_backend.build_plot_command = function()
 			backend_calls = backend_calls + 1
-			if cb then
-				cb("Backend exploded")
-			end
+			return nil, "Backend exploded"
 		end
 
 		workflow.run_simple("sin(x)")

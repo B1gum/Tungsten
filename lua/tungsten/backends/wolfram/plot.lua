@@ -816,21 +816,19 @@ function M.translate_plot_error(exit_code, stdout, stderr)
 	}
 end
 
-function M.plot_async(opts, callback)
-	local normalized_opts, err = M.prepare_opts(opts, callback)
+function M.build_plot_command(opts, callback)
+	local normalized_opts, err = M.prepare_opts(opts, callback or function() end)
 	if not normalized_opts then
-		callback(err, nil)
-		return
+		return nil, err
 	end
 
-	logger.debug("Wolfram plot", "plot_async called")
+	logger.debug("Wolfram plot", "build_plot_command called")
 
 	normalize_ranges(normalized_opts)
 
 	local plot_code, build_err = M.build_plot_code(normalized_opts)
 	if not plot_code then
-		callback(build_err or "Failed to build plot code", nil)
-		return
+		return nil, build_err or "Failed to build plot code"
 	end
 
 	local code = build_export_code(normalized_opts, plot_code)
@@ -838,13 +836,15 @@ function M.plot_async(opts, callback)
 	local wolfram_opts = config.backend_opts and config.backend_opts.wolfram or {}
 	local wolfram_path = wolfram_opts.wolfram_path or "wolframscript"
 
-	async.run_job({ wolfram_path, "-code", code }, {
+	local command = { wolfram_path, "-code", code }
+	local command_opts = {
 		timeout = normalized_opts.timeout_ms,
-		on_exit = function(exit_code, stdout, stderr)
+	}
+
+	if callback then
+		command_opts.on_exit = function(exit_code, stdout, stderr)
 			if exit_code == 0 then
-				if callback then
-					callback(nil, stdout)
-				end
+				callback(nil, stdout)
 			else
 				local translated = M.translate_plot_error(exit_code, stdout, stderr)
 				local errcb = {
@@ -853,12 +853,24 @@ function M.plot_async(opts, callback)
 					message = translated.message,
 					backend_error_code = translated.code,
 				}
-				if callback then
-					callback(errcb, nil)
-				end
+				callback(errcb, nil)
 			end
-		end,
-	})
+		end
+	end
+
+	return command, command_opts
+end
+
+function M.plot_async(opts, callback)
+	local command, command_opts_or_err = M.build_plot_command(opts, callback)
+	if not command then
+		if callback then
+			callback(command_opts_or_err, nil)
+		end
+		return
+	end
+
+	async.run_job(command, command_opts_or_err)
 end
 
 return M
