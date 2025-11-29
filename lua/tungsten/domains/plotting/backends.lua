@@ -55,7 +55,7 @@ end
 
 function M.get_configured_backend_name()
 	local cfg = get_config()
-	return cfg.backend or "wolfram"
+	return cfg.plotting.backend or cfg.backend or "wolfram"
 end
 
 function M.get_configured_backend()
