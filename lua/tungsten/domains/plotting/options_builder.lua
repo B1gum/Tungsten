@@ -3,6 +3,26 @@ local config = require("tungsten.config")
 local logger = require("tungsten.util.logger")
 local style_parser = require("tungsten.domains.plotting.style_parser")
 
+local RANGE_DEFAULTS = {
+	["2:explicit"] = { xrange = "default_xrange" },
+	["3:explicit"] = { xrange = "default_xrange", yrange = "default_yrange" },
+	["2:implicit"] = { xrange = "default_xrange", yrange = "default_yrange" },
+	["3:implicit"] = { xrange = "default_xrange", yrange = "default_yrange", zrange = "default_zrange" },
+	["2:parametric"] = { t_range = "default_t_range" },
+	["3:parametric"] = { u_range = "default_urange", v_range = "default_vrange" },
+	["2:polar"] = { theta_range = "default_theta_range" },
+}
+
+local SAMPLE_GRID_DEFAULTS = {
+	["2:explicit"] = { samples = 500 },
+	["2:implicit"] = { grid_n = 200 },
+	["2:parametric"] = { samples = 300 },
+	["2:polar"] = { samples = 360 },
+	["3:explicit"] = { grid_2d = { 100, 100 } },
+	["3:parametric"] = { grid_3d = { 64, 64 } },
+	["3:implicit"] = { vol_3d = { 30, 30, 30 }, plot_points = 30, max_recursion = 2 },
+}
+
 function M.build(classification, user_overrides)
 	user_overrides = user_overrides or {}
 	classification = vim.deepcopy(classification or {})
@@ -91,43 +111,20 @@ function M.build(classification, user_overrides)
 		opts.dpi = 180
 	end
 
-	if classification.dim == 2 and classification.form == "explicit" then
-		opts.xrange = defaults.default_xrange
-	elseif classification.dim == 3 and classification.form == "explicit" then
-		opts.xrange = defaults.default_xrange
-		opts.yrange = defaults.default_yrange
-	elseif classification.dim == 2 and classification.form == "implicit" then
-		opts.xrange = defaults.default_xrange
-		opts.yrange = defaults.default_yrange
-	elseif classification.dim == 3 and classification.form == "implicit" then
-		opts.xrange = defaults.default_xrange
-		opts.yrange = defaults.default_yrange
-		opts.zrange = defaults.default_zrange
-	elseif classification.dim == 2 and classification.form == "parametric" then
-		opts.t_range = defaults.default_t_range
-	elseif classification.dim == 3 and classification.form == "parametric" then
-		opts.u_range = defaults.default_urange
-		opts.v_range = defaults.default_vrange
-	elseif classification.dim == 2 and classification.form == "polar" then
-		opts.theta_range = defaults.default_theta_range
+	local classification_key = string.format("%s:%s", classification.dim, classification.form)
+
+	local range_defaults = RANGE_DEFAULTS[classification_key]
+	if range_defaults then
+		for opt_key, defaults_key in pairs(range_defaults) do
+			opts[opt_key] = defaults[defaults_key]
+		end
 	end
 
-	if classification.dim == 2 and classification.form == "explicit" then
-		opts.samples = 500
-	elseif classification.dim == 2 and classification.form == "implicit" then
-		opts.grid_n = 200
-	elseif classification.dim == 2 and classification.form == "parametric" then
-		opts.samples = 300
-	elseif classification.dim == 2 and classification.form == "polar" then
-		opts.samples = 360
-	elseif classification.dim == 3 and classification.form == "explicit" then
-		opts.grid_2d = { 100, 100 }
-	elseif classification.dim == 3 and classification.form == "parametric" then
-		opts.grid_3d = { 64, 64 }
-	elseif classification.dim == 3 and classification.form == "implicit" then
-		opts.vol_3d = { 30, 30, 30 }
-		opts.plot_points = 30
-		opts.max_recursion = 2
+	local sample_defaults = SAMPLE_GRID_DEFAULTS[classification_key]
+	if sample_defaults then
+		for opt_key, value in pairs(sample_defaults) do
+			opts[opt_key] = value
+		end
 	end
 
 	if classification.dim == 2 and classification.form == "explicit" then
