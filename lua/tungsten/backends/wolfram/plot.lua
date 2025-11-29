@@ -386,28 +386,28 @@ local function translate_legend_pos(pos)
 	if type(pos) == "string" then
 		local lowered = pos:lower()
 		local compass = {
-			n = { 0.5, 0.9 },
-			ne = { 0.9, 0.9 },
-			e = { 0.9, 0.5 },
-			se = { 0.9, 0.1 },
-			s = { 0.5, 0.1 },
-			sw = { 0.1, 0.1 },
-			w = { 0.1, 0.5 },
-			nw = { 0.1, 0.9 },
+			n = { 0.5, 1 },
+			ne = { 1, 1 },
+			e = { 1, 0.5 },
+			se = { 1, 0 },
+			s = { 0.5, 0 },
+			sw = { 0, 0 },
+			w = { 0, 0.5 },
+			nw = { 0, 1 },
 			c = { 0.5, 0.5 },
-			["upper right"] = { 0.9, 0.9 },
-			["upper left"] = { 0.1, 0.9 },
-			["lower left"] = { 0.1, 0.1 },
-			["lower right"] = { 0.9, 0.1 },
-			["upper center"] = { 0.5, 0.9 },
-			["center right"] = { 0.9, 0.5 },
-			["lower center"] = { 0.5, 0.1 },
-			["center left"] = { 0.1, 0.5 },
+			["upper right"] = { 1, 1 },
+			["upper left"] = { 0, 1 },
+			["lower left"] = { 0, 0 },
+			["lower right"] = { 1, 0 },
+			["upper center"] = { 0.5, 1 },
+			["center right"] = { 1, 0.5 },
+			["lower center"] = { 0.5, 0 },
+			["center left"] = { 0, 0.5 },
 			center = { 0.5, 0.5 },
 		}
 		local coords = compass[lowered]
 		if coords then
-			return string.format("{%s, %s}", coords[1], coords[2])
+			return string.format("Scaled[{%s, %s}]", coords[1], coords[2])
 		end
 	end
 
