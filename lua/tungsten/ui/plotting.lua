@@ -855,30 +855,18 @@ local function parse_range_value(value, key)
 	return true, { start_parsed, end_parsed }
 end
 
-local function parse_advanced_buffer(lines, opts)
-	local classification = opts.classification or {}
-	local form = classification.form or opts.form or "explicit"
-	local dim = classification.dim or opts.dim or 2
-	local base_series = {}
-	if type(opts.series) == "table" and #opts.series > 0 then
-		base_series = opts.series
-	elseif type(classification.series) == "table" and #classification.series > 0 then
-		base_series = classification.series
-	end
-
-	local allowed_forms = opts.allowed_forms or { explicit = true, implicit = true, polar = true }
+local function normalize_allowed_forms(allowed_forms)
 	if vim.tbl_islist(allowed_forms) then
 		local normalized = {}
 		for _, value in ipairs(allowed_forms) do
 			normalized[tostring(value):lower()] = true
 		end
-		allowed_forms = normalized
+		return normalized
 	end
-	local allowed_backends = { wolfram = true, python = true }
-	local allowed_output_modes = { latex = true, viewer = true, both = true }
+	return allowed_forms or { explicit = true, implicit = true, polar = true }
+end
 
-	local show_colormap = not (form == "explicit" and dim == 2)
-
+local function build_expected_keys(dim, form, base_series, show_colormap)
 	local expected_global_keys = {
 		["Form"] = true,
 		["Backend"] = true,
@@ -907,8 +895,6 @@ local function parse_advanced_buffer(lines, opts)
 	if dim >= 3 then
 		expected_global_keys["Z-range"] = true
 		expected_global_keys["Z-scale"] = true
-		expected_global_keys["View elevation"] = true
-		expected_global_keys["View azimuth"] = true
 	end
 	if form == "parametric" and dim == 2 then
 		expected_global_keys["T-range"] = true
@@ -917,6 +903,10 @@ local function parse_advanced_buffer(lines, opts)
 		expected_global_keys["V-range"] = true
 	elseif form == "polar" then
 		expected_global_keys["Theta-range"] = true
+	end
+	if dim >= 3 then
+		expected_global_keys["View elevation"] = true
+		expected_global_keys["View azimuth"] = true
 	end
 
 	local expected_series_keys = {}
@@ -936,6 +926,247 @@ local function parse_advanced_buffer(lines, opts)
 		expected_series_keys[i] = keys
 	end
 
+	return expected_global_keys, expected_series_keys
+end
+
+local function ensure_expected_key(expected, key)
+	if expected[key] then
+		return true
+	end
+	error_handler.notify_error("Plot Config", string.format("Unknown key '%s'", key))
+	return false
+end
+
+local function apply_dependents_override(target, raw_value, expected_value, label)
+	local dependents_value = strip_dependents_hint(vim.trim(raw_value or ""))
+	if dependents_value == "" or dependents_value:lower() == "auto" then
+		target.dependents_mode = "auto"
+		return true
+	end
+	if expected_value and dependents_value ~= expected_value then
+		error_handler.notify_error(
+			"Plot Config",
+			string.format("%s cannot be changed (expected %s)", label, expected_value)
+		)
+		return false
+	end
+	return true
+end
+
+local function apply_range_override(overrides, key, trimmed)
+	local ok, range_val = parse_range_value(trimmed, key)
+	if not ok then
+		return false
+	end
+	if range_val ~= nil then
+		local map = {
+			["X-range"] = "xrange",
+			["Y-range"] = "yrange",
+			["Z-range"] = "zrange",
+			["T-range"] = "t_range",
+			["U-range"] = "u_range",
+			["V-range"] = "v_range",
+			["Theta-range"] = "theta_range",
+		}
+		overrides[map[key]] = range_val
+	end
+	return true
+end
+
+local function parse_global_line(key, value, ctx)
+	if not ensure_expected_key(ctx.expected_global_keys, key) then
+		return false
+	end
+	ctx.seen_global_keys[key] = true
+	local trimmed = vim.trim(value or "")
+
+	if key == "Form" then
+		local normalized = trimmed:lower()
+		if not ctx.allowed_forms[normalized] then
+			error_handler.notify_error("Plot Config", string.format("Unsupported plot form '%s'", trimmed))
+			return false
+		end
+		if ctx.classification.form and ctx.classification.form ~= normalized then
+			error_handler.notify_error(
+				"Plot Config",
+				string.format("Cannot change plot form from %s to %s", ctx.classification.form, normalized)
+			)
+			return false
+		end
+	elseif key == "Backend" then
+		local normalized = trimmed:lower()
+		if not ctx.allowed_backends[normalized] then
+			error_handler.notify_error("Plot Config", string.format("Unsupported backend '%s'", trimmed))
+			return false
+		end
+		ctx.overrides.backend = normalized
+	elseif key == "Output mode" then
+		local normalized = trimmed:lower()
+		if not ctx.allowed_output_modes[normalized] then
+			error_handler.notify_error("Plot Config", string.format("Unsupported output mode '%s'", trimmed))
+			return false
+		end
+		ctx.overrides.outputmode = normalized
+	elseif key == "Aspect" then
+		ctx.overrides.aspect = trimmed
+	elseif key == "Legend" then
+		local toggle = normalize_toggle(trimmed, true)
+		if toggle == nil then
+			error_handler.notify_error("Plot Config", "Legend must be 'auto', 'on', or 'off'")
+			return false
+		end
+		ctx.overrides.legend_auto = toggle == true or toggle == "auto"
+	elseif key == "Legend placement" then
+		ctx.overrides.legend_pos = trimmed
+	elseif key == "Dependents" then
+		return apply_dependents_override(ctx.overrides, trimmed, ctx.expected_dependents, "Dependents")
+	elseif
+		key == "X-range"
+		or key == "Y-range"
+		or key == "Z-range"
+		or key == "T-range"
+		or key == "U-range"
+		or key == "V-range"
+		or key == "Theta-range"
+	then
+		return apply_range_override(ctx.overrides, key, trimmed)
+	elseif key == "Grid" then
+		local toggle = normalize_toggle(trimmed, false)
+		if toggle == nil then
+			error_handler.notify_error("Plot Config", "Grid must be 'on' or 'off'")
+			return false
+		end
+		ctx.overrides.grids = toggle
+	elseif key == "X-scale" then
+		ctx.overrides.xscale = trimmed
+	elseif key == "Y-scale" then
+		ctx.overrides.yscale = trimmed
+	elseif key == "Z-scale" then
+		ctx.overrides.zscale = trimmed
+	elseif key == "View elevation" then
+		local elev = parse_number(trimmed, "View elevation")
+		if not elev then
+			return false
+		end
+		ctx.overrides.view_elev = elev
+	elseif key == "View azimuth" then
+		local azim = parse_number(trimmed, "View azimuth")
+		if not azim then
+			return false
+		end
+		ctx.overrides.view_azim = azim
+	elseif key == "Colormap" then
+		ctx.overrides.colormap = trimmed
+	elseif key == "Colorbar" then
+		local toggle = normalize_toggle(trimmed, false)
+		if toggle == nil then
+			error_handler.notify_error("Plot Config", "Colorbar must be 'on' or 'off'")
+			return false
+		end
+		ctx.overrides.colorbar = toggle
+	elseif key == "Background" then
+		ctx.overrides.bg_color = trimmed
+	end
+
+	return true
+end
+
+local function parse_series_line(key, value, ctx)
+	local expected_keys = ctx.expected_series_keys[ctx.series_idx] or {}
+	if not ensure_expected_key(expected_keys, key) then
+		return false
+	end
+	ctx.seen_series_keys[ctx.series_idx][key] = true
+	local trimmed = vim.trim(value or "")
+
+	if key == "Label" then
+		ctx.series_overrides[ctx.series_idx].label = trimmed
+	elseif key == "Dependents" then
+		return apply_dependents_override(
+			ctx.series_overrides[ctx.series_idx],
+			trimmed,
+			ctx.expected_series_dependents[ctx.series_idx],
+			string.format("Series %d dependents", ctx.series_idx)
+		)
+	elseif key == "Color" then
+		ctx.series_overrides[ctx.series_idx].color = trimmed
+	elseif key == "Linewidth" then
+		local lw = parse_number(trimmed, "Linewidth")
+		if not lw then
+			return false
+		end
+		ctx.series_overrides[ctx.series_idx].linewidth = lw
+	elseif key == "Linestyle" then
+		ctx.series_overrides[ctx.series_idx].linestyle = trimmed
+	elseif key == "Marker" then
+		ctx.series_overrides[ctx.series_idx].marker = trimmed
+	elseif key == "Markersize" then
+		local ms = parse_number(trimmed, "Markersize")
+		if not ms then
+			return false
+		end
+		ctx.series_overrides[ctx.series_idx].markersize = ms
+	elseif key == "Alpha" then
+		local alpha = parse_alpha(trimmed)
+		if not alpha then
+			return false
+		end
+		ctx.series_overrides[ctx.series_idx].alpha = alpha
+	end
+
+	return true
+end
+
+local function ensure_all_keys_present(
+	expected_global_keys,
+	seen_global_keys,
+	expected_series_keys,
+	seen_series_keys,
+	base_series
+)
+	for expected_key in pairs(expected_global_keys) do
+		if not seen_global_keys[expected_key] then
+			error_handler.notify_error("Plot Config", string.format("Missing key '%s'", expected_key))
+			return false
+		end
+	end
+
+	for i = 1, #base_series do
+		if not seen_series_keys[i] then
+			error_handler.notify_error("Plot Config", string.format("Missing configuration for series %d", i))
+			return false
+		end
+		local expected_keys = expected_series_keys[i] or {}
+		for key in pairs(expected_keys) do
+			if not seen_series_keys[i][key] then
+				error_handler.notify_error("Plot Config", string.format("Missing key '%s' for series %d", key, i))
+				return false
+			end
+		end
+	end
+
+	return true
+end
+
+local function parse_advanced_buffer(lines, opts)
+	local classification = opts.classification or {}
+	local form = classification.form or opts.form or "explicit"
+	local dim = classification.dim or opts.dim or 2
+	local base_series = {}
+	if type(opts.series) == "table" and #opts.series > 0 then
+		base_series = opts.series
+	elseif type(classification.series) == "table" and #classification.series > 0 then
+		base_series = classification.series
+	end
+
+	local allowed_forms = normalize_allowed_forms(opts.allowed_forms)
+	local allowed_backends = { wolfram = true, python = true }
+	local allowed_output_modes = { latex = true, viewer = true, both = true }
+
+	local show_colormap = not (form == "explicit" and dim == 2)
+
+	local expected_global_keys, expected_series_keys = build_expected_keys(dim, form, base_series, show_colormap)
+
 	local seen_global_keys = {}
 	local seen_series_keys = {}
 	local overrides = {}
@@ -949,228 +1180,73 @@ local function parse_advanced_buffer(lines, opts)
 	end
 
 	for idx, line in ipairs(lines or {}) do
-		if line:match("^%s*$") then
-			goto continue
-		end
-		local series_idx = line:match("^%s*%-%-%-%s*Series%s+(%d+)%s*:")
-		if series_idx then
-			local parsed_idx = tonumber(series_idx)
-			if not parsed_idx then
-				error_handler.notify_error("Plot Config", string.format("Invalid series header on line %d", idx))
-				return nil
-			end
-			if parsed_idx < 1 or parsed_idx > #base_series then
-				error_handler.notify_error("Plot Config", string.format("Unexpected series index %d", parsed_idx))
-				return nil
-			end
-			current_series = parsed_idx
-			series_overrides[current_series] = series_overrides[current_series] or {}
-			seen_series_keys[current_series] = seen_series_keys[current_series] or {}
-			goto continue
-		end
+		if not line:match("^%s*$") then
+			local series_idx = line:match("^%s*%-%-%-%s*Series%s+(%d+)%s*:")
+			if series_idx then
+				local parsed_idx = tonumber(series_idx)
+				if not parsed_idx then
+					error_handler.notify_error("Plot Config", string.format("Invalid series header on line %d", idx))
+					return nil
+				end
+				if parsed_idx < 1 or parsed_idx > #base_series then
+					error_handler.notify_error("Plot Config", string.format("Unexpected series index %d", parsed_idx))
+					return nil
+				end
+				current_series = parsed_idx
+				series_overrides[current_series] = series_overrides[current_series] or {}
+				seen_series_keys[current_series] = seen_series_keys[current_series] or {}
+			else
+				local key, value = line:match("^%s*(.-)%s*:%s*(.-)%s*$")
+				if not key then
+					error_handler.notify_error("Plot Config", string.format("Unable to parse line %d", idx))
+					return nil
+				end
 
-		local key, value = line:match("^%s*(.-)%s*:%s*(.-)%s*$")
-		if not key then
-			error_handler.notify_error("Plot Config", string.format("Unable to parse line %d", idx))
-			return nil
-		end
-
-		if current_series then
-			local series_keys = expected_series_keys[current_series] or {}
-			if not series_keys[key] then
-				error_handler.notify_error("Plot Config", string.format("Unknown series key '%s'", key))
-				return nil
-			end
-			seen_series_keys[current_series][key] = true
-			local trimmed = vim.trim(value or "")
-			if key == "Label" then
-				series_overrides[current_series].label = trimmed
-			elseif key == "Dependents" then
-				local expected_value = expected_series_dependents[current_series]
-				local dependents_value = strip_dependents_hint(trimmed)
-				if dependents_value == "" or dependents_value:lower() == "auto" then
-					series_overrides[current_series].dependents_mode = "auto"
-				elseif expected_value and dependents_value ~= expected_value then
-					error_handler.notify_error(
-						"Plot Config",
-						string.format("Series %d dependents cannot be changed (expected %s)", current_series, expected_value)
-					)
-					return nil
-				end
-			elseif key == "Color" then
-				series_overrides[current_series].color = trimmed
-			elseif key == "Linewidth" then
-				local lw = parse_number(trimmed, "Linewidth")
-				if not lw then
-					return nil
-				end
-				series_overrides[current_series].linewidth = lw
-			elseif key == "Linestyle" then
-				series_overrides[current_series].linestyle = trimmed
-			elseif key == "Marker" then
-				series_overrides[current_series].marker = trimmed
-			elseif key == "Markersize" then
-				local ms = parse_number(trimmed, "Markersize")
-				if not ms then
-					return nil
-				end
-				series_overrides[current_series].markersize = ms
-			elseif key == "Alpha" then
-				local alpha = parse_alpha(trimmed)
-				if not alpha then
-					return nil
-				end
-				series_overrides[current_series].alpha = alpha
-			end
-		else
-			if not expected_global_keys[key] then
-				error_handler.notify_error("Plot Config", string.format("Unknown key '%s'", key))
-				return nil
-			end
-			seen_global_keys[key] = true
-			local trimmed = vim.trim(value or "")
-			if key == "Form" then
-				local normalized = trimmed:lower()
-				if not allowed_forms[normalized] then
-					error_handler.notify_error("Plot Config", string.format("Unsupported plot form '%s'", trimmed))
-					return nil
-				end
-				if classification.form and classification.form ~= normalized then
-					error_handler.notify_error(
-						"Plot Config",
-						string.format("Cannot change plot form from %s to %s", classification.form, normalized)
-					)
-					return nil
-				end
-			elseif key == "Backend" then
-				local normalized = trimmed:lower()
-				if not allowed_backends[normalized] then
-					error_handler.notify_error("Plot Config", string.format("Unsupported backend '%s'", trimmed))
-					return nil
-				end
-				overrides.backend = normalized
-			elseif key == "Output mode" then
-				local normalized = trimmed:lower()
-				if not allowed_output_modes[normalized] then
-					error_handler.notify_error("Plot Config", string.format("Unsupported output mode '%s'", trimmed))
-					return nil
-				end
-				overrides.outputmode = normalized
-			elseif key == "Aspect" then
-				overrides.aspect = trimmed
-			elseif key == "Legend" then
-				local toggle = normalize_toggle(trimmed, true)
-				if toggle == nil then
-					error_handler.notify_error("Plot Config", "Legend must be 'auto', 'on', or 'off'")
-					return nil
-				end
-				if toggle == true or toggle == "auto" then
-					overrides.legend_auto = true
+				local ok
+				if current_series then
+					ok = parse_series_line(key, value, {
+						series_idx = current_series,
+						expected_series_keys = expected_series_keys,
+						seen_series_keys = seen_series_keys,
+						series_overrides = series_overrides,
+						expected_series_dependents = expected_series_dependents,
+					})
 				else
-					overrides.legend_auto = false
+					ok = parse_global_line(key, value, {
+						classification = classification,
+						allowed_forms = allowed_forms,
+						allowed_backends = allowed_backends,
+						allowed_output_modes = allowed_output_modes,
+						overrides = overrides,
+						expected_global_keys = expected_global_keys,
+						seen_global_keys = seen_global_keys,
+						expected_dependents = expected_dependents,
+					})
 				end
-			elseif key == "Legend placement" then
-				overrides.legend_pos = trimmed
-			elseif key == "Dependents" then
-				local dependents_value = strip_dependents_hint(trimmed)
-				if dependents_value == "" or dependents_value:lower() == "auto" then
-					overrides.dependents_mode = "auto"
-				elseif dependents_value ~= expected_dependents then
-					error_handler.notify_error(
-						"Plot Config",
-						string.format("Dependents cannot be changed (expected %s)", expected_dependents)
-					)
-					return nil
-				end
-			elseif
-				key == "X-range"
-				or key == "Y-range"
-				or key == "Z-range"
-				or key == "T-range"
-				or key == "U-range"
-				or key == "V-range"
-				or key == "Theta-range"
-			then
-				local ok, range_val = parse_range_value(trimmed, key)
+
 				if not ok then
 					return nil
 				end
-				if range_val ~= nil then
-					local map = {
-						["X-range"] = "xrange",
-						["Y-range"] = "yrange",
-						["Z-range"] = "zrange",
-						["T-range"] = "t_range",
-						["U-range"] = "u_range",
-						["V-range"] = "v_range",
-						["Theta-range"] = "theta_range",
-					}
-					overrides[map[key]] = range_val
-				end
-			elseif key == "Grid" then
-				local toggle = normalize_toggle(trimmed, false)
-				if toggle == nil then
-					error_handler.notify_error("Plot Config", "Grid must be 'on' or 'off'")
-					return nil
-				end
-				overrides.grids = toggle
-			elseif key == "X-scale" then
-				overrides.xscale = trimmed
-			elseif key == "Y-scale" then
-				overrides.yscale = trimmed
-			elseif key == "Z-scale" then
-				overrides.zscale = trimmed
-			elseif key == "View elevation" then
-				local elev = parse_number(trimmed, "View elevation")
-				if not elev then
-					return nil
-				end
-				overrides.view_elev = elev
-			elseif key == "View azimuth" then
-				local azim = parse_number(trimmed, "View azimuth")
-				if not azim then
-					return nil
-				end
-				overrides.view_azim = azim
-			elseif key == "Colormap" then
-				overrides.colormap = trimmed
-			elseif key == "Colorbar" then
-				local toggle = normalize_toggle(trimmed, false)
-				if toggle == nil then
-					error_handler.notify_error("Plot Config", "Colorbar must be 'on' or 'off'")
-					return nil
-				end
-				overrides.colorbar = toggle
-			elseif key == "Background" then
-				overrides.bg_color = trimmed
 			end
-		end
-		::continue::
-	end
-
-	for expected_key in pairs(expected_global_keys) do
-		if not seen_global_keys[expected_key] then
-			error_handler.notify_error("Plot Config", string.format("Missing key '%s'", expected_key))
-			return nil
 		end
 	end
 
-	for i = 1, #base_series do
-		if not seen_series_keys[i] then
-			error_handler.notify_error("Plot Config", string.format("Missing configuration for series %d", i))
-			return nil
-		end
-		local expected_keys = expected_series_keys[i] or {}
-		for key in pairs(expected_keys) do
-			if not seen_series_keys[i][key] then
-				error_handler.notify_error("Plot Config", string.format("Missing key '%s' for series %d", key, i))
-				return nil
-			end
-		end
+	local all_keys_present =
+		ensure_all_keys_present(expected_global_keys, seen_global_keys, expected_series_keys, seen_series_keys, base_series)
+	if not all_keys_present then
+		return nil
 	end
 
 	return { overrides = overrides, series = series_overrides }
 end
+
+M._advanced_helpers = {
+	build_expected_keys = build_expected_keys,
+	apply_dependents_override = apply_dependents_override,
+	parse_global_line = parse_global_line,
+	parse_series_line = parse_series_line,
+	ensure_all_keys_present = ensure_all_keys_present,
+}
 
 function M.open_advanced_config(opts)
 	opts = opts or {}
