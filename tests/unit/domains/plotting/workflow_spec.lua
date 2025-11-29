@@ -22,6 +22,10 @@ describe("Plotting workflow", function()
 
 	local modules_to_reset = {
 		"tungsten.domains.plotting.workflow",
+		"tungsten.domains.plotting.workflow.runner",
+		"tungsten.domains.plotting.workflow.selection",
+		"tungsten.domains.plotting.workflow.backend_command",
+		"tungsten.domains.plotting.workflow.classification_merge",
 		"tungsten.core.parser",
 		"tungsten.domains.plotting.classification",
 		"tungsten.domains.plotting.options_builder",
