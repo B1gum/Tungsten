@@ -154,6 +154,17 @@ describe("Tungsten Plotting Commands", function()
 		end)
 	end)
 
+	describe(":TungstenPlotParametric", function()
+		it("should provide a :TungstenPlotParametric command that opens a config buffer", function()
+			assert.is_function(plot_commands.parametric_plot_command)
+		end)
+
+		it("should invoke the parametric plot workflow", function()
+			plot_commands.parametric_plot_command()
+			assert.spy(run_parametric_spy).was.called(1)
+		end)
+	end)
+
 	describe("Plot Job Management Commands", function()
 		it("should allow canceling the latest running plot job with :TungstenPlotCancel", function()
 			assert.is_function(plot_commands.cancel_command)

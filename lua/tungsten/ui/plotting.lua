@@ -820,10 +820,35 @@ local function parse_range_value(value, key)
 			return nil
 		end
 		local num = tonumber(endpoint)
-		return num or endpoint
+		if num ~= nil then
+			return true, num
+		end
+
+		local ok_parse, parsed, err_msg = pcall(parser.parse, endpoint)
+		if not ok_parse or not parsed then
+			local reason = err_msg or "Could not parse range endpoint"
+			error_handler.notify_error("Plot Config", string.format("%s for %s", reason, key))
+			return false
+		end
+
+		if parsed.series then
+			if #parsed.series ~= 1 then
+				error_handler.notify_error("Plot Config", string.format("%s range must be a single expression", key))
+				return false
+			end
+			parsed = parsed.series[1]
+		end
+
+		return true, parsed
 	end
-	local start_parsed = parse_endpoint(start_val)
-	local end_parsed = parse_endpoint(end_val)
+	local start_ok, start_parsed = parse_endpoint(start_val)
+	if start_ok == false then
+		return false
+	end
+	local end_ok, end_parsed = parse_endpoint(end_val)
+	if end_ok == false then
+		return false
+	end
 	if start_parsed == nil and end_parsed == nil then
 		return true, nil
 	end

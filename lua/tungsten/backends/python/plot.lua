@@ -40,6 +40,30 @@ local function render_ast_to_python(ast)
 	return nil
 end
 
+local function to_python_value(value)
+	if value == nil or type(value) == "number" then
+		return value
+	end
+	if type(value) == "table" then
+		local rendered = render_ast_to_python(value)
+		if rendered then
+			return rendered
+		end
+		return tostring(value)
+	end
+	return value
+end
+
+local function normalize_ranges(opts)
+	local keys = { "xrange", "yrange", "zrange", "t_range", "u_range", "v_range", "theta_range" }
+	for _, key in ipairs(keys) do
+		local range = opts and opts[key]
+		if type(range) == "table" then
+			opts[key] = { to_python_value(range[1]), to_python_value(range[2]) }
+		end
+	end
+end
+
 local function is_equality_node(ast)
 	if type(ast) ~= "table" then
 		return false
@@ -537,6 +561,8 @@ function M.build_plot_code(opts)
 	if guard_err then
 		return nil, nil, guard_err
 	end
+
+	normalize_ranges(opts)
 
 	if opts.form == "explicit" then
 		if opts.dim == 3 then

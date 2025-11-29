@@ -465,4 +465,77 @@ describe("wolfram plot ranges", function()
 
 		assert.is_true(code:find("{x, -Pi, Pi}", 1, true) ~= nil)
 	end)
+
+	it("normalizes latex multiplication in parametric ranges", function()
+		local stub_ast = stub(executor, "ast_to_code", function(node)
+			if type(node) == "table" and node.__code then
+				return node.__code
+			end
+			return "expr"
+		end)
+
+		local code = assert(wolfram_plot.build_plot_code({
+			form = "parametric",
+			dim = 2,
+			t_range = { "0", "2\\cdot \\pi" },
+			series = {
+				{
+					kind = "function",
+					ast = {
+						x = { __code = "Cos[t]" },
+						y = { __code = "Sin[t]" },
+					},
+					independent_vars = { "t" },
+					dependent_vars = { "x", "y" },
+				},
+			},
+		}))
+
+		stub_ast:revert()
+
+		assert.is_true(code:find("{t, 0, 2%*%s*Pi}") ~= nil, code)
+	end)
+
+	it("renders parsed expressions in plot range endpoints", function()
+		local integral_ast = ast.create_definite_integral_node(
+			ast.create_variable_node("x"),
+			ast.create_variable_node("x"),
+			ast.create_number_node(0),
+			ast.create_number_node(1)
+		)
+
+		local stub_ast = stub(executor, "ast_to_code", function(node)
+			if node == integral_ast then
+				return "Integrate[x, {x, 0, 1}]"
+			end
+			if type(node) == "table" and node.__code then
+				return node.__code
+			end
+			return "expr"
+		end)
+
+		local code, _, err = wolfram_plot.build_plot_code({
+			form = "parametric",
+			dim = 2,
+			t_range = { integral_ast, { __code = "2" } },
+			series = {
+				{
+					kind = "function",
+					ast = {
+						x = { __code = "Cos[t]" },
+						y = { __code = "Sin[t]" },
+					},
+					independent_vars = { "t" },
+					dependent_vars = { "x", "y" },
+				},
+			},
+		})
+
+		assert.is_nil(err, err and (err.message or err.code or err) or err)
+		assert.is_not_nil(code)
+
+		assert.is_truthy(code:find("{t,%s*Integrate%[x,%s*{%s*x,%s*0,%s*1%s*}%],%s*2%}") ~= nil, code)
+
+		stub_ast:revert()
+	end)
 end)

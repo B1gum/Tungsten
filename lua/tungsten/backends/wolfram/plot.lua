@@ -63,6 +63,12 @@ local function to_wolfram_value(value)
 		return value
 	end
 	if type(value) ~= "string" then
+		if type(value) == "table" then
+			local rendered = render_ast_to_wolfram(value)
+			if rendered and not tostring(rendered):match("^Error") then
+				return rendered
+			end
+		end
 		return value
 	end
 
@@ -72,6 +78,26 @@ local function to_wolfram_value(value)
 		if rendered and not tostring(rendered):match("^Error") then
 			return rendered
 		end
+	end
+
+	local normalized = value
+		:gsub("\\\\cdot", "*")
+		:gsub("\\cdot", "*")
+		:gsub("\\\\times", "*")
+		:gsub("\\times", "*")
+		:gsub("\\\\pi", "Pi")
+		:gsub("\\pi", "Pi")
+
+	if normalized ~= value then
+		ok, parsed_ast = pcall(parser.parse, normalized, { simple_mode = true })
+		if ok and parsed_ast then
+			local rendered = render_ast_to_wolfram(parsed_ast)
+			if rendered and not tostring(rendered):match("^Error") then
+				return rendered
+			end
+		end
+
+		return normalized
 	end
 
 	local const_name = value:match("^%-?\\([A-Za-z]+)$")

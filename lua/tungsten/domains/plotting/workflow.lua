@@ -73,7 +73,7 @@ local function get_selection_range()
 	return bufnr, start_line, start_col, end_line, end_col
 end
 
-local function merge_classifications(nodes)
+local function merge_classifications(nodes, opts)
 	local combined = { series = {} }
 	for _, node in ipairs(nodes) do
 		local res, err = classification.analyze(node, opts or { simple_mode = true, mode = "simple" })
@@ -304,6 +304,14 @@ function M.run_advanced()
 	local classification_data, classify_err = merge_classifications(parsed.series)
 	if not classification_data then
 		notify_error(classify_err)
+		return
+	end
+
+	if classification_data.form == "parametric" then
+		notify_error({
+			code = error_handler.E_UNSUPPORTED_FORM,
+			message = "Use :TungstenPlotParametric for parametric plots.",
+		})
 		return
 	end
 
