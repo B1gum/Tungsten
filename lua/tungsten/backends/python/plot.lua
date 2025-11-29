@@ -4,6 +4,7 @@ local logger = require("tungsten.util.logger")
 local async = require("tungsten.util.async")
 local config = require("tungsten.config")
 local error_handler = require("tungsten.util.error_handler")
+local core_ast = require("tungsten.core.ast")
 local executor = require("tungsten.backends.python.executor")
 local special_function_guard = require("tungsten.backends.python.analyzers.special_function_guard")
 
@@ -62,21 +63,6 @@ local function normalize_ranges(opts)
 			opts[key] = { to_python_value(range[1]), to_python_value(range[2]) }
 		end
 	end
-end
-
-local function is_equality_node(ast)
-	if type(ast) ~= "table" then
-		return false
-	end
-	local t = ast.type
-	return t == "equality" or t == "Equality"
-end
-
-local function unwrap_equality_rhs(ast)
-	if is_equality_node(ast) and ast.rhs then
-		return ast.rhs
-	end
-	return ast
 end
 
 local function apply_log_mask(lines, axis, var, opts)
@@ -330,7 +316,7 @@ local function build_explicit_2d_python_code(opts)
 	local point_series = {}
 	for _, s in ipairs(series) do
 		if s.kind == "function" then
-			local ast = unwrap_equality_rhs(s.ast)
+			local ast = core_ast.unwrap_equality_rhs(s.ast)
 			local code = render_ast_to_python(ast)
 			if code then
 				table.insert(exprs, { code = code, series = s })
@@ -398,7 +384,7 @@ local function extract_polar_expression(ast)
 	if ast.r then
 		return ast.r
 	end
-	return unwrap_equality_rhs(ast)
+	return core_ast.unwrap_equality_rhs(ast)
 end
 
 local function validate_special_function_support(opts)
@@ -508,7 +494,7 @@ local function build_explicit_3d_python_code(opts)
 	local point_series = {}
 	for _, s in ipairs(series) do
 		if s.kind == "function" then
-			local ast = unwrap_equality_rhs(s.ast)
+			local ast = core_ast.unwrap_equality_rhs(s.ast)
 			local code = render_ast_to_python(ast)
 			if code then
 				table.insert(exprs, { code = code, series = s })

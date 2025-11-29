@@ -7,6 +7,7 @@ local error_handler = require("tungsten.util.error_handler")
 local error_parser = require("tungsten.backends.wolfram.wolfram_error")
 local parser = require("tungsten.core.parser")
 local constants = require("tungsten.core.constants")
+local core_ast = require("tungsten.core.ast")
 
 local M = setmetatable({}, { __index = base })
 
@@ -41,21 +42,6 @@ local function axes_for_plot_range(opts)
 		return { "x", "y", "z" }
 	end
 	return { "x", "y" }
-end
-
-local function is_equality_node(ast)
-	if type(ast) ~= "table" then
-		return false
-	end
-	local t = ast.type
-	return t == "equality" or t == "Equality"
-end
-
-local function unwrap_equality_rhs(ast)
-	if is_equality_node(ast) and ast.rhs then
-		return ast.rhs
-	end
-	return ast
 end
 
 local function to_wolfram_value(value)
@@ -466,7 +452,7 @@ local function build_explicit_code(opts)
 	local point_sets = {}
 	for _, s in ipairs(series) do
 		if s.kind == "function" then
-			local ast = unwrap_equality_rhs(s.ast)
+			local ast = core_ast.unwrap_equality_rhs(s.ast)
 			local code = render_ast_to_wolfram(ast)
 			if code then
 				table.insert(functions, code)
@@ -718,7 +704,7 @@ local function extract_polar_expression(ast)
 	if ast.r then
 		return ast.r
 	end
-	return unwrap_equality_rhs(ast)
+	return core_ast.unwrap_equality_rhs(ast)
 end
 
 local function build_polar_code(opts)

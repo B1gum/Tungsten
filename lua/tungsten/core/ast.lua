@@ -259,7 +259,19 @@ function M.is_point3_node(n)
 end
 
 function M.is_equality_node(n)
-	return type(n) == "table" and n.type == "Equality"
+	if type(n) ~= "table" then
+		return false
+	end
+
+	return n.type == "Equality" or n.type == "equality"
+end
+
+function M.unwrap_equality_rhs(ast)
+	if M.is_equality_node(ast) and ast.rhs then
+		return ast.rhs
+	end
+
+	return ast
 end
 
 function M.is_inequality_node(n)
