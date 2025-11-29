@@ -348,6 +348,53 @@ describe("Plotting workflow", function()
 		assert.is_function(advanced_opts.on_submit)
 	end)
 
+	it("rejects parametric forms in the standard advanced workflow", function()
+		mock_classification.analyze = spy.new(function()
+			return {
+				dim = 2,
+				form = "parametric",
+				series = {
+					{
+						kind = "function",
+						ast = { type = "expr", body = "ast" },
+						independent_vars = { "t" },
+						dependent_vars = { "x", "y" },
+					},
+				},
+			}
+		end)
+
+		workflow.run_advanced()
+
+		assert.spy(mock_error_handler.notify_error).was.called(1)
+		assert.spy(mock_ui.open_advanced_config).was_not_called()
+	end)
+
+	it("computes parametric plotting context when requested", function()
+		mock_classification.analyze = spy.new(function(node, opts)
+			assert.are.equal("parametric", opts.form)
+			return {
+				dim = 3,
+				form = "parametric",
+				series = {
+					{
+						kind = "function",
+						ast = node,
+						independent_vars = { "u", "v" },
+						dependent_vars = { "x", "y", "z" },
+					},
+				},
+			}
+		end)
+
+		workflow.run_parametric()
+
+		assert.spy(mock_ui.open_advanced_config).was.called(1)
+		local advanced_opts = mock_ui.open_advanced_config.calls[1].vals[1]
+		assert.are.equal("parametric", advanced_opts.classification.form)
+		assert.are.same({ parametric = true }, advanced_opts.allowed_forms)
+	end)
+
 	it("drives advanced submissions through the UI callback", function()
 		vim.api.nvim_buf_set_name(0, unique_tex_path())
 

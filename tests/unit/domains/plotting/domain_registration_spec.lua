@@ -17,13 +17,12 @@ describe("plotting domain registration", function()
 
 		require("tungsten.core")
 
-		local has_plot_command = false
+		local registered = {}
 		for _, cmd in ipairs(registry.commands) do
-			if cmd.name == "TungstenPlot" then
-				has_plot_command = true
-				break
-			end
+			registered[cmd.name] = true
 		end
-		assert.is_true(has_plot_command, "Expected TungstenPlot command to be registered")
+
+		assert.is_true(registered.TungstenPlot, "Expected TungstenPlot command to be registered")
+		assert.is_true(registered.TungstenPlotParametric, "Expected TungstenPlotParametric command to be registered")
 	end)
 end)

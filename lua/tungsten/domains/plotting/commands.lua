@@ -21,6 +21,10 @@ function M.advanced_plot_command()
 	workflow.run_advanced()
 end
 
+function M.parametric_plot_command()
+	workflow.run_parametric()
+end
+
 function M.check_dependencies_command()
 	health.check_dependencies(function(report)
 		local required_versions = {
@@ -114,6 +118,11 @@ M.commands = {
 		name = "TungstenPlotAdvanced",
 		func = M.advanced_plot_command,
 		opts = { range = true, desc = "Open advanced plotting configuration" },
+	},
+	{
+		name = "TungstenPlotParametric",
+		func = M.parametric_plot_command,
+		opts = { range = true, desc = "Open parametric plotting configuration" },
 	},
 	{
 		name = "TungstenPlotCancel",

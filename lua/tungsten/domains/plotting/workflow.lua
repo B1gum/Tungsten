@@ -76,7 +76,7 @@ end
 local function merge_classifications(nodes)
 	local combined = { series = {} }
 	for _, node in ipairs(nodes) do
-		local res, err = classification.analyze(node, { simple_mode = true, mode = "simple" })
+		local res, err = classification.analyze(node, opts or { simple_mode = true, mode = "simple" })
 		if not res then
 			return nil, err
 		end
@@ -307,6 +307,14 @@ function M.run_advanced()
 		return
 	end
 
+	if classification_data.form == "parametric" then
+		notify_error({
+			code = error_handler.E_UNSUPPORTED_FORM,
+			message = "Use :TungstenPlotParametric for parametric plots.",
+		})
+		return
+	end
+
 	local plot_ast = build_plot_ast(parsed.series)
 
 	local bufnr, start_line, start_col, end_line, end_col = get_selection_range()
@@ -387,7 +395,122 @@ function M.run_advanced()
 		start_col = start_col,
 		end_line = end_line,
 		end_col = end_col,
+		allowed_forms = { explicit = true, implicit = true, polar = true },
 		on_submit = submit_advanced,
+	})
+end
+
+function M.run_parametric()
+	local text = selection.get_visual_selection()
+	if type(text) ~= "string" then
+		text = ""
+	end
+	text = text:gsub("^%s+", ""):gsub("%s+$", "")
+
+	if text == "" then
+		notify_error("Parametric plot requires an expression")
+		return
+	end
+
+	local parse_opts = { mode = "advanced", form = "parametric" }
+	local ok_parse, parsed, err_msg, err_pos, err_input = pcall(parser.parse, text, parse_opts)
+	if not ok_parse then
+		notify_error(parsed)
+		return
+	end
+	if not parsed or not parsed.series or #parsed.series == 0 then
+		notify_error(err_msg or "Unable to parse selection", err_pos, err_input)
+		return
+	end
+
+	local classification_data, classify_err = merge_classifications(parsed.series, parse_opts)
+	if not classification_data then
+		notify_error(classify_err)
+		return
+	end
+
+	local plot_ast = build_plot_ast(parsed.series)
+
+	local bufnr, start_line, start_col, end_line, end_col = get_selection_range()
+
+	local function submit_parametric(final_opts)
+		final_opts = final_opts or {}
+		final_opts.on_submit = nil
+
+		local target_bufnr = final_opts.bufnr or bufnr
+		if not target_bufnr or target_bufnr == 0 then
+			target_bufnr = vim.api.nvim_get_current_buf()
+			final_opts.bufnr = target_bufnr
+		end
+
+		final_opts.expression = final_opts.expression or text
+		final_opts.ast = final_opts.ast or plot_ast
+		final_opts.start_line = final_opts.start_line or start_line
+		final_opts.start_col = final_opts.start_col or start_col
+		final_opts.end_line = final_opts.end_line or end_line
+		final_opts.end_col = final_opts.end_col or end_col
+
+		local buf_path = vim.api.nvim_buf_get_name(target_bufnr)
+		local tex_root, tex_err = plot_io.find_tex_root(buf_path)
+		if not tex_root then
+			notify_error(tex_err)
+			return
+		end
+
+		local output_dir, output_err, uses_graphicspath = plot_io.get_output_directory(tex_root)
+		if not output_dir then
+			notify_error(output_err)
+			return
+		end
+
+		local out_path = plot_io.get_final_path(output_dir, final_opts, {
+			ast = final_opts.ast,
+			var_defs = final_opts.definitions,
+		})
+
+		if not out_path or out_path == "" then
+			notify_error("Unable to determine output path")
+			return
+		end
+
+		final_opts.out_path = out_path
+		final_opts.uses_graphicspath = uses_graphicspath
+		final_opts.tex_root = tex_root
+
+		local function submit_job()
+			local command, command_opts = capture_backend_command(final_opts)
+			if not command then
+				notify_error(command_opts, nil, nil, BACKEND_FAILURE_CODE)
+				return
+			end
+
+			for i = 1, #command do
+				final_opts[i] = command[i]
+			end
+
+			if command_opts and command_opts.timeout then
+				final_opts.timeout_ms = command_opts.timeout
+			end
+
+			job_manager.submit(final_opts)
+		end
+
+		submit_job()
+	end
+
+	plotting_ui.open_advanced_config({
+		expression = text,
+		classification = classification_data,
+		series = vim.deepcopy(classification_data.series),
+		parsed_series = vim.deepcopy(parsed.series),
+		ast = plot_ast,
+		bufnr = bufnr,
+		start_line = start_line,
+		start_col = start_col,
+		end_line = end_line,
+		end_col = end_col,
+		allowed_forms = { parametric = true },
+		on_submit = submit_parametric,
 	})
 end
 

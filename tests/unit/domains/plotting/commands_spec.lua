@@ -17,6 +17,7 @@ describe("Tungsten Plotting Commands", function()
 
 	local run_simple_spy
 	local run_advanced_spy
+	local run_parametric_spy
 	local cancel_spy
 	local cancel_all_spy
 	local reset_deps_spy
@@ -44,6 +45,7 @@ describe("Tungsten Plotting Commands", function()
 		mock_plot_workflow = mock_utils.create_empty_mock_module("tungsten.domains.plotting.workflow")
 		run_simple_spy = spy.on(mock_plot_workflow, "run_simple")
 		run_advanced_spy = spy.on(mock_plot_workflow, "run_advanced")
+		run_parametric_spy = spy.on(mock_plot_workflow, "run_parametric")
 
 		mock_job_manager = mock_utils.create_empty_mock_module("tungsten.domains.plotting.job_manager")
 		cancel_spy = spy.on(mock_job_manager, "cancel")
@@ -85,6 +87,7 @@ describe("Tungsten Plotting Commands", function()
 		vim_test_env.cleanup()
 		run_simple_spy:clear()
 		run_advanced_spy:clear()
+		run_parametric_spy:clear()
 		cancel_spy:clear()
 		cancel_all_spy:clear()
 		reset_deps_spy:clear()
@@ -137,6 +140,17 @@ describe("Tungsten Plotting Commands", function()
 		it("should invoke the advanced plot workflow", function()
 			plot_commands.advanced_plot_command()
 			assert.spy(run_advanced_spy).was.called(1)
+		end)
+	end)
+
+	describe(":TungstenPlotParametric", function()
+		it("should provide a :TungstenPlotParametric command that opens a config buffer", function()
+			assert.is_function(plot_commands.parametric_plot_command)
+		end)
+
+		it("should invoke the parametric plot workflow", function()
+			plot_commands.parametric_plot_command()
+			assert.spy(run_parametric_spy).was.called(1)
 		end)
 	end)
 

@@ -841,7 +841,14 @@ local function parse_advanced_buffer(lines, opts)
 		base_series = classification.series
 	end
 
-	local allowed_forms = { explicit = true, implicit = true, parametric = true, polar = true }
+	local allowed_forms = opts.allowed_forms or { explicit = true, implicit = true, polar = true }
+	if vim.tbl_islist(allowed_forms) then
+		local normalized = {}
+		for _, value in ipairs(allowed_forms) do
+			normalized[tostring(value):lower()] = true
+		end
+		allowed_forms = normalized
+	end
 	local allowed_backends = { wolfram = true, python = true }
 	local allowed_output_modes = { latex = true, viewer = true, both = true }
 
