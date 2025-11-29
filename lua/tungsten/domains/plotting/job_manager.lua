@@ -3,6 +3,7 @@ local logger = require("tungsten.util.logger")
 local async = require("tungsten.util.async")
 local path = require("pl.path")
 local error_handler = require("tungsten.util.error_handler")
+local plotting_errors = require("tungsten.domains.plotting.errors")
 local plotting_io = require("tungsten.util.plotting_io")
 local health = require("tungsten.domains.plotting.health")
 
@@ -327,28 +328,17 @@ end
 local function default_on_error(job, err)
 	cleanup_temp(job, true)
 
-	local code = err and err.code
-	local msg = err and err.message or ""
-	local cancelled = err and err.cancelled
-	local backend_error_code = err and err.backend_error_code
-	local error_code
-	if cancelled or code == -1 then
-		error_code = error_handler.E_CANCELLED
-	elseif code == 127 then
-		error_code = error_handler.E_BACKEND_UNAVAILABLE
-	elseif code == 124 or msg:lower():find("timeout") then
-		error_code = error_handler.E_TIMEOUT
-	elseif backend_error_code then
-		if msg and msg ~= "" then
-			error_handler.notify_error("TungstenPlot", backend_error_code, nil, nil, msg)
+	local error_code, message_suffix, backend_error_code = plotting_errors.normalize_job_error(err)
+
+	if backend_error_code then
+		if message_suffix then
+			error_handler.notify_error("TungstenPlot", backend_error_code, nil, nil, message_suffix)
 		else
 			error_handler.notify_error("TungstenPlot", backend_error_code)
 		end
 		return
-	else
-		error_code = error_handler.E_BACKEND_CRASH
 	end
-	local message_suffix = (not cancelled and msg ~= "") and msg or nil
+
 	if message_suffix then
 		error_handler.notify_error("TungstenPlot", error_code, nil, nil, message_suffix)
 	else
