@@ -737,22 +737,17 @@ function M.build_python_script(opts)
 end
 
 function M.plot_async(opts, callback)
-	opts = opts or {}
-	assert(type(callback) == "function", "plot async expects a callback")
-
-	logger.debug("Python plot", "plot_async called")
-
-	if not opts.out_path then
-		callback({
-			code = error_handler.E_BAD_OPTS,
-			message = "Missing out_path",
-		}, nil)
+	local normalized_opts, err = M.prepare_opts(opts, callback)
+	if not normalized_opts then
+		callback(err, nil)
 		return
 	end
 
-	local script, err = M.build_python_script(opts)
+	logger.debug("Python plot", "plot_async called")
+
+	local script, build_err = M.build_python_script(normalized_opts)
 	if not script then
-		local normalized_err = normalize_error(err, error_handler.E_UNSUPPORTED_FORM)
+		local normalized_err = normalize_error(build_err, error_handler.E_UNSUPPORTED_FORM)
 		callback(normalized_err or {
 			code = error_handler.E_BACKEND_CRASH,
 			message = "Failed to build plot code",
@@ -764,18 +759,18 @@ function M.plot_async(opts, callback)
 	local python_path = python_opts.python_path or "python3"
 
 	local cwd
-	if opts.tex_root and opts.tex_root ~= "" then
-		if path.isdir(opts.tex_root) then
-			cwd = opts.tex_root
+	if normalized_opts.tex_root and normalized_opts.tex_root ~= "" then
+		if path.isdir(normalized_opts.tex_root) then
+			cwd = normalized_opts.tex_root
 		else
-			cwd = path.dirname(opts.tex_root)
+			cwd = path.dirname(normalized_opts.tex_root)
 		end
-	elseif opts.out_path and opts.out_path ~= "" then
-		cwd = path.dirname(opts.out_path)
+	elseif normalized_opts.out_path and normalized_opts.out_path ~= "" then
+		cwd = path.dirname(normalized_opts.out_path)
 	end
 
 	async.run_job({ python_path, "-c", script }, {
-		timeout = opts.timeout_ms,
+		timeout = normalized_opts.timeout_ms,
 		cwd = cwd,
 		on_exit = function(exit_code, stdout, stderr)
 			if exit_code == 0 then
@@ -786,8 +781,9 @@ function M.plot_async(opts, callback)
 						trimmed = nil
 					end
 				end
+				local out_path = normalized_opts.out_path
 				if callback then
-					callback(nil, trimmed or opts.out_path)
+					callback(nil, trimmed or out_path)
 				end
 			else
 				local msg = stderr ~= "" and stderr or stdout

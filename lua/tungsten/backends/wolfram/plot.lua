@@ -817,31 +817,29 @@ function M.translate_plot_error(exit_code, stdout, stderr)
 end
 
 function M.plot_async(opts, callback)
-	opts = opts or {}
-	assert(type(callback) == "function", "plot async expects a callback")
+	local normalized_opts, err = M.prepare_opts(opts, callback)
+	if not normalized_opts then
+		callback(err, nil)
+		return
+	end
 
 	logger.debug("Wolfram plot", "plot_async called")
 
-	if not opts.out_path then
-		callback("Missing out_path", nil)
-		return
-	end
+	normalize_ranges(normalized_opts)
 
-	normalize_ranges(opts)
-
-	local plot_code, err = M.build_plot_code(opts)
+	local plot_code, build_err = M.build_plot_code(normalized_opts)
 	if not plot_code then
-		callback(err or "Failed to build plot code", nil)
+		callback(build_err or "Failed to build plot code", nil)
 		return
 	end
 
-	local code = build_export_code(opts, plot_code)
+	local code = build_export_code(normalized_opts, plot_code)
 
 	local wolfram_opts = config.backend_opts and config.backend_opts.wolfram or {}
 	local wolfram_path = wolfram_opts.wolfram_path or "wolframscript"
 
 	async.run_job({ wolfram_path, "-code", code }, {
-		timeout = opts.timeout_ms,
+		timeout = normalized_opts.timeout_ms,
 		on_exit = function(exit_code, stdout, stderr)
 			if exit_code == 0 then
 				if callback then

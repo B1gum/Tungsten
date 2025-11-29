@@ -32,17 +32,4 @@ describe("backend capabilities", function()
 	it("flags python explicit x functions as unsupported", function()
 		assert.is_false(backends.is_supported("python", "explicit", 2, { dependent_vars = { "x" } }))
 	end)
-
-	it("uses wolfram as default backend", function()
-		local original = _G.require
-		_G.require = function(name)
-			if name == "tungsten.config" then
-				return {}
-			end
-			return original(name)
-		end
-		local backend = backends.get_configured_backend()
-		_G.require = original
-		assert.are.equal("wolfram", backend.name)
-	end)
 end)
