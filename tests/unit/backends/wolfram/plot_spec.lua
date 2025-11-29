@@ -440,6 +440,36 @@ describe("wolfram polar plotting", function()
 			assert.is_truthy(code:find("ContourPlot3D", 1, true))
 			assert.is_truthy(code:find("Mesh -> None", 1, true))
 		end)
+
+		it("uses ContourStyle with automatic colors for 3D contours", function()
+			local opts = {
+				form = "implicit",
+				dim = 3,
+				xrange = { -1, 1 },
+				yrange = { -2, 2 },
+				zrange = { -3, 3 },
+				plot_points = 30,
+				max_recursion = 2,
+				series = {
+					{
+						kind = "function",
+						ast = { __code = "x^2 + y^2 + z^2" },
+						independent_vars = { "x", "y", "z" },
+						color = "auto",
+						linewidth = 1.5,
+						alpha = 1,
+					},
+				},
+			}
+
+			local code, err = wolfram_plot.build_plot_code(opts)
+			assert.is_nil(err)
+			assert.is_truthy(code:find("ContourPlot3D", 1, true))
+			assert.is_truthy(
+				code:match("ContourStyle%s*->%s*Directive%[Automatic,%s*AbsoluteThickness%[1%.5%],%s*Opacity%[1%]%]")
+			)
+			assert.is_nil(code:match("PlotStyle%s*->"))
+		end)
 	end)
 end)
 

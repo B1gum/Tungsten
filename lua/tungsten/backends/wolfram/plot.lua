@@ -288,6 +288,8 @@ local function normalize_color(value)
 	end
 
 	local map = {
+		auto = "Automatic",
+		automatic = "Automatic",
 		red = "Red",
 		blue = "Blue",
 		green = "Green",
@@ -371,7 +373,8 @@ local function build_marker_spec(series)
 	return nil
 end
 
-local function apply_series_styles(extra_opts, series)
+local function apply_series_styles(extra_opts, series, style_opt)
+	local style_option = style_opt or "PlotStyle"
 	local styles = {}
 	local markers = {}
 	for _, s in ipairs(series or {}) do
@@ -386,12 +389,12 @@ local function apply_series_styles(extra_opts, series)
 	end
 	if #styles > 0 then
 		if #styles == 1 then
-			extra_opts[#extra_opts + 1] = "PlotStyle -> " .. styles[1]
+			extra_opts[#extra_opts + 1] = style_option .. " -> " .. styles[1]
 		else
-			extra_opts[#extra_opts + 1] = "PlotStyle -> {" .. table.concat(styles, ", ") .. "}"
+			extra_opts[#extra_opts + 1] = style_option .. " -> {" .. table.concat(styles, ", ") .. "}"
 		end
 	end
-	if #markers > 0 then
+	if style_option == "PlotStyle" and #markers > 0 then
 		if #markers == 1 then
 			extra_opts[#extra_opts + 1] = "PlotMarkers -> " .. markers[1]
 		else
@@ -637,7 +640,8 @@ local function build_implicit_code(opts)
 			ensure_option(extra_opts, "Mesh", "Mesh -> None")
 		end
 	end
-	apply_series_styles(extra_opts, series)
+	local style_option = (fn == "ContourPlot" or fn == "ContourPlot3D") and "ContourStyle" or "PlotStyle"
+	apply_series_styles(extra_opts, series, style_option)
 	apply_legend(extra_opts, opts)
 	if #extra_opts > 0 then
 		code = code .. ", " .. table.concat(extra_opts, ", ")
