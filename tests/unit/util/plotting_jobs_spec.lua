@@ -18,6 +18,10 @@ describe("Plotting Job Manager", function()
 
 	local modules_to_clear = {
 		"tungsten.domains.plotting.job_manager",
+		"tungsten.domains.plotting.job_manager.queue",
+		"tungsten.domains.plotting.job_manager.dependencies",
+		"tungsten.domains.plotting.job_manager.cleanup",
+		"tungsten.domains.plotting.job_manager.spinner",
 		"tungsten.util.async",
 		"tungsten.config",
 		"tungsten.util.error_handler",
