@@ -5,6 +5,7 @@ local style_parser = require("tungsten.domains.plotting.style_parser")
 
 function M.build(classification, user_overrides)
 	user_overrides = user_overrides or {}
+	classification = vim.deepcopy(classification or {})
 
 	if user_overrides.legend_position and user_overrides.legend_pos == nil then
 		user_overrides.legend_pos = user_overrides.legend_position
