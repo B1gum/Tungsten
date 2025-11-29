@@ -315,14 +315,6 @@ function M.run_advanced()
 		return
 	end
 
-	if classification_data.form == "parametric" then
-		notify_error({
-			code = error_handler.E_UNSUPPORTED_FORM,
-			message = "Use :TungstenPlotParametric for parametric plots.",
-		})
-		return
-	end
-
 	local plot_ast = build_plot_ast(parsed.series)
 
 	local bufnr, start_line, start_col, end_line, end_col = get_selection_range()
