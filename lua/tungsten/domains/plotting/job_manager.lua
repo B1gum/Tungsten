@@ -329,7 +329,116 @@ local function default_on_error(job, err)
 		error_handler.notify_error("TungstenPlot", error_code, nil, nil, message_suffix)
 	else
 		error_handler.notify_error("TungstenPlot", error_code)
-	end
+        end
+end
+
+local function prepare_cursor_location(plot_opts)
+        local bufnr = plot_opts.bufnr or vim.api.nvim_get_current_buf()
+        local row = plot_opts.end_line or plot_opts.start_line or 0
+        local col = plot_opts.end_col or plot_opts.start_col or 0
+
+        local line_count = vim.api.nvim_buf_line_count(bufnr)
+        if line_count < 1 then
+                line_count = 1
+        end
+        if row < 0 then
+                row = 0
+        elseif row > line_count then
+                row = line_count
+        end
+        if row == line_count then
+                col = 0
+        else
+                local line_text = vim.api.nvim_buf_get_lines(bufnr, row, row + 1, false)[1] or ""
+                local max_col = #line_text
+                if col < 0 then
+                        col = 0
+                elseif col > max_col then
+                        col = max_col
+                end
+        end
+
+        return bufnr, row, col
+end
+
+local function start_spinner(bufnr, row, col)
+        local frame_index = 1
+        local extmark_id = vim.api.nvim_buf_set_extmark(bufnr, spinner_ns, row, col, {
+                virt_text = { { spinner_frames[frame_index] } },
+                virt_text_pos = "overlay",
+        })
+
+        local timer = vim.loop.new_timer()
+        if timer then
+                local function update_spinner()
+                        frame_index = frame_index % #spinner_frames + 1
+                        local next_frame = spinner_frames[frame_index]
+                        vim.schedule(function()
+                                pcall(vim.api.nvim_buf_set_extmark, bufnr, spinner_ns, row, col, {
+                                        id = extmark_id,
+                                        virt_text = { { next_frame } },
+                                        virt_text_pos = "overlay",
+                                })
+                        end)
+                end
+
+                timer:start(spinner_interval, spinner_interval, update_spinner)
+        end
+
+        return extmark_id, timer
+end
+
+local function handle_job_exit(job, info, code, stdout, stderr)
+        if info.timer then
+                info.timer:stop()
+                info.timer:close()
+                info.timer = nil
+        end
+        if info.extmark_id then
+                pcall(vim.api.nvim_buf_del_extmark, info.bufnr, spinner_ns, info.extmark_id)
+        end
+        active_plot_jobs[job.id] = nil
+
+        if code == 0 then
+                local trimmed = stdout
+                if type(trimmed) == "string" then
+                        trimmed = trimmed:match("^%s*(.-)%s*$")
+                        if trimmed == "" then
+                                trimmed = nil
+                        end
+                end
+                if job.on_success then
+                        job.on_success(trimmed)
+                end
+        else
+                if job.on_error then
+                        local stdout_text = stdout or ""
+                        local stderr_text = stderr or ""
+                        local msg = stderr_text ~= "" and stderr_text or stdout_text
+                        if msg == "" then
+                                msg = string.format("Process exited with code %d", code)
+                        end
+                        local translated
+                        local translator = job.plot_opts and job.plot_opts._error_translator
+                        if type(translator) == "function" then
+                                local ok, res = pcall(translator, code, stdout_text, stderr_text)
+                                if ok and type(res) == "table" then
+                                        translated = res
+                                end
+                        end
+                        if translated and translated.message and translated.message ~= "" then
+                                msg = translated.message
+                        end
+                        local was_cancelled = (code == -1) or info.cancelled
+                        job.on_error({
+                                code = code,
+                                exit_code = code,
+                                message = msg,
+                                cancelled = was_cancelled,
+                                backend_error_code = translated and translated.code or nil,
+                        })
+                end
+        end
 end
 
 local function _execute_plot(job)
@@ -344,114 +453,20 @@ local function _execute_plot(job)
 	info.started_at = os.time()
 	info.plot_opts = job.plot_opts
 
-	local bufnr = job.plot_opts.bufnr or vim.api.nvim_get_current_buf()
-	local row = job.plot_opts.end_line or job.plot_opts.start_line or 0
-	local col = job.plot_opts.end_col or job.plot_opts.start_col or 0
-
-	local line_count = vim.api.nvim_buf_line_count(bufnr)
-	if line_count < 1 then
-		line_count = 1
-	end
-	if row < 0 then
-		row = 0
-	elseif row > line_count then
-		row = line_count
-	end
-	if row == line_count then
-		col = 0
-	else
-		local line_text = vim.api.nvim_buf_get_lines(bufnr, row, row + 1, false)[1] or ""
-		local max_col = #line_text
-		if col < 0 then
-			col = 0
-		elseif col > max_col then
-			col = max_col
-		end
-	end
-	local frame_index = 1
-	local extmark_id = vim.api.nvim_buf_set_extmark(bufnr, spinner_ns, row, col, {
-		virt_text = { { spinner_frames[frame_index] } },
-		virt_text_pos = "overlay",
-	})
-	info.extmark_id = extmark_id
-	info.bufnr = bufnr
+        local bufnr, row, col = prepare_cursor_location(job.plot_opts)
+        info.bufnr = bufnr
 	info.expression = job.plot_opts.expression
 	info.backend = job.plot_opts.backend
 	active_plot_jobs[job.id] = info
 
-	local timer = vim.loop.new_timer()
-	if timer then
-		local function update_spinner()
-			frame_index = frame_index % #spinner_frames + 1
-			local next_frame = spinner_frames[frame_index]
-			vim.schedule(function()
-				if info.extmark_id then
-					pcall(vim.api.nvim_buf_set_extmark, info.bufnr, spinner_ns, row, col, {
-						id = info.extmark_id,
-						virt_text = { { next_frame } },
-						virt_text_pos = "overlay",
-					})
-				end
-			end)
-		end
-
-		timer:start(spinner_interval, spinner_interval, update_spinner)
-		info.timer = timer
-	end
+        local extmark_id, timer = start_spinner(bufnr, row, col)
+        info.extmark_id = extmark_id
+        info.timer = timer
 
 	local handle = async.run_job(job.plot_opts, {
 		on_exit = function(code, stdout, stderr)
 			local function handle()
-				if info.timer then
-					info.timer:stop()
-					info.timer:close()
-					info.timer = nil
-				end
-				if info.extmark_id then
-					pcall(vim.api.nvim_buf_del_extmark, info.bufnr, spinner_ns, info.extmark_id)
-				end
-				active_plot_jobs[job.id] = nil
-
-				if code == 0 then
-					local trimmed = stdout
-					if type(trimmed) == "string" then
-						trimmed = trimmed:match("^%s*(.-)%s*$")
-						if trimmed == "" then
-							trimmed = nil
-						end
-					end
-					if job.on_success then
-						job.on_success(trimmed)
-					end
-				else
-					if job.on_error then
-						local stdout_text = stdout or ""
-						local stderr_text = stderr or ""
-						local msg = stderr_text ~= "" and stderr_text or stdout_text
-						if msg == "" then
-							msg = string.format("Process exited with code %d", code)
-						end
-						local translated
-						local translator = job.plot_opts and job.plot_opts._error_translator
-						if type(translator) == "function" then
-							local ok, res = pcall(translator, code, stdout_text, stderr_text)
-							if ok and type(res) == "table" then
-								translated = res
-							end
-						end
-						if translated and translated.message and translated.message ~= "" then
-							msg = translated.message
-						end
-						local was_cancelled = (code == -1) or info.cancelled
-						job.on_error({
-							code = code,
-							exit_code = code,
-							message = msg,
-							cancelled = was_cancelled,
-							backend_error_code = translated and translated.code or nil,
-						})
-					end
-				end
+				handle_job_exit(job, info, code, stdout, stderr)
 				_process_queue()
 			end
 
