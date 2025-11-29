@@ -132,6 +132,30 @@ end
 
 local _process_queue
 
+local function augment_plot_opts(plot_opts)
+	local dep_vars = {}
+	local has_points = false
+	local has_inequality = false
+
+	if plot_opts and plot_opts.series then
+		for _, s in ipairs(plot_opts.series) do
+			for _, v in ipairs(s.dependent_vars or {}) do
+				dep_vars[#dep_vars + 1] = v
+			end
+			if s.kind == "points" then
+				has_points = true
+			elseif s.kind == "inequality" then
+				has_inequality = true
+			end
+		end
+	end
+
+	plot_opts.has_points = has_points
+	plot_opts.has_inequality = has_inequality
+
+	return dep_vars, has_points, has_inequality
+end
+
 local function cleanup_temp(job, include_outputs)
 	if not job or not job.plot_opts then
 		return
@@ -490,28 +514,7 @@ _process_queue = function()
 	end
 end
 
-function M.submit(plot_opts, user_on_success, user_on_error)
-	plot_opts = plot_opts or {}
-	local backend = plot_opts.backend or (config.plotting or {}).backend or "wolfram"
-
-	local dep_vars = {}
-	local has_points = false
-	local has_inequality = false
-	if plot_opts and plot_opts.series then
-		for _, s in ipairs(plot_opts.series) do
-			for _, v in ipairs(s.dependent_vars or {}) do
-				dep_vars[#dep_vars + 1] = v
-			end
-			if s.kind == "points" then
-				has_points = true
-			elseif s.kind == "inequality" then
-				has_inequality = true
-			end
-		end
-	end
-	plot_opts.has_points = has_points
-	plot_opts.has_inequality = has_inequality
-
+local function validate_backend_support(plot_opts, backend, dep_vars, has_points, has_inequality)
 	local supported = true
 	if plot_opts and plot_opts.form and plot_opts.dim then
 		local backends = require("tungsten.domains.plotting.backends")
@@ -524,7 +527,7 @@ function M.submit(plot_opts, user_on_success, user_on_error)
 
 	if not supported then
 		error_handler.notify_error("TungstenPlot", error_handler.E_UNSUPPORTED_FORM)
-		return nil
+		return false
 	end
 
 	if backend == "wolfram" then
@@ -537,13 +540,14 @@ function M.submit(plot_opts, user_on_success, user_on_error)
 				nil,
 				"Install Wolfram or configure Python backend"
 			)
-			return nil
+			return false
 		end
 	end
 
-	next_id = next_id + 1
-	local job = { id = next_id, plot_opts = plot_opts }
+	return true
+end
 
+local function prepare_job_callbacks(job, user_on_success, user_on_error)
 	job.on_success = function(img_path)
 		default_on_success(job, img_path)
 		if user_on_success then
@@ -557,41 +561,70 @@ function M.submit(plot_opts, user_on_success, user_on_error)
 			user_on_error(err)
 		end
 	end
+end
 
+local function ensure_backend_dependencies_ok(backend, job)
+	local backend_ok, backend_message = get_backend_status(backend)
+	if backend_ok then
+		return true
+	end
+
+	if job then
+		cleanup_temp(job, true)
+	end
+	notify_backend_failure(backend, backend_message)
+	return false
+end
+
+local function enqueue_job(job, backend)
 	if dependency_report ~= nil then
-		local backend_ok, backend_message = get_backend_status(backend)
-		if not backend_ok then
-			notify_backend_failure(backend, backend_message)
-			cleanup_temp(job, true)
-			return nil
+		if not ensure_backend_dependencies_ok(backend, job) then
+			return false
 		end
+
+		table.insert(job_queue, job)
+		_process_queue()
+		return true
 	end
 
-	if dependency_report == nil then
-		pending_dependency_jobs[job.id] = job
-		on_dependencies_ready(function()
-			local pending_job = pending_dependency_jobs[job.id]
-			if not pending_job then
-				return
-			end
-			pending_dependency_jobs[job.id] = nil
+	pending_dependency_jobs[job.id] = job
+	on_dependencies_ready(function()
+		local pending_job = pending_dependency_jobs[job.id]
+		if not pending_job then
+			return
+		end
+		pending_dependency_jobs[job.id] = nil
 
-			local job_backend = pending_job.plot_opts.backend or (config.plotting or {}).backend or "wolfram"
-			local backend_ok, backend_message = get_backend_status(job_backend)
-			if not backend_ok then
-				cleanup_temp(pending_job, true)
-				notify_backend_failure(job_backend, backend_message)
-				return
-			end
+		local job_backend = pending_job.plot_opts.backend or (config.plotting or {}).backend or "wolfram"
+		if not ensure_backend_dependencies_ok(job_backend, pending_job) then
+			return
+		end
 
-			table.insert(job_queue, pending_job)
-			_process_queue()
-		end)
-		return job.id
+		table.insert(job_queue, pending_job)
+		_process_queue()
+	end)
+
+	return true
+end
+
+function M.submit(plot_opts, user_on_success, user_on_error)
+	plot_opts = plot_opts or {}
+	local backend = plot_opts.backend or (config.plotting or {}).backend or "wolfram"
+
+	local dep_vars, has_points, has_inequality = augment_plot_opts(plot_opts)
+	if not validate_backend_support(plot_opts, backend, dep_vars, has_points, has_inequality) then
+		return nil
 	end
 
-	table.insert(job_queue, job)
-	_process_queue()
+	next_id = next_id + 1
+	local job = { id = next_id, plot_opts = plot_opts }
+
+	prepare_job_callbacks(job, user_on_success, user_on_error)
+
+	if not enqueue_job(job, backend) then
+		return nil
+	end
+
 	return job.id
 end
 
