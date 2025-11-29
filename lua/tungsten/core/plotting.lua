@@ -367,66 +367,71 @@ local function build_variable_entries(vars)
 	return entries
 end
 
-function M.initiate_plot(plot_opts, on_success, on_error)
-	return job_manager.submit(plot_opts or {}, on_success, on_error)
-end
-
-function M.get_undefined_symbols(opts)
+local function parse_and_normalize_ast(opts)
 	opts = opts or {}
 	local root = ensure_ast(opts)
 	if not root then
-		return true, {}
+		return nil
 	end
 	local nodes = gather_nodes(root)
 	if #nodes == 0 then
-		return true, {}
+		return nil
 	end
+	return nodes
+end
+
+local function discover_defined_symbols(opts, nodes)
 	local defined = build_defined_names(opts)
-	local ignored = build_ignore_set(opts)
-	local axis_overrides = build_axis_overrides(opts)
-	local candidate_vars = {}
+	local function walk(node)
+		if type(node) ~= "table" then
+			return
+		end
+		if node.type == "Equality" and type(node.lhs) == "table" and node.lhs.type == "function_call" then
+			local signature = ast_mod.canonical(node.lhs)
+			if signature and signature ~= "" then
+				mark_defined(defined, signature)
+			else
+				local name = extract_function_name(node.lhs)
+				if name then
+					mark_defined(defined, name)
+				end
+			end
+		end
+		for _, child in pairs(node) do
+			if type(child) == "table" then
+				if child.type then
+					walk(child)
+				else
+					for _, nested in pairs(child) do
+						walk(nested)
+					end
+				end
+			end
+		end
+	end
+	for _, node in ipairs(nodes or {}) do
+		walk(node)
+	end
+	return defined
+end
+
+local function determine_plot_dimension(opts, nodes)
 	local plot_dim = opts.dim or opts.dimension or opts.expected_dim
 	local classification_opts = { simple_mode = true, mode = "simple" }
-	local function mark_function_definitions()
-		local function walk(node)
-			if type(node) ~= "table" then
-				return
-			end
-			if node.type == "Equality" and type(node.lhs) == "table" and node.lhs.type == "function_call" then
-				local signature = ast_mod.canonical(node.lhs)
-				if signature and signature ~= "" then
-					mark_defined(defined, signature)
-				else
-					local name = extract_function_name(node.lhs)
-					if name then
-						mark_defined(defined, name)
-					end
-				end
-			end
-			for _, child in pairs(node) do
-				if type(child) == "table" then
-					if child.type then
-						walk(child)
-					else
-						for _, nested in pairs(child) do
-							walk(nested)
-						end
-					end
-				end
-			end
-		end
-		for _, node in ipairs(nodes) do
-			walk(node)
-		end
-	end
-	mark_function_definitions()
-	for _, node in ipairs(nodes) do
+	for _, node in ipairs(nodes or {}) do
 		local ok_class, class_res = pcall(classification.analyze, node, classification_opts)
 		if ok_class and type(class_res) == "table" and type(class_res.dim) == "number" then
 			if type(plot_dim) ~= "number" or class_res.dim > plot_dim then
 				plot_dim = class_res.dim
 			end
 		end
+	end
+	return plot_dim
+end
+
+local function collect_undefined_entries(opts, nodes, defined, ignored, axis_overrides, plot_dim)
+	local candidate_vars = {}
+	for _, node in ipairs(nodes or {}) do
 		local free = free_vars.find(node) or {}
 		local axis_for_node = determine_axis_for_node(free, axis_overrides)
 		for _, name in ipairs(free) do
@@ -455,7 +460,30 @@ function M.get_undefined_symbols(opts)
 	for _, entry in ipairs(functions) do
 		ordered[#ordered + 1] = entry
 	end
+	return ordered
+end
+
+function M.initiate_plot(plot_opts, on_success, on_error)
+	return job_manager.submit(plot_opts or {}, on_success, on_error)
+end
+
+function M.get_undefined_symbols(opts)
+	opts = opts or {}
+	local nodes = parse_and_normalize_ast(opts)
+	if not nodes then
+		return true, {}
+	end
+	local defined = discover_defined_symbols(opts, nodes)
+	local ignored = build_ignore_set(opts)
+	local axis_overrides = build_axis_overrides(opts)
+	local plot_dim = determine_plot_dimension(opts, nodes)
+	local ordered = collect_undefined_entries(opts, nodes, defined, ignored, axis_overrides, plot_dim)
 	return true, ordered
 end
+
+M._parse_and_normalize_ast = parse_and_normalize_ast
+M._discover_defined_symbols = discover_defined_symbols
+M._determine_plot_dimension = determine_plot_dimension
+M._collect_undefined_entries = collect_undefined_entries
 
 return M
