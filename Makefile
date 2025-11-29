@@ -38,4 +38,12 @@ lint: lint_deps
 
 clean:
 	@echo "Cleaning up test artifacts..."
-	@rm -rf .test_nvim_data
+	@rm -rf .test_nvim_data luacov.stats.out luacov.report.out
+
+cov coverage: test_deps
+	@echo "Running tests with coverage..."
+	@$(ROCKTREE)/bin/vusted --coverage tests/minimal_init.lua ./tests
+	@echo "Generating coverage report..."
+	@$(ROCKTREE)/bin/luacov
+	@echo "Coverage report generated: luacov.report.out"
+	@grep -A999 "^Summary" luacov.report.out || true

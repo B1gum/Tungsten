@@ -1,0 +1,16 @@
+return {
+  statsfile  = "luacov.stats.out",
+  reportfile = "luacov.report.out",
+
+  include = {
+    "lua/tungsten/.*$",
+  },
+
+  exclude = {
+    "tests/.*$",
+  },
+
+  runreport  = false,
+  deletestats = false,
+}
+

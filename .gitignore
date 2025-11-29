@@ -7,3 +7,5 @@
 *.shada.tmp.*
 .test_home/
 .test_deps/
+luacov.stats.out
+luacov.report.out

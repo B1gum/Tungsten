@@ -5,6 +5,7 @@ local config = require("tungsten.config")
 local async = require("tungsten.util.async")
 local io_util = require("tungsten.ui.io")
 local options_builder = require("tungsten.domains.plotting.options_builder")
+local style_parser = require("tungsten.domains.plotting.style_parser")
 local parser = require("tungsten.core.parser")
 local evaluator = require("tungsten.core.engine")
 local backend_manager = require("tungsten.backends.manager")
@@ -38,25 +39,6 @@ local function strip_dependents_hint(value)
 		return vim.trim(stripped)
 	end
 	return value
-end
-
-local function parse_style_tokens(tokens)
-	local res = {}
-	if type(tokens) == "string" then
-		tokens = vim.split(tokens, " ", { trimempty = true })
-	end
-	if type(tokens) ~= "table" then
-		return res
-	end
-	for _, tok in ipairs(tokens) do
-		local key, val = tok:match("^%s*(%w+)%s*=%s*(.-)%s*$")
-		if key and val then
-			val = val:gsub("^['\"]", ""):gsub("['\"]$", "")
-			local num = tonumber(val)
-			res[key] = num or val
-		end
-	end
-	return res
 end
 
 local function parse_definitions(input)
@@ -641,7 +623,7 @@ local function collect_dependents(series, dim, form)
 end
 
 local function get_series_defaults(series)
-	local parsed = parse_style_tokens(series.style_tokens or series.style)
+	local parsed = style_parser.parse(series.style_tokens or series.style)
 	return {
 		color = series.color or parsed.color or "auto",
 		linewidth = series.linewidth or parsed.linewidth or "1.5",
@@ -1326,7 +1308,7 @@ function M.build_final_opts_from_classification(classification)
 		if multi and (not final.series[i].label or final.series[i].label == "") then
 			final.series[i].label = string.format("Series %d", i)
 		end
-		local style = parse_style_tokens(s.style_tokens or s.style)
+		local style = style_parser.parse(s.style_tokens or s.style)
 		for k, v in pairs(style) do
 			final.series[i][k] = v
 		end
