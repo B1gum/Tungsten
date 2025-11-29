@@ -113,6 +113,168 @@ local function normalize_legend_position(pos)
 	return map[normalized] or pos
 end
 
+local function normalize_plot_opts(opts)
+	opts = opts or {}
+	normalize_ranges(opts)
+
+	local plotting_defaults = config.plotting or {}
+
+	local function get_or_default(val, fallback)
+		if val == nil then
+			return fallback
+		end
+		return val
+	end
+
+	opts.usetex = get_or_default(opts.usetex, plotting_defaults.usetex)
+	if opts.usetex == nil then
+		opts.usetex = false
+	end
+
+	opts.latex_engine = get_or_default(opts.latex_engine, plotting_defaults.latex_engine)
+	opts.latex_preamble = get_or_default(opts.latex_preamble, plotting_defaults.latex_preamble)
+	if opts.latex_preamble == nil then
+		opts.latex_preamble = ""
+	end
+
+	return opts
+end
+
+local function build_backend_and_axes_init_lines(opts)
+	local lines = {
+		"import os",
+		"os.environ['MPLBACKEND'] = 'Agg'",
+		"import matplotlib",
+		"matplotlib.use('Agg')",
+		string.format("matplotlib.rcParams['text.usetex'] = %s", opts.usetex and "True" or "False"),
+		string.format("matplotlib.rcParams['text.latex.preamble'] = %s", python_string_literal(opts.latex_preamble)),
+		"import matplotlib.pyplot as plt",
+		"import numpy as np",
+		"import sympy as sp",
+		"from mpl_toolkits.mplot3d import Axes3D",
+		"fig = plt.figure()",
+	}
+
+	if opts.latex_engine and opts.latex_engine ~= "" then
+		table.insert(
+			lines,
+			5,
+			string.format("matplotlib.rcParams['pgf.texsystem'] = %s", python_string_literal(opts.latex_engine))
+		)
+		if opts.latex_engine == "pdflatex" then
+			table.insert(lines, "texinputs = os.environ.get('TEXINPUTS', '')")
+			table.insert(lines, "if texinputs and not texinputs.endswith(os.pathsep):")
+			table.insert(lines, "    texinputs = texinputs + os.pathsep")
+			table.insert(lines, "os.environ['TEXINPUTS'] = texinputs")
+		end
+	end
+
+	if opts.form == "polar" then
+		table.insert(lines, "ax = fig.add_subplot(111, projection='polar')")
+	elseif opts.dim == 3 then
+		table.insert(lines, "ax = fig.add_subplot(111, projection='3d')")
+	else
+		table.insert(lines, "ax = fig.add_subplot(111)")
+	end
+
+	return lines
+end
+
+local function build_rendering_lines(opts, plot_code, colorbar_var)
+	local lines = { plot_code }
+
+	if opts.xscale then
+		table.insert(lines, string.format("ax.set_xscale('%s')", opts.xscale))
+	end
+	if opts.yscale then
+		table.insert(lines, string.format("ax.set_yscale('%s')", opts.yscale))
+	end
+	if opts.zscale and opts.dim == 3 then
+		table.insert(lines, string.format("ax.set_zscale('%s')", opts.zscale))
+	end
+
+	if opts.figsize_in then
+		table.insert(lines, string.format("fig.set_size_inches(%s, %s)", opts.figsize_in[1], opts.figsize_in[2]))
+	end
+	if opts.bg_color then
+		table.insert(lines, string.format("fig.patch.set_facecolor('%s')", opts.bg_color))
+		table.insert(lines, string.format("ax.set_facecolor('%s')", opts.bg_color))
+	end
+	if opts.grids ~= nil then
+		table.insert(lines, string.format("ax.grid(%s)", opts.grids and "True" or "False"))
+	end
+	if opts.xrange then
+		table.insert(lines, string.format("ax.set_xlim(%s, %s)", opts.xrange[1], opts.xrange[2]))
+	end
+	if opts.yrange then
+		table.insert(lines, string.format("ax.set_ylim(%s, %s)", opts.yrange[1], opts.yrange[2]))
+	end
+	if opts.zrange and opts.dim == 3 then
+		table.insert(lines, string.format("ax.set_zlim(%s, %s)", opts.zrange[1], opts.zrange[2]))
+	end
+	if opts.aspect == "equal" and opts.dim ~= 3 then
+		table.insert(lines, "ax.set_aspect('equal', adjustable='box')")
+	end
+	if opts.view_elev or opts.view_azim then
+		local elev = opts.view_elev or 30
+		local azim = opts.view_azim or -60
+		table.insert(lines, string.format("ax.view_init(elev=%s, azim=%s)", elev, azim))
+	end
+	if opts.colorbar and colorbar_var then
+		table.insert(lines, string.format("fig.colorbar(%s, ax=ax)", colorbar_var))
+	end
+
+	return lines
+end
+
+local function has_legend_labels(opts)
+	if opts.dim == 3 and (opts.form == "explicit" or opts.form == "parametric") then
+		return false
+	end
+
+	for _, s in ipairs(opts.series or {}) do
+		if s.label and s.label ~= "" then
+			return true
+		end
+	end
+
+	return false
+end
+
+local function build_output_and_legend_lines(opts)
+	local lines = {}
+
+	if has_legend_labels(opts) then
+		local legend_pos = normalize_legend_position(opts.legend_pos)
+		if opts.legend_auto == false then
+			if legend_pos then
+				table.insert(lines, string.format("ax.legend(loc='%s')", legend_pos))
+			end
+		elseif legend_pos then
+			table.insert(lines, string.format("ax.legend(loc='%s')", legend_pos))
+		else
+			table.insert(lines, "ax.legend()")
+		end
+	end
+
+	local out_path = opts.out_path
+	if not out_path:match("%.%w+$") then
+		out_path = out_path .. "." .. (opts.format or "png")
+	end
+	local dpi = opts.dpi or 100
+	if opts.crop then
+		table.insert(
+			lines,
+			string.format("plt.savefig(r'%s', dpi=%d, bbox_inches='tight', pad_inches=0.02)", out_path, dpi)
+		)
+	else
+		table.insert(lines, string.format("plt.savefig(r'%s', dpi=%d)", out_path, dpi))
+	end
+	table.insert(lines, string.format("print(r'%s')", out_path))
+
+	return lines
+end
+
 local function build_style_args(series, context, default_color)
 	series = series or {}
 	local parts = {}
@@ -594,144 +756,25 @@ function M.build_plot_code(opts)
 end
 
 function M.build_python_script(opts)
+	opts = normalize_plot_opts(opts)
+
 	local plot_code, colorbar_var, err = M.build_plot_code(opts)
 	if not plot_code then
 		return nil, err
 	end
 
-	local plotting_defaults = config.plotting or {}
-
-	local function get_or_default(val, fallback)
-		if val == nil then
-			return fallback
-		end
-		return val
-	end
-
-	local usetex = get_or_default(opts.usetex, plotting_defaults.usetex)
-	if usetex == nil then
-		usetex = false
-	end
-	local latex_engine = get_or_default(opts.latex_engine, plotting_defaults.latex_engine)
-	local latex_preamble = get_or_default(opts.latex_preamble, plotting_defaults.latex_preamble)
-	if latex_preamble == nil then
-		latex_preamble = ""
-	end
-
-	local lines = {
-		"import os",
-		"os.environ['MPLBACKEND'] = 'Agg'",
-		"import matplotlib",
-		"matplotlib.use('Agg')",
-		string.format("matplotlib.rcParams['text.usetex'] = %s", usetex and "True" or "False"),
-		string.format("matplotlib.rcParams['text.latex.preamble'] = %s", python_string_literal(latex_preamble)),
-		"import matplotlib.pyplot as plt",
-		"import numpy as np",
-		"import sympy as sp",
-		"from mpl_toolkits.mplot3d import Axes3D",
-		"fig = plt.figure()",
+	local lines = {}
+	local sections = {
+		build_backend_and_axes_init_lines(opts),
+		build_rendering_lines(opts, plot_code, colorbar_var),
+		build_output_and_legend_lines(opts),
 	}
 
-	if latex_engine and latex_engine ~= "" then
-		table.insert(
-			lines,
-			5,
-			string.format("matplotlib.rcParams['pgf.texsystem'] = %s", python_string_literal(latex_engine))
-		)
-		if latex_engine == "pdflatex" then
-			table.insert(lines, "texinputs = os.environ.get('TEXINPUTS', '')")
-			table.insert(lines, "if texinputs and not texinputs.endswith(os.pathsep):")
-			table.insert(lines, "    texinputs = texinputs + os.pathsep")
-			table.insert(lines, "os.environ['TEXINPUTS'] = texinputs")
+	for _, segment in ipairs(sections) do
+		for _, line in ipairs(segment) do
+			table.insert(lines, line)
 		end
 	end
-	if opts.form == "polar" then
-		table.insert(lines, "ax = fig.add_subplot(111, projection='polar')")
-	elseif opts.dim == 3 then
-		table.insert(lines, "ax = fig.add_subplot(111, projection='3d')")
-	else
-		table.insert(lines, "ax = fig.add_subplot(111)")
-	end
-
-	table.insert(lines, plot_code)
-
-	if opts.xscale then
-		table.insert(lines, string.format("ax.set_xscale('%s')", opts.xscale))
-	end
-	if opts.yscale then
-		table.insert(lines, string.format("ax.set_yscale('%s')", opts.yscale))
-	end
-	if opts.zscale and opts.dim == 3 then
-		table.insert(lines, string.format("ax.set_zscale('%s')", opts.zscale))
-	end
-
-	if opts.figsize_in then
-		table.insert(lines, string.format("fig.set_size_inches(%s, %s)", opts.figsize_in[1], opts.figsize_in[2]))
-	end
-	if opts.bg_color then
-		table.insert(lines, string.format("fig.patch.set_facecolor('%s')", opts.bg_color))
-		table.insert(lines, string.format("ax.set_facecolor('%s')", opts.bg_color))
-	end
-	if opts.grids ~= nil then
-		table.insert(lines, string.format("ax.grid(%s)", opts.grids and "True" or "False"))
-	end
-	if opts.xrange then
-		table.insert(lines, string.format("ax.set_xlim(%s, %s)", opts.xrange[1], opts.xrange[2]))
-	end
-	if opts.yrange then
-		table.insert(lines, string.format("ax.set_ylim(%s, %s)", opts.yrange[1], opts.yrange[2]))
-	end
-	if opts.zrange and opts.dim == 3 then
-		table.insert(lines, string.format("ax.set_zlim(%s, %s)", opts.zrange[1], opts.zrange[2]))
-	end
-	if opts.aspect == "equal" and opts.dim ~= 3 then
-		table.insert(lines, "ax.set_aspect('equal', adjustable='box')")
-	end
-	if opts.view_elev or opts.view_azim then
-		local elev = opts.view_elev or 30
-		local azim = opts.view_azim or -60
-		table.insert(lines, string.format("ax.view_init(elev=%s, azim=%s)", elev, azim))
-	end
-	if opts.colorbar and colorbar_var then
-		table.insert(lines, string.format("fig.colorbar(%s, ax=ax)", colorbar_var))
-	end
-
-	local has_labels = false
-	if not (opts.dim == 3 and (opts.form == "explicit" or opts.form == "parametric")) then
-		for _, s in ipairs(opts.series or {}) do
-			if s.label and s.label ~= "" then
-				has_labels = true
-				break
-			end
-		end
-	end
-	if has_labels then
-		local legend_pos = normalize_legend_position(opts.legend_pos)
-		if opts.legend_auto == false then
-			if legend_pos then
-				table.insert(lines, string.format("ax.legend(loc='%s')", legend_pos))
-			end
-		elseif legend_pos then
-			table.insert(lines, string.format("ax.legend(loc='%s')", legend_pos))
-		else
-			table.insert(lines, "ax.legend()")
-		end
-	end
-
-	local out_path = opts.out_path
-	if not out_path:match("%.%w+$") then
-		out_path = out_path .. "." .. (opts.format or "png")
-	end
-	local dpi = opts.dpi or 100
-	if opts.crop then
-		table.insert(
-			lines,
-			string.format("plt.savefig(r'%s', dpi=%d, bbox_inches='tight', pad_inches=0.02)", out_path, dpi)
-		)
-	else
-		table.insert(lines, string.format("plt.savefig(r'%s', dpi=%d)", out_path, dpi))
-	end
-	table.insert(lines, string.format("print(r'%s')", out_path))
 
 	return table.concat(lines, "\n")
 end
