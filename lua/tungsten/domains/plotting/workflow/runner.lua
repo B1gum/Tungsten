@@ -5,7 +5,6 @@ local error_handler = require("tungsten.util.error_handler")
 local output_metadata = require("tungsten.util.plotting.output_metadata")
 local plotting_ui = require("tungsten.ui.plotting")
 local job_submit = require("tungsten.util.plotting.job_submit")
-local backend_command = require("tungsten.domains.plotting.workflow.backend_command")
 local classification_merge = require("tungsten.domains.plotting.workflow.classification_merge")
 local selection_utils = require("tungsten.domains.plotting.workflow.selection")
 local path_resolver = require("tungsten.util.plotting.path_resolver")
@@ -51,6 +50,31 @@ local function build_plot_ast(nodes)
 		end
 	end
 	return nil
+end
+
+local function parse_and_classify_selection(text, parse_opts, empty_error)
+	if text == "" then
+		notify_error(empty_error)
+		return
+	end
+
+	local ok_parse, parsed, err_msg, err_pos, err_input = pcall(parser.parse, text, parse_opts)
+	if not ok_parse then
+		notify_error(parsed)
+		return
+	end
+	if not parsed or not parsed.series or #parsed.series == 0 then
+		notify_error(err_msg or "Unable to parse selection", err_pos, err_input)
+		return
+	end
+
+	local classification_data, classify_err = classification_merge.merge(parsed.series, parse_opts)
+	if not classification_data then
+		notify_error(classify_err)
+		return
+	end
+
+	return classification_data, parsed
 end
 
 function M.run_simple(text)
@@ -135,24 +159,9 @@ end
 function M.run_advanced()
 	local text = selection_utils.get_trimmed_visual_selection()
 
-	if text == "" then
-		notify_error("Advanced plot requires an expression")
-		return
-	end
-
-	local ok_parse, parsed, err_msg, err_pos, err_input = pcall(parser.parse, text, { simple_mode = true })
-	if not ok_parse then
-		notify_error(parsed)
-		return
-	end
-	if not parsed or not parsed.series or #parsed.series == 0 then
-		notify_error(err_msg or "Unable to parse selection", err_pos, err_input)
-		return
-	end
-
-	local classification_data, classify_err = classification_merge.merge(parsed.series)
+	local classification_data, parsed =
+		parse_and_classify_selection(text, { simple_mode = true }, "Advanced plot requires an expression")
 	if not classification_data then
-		notify_error(classify_err)
 		return
 	end
 
@@ -222,26 +231,10 @@ end
 
 function M.run_parametric()
 	local text = selection_utils.get_trimmed_visual_selection()
-
-	if text == "" then
-		notify_error("Parametric plot requires an expression")
-		return
-	end
-
 	local parse_opts = { mode = "advanced", form = "parametric" }
-	local ok_parse, parsed, err_msg, err_pos, err_input = pcall(parser.parse, text, parse_opts)
-	if not ok_parse then
-		notify_error(parsed)
-		return
-	end
-	if not parsed or not parsed.series or #parsed.series == 0 then
-		notify_error(err_msg or "Unable to parse selection", err_pos, err_input)
-		return
-	end
-
-	local classification_data, classify_err = classification_merge.merge(parsed.series, parse_opts)
+	local classification_data, parsed =
+		parse_and_classify_selection(text, parse_opts, "Parametric plot requires an expression")
 	if not classification_data then
-		notify_error(classify_err)
 		return
 	end
 
