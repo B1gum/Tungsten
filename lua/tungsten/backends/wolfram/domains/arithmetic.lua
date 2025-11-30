@@ -3,17 +3,21 @@ local M = {}
 local config = require("tungsten.config")
 local constants = require("tungsten.core.constants")
 
-local op_attributes = {
-	["+"] = { prec = 1, assoc = "L", wolfram = "+" },
-	["-"] = { prec = 1, assoc = "L", wolfram = "-" },
-	["*"] = { prec = 2, assoc = "L", wolfram = "*" },
-	["/"] = { prec = 2, assoc = "L", wolfram = "/" },
-	["^"] = { prec = 3, assoc = "R", wolfram = "^" },
-	["=="] = { prec = 0, assoc = "N", wolfram = "==" },
-	["="] = { prec = 0, assoc = "N", wolfram = "==" },
-	["\\cdot"] = { prec = 2, assoc = "L", wolfram = "*" },
-	["\\times"] = { prec = 2, assoc = "L", wolfram = "*" },
+local operators = require("tungsten.core.operators")
+
+local wolfram_symbols = {
+        ["+"] = "+",
+        ["-"] = "-",
+        ["*"] = "*",
+        ["/"] = "/",
+        ["^"] = "^",
+        ["=="] = "==",
+        ["="] = "==",
+        ["\\cdot"] = "*",
+        ["\\times"] = "*",
 }
+
+local op_attributes = operators.with_symbols("wolfram", wolfram_symbols)
 
 local function bin_with_parens(node, recur_render)
 	local parent_op_data = op_attributes[node.operator]
