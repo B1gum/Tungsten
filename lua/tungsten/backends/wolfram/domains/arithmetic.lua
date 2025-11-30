@@ -4,6 +4,7 @@ local config = require("tungsten.config")
 local constants = require("tungsten.core.constants")
 local backend_util = require("tungsten.backends.util")
 local operators = require("tungsten.core.operators")
+local common_handlers = require("tungsten.backends.common.handlers")
 
 local wolfram_symbols = {
         ["+"] = "+",
@@ -53,102 +54,99 @@ local function bin_with_parens(node, recur_render)
 	return rendered_left .. " " .. wolfram_op_display .. " " .. rendered_right
 end
 
+ M.handlers = {}
 
+for node_type, handler in pairs(common_handlers) do
+        M.handlers[node_type] = handler
+end
 
-M.handlers = {
-	number = function(node)
-		return tostring(node.value)
-	end,
-	constant = function(node)
-		local constant_info = constants.get(node.name)
-		if constant_info and constant_info.wolfram then
-			return constant_info.wolfram
-		end
-		return tostring(node.name)
-	end,
-	variable = function(node)
-		return node.name
-	end,
-	greek = function(node)
-		return node.name
-	end,
+for node_type, handler in pairs({
+        constant = function(node)
+                local constant_info = constants.get(node.name)
+                if constant_info and constant_info.wolfram then
+                        return constant_info.wolfram
+                end
+                return tostring(node.name)
+        end,
 
-	binary = bin_with_parens,
+        binary = bin_with_parens,
 
-	fraction = function(node, recur_render)
-		return string.format("(%s) / (%s)", recur_render(node.numerator), recur_render(node.denominator))
-	end,
-	sqrt = function(node, recur_render)
-		if node.index then
-			return ("Surd[%s, %s]"):format(recur_render(node.radicand), recur_render(node.index))
-		else
-			return ("Sqrt[%s]"):format(recur_render(node.radicand))
-		end
-	end,
-	superscript = function(node, recur_render)
-		local base_str = recur_render(node.base)
-		local exp_str = recur_render(node.exponent)
-		return ("Power[%s, %s]"):format(base_str, exp_str)
-	end,
-	subscript = function(node, recur_render)
-		return ("Subscript[%s, %s]"):format(recur_render(node.base), recur_render(node.subscript))
-	end,
-	unary = function(node, recur_render)
-		local operand_str = recur_render(node.value)
-		if node.operator == "-" then
-			if node.value.type == "binary" then
-				return string.format("(-(%s))", operand_str)
-			else
-				return string.format("(-%s)", operand_str)
-			end
-		else
-			return node.operator .. operand_str
-		end
-	end,
-	function_call = function(node, recur_render)
-		local wolfram_opts = (config.backend_opts and config.backend_opts.wolfram) or {}
-		local func_name_map = wolfram_opts.function_mappings or {}
-		local func_name_str = (node.name_node and node.name_node.name) or "UnknownFunction"
-		local wolfram_func_name = func_name_map[func_name_str:lower()]
+        fraction = function(node, recur_render)
+                return string.format("(%s) / (%s)", recur_render(node.numerator), recur_render(node.denominator))
+        end,
+        sqrt = function(node, recur_render)
+                if node.index then
+                        return ("Surd[%s, %s]"):format(recur_render(node.radicand), recur_render(node.index))
+                else
+                        return ("Sqrt[%s]"):format(recur_render(node.radicand))
+                end
+        end,
+        superscript = function(node, recur_render)
+                local base_str = recur_render(node.base)
+                local exp_str = recur_render(node.exponent)
+                return ("Power[%s, %s]"):format(base_str, exp_str)
+        end,
+        subscript = function(node, recur_render)
+                return ("Subscript[%s, %s]"):format(recur_render(node.base), recur_render(node.subscript))
+        end,
+        unary = function(node, recur_render)
+                local operand_str = recur_render(node.value)
+                if node.operator == "-" then
+                        if node.value.type == "binary" then
+                                return string.format("(-(%s))", operand_str)
+                        else
+                                return string.format("(-%s)", operand_str)
+                        end
+                else
+                        return node.operator .. operand_str
+                end
+        end,
+        function_call = function(node, recur_render)
+                local wolfram_opts = (config.backend_opts and config.backend_opts.wolfram) or {}
+                local func_name_map = wolfram_opts.function_mappings or {}
+                local func_name_str = (node.name_node and node.name_node.name) or "UnknownFunction"
+                local wolfram_func_name = func_name_map[func_name_str:lower()]
 
-		if not wolfram_func_name then
-			wolfram_func_name = func_name_str:match("^%a") and (func_name_str:sub(1, 1):upper() .. func_name_str:sub(2))
-				or func_name_str
-			local logger = require("tungsten.util.logger")
-			logger.warn(
-				"Tungsten",
-				("Tungsten Wolfram Handler: No specific mapping for function '%s'. Using form '%s'."):format(
-					func_name_str,
-					wolfram_func_name
-				)
-			)
-		end
+                if not wolfram_func_name then
+                        wolfram_func_name = func_name_str:match("^%a") and (func_name_str:sub(1, 1):upper() .. func_name_str:sub(2))
+                                or func_name_str
+                        local logger = require("tungsten.util.logger")
+                        logger.warn(
+                                "Tungsten",
+                                ("Tungsten Wolfram Handler: No specific mapping for function '%s'. Using form '%s'."):format(
+                                        func_name_str,
+                                        wolfram_func_name
+                                )
+                        )
+                end
 
-		local rendered_args = {}
-		if node.args then
-			for _, arg_node in ipairs(node.args) do
-				table.insert(rendered_args, recur_render(arg_node))
-			end
-		end
-		return ("%s[%s]"):format(wolfram_func_name, table.concat(rendered_args, ", "))
-	end,
+                local rendered_args = {}
+                if node.args then
+                        for _, arg_node in ipairs(node.args) do
+                                table.insert(rendered_args, recur_render(arg_node))
+                        end
+                end
+                return ("%s[%s]"):format(wolfram_func_name, table.concat(rendered_args, ", "))
+        end,
 
-	solve_system = function(node, recur_render)
-		local rendered_equations = {}
-		for _, eq_node in ipairs(node.equations) do
-			table.insert(rendered_equations, recur_render(eq_node))
-		end
+        solve_system = function(node, recur_render)
+                local rendered_equations = {}
+                for _, eq_node in ipairs(node.equations) do
+                        table.insert(rendered_equations, recur_render(eq_node))
+                end
 
-		local rendered_variables = {}
-		for _, var_node in ipairs(node.variables) do
-			table.insert(rendered_variables, recur_render(var_node))
-		end
+                local rendered_variables = {}
+                for _, var_node in ipairs(node.variables) do
+                        table.insert(rendered_variables, recur_render(var_node))
+                end
 
-		local equations_str = "{" .. table.concat(rendered_equations, ", ") .. "}"
-		local variables_str = "{" .. table.concat(rendered_variables, ", ") .. "}"
+                local equations_str = "{" .. table.concat(rendered_equations, ", ") .. "}"
+                local variables_str = "{" .. table.concat(rendered_variables, ", ") .. "}"
 
-		return ("Solve[%s, %s]"):format(equations_str, variables_str)
-	end,
-}
+                return ("Solve[%s, %s]"):format(equations_str, variables_str)
+        end,
+}) do
+        M.handlers[node_type] = handler
+end
 
 return M
