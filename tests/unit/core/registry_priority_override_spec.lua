@@ -25,7 +25,7 @@ describe("Registry priority override", function()
 		logger = require("tungsten.util.logger")
 		render_mod = require("tungsten.core.render")
 
-		logger_notify_spy = spy.new(function() end)
+		local logger_notify_spy = spy.new(function() end)
 		logger.notify = logger_notify_spy
 		logger.debug = function(t, m)
 			logger_notify_spy(m, logger.levels.DEBUG, { title = t })
@@ -40,7 +40,7 @@ describe("Registry priority override", function()
 			logger_notify_spy(m, logger.levels.ERROR, { title = t })
 		end
 
-		render_spy = spy.new(function(ast, handlers)
+		local render_spy = spy.new(function(ast, handlers)
 			local h = handlers[ast.type]
 			return h and h(ast) or nil
 		end)

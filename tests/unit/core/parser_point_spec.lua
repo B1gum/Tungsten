@@ -9,7 +9,7 @@ package.loaded["tungsten.domains.linear_algebra"] = nil
 package.loaded["tungsten.domains.differential_equations"] = nil
 
 local parser = require("tungsten.core.parser")
-local ast = require("tungsten.core.ast")
+local ast_core = require("tungsten.core.ast")
 require("tungsten.core")
 
 describe("point literal parsing", function()
@@ -53,7 +53,7 @@ describe("point literal parsing", function()
 
 	it("parses parametric tuples in advanced mode", function()
 		local res = parser.parse("(sin(t),cos(t))", { mode = "advanced", form = "parametric" })
-		local canonical = ast.canonical(res.series[1])
+		local canonical = ast_core.canonical(res.series[1])
 		assert.are.equal("Parametric2D(sin(t),cos(t))", canonical)
 	end)
 
@@ -65,7 +65,7 @@ describe("point literal parsing", function()
 
 	it("parses function tuples with shared parameter as Parametric2D", function()
 		local res = parser.parse("(f(t), g(t))", { mode = "advanced", form = "parametric" })
-		local canonical = ast.canonical(res.series[1])
+		local canonical = ast_core.canonical(res.series[1])
 		assert.are.equal("Parametric2D(f(t),g(t))", canonical)
 	end)
 

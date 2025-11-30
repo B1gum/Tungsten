@@ -2,7 +2,6 @@
 -- Unit tests for the Tungsten equation solver.
 
 local spy = require("luassert.spy")
-local match = require("luassert.match")
 local mock_utils = require("tests.helpers.mock_utils")
 
 local solver

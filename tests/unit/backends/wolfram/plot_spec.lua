@@ -2,7 +2,7 @@ local stub = require("luassert.stub")
 local wolfram_plot = require("tungsten.backends.wolfram.plot_generator")
 local executor = require("tungsten.backends.wolfram.executor")
 local async = require("tungsten.util.async")
-local ast = require("tungsten.core.ast")
+local ast_core = require("tungsten.core.ast")
 
 local function build_base_opts(overrides)
 	local opts = {
@@ -359,8 +359,6 @@ describe("wolfram polar plotting", function()
 	end)
 
 	describe("wolfram implicit plotting styles", function()
-		local ast_stub
-
 		before_each(function()
 			ast_stub = stub(executor, "ast_to_code", function(ast)
 				if type(ast) == "table" and ast.__code then
@@ -377,7 +375,7 @@ describe("wolfram polar plotting", function()
 			end
 		end)
 
-		local function build_base_opts(overrides)
+		local function build_base_opts2(overrides)
 			local opts = {
 				form = "implicit",
 				dim = 2,
@@ -398,13 +396,13 @@ describe("wolfram polar plotting", function()
 		end
 
 		it("applies default opacity to inequality series", function()
-			local code, err = wolfram_plot.build_plot_code(build_base_opts())
+			local code, err = wolfram_plot.build_plot_code(build_base_opts2())
 			assert.is_nil(err)
 			assert.is_truthy(code:find("Opacity[0.4]", 1, true))
 		end)
 
 		it("does not override explicit alpha on inequality series", function()
-			local opts = build_base_opts()
+			local opts = build_base_opts2()
 			opts.series[1].alpha = 0.9
 			local code, err = wolfram_plot.build_plot_code(opts)
 			assert.is_nil(err)
@@ -413,7 +411,7 @@ describe("wolfram polar plotting", function()
 		end)
 
 		it("suppresses RegionPlot3D boundaries to highlight volume", function()
-			local opts = build_base_opts({ dim = 3, zrange = { 0, 1 } })
+			local opts = build_base_opts2({ dim = 3, zrange = { 0, 1 } })
 			local code, err = wolfram_plot.build_plot_code(opts)
 			assert.is_nil(err)
 			assert.is_truthy(code:find("RegionPlot3D", 1, true))
@@ -475,8 +473,8 @@ end)
 
 describe("wolfram plot ranges", function()
 	it("converts latex constants in range endpoints", function()
-		local sin_ast = ast.create_function_call_node(ast.create_variable_node("sin"), {
-			ast.create_variable_node("x"),
+		local sin_ast = ast_core.create_function_call_node(ast_core.create_variable_node("sin"), {
+      ast_core.create_variable_node("x"),
 		})
 
 		local code = assert(wolfram_plot.build_plot_code({
@@ -527,11 +525,11 @@ describe("wolfram plot ranges", function()
 	end)
 
 	it("renders parsed expressions in plot range endpoints", function()
-		local integral_ast = ast.create_definite_integral_node(
-			ast.create_variable_node("x"),
-			ast.create_variable_node("x"),
-			ast.create_number_node(0),
-			ast.create_number_node(1)
+		local integral_ast = ast_core.create_definite_integral_node(
+			ast_core.create_variable_node("x"),
+			ast_core.create_variable_node("x"),
+			ast_core.create_number_node(0),
+			ast_core.create_number_node(1)
 		)
 
 		local stub_ast = stub(executor, "ast_to_code", function(node)

@@ -834,17 +834,6 @@ describe("tungsten.core.parser.parse with combined grammar", function()
 
 		it("should parse limit of a fraction: \\lim_{x \\to 0} \\frac{\\sin x}{x}", function()
 			local input = "\\lim_{x \\to 0} \\frac{\\sin x}{x}"
-			local expected_ast = ast_utils.create_limit_node(
-				{ type = "variable", name = "x" },
-				{ type = "number", value = 0 },
-				ast_utils.create_fraction_node(
-					ast_utils.create_function_call_node(
-						{ type = "variable", name = "sin" },
-						{ { type = "variable", name = "x" } }
-					),
-					{ type = "variable", name = "x" }
-				)
-			)
 			local parsed_ast = parse_input(input)
 			assert.are.equal("limit", parsed_ast.type)
 			assert.are.same({ type = "variable", name = "x" }, parsed_ast.variable)

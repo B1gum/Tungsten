@@ -18,9 +18,6 @@ local constants = {
 
 local M = {}
 
----Returns normalized constant metadata for a given name.
----@param name string|nil
----@return table|nil
 function M.get(name)
 	if type(name) ~= "string" then
 		return nil

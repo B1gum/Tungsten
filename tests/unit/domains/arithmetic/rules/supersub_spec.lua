@@ -28,7 +28,6 @@ local function base_node(name_or_val, type, sub_props)
 		node.name_expr = { type = "variable", name = name_or_val }
 	elseif type == "group_placeholder" then
 		node.content = name_or_val
-	elseif type == "intercal_command" then
 	else
 		node.value = name_or_val
 	end
@@ -96,7 +95,6 @@ describe("Arithmetic SupSub Rule: tungsten.domains.arithmetic.rules.supersub", f
 		package.loaded["tungsten.core.ast"] = mock_ast_module
 
 		local Rules = require("tungsten.domains.arithmetic.rules.supersub")
-		SupSubRule = Rules.SupSub
 		UnaryRule = Rules.Unary
 
 		local exponent_token_content = mock_tokenizer_module.variable

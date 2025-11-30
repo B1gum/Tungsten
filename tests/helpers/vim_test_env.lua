@@ -95,8 +95,7 @@ function M.get_cursor()
 	return { pos[1], pos[2] + 1 }
 end
 
-function M.set_visual_selection(start_line, start_col, end_line, end_col, mode)
-	mode = mode or "v"
+function M.set_visual_selection(start_line, start_col, end_line, end_col)
 	local bufnr = vim.api.nvim_get_current_buf()
 	vim.fn.setpos("'<", { bufnr, start_line, start_col, 0 })
 	vim.fn.setpos("'>", { bufnr, end_line, end_col, 0 })

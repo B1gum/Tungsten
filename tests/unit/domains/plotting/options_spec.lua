@@ -2,7 +2,6 @@
 -- adherence to the v1 specification.
 
 local mock_utils = require("tests.helpers.mock_utils")
-local spy = require("luassert.spy")
 
 describe("Plotting Options and Defaults", function()
 	local options_builder

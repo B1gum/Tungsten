@@ -82,7 +82,7 @@ describe("tungsten.core.engine", function()
 		end)
 		mock_backend.ast_to_code = ast_to_wolfram_spy
 
-		async_run_job_spy = spy.new(function(cmd, opts)
+		async_run_job_spy = spy.new(function(_, opts)
 			if opts.on_exit then
 				opts.on_exit(0, "mock_result", "")
 			end
@@ -104,7 +104,7 @@ describe("tungsten.core.engine", function()
 			code = "ToString[TeXForm[" .. code .. '], CharacterEncoding -> "UTF8"]'
 			mock_async.run_job({ mock_config.backend_opts.wolfram.wolfram_path, "-code", code }, {
 				cache_key = opts.cache_key,
-				on_exit = function(ec, out, err)
+				on_exit = function(_, out, err)
 					if cb then
 						local final_err = err ~= "" and err or nil
 						cb(out == "" and "mock_result" or out, final_err)

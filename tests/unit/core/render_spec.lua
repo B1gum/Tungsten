@@ -43,7 +43,7 @@ describe("tungsten.core.render", function()
 				end
 				return "rendered_C{" .. res .. "}"
 			end),
-			erroring_node = spy.new(function(node, walk)
+			erroring_node = spy.new(function()
 				error("Error inside erroring_node handler!")
 			end),
 			node_returns_error_obj = spy.new(function(node, walk)
@@ -53,7 +53,7 @@ describe("tungsten.core.render", function()
 				end
 				return "should_not_reach_here"
 			end),
-			leaf_node = spy.new(function(node, walk)
+			leaf_node = spy.new(function(node)
 				return "leaf_value:" .. tostring(node.value)
 			end),
 		}

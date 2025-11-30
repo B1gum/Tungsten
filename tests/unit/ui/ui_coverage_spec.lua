@@ -377,7 +377,7 @@ describe("UI coverage", function()
 		end)
 
 		it("validates definitions and dependencies", function()
-			local backend_mock = mock_utils.mock_module("tungsten.backends.manager", {
+			mock_utils.mock_module("tungsten.backends.manager", {
 				current = function()
 					return true
 				end,
@@ -404,10 +404,10 @@ describe("UI coverage", function()
 			)
 
 			assert.spy(failure_spy).was.called()
-			local _, message = table.unpack(failure_spy.calls[1].vals)
+      local mt = getmetatable("")
+			local _, message = mt.__index.table.unpack(failure_spy.calls[1].vals)
 			assert.is_true(message:find("depends on 'b'", 1, true) ~= nil)
 
-			-- empty definitions should immediately succeed
 			local success_spy = spy.new(function() end)
 			evaluate_definitions(nil, success_spy)
 			assert.spy(success_spy).was.called()

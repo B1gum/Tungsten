@@ -64,7 +64,7 @@ describe("Linear Algebra Determinant Rule: tungsten.domains.linear_algebra.rules
 					expression = expression_ast,
 				}
 			end,
-			create_matrix_node = function(rows, env_type)
+			create_matrix_node = function(_, env_type)
 				return matrix_node(env_type)
 			end,
 		}

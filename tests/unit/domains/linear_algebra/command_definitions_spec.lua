@@ -43,7 +43,7 @@ describe("Linear Algebra command definitions", function()
 			return { type = "eigensystem", node = node }
 		end)
 
-		mock_evaluator.evaluate_async = spy.new(function(ast_node, numeric_mode, cb)
+		mock_evaluator.evaluate_async = spy.new(function(ast_node, _, cb)
 			if cb then
 				cb(ast_node, nil)
 			end
@@ -273,7 +273,6 @@ describe("Linear Algebra command definitions", function()
 		def.task_handler(args[1], args[2], cb)
 		assert.spy(mock_evaluator.evaluate_async).was.called_with(args[1], args[2], cb)
 
-		-- Ensure other builders are exercised
 		command_definitions.TungstenEigenvector.prepare_args(node)
 		assert.spy(mock_ast.create_eigenvectors_node).was.called_with(node)
 

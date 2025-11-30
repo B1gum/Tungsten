@@ -2,7 +2,6 @@ local mock_utils = require("tests.helpers.mock_utils")
 local wait_for = require("tests.helpers.wait").wait_for
 local spy = require("luassert.spy")
 local stub = require("luassert.stub")
-local match = require("luassert.match")
 
 describe("Plotting Job Manager", function()
 	local JobManager

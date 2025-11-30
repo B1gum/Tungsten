@@ -103,7 +103,6 @@ describe("tungsten.setup", function()
 	end)
 
 	it("initializes cache with user options", function()
-		local tungsten = require("tungsten")
 		tungsten.setup({ cache_max_entries = 42, cache_ttl = 17 })
 		local state = require("tungsten.state")
 		assert.are.equal(42, state.cache.max_entries)
@@ -111,7 +110,6 @@ describe("tungsten.setup", function()
 	end)
 
 	it("recreates cache when setup is called again", function()
-		local tungsten = require("tungsten")
 		tungsten.setup({ cache_max_entries = 10, cache_ttl = 5 })
 		local state = require("tungsten.state")
 		local first_cache = state.cache

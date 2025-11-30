@@ -118,14 +118,14 @@ describe("Tungsten core commands", function()
 		end)
 		mock_cmd_utils_module.parse_selected_latex = mock_cmd_utils_parse_selected_latex_spy
 
-		eval_async_behaviors.default_eval = function(ast, numeric_mode, callback)
+		eval_async_behaviors.default_eval = function(ast, _, callback)
 			if ast and ast.representation == "parsed:\\frac{1+1}{2}" then
 				callback("1")
 			else
 				callback(nil)
 			end
 		end
-		eval_async_behaviors.numeric_eval = function(ast, numeric_mode, callback)
+		eval_async_behaviors.numeric_eval = function(ast, _, callback)
 			if ast and ast.representation == "parsed:\\frac{1+1}{2}" then
 				callback("1.0")
 			else
@@ -169,7 +169,7 @@ describe("Tungsten core commands", function()
 			mock_logger_notify_spy(msg, mock_logger_module.levels.ERROR, { title = title })
 		end
 
-		mock_solver_solve_asts_async_spy = spy.new(function(eqs, vars, is_system, callback)
+		mock_solver_solve_asts_async_spy = spy.new(function(_, _, _, callback)
 			callback(current_solve_equation_config.result, current_solve_equation_config.err)
 		end)
 		mock_solver_module.solve_asts_async = mock_solver_solve_asts_async_spy
@@ -351,7 +351,7 @@ describe("Tungsten core commands", function()
 			current_solve_equation_config = { result = "some_solution", err = nil }
 
 			original_ui_input = vim.ui.input
-			vim.ui.input = spy.new(function(opts, on_confirm)
+			vim.ui.input = spy.new(function(_, on_confirm)
 				on_confirm("x")
 			end)
 
@@ -393,7 +393,7 @@ describe("Tungsten core commands", function()
 
 		before_each(function()
 			original_vim_ui_input = vim.ui.input
-			mock_vim_ui_input_spy = spy.new(function(opts, on_confirm_callback)
+			mock_vim_ui_input_spy = spy.new(function(_, on_confirm_callback)
 				on_confirm_callback("x,y")
 			end)
 			vim.ui.input = mock_vim_ui_input_spy

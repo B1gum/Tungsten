@@ -5,7 +5,7 @@ local original_on = spy.on
 spy.on = function(tbl, key, ...)
 	local s = original_on(tbl, key, ...)
 	if type(s) == "table" and s.call_fake == nil then
-		function s:call_fake(fn)
+		function s.call_fake(_, fn)
 			tbl[key] = spy.new(fn)
 			return tbl[key]
 		end

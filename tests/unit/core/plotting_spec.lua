@@ -3,7 +3,6 @@ local mock_utils = require("tests.helpers.mock_utils")
 describe("core.plotting.get_undefined_symbols", function()
 	local core
 	local state
-	local classification
 
 	local function var(name)
 		return { type = "variable", name = name }
@@ -24,7 +23,6 @@ describe("core.plotting.get_undefined_symbols", function()
 	before_each(function()
 		mock_utils.reset_modules({ "tungsten.domains.plotting.analysis" })
 		core = require("tungsten.domains.plotting.analysis")
-		classification = require("tungsten.domains.plotting.classification")
 		state = require("tungsten.state")
 		state.persistent_variables = {}
 	end)

@@ -1,5 +1,5 @@
 local lpeg = require("lpeglabel")
-local P, R, S, V, Ct = lpeg.P, lpeg.R, lpeg.S, lpeg.V, lpeg.Ct
+local P, R, S, V = lpeg.P, lpeg.R, lpeg.S, lpeg.V
 
 local modules_to_reset = {
 	"tungsten.core.tokenizer",

@@ -137,7 +137,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
 			code = "ToString[TeXForm[" .. code .. '], CharacterEncoding -> "UTF8"]'
 			mock_async_run_job_spy({ mock_config_module.backend_opts.wolfram.wolfram_path, "-code", code }, {
 				cache_key = opts.cache_key,
-				on_exit = function(code_, out, err)
+				on_exit = function(code_, out)
 					if cb then
 						if code_ == 0 then
 							cb(out, nil)
@@ -176,7 +176,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
 			mock_logger_notify_spy(m, mock_logger_module.levels.ERROR, { title = t })
 		end
 
-		mock_async_run_job_spy = spy.new(function(cmd, opts)
+		mock_async_run_job_spy = spy.new(function()
 			return {
 				id = 1,
 				cancel = function() end,

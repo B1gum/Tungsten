@@ -126,11 +126,8 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
 							else
 								return "ERROR_HANDLER_NOT_CALLABLE_IN_RENDER_SPY"
 							end
-						else
 						end
-					else
 					end
-				else
 				end
 				return "FALLBACK_FROM_RENDER_SPY_NEW_NO_HANDLER"
 			end)

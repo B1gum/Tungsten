@@ -33,7 +33,7 @@ describe("tungsten.util.selection", function()
 			return { 0, 0, 0, 0 }
 		end)
 
-		_G.vim.api.nvim_buf_get_text = spy.new(function(bufnr, start_line, start_col, end_line, end_col, opts)
+		_G.vim.api.nvim_buf_get_text = spy.new(function()
 			return {}
 		end)
 
@@ -77,7 +77,7 @@ describe("tungsten.util.selection", function()
 					end
 					return { 0, 0, 0, 0 }
 				end)
-				_G.vim.api.nvim_buf_get_text = spy.new(function(bufnr, s_line, s_col, e_line, e_col, opts)
+				_G.vim.api.nvim_buf_get_text = spy.new(function(bufnr, s_line, s_col, e_line, e_col)
 					if bufnr == 0 and s_line == 0 and s_col == 6 and e_line == 0 and e_col == 11 then
 						return { "World" }
 					end
@@ -96,7 +96,7 @@ describe("tungsten.util.selection", function()
 					end
 					return { 0, 0, 0, 0 }
 				end)
-				_G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
+				_G.vim.api.nvim_buf_get_text = spy.new(function(_, sl, sc, el, ec)
 					if sl == 0 and sc == 0 and el == 0 and ec == 5 then
 						return { "Hello" }
 					end
@@ -115,7 +115,7 @@ describe("tungsten.util.selection", function()
 					end
 					return { 0, 0, 0, 0 }
 				end)
-				_G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
+				_G.vim.api.nvim_buf_get_text = spy.new(function(_, sl, sc, el, ec)
 					if sl == 0 and sc == 6 and el == 0 and ec == 12 then
 						return { "World!" }
 					end
@@ -134,7 +134,7 @@ describe("tungsten.util.selection", function()
 					end
 					return { 0, 0, 0, 0 }
 				end)
-				_G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
+				_G.vim.api.nvim_buf_get_text = spy.new(function(_, sl, sc, el, ec)
 					if sl == 0 and sc == 0 and el == 0 and ec == 12 then
 						return { "Hello World!" }
 					end
@@ -155,7 +155,7 @@ describe("tungsten.util.selection", function()
 					end
 					return { 0, 0, 0, 0 }
 				end)
-				_G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
+				_G.vim.api.nvim_buf_get_text = spy.new(function(_, sl, sc, el, ec)
 					if sl == 0 and sc == 6 and el == 1 and ec == 5 then
 						return { "World!", "Hi Th" }
 					end
@@ -174,7 +174,7 @@ describe("tungsten.util.selection", function()
 					end
 					return { 0, 0, 0, 0 }
 				end)
-				_G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
+				_G.vim.api.nvim_buf_get_text = spy.new(function(_, sl, sc, el, ec)
 					if sl == 0 and sc == 2 and el == 1 and ec == 7 then
 						return { "llo", "Second " }
 					end
@@ -193,7 +193,7 @@ describe("tungsten.util.selection", function()
 					end
 					return { 0, 0, 0, 0 }
 				end)
-				_G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
+				_G.vim.api.nvim_buf_get_text = spy.new(function(_, sl, sc, el, ec)
 					if sl == 0 and sc == 0 and el == 1 and ec == 4 then
 						return { "First Line", "Seco" }
 					end
@@ -212,7 +212,7 @@ describe("tungsten.util.selection", function()
 					end
 					return { 0, 0, 0, 0 }
 				end)
-				_G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
+				_G.vim.api.nvim_buf_get_text = spy.new(function(_, sl, sc, el, ec)
 					if sl == 0 and sc == 0 and el == 1 and ec == 7 then
 						return { "Line 1", "Line 2!" }
 					end
@@ -231,7 +231,7 @@ describe("tungsten.util.selection", function()
 					end
 					return { 0, 0, 0, 0 }
 				end)
-				_G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
+				_G.vim.api.nvim_buf_get_text = spy.new(function(_, sl, sc, el, ec)
 					if sl == 0 and sc == 0 and el == 2 and ec == 4 then
 						return { "Start", "", "End " }
 					end
@@ -268,7 +268,7 @@ describe("tungsten.util.selection", function()
 					end
 					return { 0, 0, 0, 0 }
 				end)
-				_G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
+				_G.vim.api.nvim_buf_get_text = spy.new(function(_, sl, sc, el, ec)
 					if sl == 0 and sc == 0 and el == 0 and ec == 0 then
 						return { "" }
 					end
@@ -287,7 +287,7 @@ describe("tungsten.util.selection", function()
 					end
 					return { 0, 0, 0, 0 }
 				end)
-				_G.vim.api.nvim_buf_get_text = spy.new(function(b, sl, sc, el, ec, o)
+				_G.vim.api.nvim_buf_get_text = spy.new(function()
 					return {}
 				end)
 				assert.are.equal("", selection_module.get_visual_selection())

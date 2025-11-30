@@ -3,20 +3,6 @@ local stub = require("luassert.stub")
 local mock_utils = require("tests.helpers.mock_utils")
 local wait_for = require("tests.helpers.wait").wait_for
 
-local function get_upvalue(func, name)
-	local i = 1
-	while true do
-		local n, v = debug.getupvalue(func, i)
-		if not n then
-			return nil
-		end
-		if n == name then
-			return v
-		end
-		i = i + 1
-	end
-end
-
 local function collect_upvalues(func)
 	local map = {}
 	local i = 1
@@ -124,7 +110,7 @@ describe("tungsten util additional coverage", function()
 		local exit_cb
 		local job_instance
 		local JobMock = {}
-		function JobMock:new(opts)
+		function JobMock.new(_, opts)
 			exit_cb = opts.on_exit
 			job_instance = {
 				pid = 7,
@@ -331,7 +317,7 @@ describe("tungsten util additional coverage", function()
 		_G.vim.api.nvim_buf_get_lines = function()
 			return { "edge" }
 		end
-		_G.vim.api.nvim_buf_set_extmark = function(bufnr, ns, line, col)
+		_G.vim.api.nvim_buf_set_extmark = function(_, ns, line, col)
 			return ns + line + col
 		end
 

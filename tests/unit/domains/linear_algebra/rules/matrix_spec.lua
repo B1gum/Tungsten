@@ -148,7 +148,6 @@ describe("Linear Algebra Matrix Rule: tungsten.domains.linear_algebra.rules.matr
 		)
 
 		it("should parse a matrix with a trailing double backslash before end (common in some LaTeX editors)", function()
-			local input = "\\begin{pmatrix} 1 \\\\ 2 \\\\ \\end{pmatrix}"
 			local input_complex = "\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}"
 			local expected_complex = {
 				type = "matrix",

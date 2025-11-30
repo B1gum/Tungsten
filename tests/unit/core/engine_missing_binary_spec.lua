@@ -71,7 +71,7 @@ describe("engine missing binary feedback", function()
 		mock_backend.evaluate_async = function(_, opts, cb)
 			mock_async.run_job({ mock_config.backend_opts.wolfram.wolfram_path, "-code", opts.code or "" }, {
 				cache_key = opts.cache_key,
-				on_exit = function(code, out, err)
+				on_exit = function(code, out)
 					if cb then
 						if code == 0 then
 							cb(out, nil)

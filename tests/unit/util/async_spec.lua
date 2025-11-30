@@ -95,7 +95,7 @@ describe("tungsten.util.async.run_job", function()
 		local signals = {}
 
 		local JobMock = {}
-		function JobMock:new(opts)
+		function JobMock.new(_, opts)
 			exit_cb = opts.on_exit
 			local job_instance
 			job_instance = {

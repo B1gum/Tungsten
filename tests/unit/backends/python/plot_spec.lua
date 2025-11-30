@@ -19,7 +19,6 @@ describe("python polar plotting", function()
 	end)
 
 	describe("python explicit plotting", function()
-		local ast_stub
 
 		before_each(function()
 			ast_stub = stub(executor, "ast_to_code", function(ast)
@@ -193,7 +192,6 @@ describe("python polar plotting", function()
 	end)
 
 	describe("python rcParams configuration", function()
-		local ast_stub
 		local original_plotting
 
 		local function build_base_opts(overrides)
@@ -272,7 +270,6 @@ describe("python polar plotting", function()
 	end)
 
 	describe("python plot_async working directory", function()
-		local ast_stub
 		local run_job_stub
 		local temp_dir
 
@@ -354,7 +351,6 @@ describe("python polar plotting", function()
 	end)
 
 	describe("python plot special function guard", function()
-		local ast_stub
 
 		local function make_function_call(name)
 			return {

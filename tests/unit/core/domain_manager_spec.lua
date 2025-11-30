@@ -103,7 +103,6 @@ describe("DomainManager", function()
 		before_each(function()
 			config = require("tungsten.config")
 			config.user_domains_path = "/user/domains"
-			orig_domains = config.domains
 			config.domains = { "plugdom", "userdom" }
 
 			registry_mock = {
@@ -119,7 +118,6 @@ describe("DomainManager", function()
 		end)
 
 		after_each(function()
-			config.domains = orig_domains
 			package.loaded["tungsten.core.registry"] = nil
 			package.loaded["tungsten.util.logger"] = nil
 			package.loaded["tungsten.core.domain_manager"] = nil

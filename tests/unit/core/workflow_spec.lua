@@ -82,7 +82,7 @@ describe("tungsten.core.workflow.run", function()
 			input_handler = function()
 				return { ast = true }, "selected text", nil
 			end,
-			task_handler = function(ast, text, callback)
+			task_handler = function(_, _, callback)
 				callback("result-payload")
 			end,
 		}
@@ -109,7 +109,7 @@ describe("tungsten.core.workflow.run", function()
 			input_handler = function()
 				return { ast = true }, "selected text", nil
 			end,
-			task_handler = function(ast, text, callback)
+			task_handler = function(_, _, callback)
 				callback(nil)
 				callback("")
 			end,
@@ -127,7 +127,7 @@ describe("tungsten.core.workflow.run", function()
 			input_handler = function()
 				return { ast = true }, "selected text", nil
 			end,
-			task_handler = function(ast, text, callback)
+			task_handler = function(_, _, callback)
 				callback(nil, "callback error message")
 			end,
 		}
