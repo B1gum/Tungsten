@@ -53,4 +53,14 @@ function M.map_render(nodes, recur_render)
 	return rendered
 end
 
+function M.render_fields(node, field_names, render_fn)
+        local rendered = {}
+
+        for index, name in ipairs(field_names) do
+                rendered[index] = render_fn(node[name])
+        end
+
+        return table.unpack(rendered)
+end
+
 return M
