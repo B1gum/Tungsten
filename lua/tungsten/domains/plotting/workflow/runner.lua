@@ -1,10 +1,10 @@
 local parser = require("tungsten.core.parser")
 local ast = require("tungsten.core.ast")
 local options_builder = require("tungsten.domains.plotting.options_builder")
-local job_manager = require("tungsten.domains.plotting.job_manager")
 local error_handler = require("tungsten.util.error_handler")
 local output_metadata = require("tungsten.util.plotting.output_metadata")
 local plotting_ui = require("tungsten.ui.plotting")
+local job_submit = require("tungsten.util.plotting.job_submit")
 local backend_command = require("tungsten.domains.plotting.workflow.backend_command")
 local classification_merge = require("tungsten.domains.plotting.workflow.classification_merge")
 local selection_utils = require("tungsten.domains.plotting.workflow.selection")
@@ -105,39 +105,25 @@ function M.run_simple(text)
 			symbol_opts = {}
 		end
 		local definitions = symbol_opts.definitions
-                if type(definitions) ~= "table" then
-                        definitions = {}
-                end
+		if type(definitions) ~= "table" then
+			definitions = {}
+		end
 
-                plot_opts.definitions = definitions
+		plot_opts.definitions = definitions
 
-                local out_path, out_err = output_metadata.assign(output_dir, plot_opts, {
-                        ast = plot_ast,
-                        definitions = definitions,
-                        uses_graphicspath = uses_graphicspath,
-                        tex_root = tex_root,
-                })
+		local out_path, out_err = output_metadata.assign(output_dir, plot_opts, {
+			ast = plot_ast,
+			definitions = definitions,
+			uses_graphicspath = uses_graphicspath,
+			tex_root = tex_root,
+		})
 
-                if not out_path then
-                        notify_error(out_err)
-                        return
-                end
-
-		local command, command_opts = backend_command.capture(plot_opts)
-		if not command then
-			notify_error(command_opts, nil, nil, BACKEND_FAILURE_CODE)
+		if not out_path then
+			notify_error(out_err)
 			return
 		end
 
-		for i = 1, #command do
-			plot_opts[i] = command[i]
-		end
-
-		if command_opts and command_opts.timeout then
-			plot_opts.timeout_ms = command_opts.timeout
-		end
-
-		job_manager.submit(plot_opts)
+		job_submit.submit(plot_opts, notify_error, BACKEND_FAILURE_CODE)
 	end
 
 	plotting_ui.handle_undefined_symbols({
@@ -205,35 +191,17 @@ function M.run_advanced()
 			return
 		end
 
-                local out_path, out_err = output_metadata.assign(output_dir, final_opts, {
-                        uses_graphicspath = uses_graphicspath,
-                        tex_root = tex_root,
-                })
+		local out_path, out_err = output_metadata.assign(output_dir, final_opts, {
+			uses_graphicspath = uses_graphicspath,
+			tex_root = tex_root,
+		})
 
-                if not out_path then
-                        notify_error(out_err)
-                        return
-                end
-
-		local function submit_job()
-			local command, command_opts = backend_command.capture(final_opts)
-			if not command then
-				notify_error(command_opts, nil, nil, BACKEND_FAILURE_CODE)
-				return
-			end
-
-			for i = 1, #command do
-				final_opts[i] = command[i]
-			end
-
-			if command_opts and command_opts.timeout then
-				final_opts.timeout_ms = command_opts.timeout
-			end
-
-			job_manager.submit(final_opts)
+		if not out_path then
+			notify_error(out_err)
+			return
 		end
 
-		submit_job()
+		job_submit.submit(final_opts, notify_error, BACKEND_FAILURE_CODE)
 	end
 
 	plotting_ui.open_advanced_config({
@@ -304,35 +272,17 @@ function M.run_parametric()
 			return
 		end
 
-                local out_path, out_err = output_metadata.assign(output_dir, final_opts, {
-                        uses_graphicspath = uses_graphicspath,
-                        tex_root = tex_root,
-                })
+		local out_path, out_err = output_metadata.assign(output_dir, final_opts, {
+			uses_graphicspath = uses_graphicspath,
+			tex_root = tex_root,
+		})
 
-                if not out_path then
-                        notify_error(out_err)
-                        return
-                end
-
-		local function submit_job()
-			local command, command_opts = backend_command.capture(final_opts)
-			if not command then
-				notify_error(command_opts, nil, nil, BACKEND_FAILURE_CODE)
-				return
-			end
-
-			for i = 1, #command do
-				final_opts[i] = command[i]
-			end
-
-			if command_opts and command_opts.timeout then
-				final_opts.timeout_ms = command_opts.timeout
-			end
-
-			job_manager.submit(final_opts)
+		if not out_path then
+			notify_error(out_err)
+			return
 		end
 
-		submit_job()
+		job_submit.submit(final_opts, notify_error, BACKEND_FAILURE_CODE)
 	end
 
 	plotting_ui.open_advanced_config({
