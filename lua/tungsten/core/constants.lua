@@ -6,6 +6,10 @@ local constants = {
 		python = "E",
 		wolfram = "E",
 	},
+	infinity = {
+		python = "sp.oo",
+		wolfram = "Infinity",
+	},
 	pi = {
 		python = "sp.pi",
 		wolfram = "Pi",

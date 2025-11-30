@@ -3,6 +3,7 @@
 ---------------------------------------------------------------------
 
 local M = {}
+local constants = require("tungsten.core.constants")
 
 M.handlers = {
 	ordinary_derivative = function(node, walk)
@@ -64,13 +65,11 @@ M.handlers = {
 	end,
 
 	symbol = function(node, _)
-		if node.name == "infinity" then
-			return "Infinity"
-		elseif node.name == "pi" then
-			return "Pi"
-		else
-			return node.name
+		local constant_info = constants.get(node.name)
+		if constant_info and constant_info.wolfram then
+			return constant_info.wolfram
 		end
+		return node.name
 	end,
 }
 

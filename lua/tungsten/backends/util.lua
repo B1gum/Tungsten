@@ -54,13 +54,14 @@ function M.map_render(nodes, recur_render)
 end
 
 function M.render_fields(node, field_names, render_fn)
-        local rendered = {}
+	local rendered = {}
 
-        for index, name in ipairs(field_names) do
-                rendered[index] = render_fn(node[name])
-        end
+	for index, name in ipairs(field_names) do
+		rendered[index] = render_fn(node[name])
+	end
 
-        return table.unpack(rendered)
+local mt = getmetatable("")
+	return mt.__index.table.unpack(rendered)
 end
 
 return M
