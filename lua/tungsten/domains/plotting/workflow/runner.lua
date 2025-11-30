@@ -9,6 +9,7 @@ local plotting_ui = require("tungsten.ui.plotting")
 local backend_command = require("tungsten.domains.plotting.workflow.backend_command")
 local classification_merge = require("tungsten.domains.plotting.workflow.classification_merge")
 local selection_utils = require("tungsten.domains.plotting.workflow.selection")
+local path_resolver = require("tungsten.util.plotting.path_resolver")
 
 local M = {}
 
@@ -92,16 +93,9 @@ function M.run_simple(text)
 	plot_opts.end_line = end_line
 	plot_opts.end_col = end_col
 
-	local buf_path = vim.api.nvim_buf_get_name(bufnr)
-	local tex_root, tex_err = plot_io.find_tex_root(buf_path)
+	local tex_root, output_dir, uses_graphicspath, path_err = path_resolver.resolve_paths(bufnr)
 	if not tex_root then
-		notify_error(tex_err)
-		return
-	end
-
-	local output_dir, output_err, uses_graphicspath = plot_io.get_output_directory(tex_root)
-	if not output_dir then
-		notify_error(output_err)
+		notify_error(path_err)
 		return
 	end
 
@@ -208,16 +202,9 @@ function M.run_advanced()
 		final_opts.end_line = final_opts.end_line or end_line
 		final_opts.end_col = final_opts.end_col or end_col
 
-		local buf_path = vim.api.nvim_buf_get_name(target_bufnr)
-		local tex_root, tex_err = plot_io.find_tex_root(buf_path)
+		local tex_root, output_dir, uses_graphicspath, path_err = path_resolver.resolve_paths(target_bufnr)
 		if not tex_root then
-			notify_error(tex_err)
-			return
-		end
-
-		local output_dir, output_err, uses_graphicspath = plot_io.get_output_directory(tex_root)
-		if not output_dir then
-			notify_error(output_err)
+			notify_error(path_err)
 			return
 		end
 
@@ -318,16 +305,9 @@ function M.run_parametric()
 		final_opts.end_line = final_opts.end_line or end_line
 		final_opts.end_col = final_opts.end_col or end_col
 
-		local buf_path = vim.api.nvim_buf_get_name(target_bufnr)
-		local tex_root, tex_err = plot_io.find_tex_root(buf_path)
+		local tex_root, output_dir, uses_graphicspath, path_err = path_resolver.resolve_paths(target_bufnr)
 		if not tex_root then
-			notify_error(tex_err)
-			return
-		end
-
-		local output_dir, output_err, uses_graphicspath = plot_io.get_output_directory(tex_root)
-		if not output_dir then
-			notify_error(output_err)
+			notify_error(path_err)
 			return
 		end
 
