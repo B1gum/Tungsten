@@ -4,7 +4,7 @@
 local manager = require("tungsten.backends.manager")
 local handlers = require("tungsten.backends.python.handlers")
 local executor = require("tungsten.backends.python.executor")
-local plot = require("tungsten.backends.python.plot")
+local plot = require("tungsten.backends.python.plot_generator")
 
 local M = {
 	ast_to_code = executor.ast_to_code,

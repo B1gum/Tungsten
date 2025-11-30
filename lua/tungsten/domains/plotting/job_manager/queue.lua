@@ -4,7 +4,7 @@ local async = require("tungsten.util.async")
 local path = require("pl.path")
 local error_handler = require("tungsten.util.error_handler")
 local plotting_errors = require("tungsten.domains.plotting.errors")
-local plotting_io = require("tungsten.util.plotting_io")
+local plotting_io = require("tungsten.domains.plotting.io")
 
 local cleanup = require("tungsten.domains.plotting.job_manager.cleanup")
 local dependencies = require("tungsten.domains.plotting.job_manager.dependencies")

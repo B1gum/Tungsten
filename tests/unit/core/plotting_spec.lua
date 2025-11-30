@@ -22,8 +22,8 @@ describe("core.plotting.get_undefined_symbols", function()
 	end
 
 	before_each(function()
-		mock_utils.reset_modules({ "tungsten.core.plotting" })
-		core = require("tungsten.core.plotting")
+		mock_utils.reset_modules({ "tungsten.domains.plotting.analysis" })
+		core = require("tungsten.domains.plotting.analysis")
 		classification = require("tungsten.domains.plotting.classification")
 		state = require("tungsten.state")
 		state.persistent_variables = {}
@@ -78,8 +78,8 @@ describe("core.plotting helper steps", function()
 	end
 
 	before_each(function()
-		mock_utils.reset_modules({ "tungsten.core.plotting" })
-		core = require("tungsten.core.plotting")
+		mock_utils.reset_modules({ "tungsten.domains.plotting.analysis" })
+		core = require("tungsten.domains.plotting.analysis")
 		classification = require("tungsten.domains.plotting.classification")
 	end)
 

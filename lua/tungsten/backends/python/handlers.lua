@@ -8,7 +8,7 @@ local M = {}
 local handlerRegistry = {}
 local renderableHandlers = {}
 local handlers_initialized = false
-local domain_aliases = { plotting = "plot" }
+local domain_aliases = { plotting = "plotting_handlers" }
 
 local function _process_domain_handlers(domain_name, registry)
 	local module_name = domain_aliases[domain_name] or domain_name

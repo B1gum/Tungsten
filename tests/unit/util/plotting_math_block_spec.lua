@@ -1,5 +1,5 @@
 local vim_env = require("tests.helpers.vim_test_env")
-local plotting_io = require("tungsten.util.plotting_io")
+local plotting_io = require("tungsten.domains.plotting.io")
 
 describe("plotting_io.find_math_block_end", function()
 	local bufnr

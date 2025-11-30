@@ -8,26 +8,29 @@ local function setup_test_environment()
 	vim_test_env.clear_jobstart_handlers()
 	mock_utils.reset_modules({
 		"tungsten.ui.plotting",
-		"tungsten.core.plotting",
+		"tungsten.domains.plotting.analysis",
 		"tungsten.util.error_handler",
 		"tungsten.state",
 		"tungsten.config",
 		"tungsten.util.async",
-		"tungsten.ui.io",
+		"tungsten.domains.plotting.io",
 		"tungsten.domains.plotting.options_builder",
 		"tungsten.core.parser",
 		"tungsten.core.engine",
 		"tungsten.backends.manager",
 	})
 
-	mock_utils.create_empty_mock_module("tungsten.core.plotting", { "initiate_plot", "get_undefined_symbols" })
+	mock_utils.create_empty_mock_module(
+		"tungsten.domains.plotting.analysis",
+		{ "initiate_plot", "get_undefined_symbols" }
+	)
 	mock_error_handler = mock_utils.create_empty_mock_module("tungsten.util.error_handler", { "notify_error" })
 	mock_error_handler.E_BAD_OPTS = "E_BAD_OPTS"
 	mock_error_handler.E_BACKEND_UNAVAILABLE = "E_BACKEND_UNAVAILABLE"
 	package.loaded["tungsten.state"] = { persistent_variables = {} }
 	package.loaded["tungsten.config"] = { plotting = {} }
 	mock_utils.create_empty_mock_module("tungsten.util.async", { "run_job" })
-	mock_utils.create_empty_mock_module("tungsten.ui.io", { "find_math_block_end" })
+	mock_utils.create_empty_mock_module("tungsten.domains.plotting.io", { "find_math_block_end" })
 	mock_utils.create_empty_mock_module("tungsten.domains.plotting.options_builder", { "build" })
 	mock_utils.create_empty_mock_module("tungsten.core.parser", { "parse" })
 	mock_utils.create_empty_mock_module("tungsten.core.engine", { "evaluate_async" })

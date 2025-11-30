@@ -1,4 +1,4 @@
--- lua/tungsten/backends/python/domains/plot.lua
+-- lua/tungsten/backends/python/domains/ploting_handlers.lua
 -- SymPy renderers for plotting specific AST nodes
 
 local M = {}

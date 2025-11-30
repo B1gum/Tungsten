@@ -1,5 +1,5 @@
 local stub = require("luassert.stub")
-local wolfram_plot = require("tungsten.backends.wolfram.plot")
+local wolfram_plot = require("tungsten.backends.wolfram.plot_generator")
 local executor = require("tungsten.backends.wolfram.executor")
 local async = require("tungsten.util.async")
 local ast = require("tungsten.core.ast")

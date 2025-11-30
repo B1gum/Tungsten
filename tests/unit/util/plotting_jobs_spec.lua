@@ -26,7 +26,7 @@ describe("Plotting Job Manager", function()
 		"tungsten.config",
 		"tungsten.util.error_handler",
 		"tungsten.util.logger",
-		"tungsten.util.plotting_io",
+		"tungsten.domains.plotting.io",
 		"tungsten.domains.plotting.health",
 	}
 
@@ -895,7 +895,7 @@ describe("Plotting Job Manager", function()
 		local notify_spy = spy.new(function() end)
 		vim.notify = notify_spy
 
-		package.loaded["tungsten.util.plotting_io"].find_math_block_end = function()
+		package.loaded["tungsten.domains.plotting.io"].find_math_block_end = function()
 			return nil
 		end
 

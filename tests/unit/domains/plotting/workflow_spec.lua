@@ -29,7 +29,6 @@ describe("Plotting workflow", function()
 		"tungsten.core.parser",
 		"tungsten.domains.plotting.classification",
 		"tungsten.domains.plotting.options_builder",
-		"tungsten.util.plotting.output_metadata",
 		"tungsten.ui.plotting",
 		"tungsten.domains.plotting.io",
 		"tungsten.domains.plotting.job_manager",
@@ -104,8 +103,26 @@ describe("Plotting workflow", function()
 		mock_io.get_output_directory = spy.new(function()
 			return "/tmp/project/tungsten_plots", nil, false
 		end)
+		mock_io.resolve_paths = spy.new(function(bufnr)
+			local tex_root = mock_io.find_tex_root(bufnr)
+			local output_dir, _, uses_gp = mock_io.get_output_directory(tex_root)
+			return tex_root, output_dir, uses_gp, nil
+		end)
 		mock_io.get_final_path = spy.new(function()
 			return "/tmp/project/tungsten_plots/plot.pdf"
+		end)
+		mock_io.assign_output_path = spy.new(function(opts, output_dir, uses_gp, tex_root)
+			local path_value, reused = mock_io.get_final_path(output_dir, opts, {
+				ast = opts.ast,
+				var_defs = opts.definitions,
+			})
+			if not path_value then
+				return nil, "Unable to determine output path"
+			end
+			opts.out_path = path_value
+			opts.uses_graphicspath = uses_gp
+			opts.tex_root = tex_root
+			return path_value, reused
 		end)
 		package.loaded["tungsten.domains.plotting.io"] = mock_io
 

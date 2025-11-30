@@ -1,9 +1,9 @@
-local core = require("tungsten.core.plotting")
+local core = require("tungsten.domains.plotting.analysis")
 local error_handler = require("tungsten.util.error_handler")
 local state = require("tungsten.state")
 local config = require("tungsten.config")
 local async = require("tungsten.util.async")
-local io_util = require("tungsten.ui.io")
+local io_util = require("tungsten.domains.plotting.io")
 local options_builder = require("tungsten.domains.plotting.options_builder")
 local style_parser = require("tungsten.domains.plotting.style_parser")
 local parser = require("tungsten.core.parser")
@@ -507,7 +507,6 @@ function M.insert_snippet(bufnr, selection_end_line, plot_path)
 	local insert_line = selection_end_line + 1
 	if math_block_end ~= nil then
 		insert_line = math_block_end + 1
-		lines_to_insert = { "", snippet }
 	else
 		warn_missing_math_block_end()
 	end

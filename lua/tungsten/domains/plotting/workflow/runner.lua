@@ -2,12 +2,11 @@ local parser = require("tungsten.core.parser")
 local ast = require("tungsten.core.ast")
 local options_builder = require("tungsten.domains.plotting.options_builder")
 local error_handler = require("tungsten.util.error_handler")
-local output_metadata = require("tungsten.util.plotting.output_metadata")
+local plotting_io = require("tungsten.domains.plotting.io")
 local plotting_ui = require("tungsten.ui.plotting")
 local job_submit = require("tungsten.util.plotting.job_submit")
 local classification_merge = require("tungsten.domains.plotting.workflow.classification_merge")
 local selection_utils = require("tungsten.domains.plotting.workflow.selection")
-local path_resolver = require("tungsten.util.plotting.path_resolver")
 
 local M = {}
 
@@ -116,7 +115,7 @@ function M.run_simple(text)
 	plot_opts.end_line = end_line
 	plot_opts.end_col = end_col
 
-	local tex_root, output_dir, uses_graphicspath, path_err = path_resolver.resolve_paths(bufnr)
+	local tex_root, output_dir, uses_graphicspath, path_err = plotting_io.resolve_paths(bufnr)
 	if not tex_root then
 		notify_error(path_err)
 		return
@@ -135,12 +134,7 @@ function M.run_simple(text)
 
 		plot_opts.definitions = definitions
 
-		local out_path, out_err = output_metadata.assign(output_dir, plot_opts, {
-			ast = plot_ast,
-			definitions = definitions,
-			uses_graphicspath = uses_graphicspath,
-			tex_root = tex_root,
-		})
+		local out_path, out_err = plotting_io.assign_output_path(plot_opts, output_dir, uses_graphicspath, tex_root)
 
 		if not out_path then
 			notify_error(out_err)
@@ -194,16 +188,13 @@ function M.run_advanced()
 		final_opts.end_line = final_opts.end_line or end_line
 		final_opts.end_col = final_opts.end_col or end_col
 
-		local tex_root, output_dir, uses_graphicspath, path_err = path_resolver.resolve_paths(target_bufnr)
+		local tex_root, output_dir, uses_graphicspath, path_err = plotting_io.resolve_paths(target_bufnr)
 		if not tex_root then
 			notify_error(path_err)
 			return
 		end
 
-		local out_path, out_err = output_metadata.assign(output_dir, final_opts, {
-			uses_graphicspath = uses_graphicspath,
-			tex_root = tex_root,
-		})
+		local out_path, out_err = plotting_io.assign_output_path(final_opts, output_dir, uses_graphicspath, tex_root)
 
 		if not out_path then
 			notify_error(out_err)
@@ -259,16 +250,13 @@ function M.run_parametric()
 		final_opts.end_line = final_opts.end_line or end_line
 		final_opts.end_col = final_opts.end_col or end_col
 
-		local tex_root, output_dir, uses_graphicspath, path_err = path_resolver.resolve_paths(target_bufnr)
+		local tex_root, output_dir, uses_graphicspath, path_err = plotting_io.resolve_paths(target_bufnr)
 		if not tex_root then
 			notify_error(path_err)
 			return
 		end
 
-		local out_path, out_err = output_metadata.assign(output_dir, final_opts, {
-			uses_graphicspath = uses_graphicspath,
-			tex_root = tex_root,
-		})
+		local out_path, out_err = plotting_io.assign_output_path(final_opts, output_dir, uses_graphicspath, tex_root)
 
 		if not out_path then
 			notify_error(out_err)

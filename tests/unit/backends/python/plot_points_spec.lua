@@ -1,5 +1,5 @@
 local stub = require("luassert.stub")
-local python_plot = require("tungsten.backends.python.plot")
+local python_plot = require("tungsten.backends.python.plot_generator")
 local executor = require("tungsten.backends.python.executor")
 
 describe("python plot points", function()

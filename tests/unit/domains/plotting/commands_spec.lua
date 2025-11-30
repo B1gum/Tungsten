@@ -228,7 +228,7 @@ describe("Tungsten Plotting Commands", function()
 			}
 			package.loaded["tungsten.ui.status_window"] = { open_queue = function() end }
 			package.loaded["tungsten.util.logger"] = { debug = function() end, error = function() end }
-			package.loaded["tungsten.util.plotting_io"] = {
+			package.loaded["tungsten.domains.plotting.io"] = {
 				find_math_block_end = function()
 					return 0
 				end,

@@ -6,7 +6,7 @@ describe("wolfram plot error translation", function()
 
 	before_each(function()
 		mock_utils.reset_modules({
-			"tungsten.backends.wolfram.plot",
+			"tungsten.backends.wolfram.plot_generator",
 			"tungsten.backends.wolfram",
 		})
 		package.loaded["tungsten.backends.plot_base"] = {}
@@ -22,12 +22,12 @@ describe("wolfram plot error translation", function()
 				return ""
 			end,
 		}
-		plot = require("tungsten.backends.wolfram.plot")
+		plot = require("tungsten.backends.wolfram.plot_generator")
 	end)
 
 	after_each(function()
 		mock_utils.reset_modules({
-			"tungsten.backends.wolfram.plot",
+			"tungsten.backends.wolfram.plot_generator",
 			"tungsten.backends.wolfram",
 			"tungsten.backends.plot_base",
 			"tungsten.util.logger",

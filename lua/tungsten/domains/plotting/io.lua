@@ -5,8 +5,220 @@ local error_handler = require("tungsten.util.error_handler")
 
 local M = {}
 
+local display_envs = {
+	"align",
+	"align*",
+	"alignat",
+	"alignat*",
+	"flalign",
+	"flalign*",
+	"gather",
+	"gather*",
+	"equation",
+	"equation*",
+	"multline",
+	"multline*",
+	"displaymath",
+	"eqnarray",
+	"eqnarray*",
+	"dmath",
+}
+
+local function escape_pattern(str)
+	return (str:gsub("([^%w])", "%%%1"))
+end
+
+local function make_plain_finder(token)
+	local token_len = #token
+	return function(line, from)
+		local start_idx = line:find(token, from, true)
+		if start_idx then
+			return start_idx, start_idx + token_len - 1
+		end
+	end
+end
+
+local function is_escaped(line, idx)
+	local backslash_count = 0
+	local pos = idx - 1
+	while pos > 0 and line:sub(pos, pos) == "\\" do
+		backslash_count = backslash_count + 1
+		pos = pos - 1
+	end
+	return backslash_count % 2 == 1
+end
+
+local function make_single_dollar_finder()
+	return function(line, from)
+		local search_from = from or 1
+		while true do
+			local start_idx = line:find("$", search_from, true)
+			if not start_idx then
+				return nil
+			end
+			if not is_escaped(line, start_idx) then
+				local next_char = line:sub(start_idx + 1, start_idx + 1)
+				if next_char == "$" and not is_escaped(line, start_idx + 1) then
+					search_from = start_idx + 2
+				else
+					return start_idx, start_idx
+				end
+			else
+				search_from = start_idx + 1
+			end
+		end
+	end
+end
+
+local function count_unmatched_single_dollars(line)
+	if not line or line == "" then
+		return 0
+	end
+
+	local count = 0
+	local search_from = 1
+	while true do
+		local idx = line:find("$", search_from, true)
+		if not idx then
+			break
+		end
+		if not is_escaped(line, idx) then
+			local next_char = line:sub(idx + 1, idx + 1)
+			if next_char == "$" and not is_escaped(line, idx + 1) then
+				search_from = idx + 2
+			else
+				count = count + 1
+				search_from = idx + 1
+			end
+		else
+			search_from = idx + 1
+		end
+	end
+
+	return count % 2
+end
+
+local function make_env_finder(env)
+	local plain = "\\end{" .. env .. "}"
+	local pattern = "\\\\end%s*{%s*" .. escape_pattern(env) .. "%s*}"
+	local plain_len = #plain
+	return function(line, from)
+		local start_idx = line:find(plain, from, true)
+		if start_idx then
+			return start_idx, start_idx + plain_len - 1
+		end
+		return line:find(pattern, from)
+	end
+end
+
+local single_dollar_finder = make_single_dollar_finder()
+
+local function build_closers(start_line_text)
+	local closers = {}
+	local added = {}
+
+	local function add_closer(key, finder, skip)
+		closers[#closers + 1] = { find = finder, remaining_skip = skip or 0 }
+		added[key] = true
+	end
+
+	if start_line_text then
+		if start_line_text:find("\\[", 1, true) then
+			add_closer("\\]", make_plain_finder("\\]"))
+		end
+
+		if start_line_text:find("\\(", 1, true) then
+			add_closer("\\)", make_plain_finder("\\)"))
+		end
+
+		local env = start_line_text:match("\\begin%s*{%s*([%w%*%-]+)%s*}")
+		if env then
+			add_closer("\\end{" .. env .. "}", make_env_finder(env))
+		end
+
+		if start_line_text:find("$$", 1, true) then
+			add_closer("$$", make_plain_finder("$$"), 1)
+		end
+
+		local unmatched_inline_dollars = count_unmatched_single_dollars(start_line_text)
+		if unmatched_inline_dollars > 0 then
+			add_closer("$", single_dollar_finder, unmatched_inline_dollars)
+		end
+	end
+
+	if not added["\\]"] then
+		add_closer("\\]", make_plain_finder("\\]"))
+	end
+
+	if not added["\\)"] then
+		add_closer("\\)", make_plain_finder("\\)"))
+	end
+
+	if not added["$$"] then
+		add_closer("$$", make_plain_finder("$$"))
+	end
+
+	if not added["$"] then
+		add_closer("$", single_dollar_finder)
+	end
+
+	for _, env in ipairs(display_envs) do
+		local key = "\\end{" .. env .. "}"
+		if not added[key] then
+			add_closer(key, make_env_finder(env))
+		end
+	end
+
+	return closers
+end
+
+function M.find_math_block_end(bufnr, start_line)
+	bufnr = bufnr or 0
+	start_line = math.max(start_line or 0, 0)
+
+	local start_line_text = vim.api.nvim_buf_get_lines(bufnr, start_line, start_line + 1, false)[1]
+	local closers = build_closers(start_line_text)
+	local lines = vim.api.nvim_buf_get_lines(bufnr, start_line, -1, false)
+
+	for offset, line in ipairs(lines) do
+		for _, closer in ipairs(closers) do
+			local search_from = 1
+			while true do
+				local start_idx, end_idx = closer.find(line, search_from)
+				if not start_idx then
+					break
+				end
+				if closer.remaining_skip > 0 then
+					closer.remaining_skip = closer.remaining_skip - 1
+					search_from = end_idx + 1
+				else
+					return start_line + offset - 1
+				end
+			end
+		end
+	end
+
+	return nil
+end
+
 local sequential_counters = {}
 local fallback_counter = 0
+
+local function normalize_error(err, fallback_code)
+	if err == nil then
+		return nil
+	end
+
+	if type(err) == "table" then
+		return err
+	end
+
+	local normalized = { code = fallback_code or error_handler.E_BAD_OPTS }
+	if err ~= normalized.code then
+		normalized.message = err
+	end
+	return normalized
+end
 
 local function find_latest_existing(dir_path, ext)
 	if not dir_path or dir_path == "" then
@@ -199,6 +411,25 @@ function M.get_output_directory(tex_root_path)
 	return final_dir, nil, used_graphicspath
 end
 
+function M.resolve_paths(bufnr)
+	if not bufnr or bufnr == 0 then
+		bufnr = vim.api.nvim_get_current_buf()
+	end
+
+	local buf_path = vim.api.nvim_buf_get_name(bufnr)
+	local tex_root, tex_err = M.find_tex_root(buf_path)
+	if not tex_root then
+		return nil, nil, nil, normalize_error(tex_err, error_handler.E_TEX_ROOT_NOT_FOUND)
+	end
+
+	local output_dir, output_err, uses_graphicspath = M.get_output_directory(tex_root)
+	if not output_dir then
+		return nil, nil, nil, normalize_error(output_err, error_handler.E_BAD_OPTS)
+	end
+
+	return tex_root, output_dir, uses_graphicspath, nil
+end
+
 function M.get_final_path(output_dir, opts, plot_data)
 	opts = opts or {}
 	plot_data = plot_data or {}
@@ -249,6 +480,26 @@ end
 function M.ensure_output_path_exists(tex_root_path)
 	local _, err = M.get_output_directory(tex_root_path)
 	return err
+end
+
+function M.assign_output_path(opts, output_dir, uses_graphicspath, tex_root)
+	opts = opts or {}
+
+	local plot_data = {
+		ast = opts.ast,
+		var_defs = opts.definitions,
+	}
+
+	local final_path, reused = M.get_final_path(output_dir, opts, plot_data)
+	if not final_path or final_path == "" then
+		return nil, "Unable to determine output path"
+	end
+
+	opts.out_path = final_path
+	opts.uses_graphicspath = uses_graphicspath
+	opts.tex_root = tex_root
+
+	return final_path, reused
 end
 
 return M

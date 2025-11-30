@@ -5,8 +5,8 @@ describe("plot backend interface", function()
 		mock_utils.reset_modules({
 			"tungsten.backends.wolfram",
 			"tungsten.backends.python",
-			"tungsten.backends.wolfram.plot",
-			"tungsten.backends.python.plot",
+			"tungsten.backends.wolfram.plot_generator",
+			"tungsten.backends.python.plot_generator",
 		})
 	end)
 

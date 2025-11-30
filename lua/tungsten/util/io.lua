@@ -1,4 +1,4 @@
-local plotting_io = require("tungsten.util.plotting_io")
+local plotting_io = require("tungsten.domains.plotting_io")
 
 local M = {}
 

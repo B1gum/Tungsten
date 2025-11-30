@@ -1,4 +1,4 @@
--- lua/tungsten/backends/wolfram/domains/plot.lua
+-- lua/tungsten/backends/wolfram/domains/plotting_handlers.lua
 -- Wolfram Language renderers for plotting specific AST nodes
 
 local M = {}

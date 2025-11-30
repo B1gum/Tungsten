@@ -31,14 +31,14 @@ local function setup_test_environment()
 		"tungsten.state",
 		"tungsten.config",
 		"tungsten.util.async",
-		"tungsten.util.io",
+		"tungsten.domains.plotting.io",
 		"tungsten.domains.plotting.options_builder",
 		"tungsten.core.parser",
 		"tungsten.core.engine",
 		"tungsten.backends.manager",
 	})
 
-	mock_plotting_core = mock_utils.create_empty_mock_module("tungsten.core.plotting", {
+	mock_plotting_core = mock_utils.create_empty_mock_module("tungsten.domains.plotting.analysis", {
 		"initiate_plot",
 		"get_undefined_symbols",
 	})
@@ -55,7 +55,7 @@ local function setup_test_environment()
 		},
 	}
 	mock_async = mock_utils.create_empty_mock_module("tungsten.util.async", { "run_job" })
-	mock_io = mock_utils.create_empty_mock_module("tungsten.util.io", { "find_math_block_end" })
+	mock_io = mock_utils.create_empty_mock_module("tungsten.domains.plotting.io", { "find_math_block_end" })
 	mock_options_builder = mock_utils.create_empty_mock_module("tungsten.domains.plotting.options_builder", { "build" })
 	mock_options_builder.build = stub.new(mock_options_builder, "build", function(classification_arg, overrides)
 		local result = { series = {} }
@@ -219,7 +219,7 @@ describe("Plotting UI and UX", function()
 		end)
 
 		it("should open the prompt when core detection finds new symbols", function()
-			local real_core = dofile("lua/tungsten/core/plotting.lua")
+			local real_core = dofile("lua/tungsten/domains/plotting/analysis.lua")
 			mock_plotting_core.get_undefined_symbols = spy.new(function(symbol_opts)
 				return real_core.get_undefined_symbols(symbol_opts)
 			end)
