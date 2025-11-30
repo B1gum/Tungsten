@@ -10,11 +10,11 @@ describe("insert_result with extmarks", function()
 
 		vim_test_env.set_visual_selection(1, 1, 1, 6)
 		local _, s1, e1, m1 = selection.create_selection_extmarks()
-		local sel1 = selection.get_visual_selection()
+		local sel1 = vim.api.nvim_buf_get_lines(bufnr, 0, 1, false)[1]
 
 		vim_test_env.set_visual_selection(2, 1, 2, 6)
 		local _, s2, e2, m2 = selection.create_selection_extmarks()
-		local sel2 = selection.get_visual_selection()
+		local sel2 = vim.api.nvim_buf_get_lines(bufnr, 1, 2, false)[1]
 
 		local done = 0
 		vim.defer_fn(function()
