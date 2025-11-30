@@ -17,6 +17,11 @@ describe("Tungsten Calculus Domain Python Handlers", function()
 		package.loaded["tungsten.backends.python.domains.calculus"] = nil
 		handlers = require("tungsten.backends.python.domains.calculus").handlers
 
+		local string_mt = getmetatable("")
+		if string_mt and string_mt.__index and string_mt.__index.table == nil then
+			string_mt.__index.table = table
+		end
+
 		mock_recur_render = spy.new(function(child_node)
 			if not child_node or type(child_node) ~= "table" then
 				return tostring(child_node)
@@ -26,6 +31,9 @@ describe("Tungsten Calculus Domain Python Handlers", function()
 			end
 			if child_node.type == "variable" then
 				return child_node.name
+			end
+			if child_node.type == "symbol" then
+				return handlers.symbol(child_node)
 			end
 			return "rendered(" .. child_node.type .. ")"
 		end)
@@ -76,10 +84,82 @@ describe("Tungsten Calculus Domain Python Handlers", function()
 		end)
 	end)
 
+	describe("limit handler", function()
+		it("formats limit expressions", function()
+			local node = ast_node("limit", {
+				expression = ast_node("variable", { name = "f" }),
+				variable = ast_node("variable", { name = "x" }),
+				point = ast_node("number", { value = 0 }),
+			})
+
+			local result = handlers.limit(node, mock_recur_render)
+
+			assert.are.equal("sp.limit(f, x, 0)", result)
+			assert.spy(mock_recur_render).was.called_with(node.expression)
+			assert.spy(mock_recur_render).was.called_with(node.variable)
+			assert.spy(mock_recur_render).was.called_with(node.point)
+		end)
+	end)
+
+	describe("integral handlers", function()
+		it("formats indefinite integrals", function()
+			local node = ast_node("indefinite_integral", {
+				integrand = ast_node("variable", { name = "g" }),
+				variable = ast_node("variable", { name = "t" }),
+			})
+
+			local result = handlers.indefinite_integral(node, mock_recur_render)
+
+			assert.are.equal("sp.integrate(g, t)", result)
+			assert.spy(mock_recur_render).was.called_with(node.integrand)
+			assert.spy(mock_recur_render).was.called_with(node.variable)
+		end)
+
+		it("formats definite integrals", function()
+			local node = ast_node("definite_integral", {
+				integrand = ast_node("variable", { name = "h" }),
+				variable = ast_node("variable", { name = "u" }),
+				lower_bound = ast_node("number", { value = -1 }),
+				upper_bound = ast_node("symbol", { name = "infinity" }),
+			})
+
+			local result = handlers.definite_integral(node, mock_recur_render)
+
+			assert.are.equal("sp.integrate(h, (u, -1, sp.oo))", result)
+			assert.spy(mock_recur_render).was.called_with(node.integrand)
+			assert.spy(mock_recur_render).was.called_with(node.variable)
+			assert.spy(mock_recur_render).was.called_with(node.lower_bound)
+			assert.spy(mock_recur_render).was.called_with(node.upper_bound)
+		end)
+	end)
+
+	describe("summation handler", function()
+		it("formats summations", function()
+			local node = ast_node("summation", {
+				body_expression = ast_node("variable", { name = "term" }),
+				index_variable = ast_node("variable", { name = "n" }),
+				start_expression = ast_node("number", { value = 1 }),
+				end_expression = ast_node("number", { value = 5 }),
+			})
+
+			local result = handlers.summation(node, mock_recur_render)
+
+			assert.are.equal("sp.summation(term, (n, 1, 5))", result)
+			assert.spy(mock_recur_render).was.called_with(node.body_expression)
+			assert.spy(mock_recur_render).was.called_with(node.index_variable)
+			assert.spy(mock_recur_render).was.called_with(node.start_expression)
+			assert.spy(mock_recur_render).was.called_with(node.end_expression)
+		end)
+	end)
+
 	describe("symbol handler", function()
 		it("maps infinity and pi", function()
 			assert.are.equal("sp.oo", handlers.symbol(ast_node("symbol", { name = "infinity" })))
 			assert.are.equal("sp.pi", handlers.symbol(ast_node("symbol", { name = "pi" })))
+		end)
+
+		it("returns the symbol name when not mapped", function()
+			assert.are.equal("gamma", handlers.symbol(ast_node("symbol", { name = "gamma" })))
 		end)
 	end)
 end)
