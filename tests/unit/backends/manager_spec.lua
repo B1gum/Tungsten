@@ -38,4 +38,50 @@ describe("backends.manager", function()
 		manager.activate("b")
 		assert.are.equal(b, manager.current())
 	end)
+
+	it("throws descriptive errors for invalid registrations", function()
+		assert.has_error(function()
+			manager.register(123, {})
+		end, "Backend name must be a string")
+
+		assert.has_error(function()
+			manager.register("demo")
+		end, "Backend module is nil")
+	end)
+
+	it("activates backends regardless of factory shape", function()
+		local plain = { flag = "plain" }
+		manager.register("plain", plain)
+
+		local with_setup = {}
+		with_setup.setup = function(opts)
+			with_setup.opts = opts
+		end
+		manager.register("setup", with_setup)
+
+		local with_new = {
+			new = function(opts)
+				return { created_with = opts }
+			end,
+		}
+		manager.register("new", with_new)
+
+		local factory_fn = function(opts)
+			return { from_fn = opts }
+		end
+		manager.register("func", factory_fn)
+
+		local inst_plain = assert(manager.activate("plain", { a = 1 }))
+		assert.same(plain, inst_plain)
+
+		local inst_setup = assert(manager.activate("setup", { b = 2 }))
+		assert.same(with_setup, inst_setup)
+		assert.same({ b = 2 }, with_setup.opts)
+
+		local inst_new = assert(manager.activate("new", { c = 3 }))
+		assert.same({ created_with = { c = 3 } }, inst_new)
+
+		local inst_func = assert(manager.activate("func", { d = 4 }))
+		assert.same({ from_fn = { d = 4 } }, inst_func)
+	end)
 end)

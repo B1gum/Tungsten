@@ -123,7 +123,7 @@ end
 local function validate_dimensions(series)
 	local global_point_dim
 	for _, node in ipairs(series) do
-		local targets = {}
+		local targets
 		if node and node.type == "Sequence" then
 			targets = node.nodes or {}
 		else
