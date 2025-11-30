@@ -5,6 +5,8 @@
 local lpeg = require("lpeglabel")
 local registry = require("tungsten.core.registry")
 local space = require("tungsten.core.tokenizer").space
+local lexer = require("tungsten.core.lexer")
+local validator = require("tungsten.core.validator")
 local logger = require("tungsten.util.logger")
 local error_handler = require("tungsten.util.error_handler")
 local ast = require("tungsten.core.ast")
@@ -33,124 +35,8 @@ local label_messages = {
 	fail = "syntax error",
 }
 
-local delimiter_open_cmds = {
-	["\\langle"] = true,
-	["\\lfloor"] = true,
-	["\\lceil"] = true,
-	["\\lvert"] = true,
-	["\\left|"] = true,
-	["|"] = true,
-}
-
-local delimiter_close_cmds = {
-	["\\rangle"] = true,
-	["\\rfloor"] = true,
-	["\\rceil"] = true,
-	["\\rvert"] = true,
-	["\\right|"] = true,
-	["|"] = true,
-}
-
-local delimiter_replacements = {
-	["\\langle"] = "(",
-	["\\rangle"] = ")",
-	["\\lvert"] = "|",
-	["\\rvert"] = "|",
-	["\\left|"] = "|",
-	["\\right|"] = "|",
-	["."] = "",
-}
-
-local function read_delim(str, i)
-	local c = str:sub(i, i)
-	if c == "\\" then
-		local j = i + 1
-		while j <= #str and str:sub(j, j):match("%a") do
-			j = j + 1
-		end
-		return str:sub(i, j - 1), j - i
-	else
-		return c, 1
-	end
-end
-
-local function top_level_split(str, seps)
-	local parts = {}
-	local current = {}
-	local stack = {}
-	local i, len = 1, #str
-	local current_start = 1
-	while i <= len do
-		local c = str:sub(i, i)
-		if c == "\\" then
-			local next_five = str:sub(i, i + 4)
-			local next_six = str:sub(i, i + 5)
-			if next_five == "\\left" then
-				table.insert(current, "\\left")
-				i = i + 5
-				local d, consumed = read_delim(str, i)
-				local out = delimiter_replacements[d] or d
-				if out ~= "" then
-					table.insert(current, out)
-				end
-				table.insert(stack, d)
-				i = i + consumed
-			elseif next_six == "\\right" then
-				table.insert(current, "\\right")
-				i = i + 6
-				local d, consumed = read_delim(str, i)
-				local out = delimiter_replacements[d] or d
-				if out ~= "" then
-					table.insert(current, out)
-				end
-				if #stack > 0 then
-					table.remove(stack)
-				end
-				i = i + consumed
-			else
-				local next_char = str:sub(i + 1, i + 1)
-				if next_char ~= "" and not next_char:match("%a") then
-					table.insert(current, str:sub(i, i + 1))
-					i = i + 2
-				else
-					local j = i + 1
-					while j <= len and str:sub(j, j):match("%a") do
-						j = j + 1
-					end
-					local cmd = str:sub(i, j - 1)
-					table.insert(current, delimiter_replacements[cmd] or cmd)
-					if delimiter_open_cmds[cmd] then
-						table.insert(stack, cmd)
-					elseif delimiter_close_cmds[cmd] then
-						if #stack > 0 then
-							table.remove(stack)
-						end
-					end
-					i = j
-				end
-			end
-		else
-			if c == "(" or c == "{" or c == "[" then
-				table.insert(stack, c)
-			elseif c == ")" or c == "}" or c == "]" then
-				if #stack > 0 then
-					table.remove(stack)
-				end
-			end
-			if seps[c] and #stack == 0 then
-				table.insert(parts, { str = table.concat(current), start_pos = current_start })
-				current = {}
-				i = i + 1
-				current_start = i
-			else
-				table.insert(current, c)
-				i = i + 1
-			end
-		end
-	end
-	table.insert(parts, { str = table.concat(current), start_pos = current_start })
-	return parts
-end
+local delimiter_open_cmds = lexer.delimiter_open_cmds
+local delimiter_close_cmds = lexer.delimiter_close_cmds
 
 local function trim(s)
 	local trimmed = s
@@ -174,7 +60,7 @@ local function detect_chained_relations(expr)
 			local next_five = expr:sub(i, i + 4)
 			local next_six = expr:sub(i, i + 5)
 			if next_five == "\\left" then
-				local d, consumed = read_delim(expr, i + 5)
+				local d, consumed = lexer.read_delimiter(expr, i + 5)
 				if d == "(" then
 					paren = paren + 1
 				elseif d == "{" then
@@ -186,7 +72,7 @@ local function detect_chained_relations(expr)
 				end
 				advance = 5 + consumed
 			elseif next_six == "\\right" then
-				local d, consumed = read_delim(expr, i + 6)
+				local d, consumed = lexer.read_delimiter(expr, i + 6)
 				if d == ")" then
 					paren = paren - 1
 				elseif d == "}" then
@@ -284,7 +170,7 @@ local function detect_chained_relations(expr)
 	return nil
 end
 
-local function try_point_tuple(expr, pattern, ser_start, item_start, input, opts)
+local function try_point_tuple(expr, pattern, ser_start, item_start, input, opts, lead)
 	local inner, offset = nil, 0
 	if expr:sub(1, 6) == "\\left(" and expr:sub(-7) == "\\right)" then
 		inner = expr:sub(7, -8)
@@ -297,14 +183,18 @@ local function try_point_tuple(expr, pattern, ser_start, item_start, input, opts
 		return nil
 	end
 
-	local parts = top_level_split(inner, { [","] = true })
+	local base_offset = ser_start + item_start - 1 + (lead or 0)
+
+	local parts = lexer.split_top_level(inner, { [","] = true })
 	if #parts == 2 or #parts == 3 then
 		local elems = {}
-		for _, p in ipairs(parts) do
+		local part_meta = {}
+		for idx, p in ipairs(parts) do
 			local subexpr, sublead = trim(p.str)
+			part_meta[idx] = { start_pos = p.start_pos, trim_leading = sublead }
 			local rel_pos = detect_chained_relations(subexpr)
 			if rel_pos then
-				local global_pos = ser_start + item_start - 1 + offset + p.start_pos - 1 + sublead + rel_pos - 1
+				local global_pos = base_offset + offset + p.start_pos - 1 + sublead + rel_pos - 1
 				local msg = "Chained inequalities are not supported (v1)."
 				return nil, msg, global_pos
 			end
@@ -312,7 +202,7 @@ local function try_point_tuple(expr, pattern, ser_start, item_start, input, opts
 			if not subres then
 				local msg = label_messages[sublabel] or tostring(sublabel)
 				if subpos then
-					local global_pos = ser_start + item_start - 1 + offset + p.start_pos - 1 + sublead + subpos - 1
+					local global_pos = base_offset + offset + p.start_pos - 1 + sublead + subpos - 1
 					msg = msg .. " at " .. error_handler.format_line_col(input, global_pos)
 					return nil, msg, global_pos
 				end
@@ -321,19 +211,7 @@ local function try_point_tuple(expr, pattern, ser_start, item_start, input, opts
 			table.insert(elems, subres)
 		end
 
-		if #elems == 2 then
-			local second = elems[2]
-			if
-				not (opts and opts.form == "polar")
-				and (second.type == "variable" or second.type == "greek")
-				and second.name == "theta"
-			then
-				local global_pos = ser_start + item_start - 1 + offset + parts[2].start_pos - 1
-				local msg = "Coordinate system mismatch: theta can unly be used with polar coordinates at "
-					.. error_handler.format_line_col(input, global_pos)
-				return nil, msg, global_pos
-			end
-		end
+		local tuple_node
 		if opts and opts.mode == "advanced" and opts.form == "parametric" then
 			local elem_params = {}
 			local union_set = {}
@@ -367,45 +245,38 @@ local function try_point_tuple(expr, pattern, ser_start, item_start, input, opts
 
 			if #elems == 2 then
 				if #union == 1 and union[1] == "t" and elements_share_union() then
-					return ast.create_parametric2d_node(elems[1], elems[2])
+					tuple_node = ast.create_parametric2d_node(elems[1], elems[2])
 				end
 			elseif #elems == 3 then
 				if #union == 2 and union[1] == "u" and union[2] == "v" and elements_share_union() then
-					return ast.create_parametric3d_node(elems[1], elems[2], elems[3])
+					tuple_node = ast.create_parametric3d_node(elems[1], elems[2], elems[3])
 				end
-				local global_pos = ser_start + item_start - 1 + offset + parts[1].start_pos - 1
-				local msg = "Parametric 3D tuples must use parameters u and v at "
-					.. error_handler.format_line_col(input, global_pos)
-				return nil, msg, global_pos
 			end
-		elseif opts.form == "polar" then
-			if #elems ~= 2 then
-				local global_pos = ser_start + item_start - 1 + offset + parts[3].start_pos - 1
-				local msg = "Polar typles support only 2D at " .. error_handler.format_line_col(input, global_pos)
-				return nil, msg, global_pos
-			end
-			local r, theta = elems[1], elems[2]
-			if not ((theta.type == "variable" or theta.type == "greek") and theta.name == "theta") then
-				local global_pos = ser_start + item_start - 1 + offset + parts[2].start_pos - 1
-				local msg = "Polar tuples must have theta as second element at "
-					.. error_handler.format_line_col(input, global_pos)
-				return nil, msg, global_pos
-			end
-			if not helpers.is_theta_function(r) then
-				local global_pos = ser_start + item_start - 1 + offset + parts[1].start_pos - 1
-				local msg = "Polar tuples must define r as a function of θ at "
-					.. error_handler.format_line_col(input, global_pos)
-				return nil, msg, global_pos
-			end
-			return ast.create_polar2d_node(r)
+		elseif opts and opts.form == "polar" and #elems == 2 then
+			tuple_node = ast.create_polar2d_node(elems[1])
 		end
-		if #elems == 2 then
-			return ast.create_point2_node(elems[1], elems[2])
-		else
-			return ast.create_point3_node(elems[1], elems[2], elems[3])
+
+		if not tuple_node then
+			if #elems == 2 then
+				tuple_node = ast.create_point2_node(elems[1], elems[2])
+			else
+				tuple_node = ast.create_point3_node(elems[1], elems[2], elems[3])
+			end
 		end
+
+		tuple_node._tuple_meta = {
+			base_offset = base_offset + offset,
+			parts = part_meta,
+			input = input,
+			elements = elems,
+			opts = { mode = opts and opts.mode, form = opts and opts.form },
+		}
+
+		tuple_node._source = { input = input, start_pos = base_offset }
+
+		return tuple_node
 	elseif #parts > 3 then
-		local global_pos = ser_start + item_start - 1 + offset + parts[4].start_pos - 1
+		local global_pos = base_offset + offset + parts[4].start_pos - 1
 		local msg = "Point tuples support only 2D or 3D at " .. error_handler.format_line_col(input, global_pos)
 		return nil, msg, global_pos
 	end
@@ -417,11 +288,10 @@ function M.parse(input, opts)
 	local current_grammar = M.get_grammar()
 	local pattern = space * current_grammar * (space * -1 + lpeg.T("extra_input"))
 
-	local series_strs = top_level_split(input, { [";"] = true, ["\n"] = true })
+	local series_strs = lexer.split_top_level(input, { [";"] = true, ["\n"] = true })
 	local series = {}
-	local global_point_dim
 	for _, ser in ipairs(series_strs) do
-		local seq_strs = top_level_split(ser.str, { [","] = true })
+		local seq_strs = lexer.split_top_level(ser.str, { [","] = true })
 		local nodes = {}
 		for _, item in ipairs(seq_strs) do
 			local expr, lead = trim(item.str)
@@ -435,7 +305,7 @@ function M.parse(input, opts)
 
 				local tuple, tuple_err, tuple_pos
 				if expr:sub(1, 1) == "(" or expr:sub(1, 6) == "\\left(" then
-					tuple, tuple_err, tuple_pos = try_point_tuple(expr, pattern, ser.start_pos, item.start_pos, input, opts)
+					tuple, tuple_err, tuple_pos = try_point_tuple(expr, pattern, ser.start_pos, item.start_pos, input, opts, lead)
 					if tuple_err then
 						return nil, tuple_err, tuple_pos, input
 					end
@@ -457,39 +327,25 @@ function M.parse(input, opts)
 					end
 				end
 
-				if
-					result.type == "Point2"
-					or result.type == "Point3"
-					or result.type == "Parametric2D"
-					or result.type == "Parametric3D"
-					or result.type == "Polar2D"
-				then
-					local dim
-					if result.type == "Point2" or result.type == "Parametric2D" or result.type == "Polar2D" then
-						dim = 2
-					else
-						dim = 3
-					end
-					if global_point_dim and global_point_dim ~= dim then
-						local global_pos = ser.start_pos + item.start_pos - 1 + lead
-						local msg = "Cannot mix 2D and 3D points in the same sequence or series at "
-							.. error_handler.format_line_col(input, global_pos)
-						return nil, msg, global_pos, input
-					end
-					global_point_dim = global_point_dim or dim
-				end
-
 				table.insert(nodes, result)
 			end
 		end
 		if #nodes == 1 then
 			table.insert(series, nodes[1])
 		elseif #nodes > 1 then
-			table.insert(series, ast.create_sequence_node(nodes))
+			local sequence_node = ast.create_sequence_node(nodes)
+			table.insert(series, sequence_node)
 		end
 	end
 
-	return { series = series }
+	local ast_root = { series = series }
+
+	local valid, validation_err, validation_pos = validator.validate(ast_root, opts)
+	if not valid then
+		return nil, validation_err, validation_pos, input
+	end
+
+	return ast_root
 end
 
 function M.reset_grammar()

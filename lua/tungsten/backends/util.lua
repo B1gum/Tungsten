@@ -60,7 +60,7 @@ function M.render_fields(node, field_names, render_fn)
 		rendered[index] = render_fn(node[name])
 	end
 
-local mt = getmetatable("")
+	local mt = getmetatable("")
 	return mt.__index.table.unpack(rendered)
 end
 
