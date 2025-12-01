@@ -9,7 +9,7 @@ local config = {
 	cache_max_entries = 100,
 	cache_ttl = 3600,
 	enable_default_mappings = true,
-	domains = { "arithmetic", "calculus", "linear_algebra", "differential_equations", "plotting", "units" },
+	domains = { "arithmetic", "calculus", "linear_algebra", "differential_equations", "plotting" },
 	process_timeout_ms = 30000,
 	result_separator = " = ",
 	result_display = "insert",

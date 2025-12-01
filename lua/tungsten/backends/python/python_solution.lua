@@ -1,8 +1,6 @@
 -- lua/tungsten/backends/python/python_solution.lua
 -- Helper for parsing SymPy solve output
 
-local formatter = require("tungsten.domains.units.formatter")
-
 local M = {}
 
 local function trim(s)
@@ -23,7 +21,7 @@ function M.parse_python_solution(output_lines, vars, _)
 
 	local map = {}
 	for var, val in output:gmatch("(%w+)%s*:%s*([^,%}%]]+)") do
-		map[trim(var)] = formatter.to_siunitx(trim(val))
+		map[trim(var)] = trim(val)
 	end
 
 	if next(map) then
