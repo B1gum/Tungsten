@@ -3,6 +3,7 @@
 
 local string_util = require("tungsten.util.string")
 local error_parser = require("tungsten.backends.wolfram.wolfram_error")
+local formatter = require("tungsten.domains.units.formatter")
 
 local M = {}
 
@@ -34,7 +35,7 @@ function M.parse_wolfram_solution(output_lines, vars, is_system)
 	for pair in temp:gmatch("([^,{}]+%s*->%s*[^,{}]+)") do
 		local var, val = pair:match("(.+)%s*->%s*(.+)")
 		if var and val then
-			map[string_util.trim(var)] = string_util.trim(val)
+			map[string_util.trim(var)] = formatter.to_siunitx(string_util.trim(val))
 		end
 	end
 
@@ -54,7 +55,7 @@ function M.parse_wolfram_solution(output_lines, vars, is_system)
 		local var = escape_pattern(vars[1])
 		local single = raw:match("{{%s*" .. var .. "%s*->%s*(.-)%s*}}") or raw:match("{%s*" .. var .. "%s*->%s*(.-)%s*}")
 		if single then
-			return { ok = true, formatted = vars[1] .. " = " .. string_util.trim(single) }
+			return { ok = true, formatted = vars[1] .. " = " .. formatter.to_siunitx(string_util.trim(single)) }
 		end
 	end
 

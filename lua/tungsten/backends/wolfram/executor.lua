@@ -6,6 +6,7 @@ local config = require("tungsten.config")
 local logger = require("tungsten.util.logger")
 local async = require("tungsten.util.async")
 local handlers = require("tungsten.backends.wolfram.handlers")
+local formatter = require("tungsten.domains.units.formatter")
 
 local M = {}
 
@@ -66,7 +67,7 @@ function M.evaluate_async(ast, opts, callback)
 				if stderr ~= "" then
 					logger.debug("Tungsten Debug", "Tungsten Debug (stderr): " .. stderr)
 				end
-				callback(stdout, nil)
+				callback(formatter.to_siunitx(stdout), nil)
 			else
 				local err_msg
 				if exit_code == -1 or exit_code == 127 then
@@ -84,7 +85,6 @@ function M.evaluate_async(ast, opts, callback)
 		end,
 	})
 end
-
 function M.solve_async(solve_ast, opts, callback)
 	assert(type(callback) == "function", "solve_async expects callback")
 
