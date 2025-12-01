@@ -19,7 +19,6 @@ describe("python polar plotting", function()
 	end)
 
 	describe("python explicit plotting", function()
-
 		before_each(function()
 			ast_stub = stub(executor, "ast_to_code", function(ast)
 				if type(ast) == "table" and ast.type == "Equality" then
@@ -351,7 +350,6 @@ describe("python polar plotting", function()
 	end)
 
 	describe("python plot special function guard", function()
-
 		local function make_function_call(name)
 			return {
 				type = "function_call",

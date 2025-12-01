@@ -474,7 +474,7 @@ end)
 describe("wolfram plot ranges", function()
 	it("converts latex constants in range endpoints", function()
 		local sin_ast = ast_core.create_function_call_node(ast_core.create_variable_node("sin"), {
-      ast_core.create_variable_node("x"),
+			ast_core.create_variable_node("x"),
 		})
 
 		local code = assert(wolfram_plot.build_plot_code({

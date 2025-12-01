@@ -404,7 +404,7 @@ describe("UI coverage", function()
 			)
 
 			assert.spy(failure_spy).was.called()
-      local mt = getmetatable("")
+			local mt = getmetatable("")
 			local _, message = mt.__index.table.unpack(failure_spy.calls[1].vals)
 			assert.is_true(message:find("depends on 'b'", 1, true) ~= nil)
 
