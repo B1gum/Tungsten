@@ -6,12 +6,11 @@ local error_parser = require("tungsten.backends.wolfram.wolfram_error")
 
 local M = {}
 
--- Map Wolfram Unit Strings -> LaTeX/siunitx macros
 local unit_map = {
 	["Meters"] = "\\m",
 	["Seconds"] = "\\s",
 	["Kilograms"] = "\\kg",
-	["Newtons"] = "\\newton", -- or "N"
+	["Newtons"] = "\\newton",
 	["Joules"] = "\\joule",
 	["Watts"] = "\\watt",
 	["Pascals"] = "\\pascal",
@@ -22,28 +21,27 @@ local unit_map = {
 	["Radians"] = "\\radian",
 	["Hertz"] = "\\hertz",
 	["Coulombs"] = "\\coulomb",
-	-- Add others as encountered
 }
 
 function M.format_quantities(str)
-	if not str then
-		return ""
-	end
-	return str:gsub("Quantity%[([^,]+),%s*\"([^\"]+)\"%]", function(val, unit_str)
-		local latex_unit = unit_map[unit_str]
+        if not str then
+                return ""
+        end
 
-		if not latex_unit then
-			latex_unit = unit_str
-				:gsub("Meters", "\\m")
-				:gsub("Seconds", "\\s")
-				:gsub("Kilograms", "\\kg")
-				:gsub(" ", "\\cdot")
-				:gsub("/", "\\per")
-				:gsub("%^", "^")
-		end
+        return str:gsub("Quantity%[([^,]+),%s*(.-)%]", function(val, unit_expr)
+                local sanitized = unit_expr:gsub('"', "")
+                local latex_unit = unit_map[sanitized]
 
-		return string.format("\\qty{%s}{%s}", val, latex_unit)
-	end)
+                if not latex_unit then
+                        latex_unit = sanitized
+                                :gsub("%*", ".")
+                                :gsub(" ", ".")
+                                :gsub("/", "\\per")
+                                :gsub("%^", "^")
+                end
+
+                return string.format("\\qty{%s}{%s}", val, latex_unit)
+        end)
 end
 
 local function escape_pattern(text)
