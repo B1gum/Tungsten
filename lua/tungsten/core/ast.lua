@@ -14,6 +14,22 @@ function M.create_number_node(value)
 	return node("number", { value = value })
 end
 
+function M.create_quantity_node(value, unit_expression)
+	return node("quantity", { value = value, unit = unit_expression })
+end
+
+function M.create_angle_node(value)
+	return node("angle", { value = value })
+end
+
+function M.create_num_node(value)
+	return node("num_cmd", { value = value })
+end
+
+function M.create_unit_component_node(name)
+	return node("unit_component", { name = name })
+end
+
 function M.create_variable_node(name)
 	return node("variable", { name = name })
 end

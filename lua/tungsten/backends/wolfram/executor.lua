@@ -1,13 +1,29 @@
 -- lua/tungsten/backends/wolfram/executor.lua
--- Provides function to convert AST to wolfram code and exectute it
+-- Provides function to convert AST to wolfram code and execute it
 
 local render = require("tungsten.core.render")
 local config = require("tungsten.config")
 local logger = require("tungsten.util.logger")
 local async = require("tungsten.util.async")
 local handlers = require("tungsten.backends.wolfram.handlers")
+local solution_parser = require("tungsten.backends.wolfram.wolfram_solution")
 
 local M = {}
+
+local function has_units(node)
+	if type(node) ~= "table" then
+		return false
+	end
+	if node.type == "quantity" or node.type == "unit_component" or node.type == "angle" then
+		return true
+	end
+	for _, v in pairs(node) do
+		if type(v) == "table" and has_units(v) then
+			return true
+		end
+	end
+	return false
+end
 
 function M.ast_to_code(ast)
 	handlers.ensure_handlers()
@@ -40,6 +56,7 @@ function M.evaluate_async(ast, opts, callback)
 	opts = opts or {}
 	local numeric = opts.numeric
 	local cache_key = opts.cache_key
+	local form = opts.form
 
 	local ok, code = pcall(M.ast_to_code, ast)
 	if not ok or not code then
@@ -51,11 +68,31 @@ function M.evaluate_async(ast, opts, callback)
 		code = opts.code
 	end
 
+	local units_present = false
+	if ast then
+		units_present = has_units(ast)
+	end
+
 	if config.numeric_mode or numeric then
 		code = "N[" .. code .. "]"
 	end
 
-	code = "ToString[TeXForm[" .. code .. '], CharacterEncoding -> "UTF8"]'
+	if units_present then
+		code = "Quiet[UnitSimplify[" .. code .. "]]"
+		if not form then
+			form = "InputForm"
+		end
+	end
+
+	if not form then
+		form = "TeXForm"
+	end
+
+	if form == "InputForm" then
+		code = "ToString[" .. code .. ', CharacterEncoding -> "UTF8", FormatType -> InputForm]'
+	else
+		code = "ToString[TeXForm[" .. code .. '], CharacterEncoding -> "UTF8"]'
+	end
 
 	local wolfram_opts = (config.backend_opts and config.backend_opts.wolfram) or {}
 	local wolfram_path = wolfram_opts.wolfram_path or "wolframscript"
@@ -66,7 +103,13 @@ function M.evaluate_async(ast, opts, callback)
 				if stderr ~= "" then
 					logger.debug("Tungsten Debug", "Tungsten Debug (stderr): " .. stderr)
 				end
-				callback(stdout, nil)
+
+				local result = stdout
+				if form == "InputForm" then
+					result = solution_parser.format_quantities(result)
+				end
+
+				callback(result, nil)
 			else
 				local err_msg
 				if exit_code == -1 or exit_code == 127 then
@@ -101,7 +144,7 @@ function M.solve_async(solve_ast, opts, callback)
 		table.insert(variables, ok and name or tostring(v.name or ""))
 	end
 
-	M.evaluate_async(nil, { code = code, cache_key = opts.cache_key }, function(result, err)
+	M.evaluate_async(nil, { code = code, cache_key = opts.cache_key, form = "InputForm" }, function(result, err)
 		if err then
 			callback(nil, err)
 			return
