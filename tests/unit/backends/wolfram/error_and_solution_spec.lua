@@ -54,4 +54,16 @@ describe("wolfram error and solution helpers", function()
 		assert.is_true(fallback.ok)
 		assert.equals("raw text", fallback.formatted)
 	end)
+
+	it("formats quantities with siunitx units", function()
+		local solution = require("tungsten.backends.wolfram.wolfram_solution")
+
+		local simple = solution.format_quantities('Quantity[3, "Meters"]')
+		assert.equals("\\qty{3}{\\m}", simple)
+
+		local composite =
+			solution.format_quantities('\\qty{1}{\\kg} \\cdot \\qty{10}{\\m\\per\\s} = Quantity[10, "Newtons"*"Seconds"]')
+
+		assert.equals("\\qty{1}{\\kg} \\cdot \\qty{10}{\\m\\per\\s} = \\qty{10}{\\newton.\\s}", composite)
+	end)
 end)

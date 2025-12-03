@@ -104,16 +104,15 @@ function M.evaluate_async(ast, opts, callback)
 					logger.debug("Tungsten Debug", "Tungsten Debug (stderr): " .. stderr)
 				end
 
-                                local result = stdout
-                                if form == "InputForm" then
-                                        local format_quantities = solution_parser.format_quantities
-                                                or function(x)
-                                                        return x
-                                                end
-                                        result = format_quantities(result)
-                                end
+				local result = stdout
+				if form == "InputForm" then
+					local format_quantities = solution_parser.format_quantities or function(x)
+						return x
+					end
+					result = format_quantities(result)
+				end
 
-                                callback(result, nil)
+				callback(result, nil)
 			else
 				local err_msg
 				if exit_code == -1 or exit_code == 127 then

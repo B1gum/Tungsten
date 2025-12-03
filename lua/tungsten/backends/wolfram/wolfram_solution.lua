@@ -7,9 +7,9 @@ local error_parser = require("tungsten.backends.wolfram.wolfram_error")
 local M = {}
 
 local unit_map = {
-	["Meters"] = "\\m",
-	["Seconds"] = "\\s",
-	["Kilograms"] = "\\kg",
+	["Meters"] = "\\meter",
+	["Seconds"] = "\\seconds",
+	["Kilograms"] = "\\kilogram",
 	["Newtons"] = "\\newton",
 	["Joules"] = "\\joule",
 	["Watts"] = "\\watt",
@@ -21,27 +21,44 @@ local unit_map = {
 	["Radians"] = "\\radian",
 	["Hertz"] = "\\hertz",
 	["Coulombs"] = "\\coulomb",
+	["Becquerels"] = "\\becquerel",
+	["Farads"] = "\\farad",
+	["Grays"] = "\\gray",
+	["Henrys"] = "\\henry",
+	["Lumens"] = "\\lumen",
+	["Katals"] = "\\katal",
+	["lux"] = "\\lux",
+	["Siemens"] = "\\siemens",
+	["Sieverts"] = "\\sievert",
+	["Teslas"] = "\\tesla",
+	["Webers"] = "\\weber",
 }
 
+local function normalize_unit_expression(unit_expr)
+	local sanitized = unit_expr:gsub('"', "")
+
+	local direct_match = unit_map[sanitized]
+	if direct_match then
+		return direct_match
+	end
+
+	local replaced_units = sanitized:gsub("%a+", function(unit)
+		return unit_map[unit] or unit
+	end)
+
+	return replaced_units:gsub("%s*%*%s*", "."):gsub("%s*/%s*", "\\\\per"):gsub("%s+", "."):gsub("%^", "^")
+end
+
 function M.format_quantities(str)
-        if not str then
-                return ""
-        end
+	if not str then
+		return ""
+	end
 
-        return str:gsub("Quantity%[([^,]+),%s*(.-)%]", function(val, unit_expr)
-                local sanitized = unit_expr:gsub('"', "")
-                local latex_unit = unit_map[sanitized]
+	return str:gsub("Quantity%[([^,]+),%s*(.-)%]", function(val, unit_expr)
+		local latex_unit = normalize_unit_expression(unit_expr)
 
-                if not latex_unit then
-                        latex_unit = sanitized
-                                :gsub("%*", ".")
-                                :gsub(" ", ".")
-                                :gsub("/", "\\per")
-                                :gsub("%^", "^")
-                end
-
-                return string.format("\\qty{%s}{%s}", val, latex_unit)
-        end)
+		return string.format("\\qty{%s}{%s}", val, latex_unit)
+	end)
 end
 
 local function escape_pattern(text)
