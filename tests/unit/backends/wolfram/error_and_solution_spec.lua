@@ -54,5 +54,4 @@ describe("wolfram error and solution helpers", function()
 		assert.is_true(fallback.ok)
 		assert.equals("raw text", fallback.formatted)
 	end)
-
 end)

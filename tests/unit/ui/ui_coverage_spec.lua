@@ -245,9 +245,10 @@ describe("UI coverage", function()
 				end_mark = { 1, 0 },
 				selection_text = "x",
 				mode = "v",
+				separator = " \\rightarrow ",
 			})
 
-			assert.spy(insert_spy).was.called_with("42", nil, { 1, 0 }, { 1, 0 }, "x", "v")
+			assert.spy(insert_spy).was.called_with("42", " \\rightarrow ", { 1, 0 }, { 1, 0 }, "x", "v")
 		end)
 	end)
 

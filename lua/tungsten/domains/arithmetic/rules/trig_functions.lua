@@ -20,4 +20,10 @@ return {
 	SinRule = trig_rule("\\sin", "sin"),
 	CosRule = trig_rule("\\cos", "cos"),
 	TanRule = trig_rule("\\tan", "tan"),
+	CotRule = trig_rule("\\cot", "cot"),
+	SecRule = trig_rule("\\sec", "sec"),
+	CscRule = trig_rule("\\csc", "csc"),
+	SinhRule = trig_rule("\\sinh", "sinh"),
+	CoshhRule = trig_rule("\\cosh", "cosh"),
+	TanhRule = trig_rule("\\tanh", "tanh"),
 }

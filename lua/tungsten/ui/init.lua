@@ -55,7 +55,14 @@ event_bus.subscribe("result_ready", function(data)
 	if not data then
 		return
 	end
-	insert_result.insert_result(data.result, nil, data.start_mark, data.end_mark, data.selection_text, data.mode)
+	insert_result.insert_result(
+		data.result,
+		data.separator,
+		data.start_mark,
+		data.end_mark,
+		data.selection_text,
+		data.mode
+	)
 end)
 
 return M

@@ -280,7 +280,25 @@ describe("Tungsten core commands", function()
 			commands_module.tungsten_simplify_command({})
 
 			assert.spy(mock_evaluator_evaluate_async_spy).was_not.called()
-			assert.spy(mock_event_bus_emit_spy).was_not.called()
+		end)
+
+		it("emits a right arrow separator for simplify results", function()
+			current_parse_selected_latex_config["expression"] = {
+				ast = { type = "expression", representation = "parsed:\\frac{x^2-1}{x-1}" },
+				text = "\\frac{x^2-1}{x-1}",
+			}
+			eval_async_behaviors.default_eval = function(_, _, cb)
+				cb("x + 1")
+			end
+			current_eval_async_config_key = "default_eval"
+
+			vim_test_env.set_visual_selection(1, 1, 1, 7)
+
+			commands_module.tungsten_simplify_command({})
+
+			assert.spy(mock_event_bus_emit_spy).was.called(1)
+			local payload = mock_event_bus_emit_spy.calls[1].vals[2]
+			assert.are.equal(" \\rightarrow ", payload.separator)
 		end)
 
 		it("does not insert result when evaluation returns nil", function()

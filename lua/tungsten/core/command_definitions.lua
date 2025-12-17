@@ -18,7 +18,7 @@ M.TungstenEvaluate = {
 	end,
 }
 
-local function make_simple_wrapped(name)
+local function make_simple_wrapped(name, separator)
 	return {
 		description = name,
 		input_handler = function()
@@ -34,10 +34,11 @@ local function make_simple_wrapped(name)
 		prepare_args = function(ast, _)
 			return { ast, config.numeric_mode }
 		end,
+		separator = separator,
 	}
 end
 
-M.TungstenSimplify = make_simple_wrapped("Simplify")
+M.TungstenSimplify = make_simple_wrapped("Simplify", " \\rightarrow ")
 M.TungstenFactor = make_simple_wrapped("Factor")
 
 return M
