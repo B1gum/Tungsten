@@ -5,17 +5,43 @@
 local M = {}
 local constants = require("tungsten.core.constants")
 
+local function map_function_name(func_name_str)
+	local wolfram_opts = (require("tungsten.config").backend_opts or {}).wolfram or {}
+	local func_name_map = wolfram_opts.function_mappings or {}
+	local mapped = func_name_map[func_name_str:lower()]
+
+	if not mapped then
+		mapped = func_name_str:match("^%a") and (func_name_str:sub(1, 1):upper() .. func_name_str:sub(2)) or func_name_str
+	end
+
+	return mapped
+end
+
 M.handlers = {
 	ordinary_derivative = function(node, walk)
-		local order = (node.order and walk(node.order)) or 1
-		local expression_str = walk(node.expression)
 		local variable_str = walk(node.variable)
+		local numeric_order = node.order and node.order.value
+		local order_str = (node.order and walk(node.order)) or "1"
 
-		if tostring(order) == "1" then
-			return "D[" .. expression_str .. ", " .. variable_str .. "]"
-		else
-			return "D[" .. expression_str .. ", {" .. variable_str .. ", " .. tostring(order) .. "}]"
+		if
+			node.expression
+			and node.expression.type == "function_call"
+			and numeric_order
+			and type(numeric_order) == "number"
+		then
+			local func_name = node.expression.name_node and node.expression.name_node.name
+			local arg_str = node.expression.args and node.expression.args[1] and walk(node.expression.args[1]) or variable_str
+			local prime_str = string.rep("'", numeric_order)
+			return map_function_name(func_name or "") .. prime_str .. "[" .. arg_str .. "]"
 		end
+
+		local expression_str = walk(node.expression)
+
+		if tostring(order_str) == "1" then
+			return "D[" .. expression_str .. ", " .. variable_str .. "]"
+		end
+
+		return "D[" .. expression_str .. ", {" .. variable_str .. ", " .. tostring(order_str) .. "}]"
 	end,
 
 	partial_derivative = function(node, recur_render)

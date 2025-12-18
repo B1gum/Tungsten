@@ -207,19 +207,19 @@ function M.create_solve_system_node(equations_list, variables_list)
 end
 
 function M.create_ode_node(lhs, rhs, conditions)
-     local ode_node = node("ode", { lhs = lhs, rhs = rhs })
-     if conditions and #conditions > 0 then
-             ode_node.conditions = conditions
-     end
-     return ode_node
+	local ode_node = node("ode", { lhs = lhs, rhs = rhs })
+	if conditions and #conditions > 0 then
+		ode_node.conditions = conditions
+	end
+	return ode_node
 end
 
 function M.create_ode_system_node(equations, conditions)
-     local ode_system = node("ode_system", { equations = equations })
-     if conditions and #conditions > 0 then
-             ode_system.conditions = conditions
-     end
-     return ode_system
+	local ode_system = node("ode_system", { equations = equations })
+	if conditions and #conditions > 0 then
+		ode_system.conditions = conditions
+	end
+	return ode_system
 end
 
 function M.create_wronskian_node(functions_list)

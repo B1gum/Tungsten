@@ -83,6 +83,21 @@ describe("Tungsten Calculus Domain Wolfram Handlers", function()
 			local result = handlers.ordinary_derivative(node, mock_recur_render)
 			assert.are.equal("D[hz, {z, n}]", result)
 		end)
+
+		it("uses prime notation for derivatives of explicit function calls", function()
+			local node = ast_node("ordinary_derivative", {
+				expression = ast_node("function_call", {
+					name_node = ast_node("variable", { name = "y" }),
+					args = { ast_node("variable", { name = "x" }) },
+				}),
+				variable = ast_node("variable", { name = "x" }),
+				order = ast_node("number", { value = 1 }),
+			})
+
+			local result = handlers.ordinary_derivative(node, mock_recur_render)
+
+			assert.are.equal("Y'[x]", result)
+		end)
 	end)
 
 	describe("partial_derivative handler", function()

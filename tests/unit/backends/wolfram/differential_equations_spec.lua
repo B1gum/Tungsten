@@ -106,96 +106,111 @@ describe("Differential Equations Wolfram Handlers", function()
 					or result == "DSolve[{Y'[x] == Z[x], Z'[x] == Y[x]}, {Z[x], Y[x]}, x]"
 			)
 		end)
-                it("renders attached initial conditions with mapped dependent variables", function()
-                        local ast = {
-                                type = "ode_system",
-                                equations = {
-                                        {
-                                                type = "ode",
-                                                lhs = {
-                                                        type = "ordinary_derivative",
-                                                        expression = { type = "variable", name = "y" },
-                                                        variable = { type = "variable", name = "x" },
-                                                        order = { type = "number", value = 2 },
-                                                },
-                                                rhs = { type = "number", value = 0 },
-                                        },
-                                },
-                                conditions = {
-                                        {
-                                                type = "binary",
-                                                operator = "=",
-                                                left = {
-                                                        type = "function_call",
-                                                        name_node = { type = "variable", name = "y" },
-                                                        args = { { type = "number", value = 0 } },
-                                                },
-                                                right = { type = "number", value = 1 },
-                                        },
-                                        {
-                                                type = "binary",
-                                                operator = "=",
-                                                left = {
-                                                        type = "ordinary_derivative",
-                                                        expression = {
-                                                                type = "function_call",
-                                                                name_node = { type = "variable", name = "y" },
-                                                                args = { { type = "number", value = 0 } },
-                                                        },
-                                                        variable = { type = "variable", name = "x" },
-                                                        order = { type = "number", value = 1 },
-                                                },
-                                                right = { type = "number", value = 0 },
-                                        },
-                                },
-                        }
+		it("renders attached initial conditions with mapped dependent variables", function()
+			local ast = {
+				type = "ode_system",
+				equations = {
+					{
+						type = "ode",
+						lhs = {
+							type = "ordinary_derivative",
+							expression = { type = "variable", name = "y" },
+							variable = { type = "variable", name = "x" },
+							order = { type = "number", value = 2 },
+						},
+						rhs = { type = "number", value = 0 },
+					},
+				},
+				conditions = {
+					{
+						type = "binary",
+						operator = "=",
+						left = {
+							type = "function_call",
+							name_node = { type = "variable", name = "y" },
+							args = { { type = "number", value = 0 } },
+						},
+						right = { type = "number", value = 1 },
+					},
+					{
+						type = "binary",
+						operator = "=",
+						left = {
+							type = "ordinary_derivative",
+							expression = {
+								type = "function_call",
+								name_node = { type = "variable", name = "y" },
+								args = { { type = "number", value = 0 } },
+							},
+							variable = { type = "variable", name = "x" },
+							order = { type = "number", value = 1 },
+						},
+						right = { type = "number", value = 0 },
+					},
+				},
+			}
 
-                        local result = handlers.ode_system(ast, mock_render)
+			local result = handlers.ode_system(ast, mock_render)
 
-                        assert.is_truthy(result:match("Y%[%s*0%s*%]%s*==%s*1"))
-                        assert.is_truthy(result:match("Y'%[%s*0%s*%]%s*==%s*0"))
-                end)
+			assert.is_truthy(result:match("Y%[%s*0%s*%]%s*==%s*1"))
+			assert.is_truthy(result:match("Y'%[%s*0%s*%]%s*==%s*0"))
+		end)
 
-                it("rebinds derivative conditions using the mapped independent variable", function()
-                        local ast = {
-                                type = "ode_system",
-                                equations = {
-                                        {
-                                                type = "ode",
-                                                lhs = {
-                                                        type = "ordinary_derivative",
-                                                        expression = { type = "variable", name = "y" },
-                                                        variable = { type = "variable", name = "x" },
-                                                        order = { type = "number", value = 2 },
-                                                },
-                                                rhs = { type = "number", value = 0 },
-                                        },
-                                },
-                                conditions = {
-                                        {
-                                                type = "binary",
-                                                operator = "=",
-                                                left = {
-                                                        type = "ordinary_derivative",
-                                                        expression = {
-                                                                type = "function_call",
-                                                                name_node = { type = "variable", name = "y" },
-                                                                args = { { type = "number", value = 0 } },
-                                                        },
-                                                        variable = { type = "number", value = 0 },
-                                                        order = { type = "number", value = 1 },
-                                                },
-                                                right = { type = "number", value = 0 },
-                                        },
-                                },
-                        }
+		it("rebinds derivative conditions using the mapped independent variable", function()
+			local ast = {
+				type = "ode_system",
+				equations = {
+					{
+						type = "ode",
+						lhs = {
+							type = "ordinary_derivative",
+							expression = { type = "variable", name = "y" },
+							variable = { type = "variable", name = "x" },
+							order = { type = "number", value = 2 },
+						},
+						rhs = { type = "number", value = 0 },
+					},
+				},
+				conditions = {
+					{
+						type = "binary",
+						operator = "=",
+						left = {
+							type = "ordinary_derivative",
+							expression = {
+								type = "function_call",
+								name_node = { type = "variable", name = "y" },
+								args = { { type = "number", value = 0 } },
+							},
+							variable = { type = "number", value = 0 },
+							order = { type = "number", value = 1 },
+						},
+						right = { type = "number", value = 0 },
+					},
+				},
+			}
 
-                        local result = handlers.ode_system(ast, mock_render)
+			local result = handlers.ode_system(ast, mock_render)
 
-                        assert.is_truthy(result:match("Y'%[%s*0%s*%]%s*==%s*0"))
-                        assert.is_falsy(result:match("D%[Y%[0%]"))
-                end)
-        end)
+			it("uses prime notation for derivatives of explicit function calls", function()
+				local node = ast_node("ordinary_derivative", {
+					expression = ast_node("function_call", {
+						name_node = ast_node("variable", { name = "y" }),
+						args = { ast_node("variable", { name = "x" }) },
+					}),
+					variable = ast_node("variable", { name = "x" }),
+					order = ast_node("number", { value = 1 }),
+				})
+
+				local result = handlers.ordinary_derivative(node, mock_recur_render)
+
+				assert.are.equal("Y'[x]", result)
+			end)
+
+			assert.is_truthy(result:match("Y'%[%s*0%s*%]%s*==%s*0"))
+			assert.is_falsy(result:match("D%[Y%[0%]"))
+		end)
+	end)
 
 	describe("wronskian handler", function()
 		it("should correctly format the Wronskian function", function()
