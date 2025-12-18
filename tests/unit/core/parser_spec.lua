@@ -819,6 +819,34 @@ describe("tungsten.core.parser.parse with combined grammar", function()
 			assert.are.same(expected_ast, parse_input(input))
 		end)
 
+		it("should scope derivative to parentheses when present: \\frac{d}{dx} (x^3) + 2x", function()
+			local input = "\\frac{d}{dx} (x^3) + 2x"
+			local expected_ast = ast_utils.create_binary_operation_node(
+				"+",
+				ast_utils.create_ordinary_derivative_node(
+					ast_utils.create_superscript_node({ type = "variable", name = "x" }, { type = "number", value = 3 }),
+					{ type = "variable", name = "x" },
+					{ type = "number", value = 1 }
+				),
+				ast_utils.create_binary_operation_node("*", { type = "number", value = 2 }, { type = "variable", name = "x" })
+			)
+			assert.are.same(expected_ast, parse_input(input))
+		end)
+
+		it("should use numerator expression when provided: \\frac{d x^3}{d x} + 3", function()
+			local input = "\\frac{d x^3}{d x} + 3"
+			local expected_ast = ast_utils.create_binary_operation_node(
+				"+",
+				ast_utils.create_ordinary_derivative_node(
+					ast_utils.create_superscript_node({ type = "variable", name = "x" }, { type = "number", value = 3 }),
+					{ type = "variable", name = "x" },
+					{ type = "number", value = 1 }
+				),
+				{ type = "number", value = 3 }
+			)
+			assert.are.same(expected_ast, parse_input(input))
+		end)
+
 		it("should parse integral of an expression with variables and numbers: \\int x^2 + 2x dx", function()
 			local input = "\\int x^2 + 2x dx"
 			local expected_ast = ast_utils.create_indefinite_integral_node(

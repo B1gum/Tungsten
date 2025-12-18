@@ -22,7 +22,7 @@ describe("tungsten.core.solver", function()
 		mock_utils.reset_modules(modules_to_clear_from_cache)
 
 		mock_backend_module = {}
-		function mock_backend_module.solve_async(_, node, opts, cb)
+		function mock_backend_module.solve_async(node, opts, cb)
 			mock_backend_module.called_with = { node, opts, cb }
 			if cb then
 				cb("solution", nil)
@@ -33,6 +33,7 @@ describe("tungsten.core.solver", function()
 				return mock_backend_module
 			end,
 		}
+		package.loaded["tungsten.backends.manager"] = mock_backend_manager_module
 
 		original_require = _G.require
 		_G.require = function(module_path)
@@ -86,7 +87,7 @@ describe("tungsten.core.solver", function()
 			local eq1 = { type = "equation", id = "eq1" }
 			local var1 = { type = "variable", id = "v1" }
 
-			solver.solve_asts_async({ eq1 }, { var1 }, false, callback_spy)
+			solver.solve_asts_async({ eq1 }, { var1 }, false, callback_spy, { backend = mock_backend_module })
 
 			assert.is_table(mock_backend_module.called_with)
 			local node_arg, opts_arg, cb_arg = unpack(mock_backend_module.called_with)
