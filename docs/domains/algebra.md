@@ -57,7 +57,7 @@ and run the `:TungstenDefinePersistentVariable` command (the default mapping is 
 In this way, we are able to use the variable in subsequent evaluations, e.g.
 ```latex
 a \cdot 2 = 4
-```latex
+```
 You can also define variables that depend on other variables.
 ```latex
 b := \frac{a}{2}
