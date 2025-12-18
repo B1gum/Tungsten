@@ -860,6 +860,69 @@ describe("tungsten.core.parser.parse with combined grammar", function()
 			assert.are.same(expected_ast, parse_input(input))
 		end)
 
+		it("should only differentiate parenthesized expressions after d/dx", function()
+			local input = "\\frac{d}{dx} (x^3) + 2x"
+			local derivative_ast = ast_utils.create_ordinary_derivative_node(
+				ast_utils.create_superscript_node({ type = "variable", name = "x" }, { type = "number", value = 3 }),
+				{ type = "variable", name = "x" },
+				{ type = "number", value = 1 }
+			)
+			local expected_ast = ast_utils.create_binary_operation_node(
+				"+",
+				derivative_ast,
+				ast_utils.create_binary_operation_node("*", { type = "number", value = 2 }, { type = "variable", name = "x" })
+			)
+
+			assert.are.same(expected_ast, parse_input(input))
+		end)
+
+		it("should differentiate expressions included in the numerator of d/dx", function()
+			local input = "\\frac{dx^3}{dx} + 3"
+			local derivative_ast = ast_utils.create_ordinary_derivative_node(
+				ast_utils.create_superscript_node({ type = "variable", name = "x" }, { type = "number", value = 3 }),
+				{ type = "variable", name = "x" },
+				{ type = "number", value = 1 }
+			)
+
+			local expected_ast = ast_utils.create_binary_operation_node("+", derivative_ast, { type = "number", value = 3 })
+
+			assert.are.same(expected_ast, parse_input(input))
+		end)
+
+		it("should only differentiate parenthesized expressions after partial derivatives", function()
+			local input = "\\frac{\\partial}{\\partial x} (x^3) + 2y"
+			local derivative_ast = ast_utils.create_partial_derivative_node(
+				ast_utils.create_superscript_node({ type = "variable", name = "x" }, { type = "number", value = 3 }),
+				{ type = "number", value = 1 },
+				{
+					ast_utils.create_differentiation_term_node({ type = "variable", name = "x" }, { type = "number", value = 1 }),
+				}
+			)
+
+			local expected_ast = ast_utils.create_binary_operation_node(
+				"+",
+				derivative_ast,
+				ast_utils.create_binary_operation_node("*", { type = "number", value = 2 }, { type = "variable", name = "y" })
+			)
+
+			assert.are.same(expected_ast, parse_input(input))
+		end)
+
+		it("should differentiate expressions included in the numerator of partial derivatives", function()
+			local input = "\\frac{\\partial x^3}{\\partial x} + 3"
+			local derivative_ast = ast_utils.create_partial_derivative_node(
+				ast_utils.create_superscript_node({ type = "variable", name = "x" }, { type = "number", value = 3 }),
+				{ type = "number", value = 1 },
+				{
+					ast_utils.create_differentiation_term_node({ type = "variable", name = "x" }, { type = "number", value = 1 }),
+				}
+			)
+
+			local expected_ast = ast_utils.create_binary_operation_node("+", derivative_ast, { type = "number", value = 3 })
+
+			assert.are.same(expected_ast, parse_input(input))
+		end)
+
 		it("should parse limit of a fraction: \\lim_{x \\to 0} \\frac{\\sin x}{x}", function()
 			local input = "\\lim_{x \\to 0} \\frac{\\sin x}{x}"
 			local parsed_ast = parse_input(input)
@@ -888,6 +951,45 @@ describe("tungsten.core.parser.parse with combined grammar", function()
 					ast_utils.create_fraction_node({ type = "number", value = 1 }, { type = "variable", name = "i" })
 				)
 			)
+			assert.are.same(expected_ast, parse_input(input))
+		end)
+
+		it("should parse sum with arithmetic in body: \\sum_{i=0}^{N} (i^2 + \\frac{1}{i})", function()
+			local input = "\\sum_{i=0}^{N} (i^2 + \\frac{1}{i})"
+			local expected_ast = ast_utils.create_summation_node(
+				{ type = "variable", name = "i" },
+				{ type = "number", value = 0 },
+				{ type = "variable", name = "N" },
+				ast_utils.create_binary_operation_node(
+					"+",
+					ast_utils.create_superscript_node({ type = "variable", name = "i" }, { type = "number", value = 2 }),
+					ast_utils.create_fraction_node({ type = "number", value = 1 }, { type = "variable", name = "i" })
+				)
+			)
+			assert.are.same(expected_ast, parse_input(input))
+		end)
+
+		it("should parse summations with infinity as an upper bound", function()
+			local input = "\\sum_{k=1}^{\\infty} 1"
+			local expected_ast = ast_utils.create_summation_node(
+				{ type = "variable", name = "k" },
+				{ type = "number", value = 1 },
+				{ type = "symbol", name = "infinity" },
+				{ type = "number", value = 1 }
+			)
+
+			assert.are.same(expected_ast, parse_input(input))
+		end)
+
+		it("should parse definite integrals with infinity bounds", function()
+			local input = "\\int_{0}^{\\infty} 1 \\mathrm{d}x"
+			local expected_ast = ast_utils.create_definite_integral_node(
+				{ type = "number", value = 1 },
+				{ type = "variable", name = "x" },
+				{ type = "number", value = 0 },
+				{ type = "symbol", name = "infinity" }
+			)
+
 			assert.are.same(expected_ast, parse_input(input))
 		end)
 

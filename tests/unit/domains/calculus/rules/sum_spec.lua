@@ -74,6 +74,8 @@ describe("Calculus Sum Rule: tungsten.domains.calculus.rules.sum", function()
 				return placeholder_node("placeholder_expr", "a_k", "subscript_ak")
 			end + P("\\alpha") / function()
 				return { type = "symbol", name = "alpha" }
+			end + P("\\infty") / function()
+				return { type = "symbol", name = "infinity" }
 			end + mock_tokenizer_module.number + mock_tokenizer_module.variable),
 		}
 		compiled_test_grammar = lpeg.P(test_grammar_table_definition)
@@ -123,6 +125,18 @@ describe("Calculus Sum Rule: tungsten.domains.calculus.rules.sum", function()
 				start_expression = { type = "variable", name = "m" },
 				end_expression = { type = "variable", name = "M" },
 				body_expression = placeholder_node("placeholder_expr", "1/n", "fraction_1n"),
+			}
+			assert.are.same(expected_ast, parse_input(input))
+		end)
+
+		it("should parse infinite upper bounds: \\sum_{k=1}^{\\infty} k^3", function()
+			local input = "\\sum_{k=1}^{\\infty} k^3"
+			local expected_ast = {
+				type = "summation",
+				index_variable = { type = "variable", name = "k" },
+				start_expression = { type = "number", value = 1 },
+				end_expression = { type = "symbol", name = "infinity" },
+				body_expression = placeholder_node("placeholder_expr", "k^3", "power_k3"),
 			}
 			assert.are.same(expected_ast, parse_input(input))
 		end)

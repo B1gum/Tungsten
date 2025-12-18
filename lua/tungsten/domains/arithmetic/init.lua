@@ -21,6 +21,12 @@ c[#c + 1] = { name = "Number", pattern = tokens_mod.number, category = "AtomBase
 c[#c + 1] = { name = "Variable", pattern = tokens_mod.variable, category = "AtomBaseItem", priority = prio }
 c[#c + 1] = { name = "Greek", pattern = tokens_mod.Greek, category = "AtomBaseItem", priority = prio }
 c[#c + 1] = {
+	name = "InfinitySymbol",
+	pattern = tokens_mod.infinity_symbol,
+	category = "AtomBaseItem",
+	priority = prio,
+}
+c[#c + 1] = {
 	name = "Fraction",
 	pattern = require("tungsten.domains.arithmetic.rules.fraction"),
 	category = "AtomBaseItem",

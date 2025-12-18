@@ -25,6 +25,10 @@ local variable = C(letter * (letter + digit) ^ 0)
 		return ast.create_variable_node(v)
 	end
 
+local infinity_symbol = P("\\infty") * -letter / function()
+	return ast.create_symbol_node("infinity")
+end
+
 local greek_list = {
 	"alpha",
 	"beta",
@@ -140,6 +144,7 @@ return {
 	matrix_env_name_capture = matrix_env_name_capture,
 	ampersand = ampersand,
 	double_backslash = double_backslash,
+	infinity_symbol = infinity_symbol,
 	equals_op = equals_op,
 	det_command = det_command,
 	vec_command = vec_command,

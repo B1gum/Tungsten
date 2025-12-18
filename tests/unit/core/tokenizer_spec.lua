@@ -184,6 +184,26 @@ describe("tungsten.core.tokenizer", function()
 		end)
 	end)
 
+	describe("Infinity symbol token", function()
+		it("should match \\infty and produce a symbol AST node", function()
+			local input = "\\infty"
+			local expected_ast = { type = "symbol", name = "infinity" }
+			assert.are.same(expected_ast, lpeg.match(tokenizer.infinity_symbol, input))
+		end)
+
+		it("should not match partial or suffixed commands", function()
+			assert.is_nil(lpeg.match(tokenizer.infinity_symbol, "\\inf"))
+			assert.is_nil(lpeg.match(tokenizer.infinity_symbol, "\\inftyExtra"))
+		end)
+
+		it("should only consume the infinity token when followed by other text", function()
+			local pattern_to_test = tokenizer.infinity_symbol * lpeg.C(lpeg.P(1) ^ 0)
+			local ast_node, rest_str = lpeg.match(pattern_to_test, "\\infty+1")
+			assert.are.same({ type = "symbol", name = "infinity" }, ast_node)
+			assert.are.equal("+1", rest_str)
+		end)
+	end)
+
 	describe("Bracket tokens", function()
 		it("lbrace should match '{'", function()
 			assert.is_truthy(lpeg.match(tokenizer.lbrace, "{"))

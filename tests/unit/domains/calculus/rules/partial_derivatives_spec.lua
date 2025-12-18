@@ -30,6 +30,8 @@ describe("Calculus Partial Derivative Rule: tungsten.domains.calculus.rules.part
 			space = S(" \t\n\r") ^ 0,
 			lbrace = P("{"),
 			rbrace = P("}"),
+			lparen = P("("),
+			rparen = P(")"),
 			variable = C(R("az", "AZ") * (R("az", "AZ", "09") ^ 0)) / function(name_str)
 				return { type = "variable", name = name_str }
 			end,
