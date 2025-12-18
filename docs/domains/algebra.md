@@ -33,7 +33,7 @@ To evaluate an expression simply select the expression using visual mode and run
 When the backend has evaluated the expression the result is inserted on the right hand side of your visual selection preceded by a `=`.
 I.e. if you visually select `2 + 2` in the buffer and run `:TungstenEvaluate`, the buffer will, upon completion of the evaluation show `2 + 2 = 4`.
 
-The default mapping for the `:TungstenEvaluate` command is `tee`
+The default mapping for the `:TungstenEvaluate` command is `<leader>tee`
 
 The default mapping in Vim/Neovim for entering visual mode is pressing `v` in normal mode. One could also opt to highlight ones expression using the cursor. 
 
@@ -46,7 +46,38 @@ This is useful when working through a derivation in LaTeX, where you want to kee
 Variables are stored in Tungsten's session state (i.e. they persist across command calls until you clear or overwrite them)
 
 ### Defining a Variable
-To define a variable, visually select an assignment *FIX BEFORE*
+
+Tungsten uses `:=` as the default assignment operator (see [configuration](reference/config) to change the default).
+Say that we want to e.g. assign the numerical value `2` to a variable `a`, we simply visually select
+```
+a := 2
+```
+and run the `:TungstenDefinePersistentVariable` command (the default mapping is `<leader>ted`). After having done this Tungsten will understand that any time we write `a` we are actually writing `2`.
+In this way, we are able to use the variable in subsequent evaluations, e.g.
+```
+a \cdot 2 = 4
+```
+You can also define variables that depend on other variables.
+```
+b := \frac{a}{2}
+```
+And then use these in calculations:
+```
+b + 3 = 4
+```
+or simply check their value by using `:TungstenEvaluate` with an input of just the variable as:
+```
+b = 1
+```
+
+You are also able to evaluate an expression and assign the evaluated value to a variable in one go. To do this, simply type the variable, followed by its definition, just as you would when normally definining a variable but then instead of using `:TungstenDefinePersistentVariable` use `:TungstenEvaluate`. This gives:
+```
+c := \frac{4}{2} = 2
+c - 2 = 0
+```
+
+To clear all defined persistent variables use the `:TungstenClearPersistentVars` command.
+
 
 ## Solving Equations
 
@@ -70,6 +101,8 @@ To simplify an expression just select the expression in insert mode and run the 
 ```
 \frac{2x^2 + 4x}{2x} \rightarrow x + 2
 ```
+
+The standard keymapping for the `:TungstenSimplify` command is `<leader>tes`
 
 ## Factoring Expressions
 
