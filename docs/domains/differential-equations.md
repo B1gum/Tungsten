@@ -16,7 +16,7 @@ To solve an ODE, visually select the equation, which must contain at least one d
 
 Tungsten supports various notation styles for derivatives, including Leibniz (`\frac{\mathrm{d}y}{\mathrm{d}x}`), Lagrange (`y'`), and Newton (`\dot{y}`).
 These various notation styles can be mixed as shown underneath:
-See the [Calculus Domain](docs/domains/Calculus) for more information on this.
+See the [Calculus Domain](Calculus) for more information on this.
 
 **Example**:
 ```latex
