@@ -29,7 +29,7 @@ describe("Arithmetic Solve System Rule: tungsten.domains.arithmetic.rules.solve_
 
 		mock_tokenizer_module = {
 			space = S(" \t\n\r") ^ 0,
-			equals_op = P("=") / function()
+			equals_op = (P("&=") + (P("&") * (S(" \t\n\r") ^ 1) * P("=")) + P("=")) / function()
 				return { type = "equals_op_token" }
 			end,
 			variable = C(R("az", "AZ") * (R("az", "AZ", "09") ^ 0)) / function(s)
@@ -129,6 +129,18 @@ describe("Arithmetic Solve System Rule: tungsten.domains.arithmetic.rules.solve_
 					equation_placeholder_node("x=1"),
 					equation_placeholder_node("y=2"),
 					equation_placeholder_node("z=3"),
+				},
+			}
+			assert.are.same(expected_ast, parse_input(input))
+		end)
+
+		it("should parse equations separated by LaTeX newlines with &= operators", function()
+			local input = "x&=1 \\\\ y&=2"
+			local expected_ast = {
+				type = "solve_system_equations_capture",
+				equations = {
+					equation_placeholder_node("x=1"),
+					equation_placeholder_node("y=2"),
 				},
 			}
 			assert.are.same(expected_ast, parse_input(input))

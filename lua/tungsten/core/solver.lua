@@ -22,7 +22,7 @@ function M.solve_asts_async(eq_asts, var_asts, is_system, callback, opts)
 
 	local solve_node = ast.create_solve_system_node(eq_asts, var_asts)
 
-	backend:solve_async(solve_node, opts, callback)
+	backend.solve_async(solve_node, opts, callback)
 end
 
 return M

@@ -8,7 +8,8 @@ local constants = require("tungsten.core.constants")
 
 local ast = require("tungsten.core.ast")
 local latex_spacing = P("\\,")
-local space = (S(" \t\n\r") + latex_spacing) ^ 0
+local whitespace = S(" \t\n\r") + latex_spacing
+local space = whitespace ^ 0
 
 local digit = R("09")
 local letter = R("az", "AZ")
@@ -87,9 +88,10 @@ local double_backslash = P("\\\\") / function()
 	return { type = "double_backslash" }
 end
 
-local equals_op = (P("&")) ^ -1 * P("=") / function()
-	return { type = "equals_op", value = "=" }
-end
+local equals_op = (P("&=") + (P("&") * whitespace ^ 1 * P("=")) + P("="))
+	/ function()
+		return { type = "equals_op", value = "=" }
+	end
 
 local function create_cmd_token(cmd_name_str, token_type_str)
 	return P("\\" .. cmd_name_str) * -letter / function()

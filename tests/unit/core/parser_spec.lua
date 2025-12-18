@@ -893,4 +893,24 @@ describe("tungsten.core.parser.parse with combined grammar", function()
 			assert.are.same(expected_ast, parse_input(input))
 		end)
 	end)
+
+	describe("solve system input", function()
+		it("parses multiline LaTeX systems with aligned equals", function()
+			local input = [[
+                                x^2 + y^2 &= 1 \\\\
+                                x^2 - 2y^2 &= 0
+                        ]]
+
+			local res = parser.parse(input, { preserve_newlines = true, allow_multiple_relations = true })
+			assert.is_not_nil(res)
+			assert.is_table(res.series)
+			assert.are.equal(1, #res.series)
+
+			local system_capture = res.series[1]
+			assert.are.equal("solve_system_equations_capture", system_capture.type)
+			assert.are.equal(2, #system_capture.equations)
+			assert.are.equal("Equality", system_capture.equations[1].type)
+			assert.are.equal("Equality", system_capture.equations[2].type)
+		end)
+	end)
 end)

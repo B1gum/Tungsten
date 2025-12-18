@@ -147,7 +147,7 @@ function M.solve_async(solve_ast, opts, callback)
 		table.insert(variables, ok and name or tostring(v.name or ""))
 	end
 
-	M.evaluate_async(nil, { code = code, cache_key = opts.cache_key, form = "InputForm" }, function(result, err)
+	M.evaluate_async(nil, { code = code, cache_key = opts.cache_key, form = "TeXForm" }, function(result, err)
 		if err then
 			callback(nil, err)
 			return

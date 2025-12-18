@@ -187,7 +187,8 @@ end
 local function tungsten_solve_system_command(_)
 	local _, start_mark, end_mark, mode = selection.create_selection_extmarks()
 
-	local capture_ast, selection_text, parse_err = cmd_utils.parse_selected_latex("system of equations")
+	local capture_ast, selection_text, parse_err =
+		cmd_utils.parse_selected_latex("system of equations", { preserve_newlines = true, allow_multiple_relations = true })
 	if parse_err then
 		error_handler.notify_error("SolveSystem", parse_err)
 		return

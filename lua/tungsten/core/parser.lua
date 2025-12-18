@@ -285,10 +285,18 @@ end
 
 function M.parse(input, opts)
 	opts = opts or {}
+	if opts.allow_multiple_relations then
+		input = input:gsub("\\\\%s*\n", ";"):gsub("\\\\", ";")
+	end
 	local current_grammar = M.get_grammar()
 	local pattern = space * current_grammar * (space * -1 + lpeg.T("extra_input"))
 
-	local series_strs = lexer.split_top_level(input, { [";"] = true, ["\n"] = true })
+	local series_separators = { [";"] = true }
+	if not opts.preserve_newlines then
+		series_separators["\n"] = true
+	end
+
+	local series_strs = lexer.split_top_level(input, series_separators)
 	local series = {}
 	for _, ser in ipairs(series_strs) do
 		local seq_strs = lexer.split_top_level(ser.str, { [","] = true })
@@ -296,7 +304,7 @@ function M.parse(input, opts)
 		for _, item in ipairs(seq_strs) do
 			local expr, lead = trim(item.str)
 			if expr ~= "" then
-				local rel_pos = detect_chained_relations(expr)
+				local rel_pos = (not opts.allow_multiple_relations) and detect_chained_relations(expr)
 				if rel_pos then
 					local global_pos = ser.start_pos + item.start_pos - 1 + lead + rel_pos - 1
 					local msg = "Chained inequalities are not supported (v1)."
@@ -335,6 +343,30 @@ function M.parse(input, opts)
 		elseif #nodes > 1 then
 			local sequence_node = ast.create_sequence_node(nodes)
 			table.insert(series, sequence_node)
+		end
+	end
+
+	if opts.allow_multiple_relations and #series > 0 then
+		local equations = {}
+		local function collect_eqs(node)
+			if node and node.type == "Sequence" and node.nodes then
+				for _, child in ipairs(node.nodes) do
+					collect_eqs(child)
+				end
+				return
+			end
+
+			if node and node.type == "Equality" then
+				table.insert(equations, node)
+			end
+		end
+
+		for _, node in ipairs(series) do
+			collect_eqs(node)
+		end
+
+		if #equations > 1 then
+			series = { ast.create_solve_system_equations_capture_node(equations) }
 		end
 	end
 
