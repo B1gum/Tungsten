@@ -9,24 +9,38 @@ describe("Tungsten core commands", function()
 	local commands_module
 
 	local mock_evaluator_evaluate_async_spy
-	local mock_event_bus_emit_spy
-	local mock_logger_notify_spy
-	local mock_solver_solve_asts_async_spy
-	local mock_cmd_utils_parse_selected_latex_spy
+        local mock_event_bus_emit_spy
+        local mock_logger_notify_spy
+        local mock_solver_solve_asts_async_spy
+        local mock_cmd_utils_parse_selected_latex_spy
+        local mock_selection_get_visual_selection_spy
+        local mock_parser_parse_spy
+        local mock_persistent_vars_parse_definition_spy
+        local mock_persistent_vars_latex_to_backend_code_spy
+        local mock_persistent_vars_store_spy
+        local mock_error_handler_notify_error_spy
 
 	local mock_evaluator_module
 	local mock_event_bus_module
 	local mock_logger_module
-	local mock_solver_module
-	local mock_config_module
-	local mock_cmd_utils_module
-	local mock_state_module
+        local mock_solver_module
+        local mock_config_module
+        local mock_cmd_utils_module
+        local mock_state_module
+        local mock_selection_module
+        local mock_parser_module
+        local mock_persistent_vars_module
+        local mock_error_handler_module
 
 	local original_require
 
-	local current_parse_selected_latex_config
-	local current_eval_async_config_key
-	local current_solve_equation_config
+        local current_parse_selected_latex_config
+        local current_eval_async_config_key
+        local current_solve_equation_config
+        local current_visual_selection_text
+        local current_parser_configs
+        local current_parse_definition_config
+        local current_backend_conversion
 
 	local eval_async_behaviors = {}
 
@@ -38,10 +52,13 @@ describe("Tungsten core commands", function()
 		"tungsten.core.solver",
 		"tungsten.event_bus",
 		"tungsten.config",
-		"tungsten.util.logger",
-		"tungsten.util.commands",
-		"tungsten.state",
-		"tungsten.core.persistent_vars",
+                "tungsten.util.logger",
+                "tungsten.util.commands",
+                "tungsten.state",
+                "tungsten.core.persistent_vars",
+                "tungsten.core.parser",
+                "tungsten.util.selection",
+                "tungsten.util.error_handler",
 	}
 
 	before_each(function()
@@ -50,7 +67,7 @@ describe("Tungsten core commands", function()
 		_G.vim.fn.mode = function()
 			return "v"
 		end
-		local mock_selection_module = {
+		mock_selection_module = {
 			create_selection_extmarks = function()
 				return 0, 1, 2, "v"
 			end,
@@ -65,8 +82,11 @@ describe("Tungsten core commands", function()
 		mock_event_bus_module = {}
 		mock_logger_module = {}
 		mock_solver_module = {}
-		mock_cmd_utils_module = {}
-		mock_state_module = { persistent_variables = {} }
+                mock_cmd_utils_module = {}
+                mock_state_module = { persistent_variables = {} }
+                mock_parser_module = {}
+                mock_persistent_vars_module = {}
+                mock_error_handler_module = {}
 
 		original_require = _G.require
 		_G.require = function(module_path)
@@ -79,21 +99,36 @@ describe("Tungsten core commands", function()
 			if module_path == "tungsten.event_bus" then
 				return mock_event_bus_module
 			end
-			if module_path == "tungsten.util.selection" then
-				return mock_selection_module
-			end
+                        if module_path == "tungsten.util.selection" then
+                                package.loaded[module_path] = mock_selection_module
+                                return mock_selection_module
+                        end
 			if module_path == "tungsten.util.logger" then
 				return mock_logger_module
 			end
 			if module_path == "tungsten.core.solver" then
 				return mock_solver_module
 			end
-			if module_path == "tungsten.util.commands" then
-				return mock_cmd_utils_module
-			end
-			if module_path == "tungsten.state" then
-				return mock_state_module
-			end
+                        if module_path == "tungsten.util.commands" then
+                                package.loaded[module_path] = mock_cmd_utils_module
+                                return mock_cmd_utils_module
+                        end
+                        if module_path == "tungsten.state" then
+                                package.loaded[module_path] = mock_state_module
+                                return mock_state_module
+                        end
+                        if module_path == "tungsten.core.parser" then
+                                package.loaded[module_path] = mock_parser_module
+                                return mock_parser_module
+                        end
+                        if module_path == "tungsten.core.persistent_vars" then
+                                package.loaded[module_path] = mock_persistent_vars_module
+                                return mock_persistent_vars_module
+                        end
+                        if module_path == "tungsten.util.error_handler" then
+                                package.loaded[module_path] = mock_error_handler_module
+                                return mock_error_handler_module
+                        end
 
 			if package.loaded[module_path] then
 				return package.loaded[module_path]
@@ -105,18 +140,67 @@ describe("Tungsten core commands", function()
 
 		vim_test_env.set_plugin_config({ "numeric_mode" }, false)
 
-		current_parse_selected_latex_config = {}
-		current_eval_async_config_key = "default_eval"
-		current_solve_equation_config = { result = "default_solution", err = nil }
+                current_parse_selected_latex_config = {}
+                current_eval_async_config_key = "default_eval"
+                current_solve_equation_config = { result = "default_solution", err = nil }
+                current_visual_selection_text = ""
+                current_parser_configs = {}
+                current_parse_definition_config = nil
+                current_backend_conversion = { def = nil, err = nil }
 
-		mock_cmd_utils_parse_selected_latex_spy = spy.new(function(desc)
-			local config = current_parse_selected_latex_config[desc]
-			if config then
-				return config.ast, config.text
-			end
-			return nil, ""
-		end)
-		mock_cmd_utils_module.parse_selected_latex = mock_cmd_utils_parse_selected_latex_spy
+                mock_cmd_utils_parse_selected_latex_spy = spy.new(function(desc)
+                        local config = current_parse_selected_latex_config[desc]
+                        if config then
+                                return config.ast, config.text
+                        end
+                        return nil, ""
+                end)
+                mock_cmd_utils_module.parse_selected_latex = mock_cmd_utils_parse_selected_latex_spy
+
+                mock_selection_get_visual_selection_spy = spy.new(function()
+                        return current_visual_selection_text
+                end)
+                mock_selection_module.get_visual_selection = mock_selection_get_visual_selection_spy
+
+                mock_parser_parse_spy = spy.new(function(text)
+                        local parser_config = current_parser_configs[text]
+                        if not parser_config then
+                                return nil, "parse error"
+                        end
+                        if parser_config.err then
+                                return nil, parser_config.err
+                        end
+                        local series = parser_config.series or {}
+                        if not parser_config.series then
+                                table.insert(series, parser_config.ast)
+                        end
+                        return { series = series }
+                end)
+                mock_parser_module.parse = mock_parser_parse_spy
+
+                mock_persistent_vars_parse_definition_spy = spy.new(function(_)
+                        if not current_parse_definition_config then
+                                return nil, nil, "no assignment"
+                        end
+                        return current_parse_definition_config.name,
+                                current_parse_definition_config.rhs,
+                                current_parse_definition_config.err
+                end)
+
+                mock_persistent_vars_latex_to_backend_code_spy = spy.new(function(_, _)
+                        return current_backend_conversion.def, current_backend_conversion.err
+                end)
+
+                mock_persistent_vars_store_spy = spy.new(function(name, backend_def)
+                        mock_state_module.persistent_variables[name] = backend_def
+                end)
+
+                mock_persistent_vars_module.parse_definition = mock_persistent_vars_parse_definition_spy
+                mock_persistent_vars_module.latex_to_backend_code = mock_persistent_vars_latex_to_backend_code_spy
+                mock_persistent_vars_module.store = mock_persistent_vars_store_spy
+
+                mock_error_handler_notify_error_spy = spy.new(function() end)
+                mock_error_handler_module.notify_error = mock_error_handler_notify_error_spy
 
 		eval_async_behaviors.default_eval = function(ast, _, callback)
 			if ast and ast.representation == "parsed:\\frac{1+1}{2}" then
@@ -125,16 +209,19 @@ describe("Tungsten core commands", function()
 				callback(nil)
 			end
 		end
-		eval_async_behaviors.numeric_eval = function(ast, _, callback)
-			if ast and ast.representation == "parsed:\\frac{1+1}{2}" then
-				callback("1.0")
-			else
-				callback(nil)
-			end
-		end
-		eval_async_behaviors.nil_eval = function(_, _, callback)
-			callback(nil)
-		end
+                eval_async_behaviors.numeric_eval = function(ast, _, callback)
+                        if ast and ast.representation == "parsed:\\frac{1+1}{2}" then
+                                callback("1.0")
+                        else
+                                callback(nil)
+                        end
+                end
+                eval_async_behaviors.assignment_eval = function(_, _, callback)
+                        callback("4")
+                end
+                eval_async_behaviors.nil_eval = function(_, _, callback)
+                        callback(nil)
+                end
 		eval_async_behaviors.empty_string_eval = function(_, _, callback)
 			callback("")
 		end
@@ -183,71 +270,99 @@ describe("Tungsten core commands", function()
 		mock_utils.reset_modules(modules_to_clear_from_cache)
 	end)
 
-	describe(":TungstenEvaluate", function()
-		it("should process visual selection, parse, evaluate, and insert result", function()
-			current_parse_selected_latex_config["expression"] = {
-				ast = { type = "expression", representation = "parsed:\\frac{1+1}{2}" },
-				text = "\\frac{1+1}{2}",
-			}
-			current_eval_async_config_key = "default_eval"
+        describe(":TungstenEvaluate", function()
+                it("should process visual selection, parse, evaluate, and insert result", function()
+                        current_visual_selection_text = "\\frac{1+1}{2}"
+                        current_parser_configs[current_visual_selection_text] = {
+                                ast = { type = "expression", representation = "parsed:\\frac{1+1}{2}" },
+                        }
+                        current_eval_async_config_key = "default_eval"
 
-			vim_test_env.set_visual_selection(1, 1, 1, 5)
+                        vim_test_env.set_visual_selection(1, 1, 1, 5)
 
-			commands_module.tungsten_evaluate_command({})
+                        commands_module.tungsten_evaluate_command({})
 
-			assert.spy(mock_cmd_utils_parse_selected_latex_spy).was.called_with("expression")
-			assert.spy(mock_evaluator_evaluate_async_spy).was.called(1)
-			local ast_arg = mock_evaluator_evaluate_async_spy.calls[1].vals[1]
-			assert.are.same({ type = "expression", representation = "parsed:\\frac{1+1}{2}" }, ast_arg)
-			assert.spy(mock_event_bus_emit_spy).was.called_with("result_ready", match.is_table())
-		end)
+                        assert.spy(mock_selection_get_visual_selection_spy).was.called()
+                        assert.spy(mock_parser_parse_spy).was.called_with("\\frac{1+1}{2}", nil)
+                        assert.spy(mock_evaluator_evaluate_async_spy).was.called(1)
+                        local ast_arg = mock_evaluator_evaluate_async_spy.calls[1].vals[1]
+                        assert.are.same({ type = "expression", representation = "parsed:\\frac{1+1}{2}" }, ast_arg)
+                        assert.spy(mock_event_bus_emit_spy).was.called_with("result_ready", match.is_table())
+                end)
 
-		it("should not proceed if parsing fails (cmd_utils returns nil)", function()
-			current_parse_selected_latex_config["expression"] = { ast = nil, text = "" }
-			vim_test_env.set_visual_selection(1, 1, 1, 1)
+                it("should not proceed if parsing fails (cmd_utils returns nil)", function()
+                        current_visual_selection_text = "invalid"
+                        current_parser_configs[current_visual_selection_text] = { err = "parse err" }
+                        vim_test_env.set_visual_selection(1, 1, 1, 1)
 
-			commands_module.tungsten_evaluate_command({})
+                        commands_module.tungsten_evaluate_command({})
 
-			assert.spy(mock_cmd_utils_parse_selected_latex_spy).was.called_with("expression")
-			assert.spy(mock_evaluator_evaluate_async_spy).was_not.called()
-			assert.spy(mock_event_bus_emit_spy).was_not.called()
-		end)
+                        assert.spy(mock_parser_parse_spy).was.called_with("invalid", nil)
+                        assert.spy(mock_evaluator_evaluate_async_spy).was_not.called()
+                        assert.spy(mock_event_bus_emit_spy).was_not.called()
+                end)
 
-		it("should not call insert_result if evaluation returns nil", function()
-			current_parse_selected_latex_config["expression"] = { ast = { type = "expression" } }
-			current_eval_async_config_key = "nil_eval"
-			vim_test_env.set_visual_selection(1, 1, 1, 1)
-			commands_module.tungsten_evaluate_command({})
-			assert.spy(mock_event_bus_emit_spy).was_not.called()
-		end)
+                it("should not call insert_result if evaluation returns nil", function()
+                        current_visual_selection_text = "x"
+                        current_parser_configs[current_visual_selection_text] = { ast = { type = "expression" } }
+                        current_eval_async_config_key = "nil_eval"
+                        vim_test_env.set_visual_selection(1, 1, 1, 1)
+                        commands_module.tungsten_evaluate_command({})
+                        assert.spy(mock_event_bus_emit_spy).was_not.called()
+                end)
 
-		it("should not call insert_result if evaluation returns empty string", function()
-			current_parse_selected_latex_config["expression"] = { ast = { type = "expression" } }
-			current_eval_async_config_key = "empty_string_eval"
-			vim_test_env.set_visual_selection(1, 1, 1, 1)
-			commands_module.tungsten_evaluate_command({})
-			assert.spy(mock_event_bus_emit_spy).was_not.called()
-		end)
+                it("should not call insert_result if evaluation returns empty string", function()
+                        current_visual_selection_text = "y"
+                        current_parser_configs[current_visual_selection_text] = { ast = { type = "expression" } }
+                        current_eval_async_config_key = "empty_string_eval"
+                        vim_test_env.set_visual_selection(1, 1, 1, 1)
+                        commands_module.tungsten_evaluate_command({})
+                        assert.spy(mock_event_bus_emit_spy).was_not.called()
+                end)
 
-		it("should use numeric_mode from config when calling evaluate_async", function()
-			vim_test_env.set_plugin_config({ "numeric_mode" }, true)
-			current_parse_selected_latex_config["expression"] =
-				{ ast = { type = "expression", representation = "parsed:\\frac{1+1}{2}" } }
-			current_eval_async_config_key = "numeric_eval"
+                it("should use numeric_mode from config when calling evaluate_async", function()
+                        vim_test_env.set_plugin_config({ "numeric_mode" }, true)
+                        current_visual_selection_text = "\\frac{1+1}{2}"
+                        current_parser_configs[current_visual_selection_text] =
+                                { ast = { type = "expression", representation = "parsed:\\frac{1+1}{2}" } }
+                        current_eval_async_config_key = "numeric_eval"
 
-			vim_test_env.set_visual_selection(1, 1, 1, 5)
+                        vim_test_env.set_visual_selection(1, 1, 1, 5)
 
-			package.loaded["tungsten.core.commands"] = nil
-			local temp_commands_module = require("tungsten.core.commands")
-			temp_commands_module.tungsten_evaluate_command({})
+                        package.loaded["tungsten.core.commands"] = nil
+                        local temp_commands_module = require("tungsten.core.commands")
+                        temp_commands_module.tungsten_evaluate_command({})
 
-			assert.spy(mock_evaluator_evaluate_async_spy).was.called(1)
-			local numeric_mode_arg = mock_evaluator_evaluate_async_spy.calls[1].vals[2]
-			assert.is_true(numeric_mode_arg)
-			assert.spy(mock_event_bus_emit_spy).was.called_with("result_ready", match.is_table())
-			vim_test_env.set_plugin_config({ "numeric_mode" }, false)
-		end)
-	end)
+                        assert.spy(mock_evaluator_evaluate_async_spy).was.called(1)
+                        local numeric_mode_arg = mock_evaluator_evaluate_async_spy.calls[1].vals[2]
+                        assert.is_true(numeric_mode_arg)
+                        assert.spy(mock_event_bus_emit_spy).was.called_with("result_ready", match.is_table())
+                        vim_test_env.set_plugin_config({ "numeric_mode" }, false)
+                end)
+
+                it("assigns evaluated result to a persistent variable when assignment syntax is used", function()
+                        current_visual_selection_text = "a := 2+2"
+                        current_parse_definition_config = { name = "a", rhs = "2+2" }
+                        current_parser_configs["2+2"] = { ast = { type = "expression", id = "two_plus_two" } }
+                        current_eval_async_config_key = "assignment_eval"
+                        current_backend_conversion = { def = "backend_four", err = nil }
+
+                        vim_test_env.set_visual_selection(1, 1, 1, 5)
+
+                        commands_module.tungsten_evaluate_command({})
+
+                        assert.spy(mock_persistent_vars_parse_definition_spy).was.called_with("a := 2+2")
+                        assert.spy(mock_parser_parse_spy).was.called_with("2+2", nil)
+                        assert.spy(mock_evaluator_evaluate_async_spy).was.called(1)
+                        assert.spy(mock_persistent_vars_latex_to_backend_code_spy).was.called_with("a", "4")
+                        assert.spy(mock_persistent_vars_store_spy).was.called_with("a", "backend_four")
+                        assert.are.equal("backend_four", mock_state_module.persistent_variables["a"])
+
+                        assert.spy(mock_event_bus_emit_spy).was.called_with("result_ready", match.is_table())
+                        local emitted_payload = mock_event_bus_emit_spy.calls[1].vals[2]
+                        assert.are.equal("a := 2+2", emitted_payload.selection_text)
+                end)
+        end)
 
 	describe(":TungstenSimplify", function()
 		it("wraps selection with Simplify and evaluates", function()
