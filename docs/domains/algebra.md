@@ -22,7 +22,7 @@ This is showcased underneath, where the LaTeX-formatted expressions on the left 
 The arithmetic and algebra domain adds support for:
 
   - Addition and subtraction using `+` and `-` respectively.
-  - Multiplication using `\cdot` and `\times` (for vector inputs these have different meanings, see [Linear Algebra](linear-algebra))
+  - Multiplication using `\cdot` and `\times` (for vector inputs these have different meanings, see [Linear Algebra](linear-algebra.md))
   - Division using `\frac{}{}`. 
   - Exponents using `^{}`
   - The natural and base 10 logarithms, using `ln` and `log` respectively.
@@ -48,7 +48,7 @@ Variables are stored in Tungsten's session state (i.e. they persist across comma
 
 ### Defining a Variable
 
-Tungsten uses `:=` as the default assignment operator (see [configuration](../reference/config) to change the default).
+Tungsten uses `:=` as the default assignment operator (see [configuration](../reference/config.md) to change the default).
 Say that we want to e.g. assign the numerical value `2` to a variable `a`, we simply visually select
 ```latex
 a := 2

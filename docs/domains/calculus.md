@@ -46,7 +46,7 @@ This is used for simple variables like `y''`.
 If no explicit argument is provided, the system defaults to using `x` as the variable of differentiation.
 
 
-Lagrange notation is especially useful in Tungsten when working with [differential equations](differential-equations).
+Lagrange notation is especially useful in Tungsten when working with [differential equations](differential-equations.md).
 
 
 ### Newton Notation
@@ -54,7 +54,7 @@ Lagrange notation is especially useful in Tungsten when working with [differenti
 Newton notation (dot notation) is implemented using the standard LaTeX-commands `\dot{f}` and `\ddot{f]` corresponding to the first and second derivative of `f` respectively. 
 Newton notation typically implies a deriviative with respect to time, and the system will therefore automatically assign `t` as the variable of differentiation for these nodes.
 
-Newton notation is especially useful in Tungsten when working with [differential equations](differential-equations).
+Newton notation is especially useful in Tungsten when working with [differential equations](differential-equations.md).
 
 
 ### Partial Derivatives
