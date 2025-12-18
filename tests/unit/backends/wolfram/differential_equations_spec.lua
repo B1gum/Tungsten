@@ -15,6 +15,10 @@ describe("Differential Equations Wolfram Handlers", function()
 
 			if node.type == "variable" then
 				return node.name
+			elseif node.type == "number" then
+				return tostring(node.value)
+			elseif node.type == "subscript" then
+				return string.format("Subscript[%s, %s]", mock_render(node.base), mock_render(node.subscript))
 			elseif node.type == "function_call" then
 				local arg_str = ""
 				if node.args and #node.args > 0 then
@@ -24,13 +28,27 @@ describe("Differential Equations Wolfram Handlers", function()
 					end
 					arg_str = table.concat(rendered_args, ", ")
 				end
-				return mock_render(node.name_node) .. "[" .. arg_str .. "]"
+				local func_name = mock_render(node.name_node)
+				func_name = func_name:match("^%a") and (func_name:sub(1, 1):upper() .. func_name:sub(2)) or func_name
+				return func_name .. "[" .. arg_str .. "]"
 			elseif node.type == "derivative" then
 				local var_name = node.variable.name or "y"
 				local order = node.order or 1
 				local order_str = string.rep("'", order)
 				local indep_var = (node.independent_variable and node.independent_variable.name) or "x"
 				return var_name .. order_str .. "[" .. indep_var .. "]"
+			elseif node.type == "ordinary_derivative" then
+				local order = (node.order and node.order.value) or 1
+				local order_str = string.rep("'", order)
+				local indep_var = (node.variable and node.variable.name) or "x"
+
+				if node.expression.type == "function_call" then
+					local func_name = mock_render(node.expression.name_node)
+					func_name = func_name:match("^%a") and (func_name:sub(1, 1):upper() .. func_name:sub(2)) or func_name
+					return func_name .. order_str .. "[" .. mock_render(node.expression.args[1]) .. "]"
+				elseif node.expression.type == "variable" then
+					return node.expression.name .. order_str .. "[" .. indep_var .. "]"
+				end
 			end
 			return ""
 		end
@@ -44,7 +62,24 @@ describe("Differential Equations Wolfram Handlers", function()
 				rhs = { type = "variable", name = "y" },
 			}
 			local result = handlers.ode(ast, mock_render)
-			assert.are.same("DSolve[y'[x] == y, y[x], x]", result)
+			assert.are.same("DSolve[Y'[x] == Y[x], Y[x], x]", result)
+		end)
+
+		it("should attach the independent variable to bare dependent variables", function()
+			local ast = {
+				type = "ode",
+				lhs = {
+					type = "ordinary_derivative",
+					expression = { type = "variable", name = "y" },
+					variable = { type = "variable", name = "x" },
+					order = { type = "number", value = 2 },
+				},
+				rhs = { type = "variable", name = "y" },
+			}
+
+			local result = handlers.ode(ast, mock_render)
+
+			assert.are.same("DSolve[Y''[x] == Y[x], Y[x], x]", result)
 		end)
 	end)
 
@@ -67,8 +102,8 @@ describe("Differential Equations Wolfram Handlers", function()
 			}
 			local result = handlers.ode_system(ast, mock_render)
 			assert.is_true(
-				result == "DSolve[{y'[x] == z, z'[x] == y}, {y[x], z[x]}, x]"
-					or result == "DSolve[{y'[x] == z, z'[x] == y}, {z[x], y[x]}, x]"
+				result == "DSolve[{Y'[x] == Z[x], Z'[x] == Y[x]}, {Y[x], Z[x]}, x]"
+					or result == "DSolve[{Y'[x] == Z[x], Z'[x] == Y[x]}, {Z[x], Y[x]}, x]"
 			)
 		end)
 	end)
@@ -83,7 +118,28 @@ describe("Differential Equations Wolfram Handlers", function()
 				},
 			}
 			local result = handlers.wronskian(ast, mock_render)
-			assert.are.same("Wronskian[{f, g}, x]", result)
+			assert.are.same("Wronskian[{f[x], g[x]}, x]", result)
+		end)
+
+		it("should treat subscripted functions as dependent on the variable", function()
+			local ast = {
+				type = "wronskian",
+				functions = {
+					{
+						type = "subscript",
+						base = { type = "variable", name = "y" },
+						subscript = { type = "number", value = 1 },
+					},
+					{
+						type = "subscript",
+						base = { type = "variable", name = "y" },
+						subscript = { type = "number", value = 2 },
+					},
+				},
+			}
+
+			local result = handlers.wronskian(ast, mock_render)
+			assert.are.same("Wronskian[{Subscript[y, 1][x], Subscript[y, 2][x]}, x]", result)
 		end)
 	end)
 
@@ -98,7 +154,7 @@ describe("Differential Equations Wolfram Handlers", function()
 				},
 			}
 			local result = handlers.laplace_transform(ast, mock_render)
-			assert.are.same("LaplaceTransform[f[t], t, s]", result)
+			assert.are.same("LaplaceTransform[F[t], t, s]", result)
 		end)
 	end)
 
