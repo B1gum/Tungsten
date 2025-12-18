@@ -65,7 +65,10 @@ local function get_backend()
 	return backend
 end
 
+local function default_callback() end
+
 function M.write_async(name, backend_def, callback)
+	callback = callback or default_callback
 	local backend = get_backend()
 	if backend and type(backend.persistent_write_async) == "function" then
 		backend.persistent_write_async(name, backend_def, callback)
@@ -74,12 +77,13 @@ function M.write_async(name, backend_def, callback)
 	local code = string.format("%s %s %s", tostring(name), config.persistent_variable_assignment_operator, backend_def)
 	if backend and type(backend.evaluate_async) == "function" then
 		backend.evaluate_async(nil, { code = code }, callback)
-	elseif callback then
+	else
 		callback(nil, "No active backend")
 	end
 end
 
 function M.read_async(name, callback)
+	callback = callback or default_callback
 	local backend = get_backend()
 	if backend and type(backend.persistent_read_async) == "function" then
 		backend.persistent_read_async(name, callback)
@@ -87,12 +91,13 @@ function M.read_async(name, callback)
 	end
 	if backend and type(backend.evaluate_async) == "function" then
 		backend.evaluate_async(nil, { code = tostring(name) }, callback)
-	elseif callback then
+	else
 		callback(nil, "No active backend")
 	end
 end
 
 function M.store(name, backend_def, callback)
+	callback = callback or default_callback
 	state.persistent_variables = state.persistent_variables or {}
 	state.persistent_variables[name] = backend_def
 	M.write_async(name, backend_def, callback)

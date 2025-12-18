@@ -74,6 +74,11 @@ local function define_persistent_variable_command(_)
 	local name, rhs, parse_err = persistent_vars.parse_definition(selection_text)
 	if parse_err then
 		error_handler.notify_error("DefineVar", parse_err)
+		return
+	end
+
+	if not name or not rhs then
+		return
 	end
 
 	logger.debug("Tungsten Debug", "Defining variables '" .. name .. "' with LaTeX RHS: '" .. rhs .. "'")
@@ -84,11 +89,13 @@ local function define_persistent_variable_command(_)
 		return
 	end
 
-	logger.debug("Tungsten Debug", "Storing variable '" .. name .. "' with string: '" .. backend_def .. "'")
-
-	persistent_vars.store(name, backend_def)
-
-	logger.info("Tungsten", "Defined persistent variable '" .. name .. "' as '" .. backend_def .. "'.")
+	persistent_vars.store(name, backend_def, function(_, err)
+		if err then
+			error_handler.notify_error("DefineVar", err)
+			return
+		end
+		logger.info("Tungsten", "Defined persistent variable '" .. name .. "' as '" .. backend_def .. "'.")
+	end)
 end
 
 local function tungsten_clear_persistent_vars_command(_)

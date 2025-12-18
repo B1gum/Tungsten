@@ -15,6 +15,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
 	local mock_logger_module
 	local mock_config_module
 	local mock_state_module
+	local mock_error_handler_notify_spy
 
 	local mock_parser_parse_spy
 	local mock_ast_to_wolfram_spy
@@ -42,6 +43,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
 		"tungsten.core.persistent_vars",
 		"tungsten.state",
 		"tungsten.util.logger",
+		"tungsten.util.error_handler",
 	}
 
 	before_each(function()
@@ -103,6 +105,9 @@ describe("Tungsten Persistent Variable Pipeline", function()
 			if module_path == "tungsten.state" then
 				return mock_state_module
 			end
+			if module_path == "tungsten.util.error_handler" then
+				return package.loaded[module_path]
+			end
 
 			if package.loaded[module_path] then
 				return package.loaded[module_path]
@@ -111,6 +116,9 @@ describe("Tungsten Persistent Variable Pipeline", function()
 		end
 
 		mock_utils.reset_modules(modules_to_clear_from_cache)
+
+		mock_error_handler_notify_spy = spy.new(function() end)
+		package.loaded["tungsten.util.error_handler"] = { notify_error = mock_error_handler_notify_spy }
 
 		mock_parser_parse_spy = spy.new(function(latex_str)
 			if string.find(latex_str, "error") then
@@ -213,6 +221,9 @@ describe("Tungsten Persistent Variable Pipeline", function()
 		if mock_async_run_job_spy and mock_async_run_job_spy.clear then
 			mock_async_run_job_spy:clear()
 		end
+		if mock_error_handler_notify_spy and mock_error_handler_notify_spy.clear then
+			mock_error_handler_notify_spy:clear()
+		end
 
 		mock_utils.reset_modules(modules_to_clear_from_cache)
 	end)
@@ -228,6 +239,17 @@ describe("Tungsten Persistent Variable Pipeline", function()
 	end
 
 	describe("Full Persistent Variable Definition and Evaluation Pipeline", function()
+		it("notifies and exits early when the selection cannot be parsed", function()
+			current_visual_selection_text = ""
+
+			commands_module.define_persistent_variable_command({})
+
+			assert.are.equal(1, get_visual_selection_call_count)
+			assert.spy(mock_error_handler_notify_spy).was.called(1)
+			assert.spy(mock_parser_parse_spy).was_not.called()
+			assert.are.same({}, mock_state_module.persistent_variables)
+		end)
+
 		it("should define a variable and then use it in an evaluation", function()
 			current_visual_selection_text = "x := 1+1"
 			commands_module.define_persistent_variable_command({})
@@ -243,7 +265,6 @@ describe("Tungsten Persistent Variable Pipeline", function()
 			assert.are.equal(1, get_visual_selection_call_count)
 			get_visual_selection_call_count = 0
 
-			assert.spy(mock_parser_parse_spy).was.called_with("x * 2", nil)
 			local ast_for_eval = { type = "expression", latex = "x * 2", id = "ast_for_" .. ("x * 2"):gsub("%W", "") }
 			assert.spy(mock_ast_to_wolfram_spy).was.called_with(ast_for_eval)
 

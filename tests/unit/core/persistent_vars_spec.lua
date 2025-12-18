@@ -141,7 +141,8 @@ describe("tungsten.core.persistent_vars", function()
 			end
 
 			persistent_vars.write_async("x", "1", nil)
-			assert.are.same({ "x", "1", nil }, write_args)
+			assert.are.same({ "x", "1" }, { write_args[1], write_args[2] })
+			assert.is_function(write_args[3])
 
 			mock_backend.persistent_write_async = nil
 			persistent_vars.write_async("y", "2", "cb")
@@ -198,7 +199,11 @@ describe("tungsten.core.persistent_vars", function()
 
 			persistent_vars.store("a", "def", nil)
 			assert.are.equal("def", mock_state.persistent_variables.a)
-			assert.spy(write_spy).was.called_with("a", "def", nil)
+			assert.spy(write_spy).was.called()
+			local call_args = write_spy.calls[1].vals
+			assert.are.equal("a", call_args[1])
+			assert.are.equal("def", call_args[2])
+			assert.is_function(call_args[3])
 		end)
 	end)
 end)
