@@ -1043,4 +1043,18 @@ describe("tungsten.core.parser.parse with combined grammar", function()
 			assert.are.equal("Equality", system_capture.equations[2].type)
 		end)
 	end)
+
+	describe("differential equations input", function()
+		it("parses ODEs with initial conditions using alignment separators", function()
+			local input = "y'' + y &= 0 \\\\\n y(0) &= 1 \\\\\n y'(0) &= 0"
+
+			local res = parser.parse(input, { allow_multiple_relations = true })
+			assert.is_not_nil(res)
+			assert.is_table(res.series)
+			assert.are.equal(3, #res.series)
+			assert.are.equal("ode", res.series[1].type)
+			assert.are.equal("Equality", res.series[2].type)
+			assert.are.equal("Equality", res.series[3].type)
+		end)
+	end)
 end)

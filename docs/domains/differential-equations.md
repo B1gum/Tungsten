@@ -28,6 +28,9 @@ See the [Calculus Domain](calculus.md) for more information on this.
 You can specify initial or boundary conditions by including them in the selection, separated by a semicolon or `\\`.
 
 **Example**:
+```latex
+  y'' + y = 0; y(0) = 1; y'(0) = 0 \rightarrow \{\{Y(x)\to \cos (x)\}\}
+```
 
 
 ## Solving PDEs

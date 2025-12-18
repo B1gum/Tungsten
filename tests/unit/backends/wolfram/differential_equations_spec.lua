@@ -192,23 +192,19 @@ describe("Differential Equations Wolfram Handlers", function()
 
 			local result = handlers.ode_system(ast, mock_render)
 
-			it("uses prime notation for derivatives of explicit function calls", function()
-				local node = ast_node("ordinary_derivative", {
-					expression = ast_node("function_call", {
-						name_node = ast_node("variable", { name = "y" }),
-						args = { ast_node("variable", { name = "x" }) },
-					}),
-					variable = ast_node("variable", { name = "x" }),
-					order = ast_node("number", { value = 1 }),
-				})
-
-				local result = handlers.ordinary_derivative(node, mock_recur_render)
-
-				assert.are.equal("Y'[x]", result)
-			end)
-
+			local prime_render = handlers.ordinary_derivative({
+				type = "ordinary_derivative",
+				expression = {
+					type = "function_call",
+					name_node = { type = "variable", name = "y" },
+					args = { { type = "variable", name = "x" } },
+				},
+				variable = { type = "variable", name = "x" },
+				order = { type = "number", value = 1 },
+			}, mock_render)
 			assert.is_truthy(result:match("Y'%[%s*0%s*%]%s*==%s*0"))
 			assert.is_falsy(result:match("D%[Y%[0%]"))
+			assert.are.equal("Y'[x]", prime_render)
 		end)
 	end)
 

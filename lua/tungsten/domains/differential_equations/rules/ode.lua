@@ -8,11 +8,18 @@ local tk = require("tungsten.core.tokenizer")
 local ast = require("tungsten.core.ast")
 local space = tk.space
 
+local function is_point_derivative(node)
+	return node.variable and node.variable.type == "number"
+end
+
 local function contains_derivative(node)
 	if type(node) ~= "table" then
 		return false
 	end
 	if node.type == "ordinary_derivative" then
+		if is_point_derivative(node) then
+			return false
+		end
 		return true
 	end
 	for _, v in pairs(node) do
@@ -23,7 +30,7 @@ local function contains_derivative(node)
 	return false
 end
 
-local main_rule = Ct(Cg(V("ExpressionContent"), "lhs") * space * P("=") * space * Cg(V("ExpressionContent"), "rhs"))
+local main_rule = Ct(Cg(V("ExpressionContent"), "lhs") * space * tk.equals_op * space * Cg(V("ExpressionContent"), "rhs"))
 
 local ODERule = Cmt(main_rule, function(_, pos, captures)
 	if contains_derivative(captures.lhs) or contains_derivative(captures.rhs) then

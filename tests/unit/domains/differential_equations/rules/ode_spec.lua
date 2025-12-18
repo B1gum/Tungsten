@@ -12,11 +12,12 @@ describe("Differential Equations ODE Rule", function()
 	end
 
 	before_each(function()
+		local mock_space = S(" \t\n\r") ^ 0
 		local mock_tk = {
-			space = S(" \t\n\r") ^ 0,
+			space = mock_space,
 			lbrace = P("{"),
 			rbrace = P("}"),
-			equals_op = P("="),
+			equals_op = P("&=") + (P("&") * mock_space * P("=")) + P("="),
 			variable = C(R("az", "AZ") ^ 1) / function(s)
 				return { type = "variable", name = s }
 			end,
@@ -88,7 +89,9 @@ describe("Differential Equations ODE Rule", function()
 			return package.loaded["tungsten.core.ast"].create_binary_operation_node(pair[1], acc, pair[2])
 		end)
 
-		g.MainODERule = Ct(Cg(V("Expression"), "lhs") * mock_tk.space * P("=") * mock_tk.space * Cg(V("Expression"), "rhs"))
+		g.MainODERule = Ct(
+			Cg(V("Expression"), "lhs") * mock_tk.space * mock_tk.equals_op * mock_tk.space * Cg(V("Expression"), "rhs")
+		)
 			/ function(captures)
 				return package.loaded["tungsten.core.ast"].create_ode_node(captures.lhs, captures.rhs)
 			end
@@ -121,7 +124,19 @@ describe("Differential Equations ODE Rule", function()
 				right = { type = "derivative", notation = "lagrange", order = 1, variable = { type = "variable", name = "y" } },
 			}, result.lhs)
 		end)
-	end)
+
+		it("should parse y'' + y' &= 0 using aligned equals", function()
+			local result = parse_input("y'' + y' &= 0")
+			assert.is_table(result)
+			assert.are.same({
+				type = "binary",
+				operator = "+",
+				left = { type = "derivative", notation = "lagrange", order = 2, variable = { type = "variable", name = "y" } },
+				right = { type = "derivative", notation = "lagrange", order = 1, variable = { type = "variable", name = "y" } },
+			}, result.lhs)
+		end)
+  end)
+
 
 	describe("Leibniz Notation", function()
 		it("should parse \\frac{dy}{dx} = y", function()

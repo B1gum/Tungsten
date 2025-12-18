@@ -348,16 +348,22 @@ function M.parse(input, opts)
 
 	if opts.allow_multiple_relations and #series > 0 then
 		local equations = {}
+		local has_non_equation = false
 		local function collect_eqs(node)
-			if node and node.type == "Sequence" and node.nodes then
+			if not node then
+				return
+			end
+			if node.type == "Sequence" and node.nodes then
 				for _, child in ipairs(node.nodes) do
 					collect_eqs(child)
 				end
 				return
 			end
 
-			if node and node.type == "Equality" then
+			if node.type == "Equality" then
 				table.insert(equations, node)
+      else
+        has_non_equation = true
 			end
 		end
 
@@ -365,7 +371,7 @@ function M.parse(input, opts)
 			collect_eqs(node)
 		end
 
-		if #equations > 1 then
+		if #equations > 1 and not has_non_equation then
 			series = { ast.create_solve_system_equations_capture_node(equations) }
 		end
 	end
