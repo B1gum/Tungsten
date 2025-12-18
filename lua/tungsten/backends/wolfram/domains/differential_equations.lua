@@ -80,32 +80,76 @@ local function find_ode_vars(equation_nodes)
 end
 
 local function attach_independent_vars(node, dependent_var_map)
-	if type(node) ~= "table" then
-		return node
-	end
+        if type(node) ~= "table" then
+                return node
+        end
 
-	if node.type == "derivative" or node.type == "ordinary_derivative" then
-		local cloned = {}
-		for k, v in pairs(node) do
-			if k == "variable" then
-				cloned[k] = v
-			elseif type(v) == "table" then
-				cloned[k] = attach_independent_vars(v, dependent_var_map)
-			else
-				cloned[k] = v
-			end
-		end
+        if node.type == "function_call" then
+                local cloned = { type = "function_call" }
 
-		if node.type == "derivative" and cloned.variable and cloned.variable.type == "variable" then
-			local indep_var = dependent_var_map[cloned.variable.name]
-			if indep_var then
-				cloned.variable = { type = "variable", name = map_function_name(cloned.variable.name) }
-				cloned.independent_variable = cloned.independent_variable or { type = "variable", name = indep_var }
-			end
-		end
+                if node.name_node then
+                        if node.name_node.type == "variable" and dependent_var_map[node.name_node.name] then
+                                cloned.name_node = { type = "variable", name = map_function_name(node.name_node.name) }
+                        else
+                                cloned.name_node = attach_independent_vars(node.name_node, dependent_var_map)
+                        end
+                end
 
-		return cloned
-	end
+                if node.args then
+                        cloned.args = {}
+                        for i, arg in ipairs(node.args) do
+                                cloned.args[i] = attach_independent_vars(arg, dependent_var_map)
+                        end
+                end
+
+                return cloned
+        end
+
+        if node.type == "derivative" or node.type == "ordinary_derivative" then
+                local cloned = {}
+                for k, v in pairs(node) do
+                        if k == "variable" then
+                                cloned[k] = v
+                        elseif type(v) == "table" then
+                                cloned[k] = attach_independent_vars(v, dependent_var_map)
+                        else
+                                cloned[k] = v
+                        end
+                end
+
+                local function lookup_dependent_name(expr_node)
+                        if not expr_node or type(expr_node) ~= "table" then
+                                return nil
+                        end
+
+                        if expr_node.type == "function_call" and expr_node.name_node then
+                                return expr_node.name_node.name
+                        end
+
+                        if expr_node.type == "variable" then
+                                return expr_node.name
+                        end
+
+                        return nil
+                end
+
+                local dependent_name = lookup_dependent_name(cloned.expression) or (cloned.variable and cloned.variable.name)
+                local indep_var = dependent_name and dependent_var_map[dependent_name]
+
+                if indep_var then
+                        if node.type == "derivative" and cloned.variable and cloned.variable.type == "variable" then
+                                if cloned.variable.name == dependent_name then
+                                        cloned.variable = { type = "variable", name = map_function_name(dependent_name) }
+                                end
+                        elseif not cloned.variable or cloned.variable.type ~= "variable" then
+                                cloned.variable = { type = "variable", name = indep_var }
+                        end
+
+                        cloned.independent_variable = cloned.independent_variable or { type = "variable", name = indep_var }
+                end
+
+                return cloned
+        end
 
 	if node.type == "variable" and node.name and dependent_var_map[node.name] then
 		return {
@@ -135,6 +179,32 @@ local function attach_independent_vars(node, dependent_var_map)
 	return cloned
 end
 
+local function extract_condition(condition)
+        if not condition or type(condition) ~= "table" then
+                return nil, nil
+        end
+
+        local lhs = condition.lhs or condition.left
+        local rhs = condition.rhs or condition.right
+
+        return lhs, rhs
+end
+
+local function render_conditions(conditions, walk, dependent_var_map)
+        local rendered_conditions = {}
+
+        for _, condition in ipairs(conditions or {}) do
+                local lhs, rhs = extract_condition(condition)
+                if lhs and rhs then
+                        local lhs_with_var = attach_independent_vars(lhs, dependent_var_map)
+                        local rhs_with_var = attach_independent_vars(rhs, dependent_var_map)
+                        table.insert(rendered_conditions, walk(lhs_with_var) .. " == " .. walk(rhs_with_var))
+                end
+        end
+
+        return rendered_conditions
+end
+
 M.handlers = {
 	["ordinary_derivative"] = function(node, walk)
 		local order = (node.order and node.order.value) or 1
@@ -160,25 +230,39 @@ M.handlers = {
 		end
 	end,
 
-	["ode"] = function(node, walk)
-		local vars_str, indep_vars_str, dependent_var_map = find_ode_vars({ node })
-		local lhs = attach_independent_vars(node.lhs, dependent_var_map)
-		local rhs = attach_independent_vars(node.rhs, dependent_var_map)
-		local equation_str = walk(lhs) .. " == " .. walk(rhs)
-		return "DSolve[" .. equation_str .. ", " .. vars_str .. ", " .. indep_vars_str .. "]"
-	end,
+        ["ode"] = function(node, walk)
+                local vars_str, indep_vars_str, dependent_var_map = find_ode_vars({ node })
+                local lhs = attach_independent_vars(node.lhs, dependent_var_map)
+                local rhs = attach_independent_vars(node.rhs, dependent_var_map)
+                local equations = { walk(lhs) .. " == " .. walk(rhs) }
 
-	["ode_system"] = function(node, walk)
-		local rendered_odes = {}
-		local vars_str, indep_vars_str, dependent_var_map = find_ode_vars(node.equations)
-		for _, ode_node in ipairs(node.equations) do
-			local lhs = attach_independent_vars(ode_node.lhs, dependent_var_map)
-			local rhs = attach_independent_vars(ode_node.rhs, dependent_var_map)
-			table.insert(rendered_odes, walk(lhs) .. " == " .. walk(rhs))
-		end
-		local equations_str = "{" .. table.concat(rendered_odes, ", ") .. "}"
-		return "DSolve[" .. equations_str .. ", {" .. vars_str .. "}, " .. indep_vars_str .. "]"
-	end,
+                local rendered_conditions = render_conditions(node.conditions, walk, dependent_var_map)
+                for _, cond in ipairs(rendered_conditions) do
+                        table.insert(equations, cond)
+                end
+
+                local equations_str = (#equations > 1) and "{" .. table.concat(equations, ", ") .. "}" or equations[1]
+
+                return "DSolve[" .. equations_str .. ", " .. vars_str .. ", " .. indep_vars_str .. "]"
+        end,
+
+        ["ode_system"] = function(node, walk)
+                local rendered_odes = {}
+                local vars_str, indep_vars_str, dependent_var_map = find_ode_vars(node.equations)
+                for _, ode_node in ipairs(node.equations) do
+                        local lhs = attach_independent_vars(ode_node.lhs, dependent_var_map)
+                        local rhs = attach_independent_vars(ode_node.rhs, dependent_var_map)
+                        table.insert(rendered_odes, walk(lhs) .. " == " .. walk(rhs))
+                end
+
+                local rendered_conditions = render_conditions(node.conditions, walk, dependent_var_map)
+                for _, cond in ipairs(rendered_conditions) do
+                        table.insert(rendered_odes, cond)
+                end
+
+                local equations_str = "{" .. table.concat(rendered_odes, ", ") .. "}"
+                return "DSolve[" .. equations_str .. ", {" .. vars_str .. "}, " .. indep_vars_str .. "]"
+        end,
 
 	["solve_system_equations_capture"] = function(node, walk)
 		local rendered_equations = {}

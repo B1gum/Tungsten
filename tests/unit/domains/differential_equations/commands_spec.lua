@@ -62,9 +62,9 @@ describe("Tungsten Differential Equations Commands", function()
 		mock_ast.create_ode_node = spy.new(function(lhs, rhs)
 			return { type = "ode", lhs = lhs, rhs = rhs }
 		end)
-		mock_ast.create_ode_system_node = spy.new(function(odes)
-			return { type = "ode_system", equations = odes }
-		end)
+                mock_ast.create_ode_system_node = spy.new(function(odes, conditions)
+                        return { type = "ode_system", equations = odes, conditions = conditions }
+                end)
 		mock_ast.create_laplace_transform_node = spy.new(function(ast)
 			return { type = "laplace_transform", expression = ast }
 		end)
@@ -107,32 +107,63 @@ describe("Tungsten Differential Equations Commands", function()
 		require("tests.helpers.mock_utils").reset_modules(modules_to_clear_from_cache)
 	end)
 
-	local function test_command(command_fn, command_name, selection_text, parsed_ast, final_ast_producer)
-		it("should handle " .. command_name, function()
-			current_selection_text = selection_text
-			current_parsed_ast = parsed_ast
+        local function test_command(command_fn, command_name, selection_text, parsed_ast, final_ast_producer, expected_opts)
+                expected_opts = expected_opts or match._
+                it("should handle " .. command_name, function()
+                        current_selection_text = selection_text
+                        current_parsed_ast = parsed_ast
 
 			command_fn()
 
 			assert.spy(mock_selection.get_visual_selection).was.called()
-			assert.spy(mock_parser.parse).was.called_with(selection_text, nil)
+                        assert.spy(mock_parser.parse).was.called_with(selection_text, expected_opts)
 			local final_ast = final_ast_producer(parsed_ast)
 			assert.spy(mock_evaluator.evaluate_async).was.called_with(final_ast, false, match.is_function())
 			assert.spy(mock_event_bus.emit).was.called_with("result_ready", match.is_table())
 		end)
 	end
 
-	test_command(
-		function()
-			de_commands.solve_ode_command()
-		end,
-		":TungstenSolveODE",
-		"y' = y",
-		{ type = "ode" },
-		function(parsed_ast)
-			return mock_ast.create_ode_system_node({ parsed_ast })
-		end
-	)
+        test_command(
+                function()
+                        de_commands.solve_ode_command()
+                end,
+                ":TungstenSolveODE",
+                "y' = y",
+                { type = "ode" },
+                function(parsed_ast)
+                        return mock_ast.create_ode_system_node({ parsed_ast }, {})
+                end,
+                match.is_table()
+        )
+
+        it("collects initial conditions for ODE problems", function()
+                current_selection_text = "y'' + y = 0; y(0) = 1; y'(0) = 0"
+                mock_parser.parse = spy.new(function()
+                        return {
+                                series = {
+                                        { type = "ode", lhs = "lhs", rhs = "rhs" },
+                                        { type = "binary", operator = "=", left = "y(0)", right = 1 },
+                                        { type = "binary", operator = "=", left = "y'(0)", right = 0 },
+                                },
+                        }
+                end)
+
+                de_commands.solve_ode_command()
+
+                assert.spy(mock_parser.parse).was.called_with(current_selection_text, match.is_table())
+                assert.spy(mock_ast.create_ode_system_node).was.called_with(
+                        match.same({ { type = "ode", lhs = "lhs", rhs = "rhs" } }),
+                        match.same({
+                                { type = "binary", operator = "=", left = "y(0)", right = 1 },
+                                { type = "binary", operator = "=", left = "y'(0)", right = 0 },
+                        })
+                )
+                assert.spy(mock_evaluator.evaluate_async).was.called_with(
+                        match.is_table(),
+                        false,
+                        match.is_function()
+                )
+        end)
 
 	test_command(
 		function()
