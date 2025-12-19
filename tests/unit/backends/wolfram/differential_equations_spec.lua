@@ -62,7 +62,7 @@ describe("Differential Equations Wolfram Handlers", function()
 				rhs = { type = "variable", name = "y" },
 			}
 			local result = handlers.ode(ast, mock_render)
-			assert.are.same("DSolve[Y'[x] == Y[x], Y[x], x]", result)
+			assert.are.same("DSolve[Y'[x] == Y[x], Y[x], {x}]", result)
 		end)
 
 		it("should attach the independent variable to bare dependent variables", function()
@@ -79,7 +79,7 @@ describe("Differential Equations Wolfram Handlers", function()
 
 			local result = handlers.ode(ast, mock_render)
 
-			assert.are.same("DSolve[Y''[x] == Y[x], Y[x], x]", result)
+			assert.are.same("DSolve[Y''[x] == Y[x], Y[x], {x}]", result)
 		end)
 	end)
 
@@ -102,8 +102,8 @@ describe("Differential Equations Wolfram Handlers", function()
 			}
 			local result = handlers.ode_system(ast, mock_render)
 			assert.is_true(
-				result == "DSolve[{Y'[x] == Z[x], Z'[x] == Y[x]}, {Y[x], Z[x]}, x]"
-					or result == "DSolve[{Y'[x] == Z[x], Z'[x] == Y[x]}, {Z[x], Y[x]}, x]"
+				result == "DSolve[{Y'[x] == Z[x], Z'[x] == Y[x]}, {Y[x], Z[x]}, {x}]"
+					or result == "DSolve[{Y'[x] == Z[x], Z'[x] == Y[x]}, {Z[x], Y[x]}, {x}]"
 			)
 		end)
 		it("renders attached initial conditions with mapped dependent variables", function()
@@ -204,7 +204,7 @@ describe("Differential Equations Wolfram Handlers", function()
 			}, mock_render)
 			assert.is_truthy(result:match("Y'%[%s*0%s*%]%s*==%s*0"))
 			assert.is_falsy(result:match("D%[Y%[0%]"))
-			assert.are.equal("Y'[x]", prime_render)
+			assert.are.equal("D[Y[x], x]", prime_render)
 		end)
 	end)
 

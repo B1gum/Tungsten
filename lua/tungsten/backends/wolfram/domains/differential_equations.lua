@@ -4,9 +4,17 @@ local config = require("tungsten.config")
 
 local M = {}
 
-local function default_independent_var(dependent_var_map)
+local function default_independent_var(dependent_var_map, dependent_name)
+	if dependent_name then
+		local vars_for_dep = dependent_var_map and dependent_var_map[dependent_name]
+		if vars_for_dep and vars_for_dep[1] then
+			return vars_for_dep[1]
+		end
+	end
 	for _, v in pairs(dependent_var_map or {}) do
-		return v
+		if type(v) == "table" and v[1] then
+			return v[1]
+		end
 	end
 
 	return "x"
@@ -28,9 +36,32 @@ end
 local function find_ode_vars(equation_nodes)
 	local dependent_vars = {}
 	local independent_vars = {}
-	local seen_dependent = {}
 	local seen_independent = {}
 	local dependent_var_map = {}
+	local dependent_seen_order = {}
+	local dependent_indep_seen = {}
+
+	local function add_dependent_var(func_name, indep_name)
+		if not func_name then
+			return
+		end
+
+		if not dependent_var_map[func_name] then
+			dependent_var_map[func_name] = {}
+			dependent_seen_order[#dependent_seen_order + 1] = func_name
+			dependent_indep_seen[func_name] = {}
+		end
+
+		if indep_name and not dependent_indep_seen[func_name][indep_name] then
+			dependent_indep_seen[func_name][indep_name] = true
+			table.insert(dependent_var_map[func_name], indep_name)
+		end
+
+		if indep_name and not seen_independent[indep_name] then
+			seen_independent[indep_name] = true
+			table.insert(independent_vars, indep_name)
+		end
+	end
 
 	local function visitor(node)
 		if not node or type(node) ~= "table" then
@@ -45,27 +76,27 @@ local function find_ode_vars(equation_nodes)
 				func_name_str = node.expression.name
 			end
 
-			if func_name_str and not seen_dependent[func_name_str] then
-				local indep_name = (node.variable and node.variable.name) or "x"
-				local wolfram_func_name = map_function_name(func_name_str)
-
-				table.insert(dependent_vars, wolfram_func_name .. "[" .. indep_name .. "]")
-				seen_dependent[func_name_str] = true
-				dependent_var_map[func_name_str] = indep_name
-
-				if not seen_independent[indep_name] then
-					table.insert(independent_vars, indep_name)
-					seen_independent[indep_name] = true
-				end
+			local indep_name = (node.variable and node.variable.name) or "x"
+			add_dependent_var(func_name_str, indep_name)
+		elseif node.type == "derivative" then
+			local func_name_str = node.variable and node.variable.name
+			local indep_name = (node.independent_variable and node.independent_variable.name)
+			add_dependent_var(func_name_str, indep_name or "x")
+		elseif node.type == "partial_derivative" then
+			local func_name_str
+			if node.expression and node.expression.type == "function_call" then
+				func_name_str = node.expression.name_node and node.expression.name_node.name
+			elseif node.expression and node.expression.type == "variable" then
+				func_name_str = node.expression.name
 			end
-		elseif node.type == "variable" and not seen_dependent[node.name] then
-			if node.name ~= "x" and node.name ~= "t" then
-				local indep_name = "x"
-				local wolfram_func_name = map_function_name(node.name)
 
-				table.insert(dependent_vars, wolfram_func_name .. "[" .. indep_name .. "]")
-				seen_dependent[node.name] = true
-				dependent_var_map[node.name] = indep_name
+			for _, var_info in ipairs(node.variables or {}) do
+				local indep_name = (var_info.variable and var_info.variable.name) or "x"
+				add_dependent_var(func_name_str, indep_name)
+end
+		elseif node.type == "variable" then
+			if node.name ~= "x" and node.name ~= "t" then
+				add_dependent_var(node.name, default_independent_var(dependent_var_map, node.name))
 			end
 		end
 
@@ -84,7 +115,27 @@ local function find_ode_vars(equation_nodes)
 		table.insert(independent_vars, "x")
 	end
 
-	return table.concat(dependent_vars, ", "), table.concat(independent_vars, ", "), dependent_var_map
+	for _, func_name in ipairs(dependent_seen_order) do
+		local wolfram_func_name = map_function_name(func_name)
+		local indep_list = dependent_var_map[func_name]
+		local indep_str = indep_list and (table.concat(indep_list, ", ") or "") or ""
+		table.insert(dependent_vars, wolfram_func_name .. "[" .. indep_str .. "]")
+	end
+
+	local indep_vars_str = "{" .. table.concat(independent_vars, ", ") .. "}"
+
+	return table.concat(dependent_vars, ", "), indep_vars_str, dependent_var_map
+end
+
+local current_dependent_var_map = nil
+
+local function get_independent_vars_for(func_name, fallback_variable)
+	if func_name and current_dependent_var_map and current_dependent_var_map[func_name] then
+		return current_dependent_var_map[func_name]
+	end
+
+	local default_var = fallback_variable or default_independent_var(current_dependent_var_map, func_name)
+	return { default_var }
 end
 
 local function attach_independent_vars(node, dependent_var_map)
@@ -107,6 +158,11 @@ local function attach_independent_vars(node, dependent_var_map)
 			cloned.args = {}
 			for i, arg in ipairs(node.args) do
 				cloned.args[i] = attach_independent_vars(arg, dependent_var_map)
+			end
+		elseif node.name_node and node.name_node.type == "variable" and dependent_var_map[node.name_node.name] then
+			cloned.args = {}
+			for i, indep_var in ipairs(dependent_var_map[node.name_node.name]) do
+				cloned.args[i] = { type = "variable", name = indep_var }
 			end
 		end
 
@@ -142,7 +198,8 @@ local function attach_independent_vars(node, dependent_var_map)
 		end
 
 		local dependent_name = lookup_dependent_name(cloned.expression) or (cloned.variable and cloned.variable.name)
-		local indep_var = dependent_name and (dependent_var_map[dependent_name] or default_independent_var())
+		local indep_var_list = dependent_name and dependent_var_map[dependent_name]
+		local indep_var = (indep_var_list and indep_var_list[1]) or default_independent_var(dependent_var_map, dependent_name)
 
 		if indep_var then
 			if node.type == "derivative" and cloned.variable and cloned.variable.type == "variable" then
@@ -163,7 +220,13 @@ local function attach_independent_vars(node, dependent_var_map)
 		return {
 			type = "function_call",
 			name_node = node,
-			args = { { type = "variable", name = dependent_var_map[node.name] } },
+			args = (function()
+				local args = {}
+				for i, indep_var in ipairs(dependent_var_map[node.name]) do
+					args[i] = { type = "variable", name = indep_var }
+				end
+				return args
+			end)(),
 		}
 	end
 
@@ -214,6 +277,38 @@ local function render_conditions(conditions, walk, dependent_var_map)
 end
 
 M.handlers = {
+	["partial_derivative"] = function(node, walk)
+		local fallback_var = (node.variables and node.variables[1] and node.variables[1].variable and node.variables[1].variable.name)
+		local target_expr
+		local func_name
+
+		if node.expression.type == "function_call" then
+			func_name = node.expression.name_node and node.expression.name_node.name
+		elseif node.expression.type == "variable" then
+			func_name = node.expression.name
+		end
+
+		if func_name then
+			local indep_vars = get_independent_vars_for(func_name, fallback_var)
+			target_expr = map_function_name(func_name) .. "[" .. table.concat(indep_vars, ", ") .. "]"
+		else
+			target_expr = walk(node.expression)
+		end
+
+		local derivative_vars = {}
+		for _, var_info in ipairs(node.variables or {}) do
+			local var_str = walk(var_info.variable)
+			local order_str = var_info.order and walk(var_info.order) or "1"
+			if tostring(order_str) == "1" then
+				table.insert(derivative_vars, var_str)
+			else
+				table.insert(derivative_vars, "{" .. var_str .. ", " .. tostring(order_str) .. "}")
+			end
+		end
+
+		return "D[" .. target_expr .. ", " .. table.concat(derivative_vars, ", ") .. "]"
+	end,
+
 	["ordinary_derivative"] = function(node, walk)
 		local order = (node.order and node.order.value) or 1
 		local variable_str = (node.variable and walk(node.variable)) or "x"
@@ -221,13 +316,22 @@ M.handlers = {
 		if node.expression.type == "function_call" then
 			local raw_name = node.expression.name_node and node.expression.name_node.name
 			local func_name = raw_name and map_function_name(raw_name) or walk(node.expression.name_node)
-			local prime_str = string.rep("'", order)
-			local arg_str = walk(node.expression.args[1])
-			return func_name .. prime_str .. "[" .. arg_str .. "]"
+			local indep_vars = get_independent_vars_for(raw_name, variable_str)
+			local arg_str = table.concat(indep_vars, ", ")
+			local target = func_name .. "[" .. arg_str .. "]"
+			if order == 1 then
+				return "D[" .. target .. ", " .. variable_str .. "]"
+			end
+			return "D[" .. target .. ", {" .. variable_str .. ", " .. tostring(order) .. "}]"
 		elseif node.expression.type == "variable" then
 			local func_name = map_function_name(node.expression.name)
-			local prime_str = string.rep("'", order)
-			return func_name .. prime_str .. "[" .. variable_str .. "]"
+			local indep_vars = get_independent_vars_for(node.expression.name, variable_str)
+			local arg_str = table.concat(indep_vars, ", ")
+			local target = func_name .. "[" .. arg_str .. "]"
+			if order == 1 then
+				return "D[" .. target .. ", " .. variable_str .. "]"
+			end
+			return "D[" .. target .. ", {" .. variable_str .. ", " .. tostring(order) .. "}]"
 		else
 			local expression_str = walk(node.expression)
 			if order == 1 then
@@ -240,6 +344,8 @@ M.handlers = {
 
 	["ode"] = function(node, walk)
 		local vars_str, indep_vars_str, dependent_var_map = find_ode_vars({ node })
+		local prev_map = current_dependent_var_map
+		current_dependent_var_map = dependent_var_map
 		local lhs = attach_independent_vars(node.lhs, dependent_var_map)
 		local rhs = attach_independent_vars(node.rhs, dependent_var_map)
 		local equations = { walk(lhs) .. " == " .. walk(rhs) }
@@ -251,12 +357,16 @@ M.handlers = {
 
 		local equations_str = (#equations > 1) and "{" .. table.concat(equations, ", ") .. "}" or equations[1]
 
-		return "DSolve[" .. equations_str .. ", " .. vars_str .. ", " .. indep_vars_str .. "]"
+		local result = "DSolve[" .. equations_str .. ", " .. vars_str .. ", " .. indep_vars_str .. "]"
+		current_dependent_var_map = prev_map
+		return result
 	end,
 
 	["ode_system"] = function(node, walk)
 		local rendered_odes = {}
 		local vars_str, indep_vars_str, dependent_var_map = find_ode_vars(node.equations)
+		local prev_map = current_dependent_var_map
+		current_dependent_var_map = dependent_var_map
 		for _, ode_node in ipairs(node.equations) do
 			local lhs = attach_independent_vars(ode_node.lhs, dependent_var_map)
 			local rhs = attach_independent_vars(ode_node.rhs, dependent_var_map)
@@ -269,22 +379,29 @@ M.handlers = {
 		end
 
 		local equations_str = "{" .. table.concat(rendered_odes, ", ") .. "}"
-		return "DSolve[" .. equations_str .. ", {" .. vars_str .. "}, " .. indep_vars_str .. "]"
+		local result = "DSolve[" .. equations_str .. ", {" .. vars_str .. "}, " .. indep_vars_str .. "]"
+		current_dependent_var_map = prev_map
+		return result
 	end,
 
 	["solve_system_equations_capture"] = function(node, walk)
 		local rendered_equations = {}
 		local vars_str, indep_vars_str, dependent_var_map = find_ode_vars(node.equations)
+		local prev_map = current_dependent_var_map
+		current_dependent_var_map = dependent_var_map
 		for _, eq_node in ipairs(node.equations) do
 			table.insert(rendered_equations, walk(attach_independent_vars(eq_node, dependent_var_map)))
 		end
 		local equations_str = "{" .. table.concat(rendered_equations, ", ") .. "}"
 
 		if vars_str == "" then
+			current_dependent_var_map = prev_map
 			return "Solve[" .. equations_str .. "]"
 		end
 
-		return "DSolve[" .. equations_str .. ", {" .. vars_str .. "}, " .. indep_vars_str .. "]"
+		local result = "DSolve[" .. equations_str .. ", {" .. vars_str .. "}, " .. indep_vars_str .. "]"
+		current_dependent_var_map = prev_map
+		return result
 	end,
 
 	["convolution"] = function(node, walk)
