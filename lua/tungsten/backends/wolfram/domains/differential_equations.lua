@@ -63,7 +63,8 @@ local function find_ode_vars(equation_nodes)
 		end
 	end
 
-	local function visitor(node)
+	-- Pass 1: Identify explicit relationships from derivatives
+	local function derivative_visitor(node)
 		if not node or type(node) ~= "table" then
 			return
 		end
@@ -94,21 +95,57 @@ local function find_ode_vars(equation_nodes)
 				local indep_name = (var_info.variable and var_info.variable.name) or "x"
 				add_dependent_var(func_name_str, indep_name)
 			end
-		elseif node.type == "variable" then
-			if node.name ~= "x" and node.name ~= "t" then
-				add_dependent_var(node.name, default_independent_var(dependent_var_map, node.name))
+		end
+
+		for _, v in pairs(node) do
+			if type(v) == "table" then
+				derivative_visitor(v)
+			end
+		end
+	end
+
+	-- Pass 2: Infer dependencies for bare variables using context from Pass 1
+	local function variable_visitor(node)
+		if not node or type(node) ~= "table" then
+			return
+		end
+
+		if node.type == "variable" then
+			-- Determine the primary independent variable found so far (e.g., 't')
+			-- If none found, default to 'x'
+			local current_indep = (#independent_vars > 0 and independent_vars[1]) or "x"
+
+			-- If this variable is NOT the independent variable, it is likely dependent
+			local is_independent = (node.name == current_indep)
+			
+			-- Double check against list of all found independent vars
+			if not is_independent then
+				for _, iv in ipairs(independent_vars) do
+					if node.name == iv then
+						is_independent = true
+						break
+					end
+				end
+			end
+
+			if not is_independent then
+				add_dependent_var(node.name, current_indep)
 			end
 		end
 
 		for _, v in pairs(node) do
 			if type(v) == "table" then
-				visitor(v)
+				variable_visitor(v)
 			end
 		end
 	end
 
 	for _, eq_node in ipairs(equation_nodes) do
-		visitor(eq_node)
+		derivative_visitor(eq_node)
+	end
+
+	for _, eq_node in ipairs(equation_nodes) do
+		variable_visitor(eq_node)
 	end
 
 	if #independent_vars == 0 then
