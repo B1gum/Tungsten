@@ -93,7 +93,7 @@ local function find_ode_vars(equation_nodes)
 			for _, var_info in ipairs(node.variables or {}) do
 				local indep_name = (var_info.variable and var_info.variable.name) or "x"
 				add_dependent_var(func_name_str, indep_name)
-end
+			end
 		elseif node.type == "variable" then
 			if node.name ~= "x" and node.name ~= "t" then
 				add_dependent_var(node.name, default_independent_var(dependent_var_map, node.name))
@@ -199,7 +199,8 @@ local function attach_independent_vars(node, dependent_var_map)
 
 		local dependent_name = lookup_dependent_name(cloned.expression) or (cloned.variable and cloned.variable.name)
 		local indep_var_list = dependent_name and dependent_var_map[dependent_name]
-		local indep_var = (indep_var_list and indep_var_list[1]) or default_independent_var(dependent_var_map, dependent_name)
+		local indep_var = (indep_var_list and indep_var_list[1])
+			or default_independent_var(dependent_var_map, dependent_name)
 
 		if indep_var then
 			if node.type == "derivative" and cloned.variable and cloned.variable.type == "variable" then
@@ -278,7 +279,12 @@ end
 
 M.handlers = {
 	["partial_derivative"] = function(node, walk)
-		local fallback_var = (node.variables and node.variables[1] and node.variables[1].variable and node.variables[1].variable.name)
+		local fallback_var = (
+			node.variables
+			and node.variables[1]
+			and node.variables[1].variable
+			and node.variables[1].variable.name
+		)
 		local target_expr
 		local func_name
 

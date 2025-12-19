@@ -91,10 +91,9 @@ describe("Differential Equations ODE Rule", function()
 
 		g.MainODERule = Ct(
 			Cg(V("Expression"), "lhs") * mock_tk.space * mock_tk.equals_op * mock_tk.space * Cg(V("Expression"), "rhs")
-		)
-			/ function(captures)
-				return package.loaded["tungsten.core.ast"].create_ode_node(captures.lhs, captures.rhs)
-			end
+		) / function(captures)
+			return package.loaded["tungsten.core.ast"].create_ode_node(captures.lhs, captures.rhs)
+		end
 
 		g.ODE = V("MainODERule")
 
@@ -135,8 +134,7 @@ describe("Differential Equations ODE Rule", function()
 				right = { type = "derivative", notation = "lagrange", order = 1, variable = { type = "variable", name = "y" } },
 			}, result.lhs)
 		end)
-  end)
-
+	end)
 
 	describe("Leibniz Notation", function()
 		it("should parse \\frac{dy}{dx} = y", function()

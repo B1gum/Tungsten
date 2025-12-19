@@ -362,8 +362,8 @@ function M.parse(input, opts)
 
 			if node.type == "Equality" then
 				table.insert(equations, node)
-      else
-        has_non_equation = true
+			else
+				has_non_equation = true
 			end
 		end
 

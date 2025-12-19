@@ -4,9 +4,24 @@
 describe("Differential Equations Wolfram Handlers", function()
 	local handlers
 	local mock_render
+	local executor
+	local handler_manager
+	local config
+	local default_domains
 
 	before_each(function()
 		handlers = require("tungsten.backends.wolfram.domains.differential_equations").handlers
+		executor = require("tungsten.backends.wolfram.executor")
+		handler_manager = require("tungsten.backends.wolfram.handlers")
+		config = require("tungsten.config")
+		default_domains = {
+			"arithmetic",
+			"calculus",
+			"linear_algebra",
+			"differential_equations",
+			"plotting",
+			"units",
+		}
 
 		mock_render = function(node)
 			if not node or not node.type then
@@ -80,6 +95,47 @@ describe("Differential Equations Wolfram Handlers", function()
 			local result = handlers.ode(ast, mock_render)
 
 			assert.are.same("DSolve[Y''[x] == Y[x], Y[x], {x}]", result)
+		end)
+	end)
+
+	describe("pde rendering", function()
+		before_each(function()
+			config.domains = vim.deepcopy(default_domains)
+			handler_manager.load_handlers()
+		end)
+
+		it("includes all independent variables when derivatives mix variables", function()
+			local ast = {
+				type = "ode",
+				lhs = {
+					type = "binary",
+					operator = "+",
+					left = {
+						type = "ordinary_derivative",
+						expression = { type = "variable", name = "y" },
+						variable = { type = "variable", name = "t" },
+						order = { type = "number", value = 1 },
+					},
+					right = {
+						type = "ordinary_derivative",
+						expression = { type = "variable", name = "y" },
+						variable = { type = "variable", name = "x" },
+						order = { type = "number", value = 1 },
+					},
+				},
+				rhs = { type = "number", value = 0 },
+			}
+
+			local result = executor.ast_to_code(ast)
+
+			local function has_all_args(str)
+				return str:match("%[t%s*,%s*x%]") or str:match("%[x%s*,%s*t%]")
+			end
+
+			assert.is_truthy(result:match("D%[%s*[%w_]+%s*%[%s*[tx]%s*,%s*[tx]%s*%]%s*,%s*t%s*%]"))
+			assert.is_truthy(result:match("D%[%s*[%w_]+%s*%[%s*[tx]%s*,%s*[tx]%s*%]%s*,%s*x%s*%]"))
+			assert.is_truthy(has_all_args(result))
+			assert.is_truthy(result:match("DSolve"))
 		end)
 	end)
 

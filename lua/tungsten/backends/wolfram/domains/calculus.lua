@@ -30,9 +30,23 @@ M.handlers = {
 			and type(numeric_order) == "number"
 		then
 			local func_name = node.expression.name_node and node.expression.name_node.name
-			local arg_str = node.expression.args and node.expression.args[1] and walk(node.expression.args[1]) or variable_str
-			local prime_str = string.rep("'", numeric_order)
-			return map_function_name(func_name or "") .. prime_str .. "[" .. arg_str .. "]"
+			local rendered_args = {}
+
+			for _, arg in ipairs(node.expression.args or {}) do
+				table.insert(rendered_args, walk(arg))
+			end
+
+			if #rendered_args <= 1 then
+				local arg_str = rendered_args[1] or variable_str
+				local prime_str = string.rep("'", numeric_order)
+				return map_function_name(func_name or "") .. prime_str .. "[" .. arg_str .. "]"
+			end
+
+			local target = map_function_name(func_name or "") .. "[" .. table.concat(rendered_args, ", ") .. "]"
+			if numeric_order == 1 then
+				return "D[" .. target .. ", " .. variable_str .. "]"
+			end
+			return "D[" .. target .. ", {" .. variable_str .. ", " .. tostring(order_str) .. "}]"
 		end
 
 		local expression_str = walk(node.expression)
