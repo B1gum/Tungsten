@@ -36,7 +36,6 @@ local config = {
 				ln = "Log",
 				log10 = "Log10",
 				exp = "Exp",
-				u = "HeavisideTheta",
 			},
 		},
 	},

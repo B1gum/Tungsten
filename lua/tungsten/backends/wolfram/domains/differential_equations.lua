@@ -41,10 +41,13 @@ local function find_ode_vars(equation_nodes)
 	local dependent_seen_order = {}
 	local dependent_indep_seen = {}
 
-	local function add_dependent_var(func_name, indep_name)
+	local function add_dependent_var(func_name, indep_names)
 		if not func_name then
 			return
 		end
+
+		-- Ensure input is a table (list of variables)
+		local indeps_to_add = type(indep_names) == "table" and indep_names or { indep_names }
 
 		if not dependent_var_map[func_name] then
 			dependent_var_map[func_name] = {}
@@ -52,18 +55,20 @@ local function find_ode_vars(equation_nodes)
 			dependent_indep_seen[func_name] = {}
 		end
 
-		if indep_name and not dependent_indep_seen[func_name][indep_name] then
-			dependent_indep_seen[func_name][indep_name] = true
-			table.insert(dependent_var_map[func_name], indep_name)
-		end
+		for _, indep_name in ipairs(indeps_to_add) do
+			if indep_name and not dependent_indep_seen[func_name][indep_name] then
+				dependent_indep_seen[func_name][indep_name] = true
+				table.insert(dependent_var_map[func_name], indep_name)
+			end
 
-		if indep_name and not seen_independent[indep_name] then
-			seen_independent[indep_name] = true
-			table.insert(independent_vars, indep_name)
+			if indep_name and not seen_independent[indep_name] then
+				seen_independent[indep_name] = true
+				table.insert(independent_vars, indep_name)
+			end
 		end
 	end
 
-	-- Pass 1: Identify explicit relationships from derivatives
+	-- Pass 1: Scan ONLY for derivatives to establish the "ground truth" of independent variables
 	local function derivative_visitor(node)
 		if not node or type(node) ~= "table" then
 			return
@@ -76,7 +81,6 @@ local function find_ode_vars(equation_nodes)
 			elseif node.expression.type == "variable" then
 				func_name_str = node.expression.name
 			end
-
 			local indep_name = (node.variable and node.variable.name) or "x"
 			add_dependent_var(func_name_str, indep_name)
 		elseif node.type == "derivative" then
@@ -90,7 +94,6 @@ local function find_ode_vars(equation_nodes)
 			elseif node.expression and node.expression.type == "variable" then
 				func_name_str = node.expression.name
 			end
-
 			for _, var_info in ipairs(node.variables or {}) do
 				local indep_name = (var_info.variable and var_info.variable.name) or "x"
 				add_dependent_var(func_name_str, indep_name)
@@ -104,32 +107,27 @@ local function find_ode_vars(equation_nodes)
 		end
 	end
 
-	-- Pass 2: Infer dependencies for bare variables using context from Pass 1
+	-- Pass 2: Infer dependencies for bare variables using ALL found independent variables
 	local function variable_visitor(node)
 		if not node or type(node) ~= "table" then
 			return
 		end
 
 		if node.type == "variable" then
-			-- Determine the primary independent variable found so far (e.g., 't')
-			-- If none found, default to 'x'
-			local current_indep = (#independent_vars > 0 and independent_vars[1]) or "x"
-
-			-- If this variable is NOT the independent variable, it is likely dependent
-			local is_independent = (node.name == current_indep)
-			
-			-- Double check against list of all found independent vars
-			if not is_independent then
-				for _, iv in ipairs(independent_vars) do
-					if node.name == iv then
-						is_independent = true
-						break
-					end
+			-- Check if this variable is one of the independent variables (like x, y, t)
+			local is_independent = false
+			for _, iv in ipairs(independent_vars) do
+				if node.name == iv then
+					is_independent = true
+					break
 				end
 			end
 
 			if not is_independent then
-				add_dependent_var(node.name, current_indep)
+				-- If it's a dependent variable (like u, v), assign ALL found independent vars to it
+				-- If no independent vars found yet, default to "x"
+				local target_indeps = #independent_vars > 0 and independent_vars or { "x" }
+				add_dependent_var(node.name, target_indeps)
 			end
 		end
 
@@ -140,10 +138,10 @@ local function find_ode_vars(equation_nodes)
 		end
 	end
 
+	-- Execute Scan
 	for _, eq_node in ipairs(equation_nodes) do
 		derivative_visitor(eq_node)
 	end
-
 	for _, eq_node in ipairs(equation_nodes) do
 		variable_visitor(eq_node)
 	end
@@ -152,9 +150,25 @@ local function find_ode_vars(equation_nodes)
 		table.insert(independent_vars, "x")
 	end
 
+	-- Construct the string for DSolve arguments
 	for _, func_name in ipairs(dependent_seen_order) do
 		local wolfram_func_name = map_function_name(func_name)
 		local indep_list = dependent_var_map[func_name]
+
+		-- Sort independent variables to ensure consistent order (e.g. u[x,y] everywhere)
+		table.sort(indep_list, function(a, b)
+			local ia, ib = 0, 0
+			for k, v in ipairs(independent_vars) do
+				if v == a then
+					ia = k
+				end
+				if v == b then
+					ib = k
+				end
+			end
+			return ia < ib
+		end)
+
 		local indep_str = indep_list and (table.concat(indep_list, ", ") or "") or ""
 		table.insert(dependent_vars, wolfram_func_name .. "[" .. indep_str .. "]")
 	end
