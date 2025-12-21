@@ -6,7 +6,7 @@ local tk = require("tungsten.core.tokenizer")
 local space = tk.space
 local ast = require("tungsten.core.ast")
 
-local FunctionName = Cg(tk.variable, "name_node")
+local FunctionName = Cg(tk.variable + tk.Greek, "name_node")
 local ArgList = Ct(V("Expression") * (space * P(",") * space * V("Expression")) ^ 0)
 local Args = tk.lparen * space * Cg(ArgList, "args") * space * tk.rparen
 

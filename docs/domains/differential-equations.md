@@ -94,8 +94,70 @@ Some support for systems of PDEs is also present. Here, the syntax and method fo
 
 ```
 
-## Laplace Transforms
+## Laplace Transforms and Inverse Laplace Transforms
 
-## Inverse Laplace Transforms
+It is also possible to do Laplace transforms and inverse Laplace transforms using Tungsten.
+To find the Laplace transform of a function, simply write out the function in standard LaTeX-syntax, visually select it and run the `:TungstenLaplace` command. 
 
-## Wronskians and Convolutions
+**Example**:
+```latex
+  1 \rightarrow \frac{1}{s}
+  e^{-at} \rightarrow \frac{e^{-\text{at}}}{s}
+```
+
+Tungsten natively parses the heaviside step function (written as `u`) and the dirac-delta function (written as `\delta`) when doing Laplace transforms.
+
+**Example**:
+```latex
+  u(t-a) \rightarrow \frac{e^{-a s} u (a)+u (-a)}{s}
+  \delta(t-a) \rightarrow u (a) e^{-a s}
+```
+
+Inverse Laplace transforms are found in the same manner, by writing out an expression, visually selecting it and running the `:TungstenInverseLaplace` command.
+
+**Example**:
+```latex
+  \frac{1}{s} \rightarrow 1
+  \frac{e^{-at}}{s} \rightarrow e^{-\text{at}}
+
+  \frac{\omega}{\omega^2 + s^2} \rightarrow \sin (\omega  t)
+  \frac{s}{s^2 + \omega^2} \rightarrow \cos (\omega  t)
+```
+
+You are also able to include Laplace transforms and inverse Laplace transforms in the usual evaluation loop.
+To do this, simply encapsulate the expression you want to take the Laplace transform or inverse Laplace transform of in `\mathcal{L}(...)` or `\mathcal^{-1}(...)` respectively, visually select it and run the `:TungstenEvaluate` command.
+
+**Example**:
+```latex
+  \mathcal{L}^{-1} \left( \frac{1}{s} \right) = 1
+  \mathcal{L} \left( t^{n} \right) = s^{-n-1} \Gamma (n+1)
+  \mathcal{L}(\delta(t-a)) \cdot \mathcal{L}\left( u(t-a) \right) = \frac{u (a) e^{-a s} \left(e^{-a s} u (a)+u (-a)\right)}{s}
+```
+
+
+## Wronskians
+
+You can calculate the Wronskian determinant of a set of functions using the `:TungstenWronskian` command. The syntax expects the functions to be wrapped in `W(...)` and separated by commas.
+
+**Example**:
+```latex
+  W(y_1, y_2) \rightarrow y_1(x) y_2'(x)-y_2(x) y_1'(x)
+  W(f, g, h) \rightarrow h'(x) \left(g(x) f''(x)-f(x) g''(x)\right)+h''(x) \left(f(x) g'(x)-g(x) f'(x)\right)+h(x) \left(f'(x) g''(x)-f''(x) g'(x)\right)
+```
+
+## Convolutions
+
+Tungsten supports calculating the finite convolution of two functions, commonly used in Differential Equations and Laplace transforms. The syntax uses the \ast operator (rendered as an asterisk or star) between two functions.
+
+The mathematical definition of this is
+```math
+  (f \ast g)(t) = \int_{0}^{t} f(\tau) g(t - \tau) \mathrm{d}\tau
+```
+
+You can execute a convolution either throug the `:TungstenEvaluate` or the `:TungstenConvolve` commands.
+
+**Example**:
+```latex
+  t \ast e^{t} = -t+e^t-1
+  \sin(t) \ast \cos(t) = \frac{1}{2} t \sin (t)
+```

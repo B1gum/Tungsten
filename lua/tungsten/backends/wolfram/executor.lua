@@ -105,6 +105,9 @@ function M.evaluate_async(ast, opts, callback)
 				end
 
 				local result = stdout
+
+        result = result:gsub("\\theta", "u") -- Use u for the heaviside step function instead of theta
+
 				if form == "InputForm" then
 					local format_quantities = solution_parser.format_quantities or function(x)
 						return x

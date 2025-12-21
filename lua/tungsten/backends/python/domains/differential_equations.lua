@@ -3,6 +3,58 @@
 
 local M = {}
 
+local function deepcopy(value)
+	if type(value) ~= "table" then
+		return value
+	end
+
+	local copy = {}
+
+	for k, v in pairs(value) do
+		copy[k] = deepcopy(v)
+	end
+
+	return copy
+end
+
+local laplace_special_function_map = {
+	u = "Heaviside",
+	delta = "DiracDelta",
+}
+
+local function rewrite_laplace_functions(expression)
+	if type(expression) ~= "table" then
+		return expression
+	end
+
+	local rewritten = deepcopy(expression)
+
+	local function apply(node)
+		if type(node) ~= "table" then
+			return
+		end
+
+		if node.type == "function_call" and node.name_node and node.name_node.type == "variable" then
+			local func_name = node.name_node.name
+			if type(func_name) == "string" then
+				local mapped = laplace_special_function_map[func_name:lower()]
+				if mapped then
+					node.name_node = deepcopy(node.name_node)
+					node.name_node.name = mapped
+				end
+			end
+		end
+
+		for _, child in pairs(node) do
+			apply(child)
+		end
+	end
+
+	apply(rewritten)
+
+	return rewritten
+end
+
 local function extract_condition(condition)
 	if not condition or type(condition) ~= "table" then
 		return nil, nil
@@ -88,18 +140,18 @@ M.handlers = {
 	end,
 
 	laplace_transform = function(node, walk)
-		local func = walk(node.expression)
+		local func = walk(rewrite_laplace_functions(node.expression))
 		local from_var = "t"
 		local to_var = "s"
 		return ("sp.laplace_transform(%s, %s, %s)"):format(func, from_var, to_var)
 	end,
 
 	inverse_laplace_transform = function(node, walk)
-		local func = walk(node.expression)
-		local from_var = "s"
-		local to_var = "t"
-		return ("sp.inverse_laplace_transform(%s, %s, %s)"):format(func, from_var, to_var)
-	end,
+    local func = walk(rewrite_laplace_functions(node.expression))
+    local from_var = "s"
+    local to_var = "t"
+    return ("sp.inverse_laplace_transform(%s, %s, %s)"):format(func, from_var, to_var)
+  end,
 
 	convolution = function(node, walk)
 		return ("sp.convolution(%s, %s, t, y)"):format(walk(node.left), walk(node.right))

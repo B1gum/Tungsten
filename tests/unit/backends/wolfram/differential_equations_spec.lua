@@ -312,6 +312,32 @@ describe("Differential Equations Wolfram Handlers", function()
 			local result = handlers.laplace_transform(ast, mock_render)
 			assert.are.same("LaplaceTransform[F[t], t, s]", result)
 		end)
+
+		it("maps u() to HeavisideTheta inside Laplace transforms", function()
+			local ast = {
+				type = "laplace_transform",
+				expression = {
+					type = "function_call",
+					name_node = { type = "variable", name = "u" },
+					args = { { type = "variable", name = "t" } },
+				},
+			}
+			local result = handlers.laplace_transform(ast, mock_render)
+			assert.are.same("LaplaceTransform[HeavisideTheta[t], t, s]", result)
+		end)
+
+		it("maps delta() to DiracDelta inside Laplace transforms", function()
+			local ast = {
+				type = "laplace_transform",
+				expression = {
+					type = "function_call",
+					name_node = { type = "variable", name = "delta" },
+					args = { { type = "variable", name = "t" } },
+				},
+			}
+			local result = handlers.laplace_transform(ast, mock_render)
+			assert.are.same("LaplaceTransform[DiracDelta[t], t, s]", result)
+		end)
 	end)
 
 	describe("inverse_laplace_transform handler", function()
@@ -328,6 +354,32 @@ describe("Differential Equations Wolfram Handlers", function()
 			assert.are.same("InverseLaplaceTransform[F[s], s, t]", result)
 		end)
 	end)
+
+		it("maps u() to HeavisideTheta inside inverse Laplace transforms", function()
+			local ast = {
+				type = "inverse_laplace_transform",
+				expression = {
+					type = "function_call",
+					name_node = { type = "variable", name = "u" },
+					args = { { type = "variable", name = "s" } },
+				},
+			}
+			local result = handlers.inverse_laplace_transform(ast, mock_render)
+			assert.are.same("InverseLaplaceTransform[HeavisideTheta[s], s, t]", result)
+		end)
+
+		it("maps delta() to DiracDelta inside inverse Laplace transforms", function()
+			local ast = {
+				type = "inverse_laplace_transform",
+				expression = {
+					type = "function_call",
+					name_node = { type = "variable", name = "delta" },
+					args = { { type = "variable", name = "s" } },
+				},
+			}
+			local result = handlers.inverse_laplace_transform(ast, mock_render)
+			assert.are.same("InverseLaplaceTransform[DiracDelta[s], s, t]", result)
+		end)
 
 	describe("convolution handler", function()
 		it("should correctly format the Convolve function", function()

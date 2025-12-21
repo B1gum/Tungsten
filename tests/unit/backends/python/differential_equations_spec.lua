@@ -98,6 +98,32 @@ describe("Differential Equations Python Handlers", function()
 			local result = handlers.laplace_transform(ast, mock_render)
 			assert.are.same("sp.laplace_transform(f(t), t, s)", result)
 		end)
+
+		it("maps u() to Heaviside inside laplace transform", function()
+			local ast = {
+				type = "laplace_transform",
+				expression = {
+					type = "function_call",
+					name_node = { type = "variable", name = "u" },
+					args = { { type = "variable", name = "t" } },
+				},
+			}
+			local result = handlers.laplace_transform(ast, mock_render)
+			assert.are.same("sp.laplace_transform(Heaviside(t), t, s)", result)
+		end)
+
+		it("maps delta() to DiracDelta inside laplace transform", function()
+			local ast = {
+				type = "laplace_transform",
+				expression = {
+					type = "function_call",
+					name_node = { type = "variable", name = "delta" },
+					args = { { type = "variable", name = "t" } },
+				},
+			}
+			local result = handlers.laplace_transform(ast, mock_render)
+			assert.are.same("sp.laplace_transform(DiracDelta(t), t, s)", result)
+		end)
 	end)
 
 	describe("inverse_laplace_transform handler", function()
@@ -112,6 +138,32 @@ describe("Differential Equations Python Handlers", function()
 			}
 			local result = handlers.inverse_laplace_transform(ast, mock_render)
 			assert.are.same("sp.inverse_laplace_transform(F(s), s, t)", result)
+		end)
+
+		it("maps u() to Heaviside inside inverse laplace transform", function()
+			local ast = {
+				type = "inverse_laplace_transform",
+				expression = {
+					type = "function_call",
+					name_node = { type = "variable", name = "u" },
+					args = { { type = "variable", name = "s" } },
+				},
+			}
+			local result = handlers.inverse_laplace_transform(ast, mock_render)
+			assert.are.same("sp.inverse_laplace_transform(Heaviside(s), s, t)", result)
+		end)
+
+		it("maps delta() to DiracDelta inside inverse laplace transform", function()
+			local ast = {
+				type = "inverse_laplace_transform",
+				expression = {
+					type = "function_call",
+					name_node = { type = "variable", name = "delta" },
+					args = { { type = "variable", name = "s" } },
+				},
+			}
+			local result = handlers.inverse_laplace_transform(ast, mock_render)
+			assert.are.same("sp.inverse_laplace_transform(DiracDelta(s), s, t)", result)
 		end)
 	end)
 

@@ -1,5 +1,3 @@
--- lua/tungsten/domains/differential_equations/init.lua
-
 local DifferentialEquationRule = require("tungsten.domains.differential_equations.rules.ode")
 local ODESystemRule = require("tungsten.domains.differential_equations.rules.ode_system")
 local WronskianRule = require("tungsten.domains.differential_equations.rules.wronskian")
@@ -20,7 +18,8 @@ c[#c + 1] = { name = "ODE", pattern = DifferentialEquationRule, category = "TopL
 c[#c + 1] = { name = "ODESystem", pattern = ODESystemRule, category = "TopLevelRule", priority = prio }
 c[#c + 1] = { name = "Wronskian", pattern = WronskianRule, category = "AtomBaseItem", priority = prio }
 c[#c + 1] = { name = "LaplaceTransform", pattern = LaplaceRule, category = "AtomBaseItem", priority = prio }
-c[#c + 1] = { name = "Convolution", pattern = ConvolutionRule, category = "Convolution", priority = prio }
+
+c[#c + 1] = { name = "MulDiv", pattern = ConvolutionRule, category = "MulDiv", priority = prio }
 
 do
 	local cmds = require("tungsten.domains.differential_equations.commands")
