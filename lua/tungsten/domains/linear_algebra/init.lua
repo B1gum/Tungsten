@@ -17,7 +17,8 @@ local M = {
 M.grammar = { contributions = {}, extensions = {} }
 local c = M.grammar.contributions
 local prio = M.priority
-c[#c + 1] = { name = "Matrix", pattern = MatrixRule, category = "Matrix", priority = prio }
+c[#c + 1] = { name = "Matrix", pattern = MatrixRule, category = "AtomBaseItem", priority = prio }
+
 c[#c + 1] = { name = "Vector", pattern = VectorRule, category = "AtomBaseItem", priority = prio }
 c[#c + 1] = { name = "Determinant", pattern = DeterminantRule, category = "AtomBaseItem", priority = prio }
 c[#c + 1] = { name = "Norm", pattern = NormRule, category = "AtomBaseItem", priority = prio }

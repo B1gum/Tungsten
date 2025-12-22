@@ -161,3 +161,5 @@ You can execute a convolution either throug the `:TungstenEvaluate` or the `:Tun
   t \ast e^{t} = -t+e^t-1
   \sin(t) \ast \cos(t) = \frac{1}{2} t \sin (t)
 ```
+
+*Note*: The convolution handler assumes the independent variable is t. If you use other variables, the backend may default to a generic infinite convolution or fail to evaluate.

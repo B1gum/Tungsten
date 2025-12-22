@@ -49,20 +49,15 @@ describe("Differential Equations Laplace Rule", function()
 
 		local expression_in_braces = expression_in_delimiters(P("\\{"), P("\\}"))
 		local expression_in_parens = expression_in_delimiters(P("("), P(")"))
-		local expression_in_left_right_braces = expression_in_delimiters(
-			P("\\left") * mock_tk.space * P("\\{"),
-			P("\\right") * mock_tk.space * P("\\}")
-		)
-		local expression_in_left_right_parens = expression_in_delimiters(
-			P("\\left") * mock_tk.space * P("("),
-			P("\\right") * mock_tk.space * P(")")
-		)
+		local expression_in_left_right_braces =
+			expression_in_delimiters(P("\\left") * mock_tk.space * P("\\{"), P("\\right") * mock_tk.space * P("\\}"))
+		local expression_in_left_right_parens =
+			expression_in_delimiters(P("\\left") * mock_tk.space * P("("), P("\\right") * mock_tk.space * P(")"))
 
 		local expression_with_delimiters = expression_in_left_right_parens
 			+ expression_in_left_right_braces
 			+ expression_in_braces
 			+ expression_in_parens
-		local inverse_marker = P("^") * mock_tk.space * P("{") * mock_tk.space * P("-1") * mock_tk.space * P("}")
 
 		local inverse_marker = P("^") * mock_tk.space * P("{") * mock_tk.space * P("-1") * mock_tk.space * P("}")
 
@@ -109,12 +104,15 @@ describe("Differential Equations Laplace Rule", function()
 		assert.are.same("f", result.expression.name_node.name)
 	end)
 
-	it("should parse an inverse Laplace transform with \\left(\\right): \\mathcal{L}^{-1} \\left( F(s) \\right)", function()
-		local result = parse_input("\\mathcal{L}^{-1} \\left( F(s) \\right)")
-		assert.is_table(result)
-		assert.are.same("inverse_laplace_transform", result.type)
-		assert.is_table(result.expression)
-		assert.are.same("function_call", result.expression.type)
-		assert.are.same("F", result.expression.name_node.name)
-	end)
+	it(
+		"should parse an inverse Laplace transform with \\left(\\right): \\mathcal{L}^{-1} \\left( F(s) \\right)",
+		function()
+			local result = parse_input("\\mathcal{L}^{-1} \\left( F(s) \\right)")
+			assert.is_table(result)
+			assert.are.same("inverse_laplace_transform", result.type)
+			assert.is_table(result.expression)
+			assert.are.same("function_call", result.expression.type)
+			assert.are.same("F", result.expression.name_node.name)
+		end
+	)
 end)

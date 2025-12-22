@@ -6,6 +6,8 @@ local P, V, Ct = lpeg.P, lpeg.V, lpeg.Ct
 
 local tk = require("tungsten.core.tokenizer")
 local ast = require("tungsten.core.ast")
+local MatrixRule = require("tungsten.domains.linear_algebra.rules.matrix")
+
 local space = tk.space
 
 local SymbolicVecCommand = P("\\vec")
@@ -32,7 +34,7 @@ local SymbolicMathBoldCommand = P("\\mathbf")
 
 local SingleSymbolicVectorRule = SymbolicVecCommand + SymbolicMathBoldCommand
 
-local ConcreteVectorRule = V("Matrix") / function(matrix_ast)
+local ConcreteVectorRule = MatrixRule / function(matrix_ast)
 	return matrix_ast
 end
 

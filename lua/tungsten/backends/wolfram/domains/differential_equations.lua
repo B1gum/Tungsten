@@ -30,26 +30,28 @@ local function rewrite_laplace_functions(expression)
 
 	local rewritten = deepcopy(expression)
 
-local function apply(node)
-        if type(node) ~= "table" then
-            return
-        end
+	local function apply(node)
+		if type(node) ~= "table" then
+			return
+		end
 
-        if node.type == "function_call" and node.name_node and
-           (node.name_node.type == "variable" or node.name_node.type == "greek") then
+		if
+			node.type == "function_call"
+			and node.name_node
+			and (node.name_node.type == "variable" or node.name_node.type == "greek")
+		then
+			local func_name = node.name_node.name
+			if type(func_name) == "string" then
+				local clean_name = func_name:gsub("^\\", "")
+				local mapped = laplace_special_function_map[clean_name:lower()]
 
-            local func_name = node.name_node.name
-            if type(func_name) == "string" then
-        local clean_name = func_name:gsub("^\\", "")
-local mapped = laplace_special_function_map[clean_name:lower()]
-
-                if mapped then
-                    node.name_node = deepcopy(node.name_node)
-                    node.name_node.name = mapped
-                    node.name_node.type = "variable"
-                end
-            end
-        end
+				if mapped then
+					node.name_node = deepcopy(node.name_node)
+					node.name_node.name = mapped
+					node.name_node.type = "variable"
+				end
+			end
+		end
 
 		for _, child in pairs(node) do
 			apply(child)
@@ -518,15 +520,15 @@ M.handlers = {
 		return result
 	end,
 
-  ["convolution"] = function(node, executor)
-        local left = executor(node.left)
-        local right = executor(node.right)
+	["convolution"] = function(node, executor)
+		local left = executor(node.left)
+		local right = executor(node.right)
 
-        local left_tau = string.format("(%s /. t -> tau)", left)
-        local right_shifted = string.format("(%s /. t -> (t - tau))", right)
+		local left_tau = string.format("(%s /. t -> tau)", left)
+		local right_shifted = string.format("(%s /. t -> (t - tau))", right)
 
-        return string.format("Integrate[%s * %s, {tau, 0, t}]", left_tau, right_shifted)
-    end,
+		return string.format("Integrate[%s * %s, {tau, 0, t}]", left_tau, right_shifted)
+	end,
 
 	["laplace_transform"] = function(node, walk)
 		local func = walk(rewrite_laplace_functions(node.expression))

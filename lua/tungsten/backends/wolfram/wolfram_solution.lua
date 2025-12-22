@@ -77,7 +77,7 @@ function M.parse_wolfram_solution(output_lines, vars, is_system)
 		return { ok = false, reason = "No solution" }
 	end
 
-  output = output:gsub("\\theta", "u")
+	output = output:gsub("\\theta", "u")
 
 	local err = error_parser.parse_wolfram_error(output)
 	if err then

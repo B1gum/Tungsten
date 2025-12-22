@@ -14,14 +14,10 @@ end
 
 local expression_in_braces = expression_in_delimiters(P("\\{"), P("\\}"))
 local expression_in_parens = expression_in_delimiters(P("("), P(")"))
-local expression_in_left_right_braces = expression_in_delimiters(
-	P("\\left") * space * P("\\{"),
-	P("\\right") * space * P("\\}")
-)
-local expression_in_left_right_parens = expression_in_delimiters(
-	P("\\left") * space * P("("),
-	P("\\right") * space * P(")")
-)
+local expression_in_left_right_braces =
+	expression_in_delimiters(P("\\left") * space * P("\\{"), P("\\right") * space * P("\\}"))
+local expression_in_left_right_parens =
+	expression_in_delimiters(P("\\left") * space * P("("), P("\\right") * space * P(")"))
 
 local expression_with_delimiters = expression_in_left_right_parens
 	+ expression_in_left_right_braces

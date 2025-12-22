@@ -2,7 +2,7 @@
 -- Defines the lpeg rule for parsing ordinary differential equations (ODEs).
 
 local lpeg = require("lpeglabel")
-local P, V, Ct, Cg, Cmt = lpeg.P, lpeg.V, lpeg.Ct, lpeg.Cg, lpeg.Cmt
+local V, Ct, Cg, Cmt = lpeg.V, lpeg.Ct, lpeg.Cg, lpeg.Cmt
 
 local tk = require("tungsten.core.tokenizer")
 local ast = require("tungsten.core.ast")

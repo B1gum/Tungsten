@@ -147,11 +147,11 @@ M.handlers = {
 	end,
 
 	inverse_laplace_transform = function(node, walk)
-    local func = walk(rewrite_laplace_functions(node.expression))
-    local from_var = "s"
-    local to_var = "t"
-    return ("sp.inverse_laplace_transform(%s, %s, %s)"):format(func, from_var, to_var)
-  end,
+		local func = walk(rewrite_laplace_functions(node.expression))
+		local from_var = "s"
+		local to_var = "t"
+		return ("sp.inverse_laplace_transform(%s, %s, %s)"):format(func, from_var, to_var)
+	end,
 
 	convolution = function(node, walk)
 		return ("sp.convolution(%s, %s, t, y)"):format(walk(node.left), walk(node.right))
