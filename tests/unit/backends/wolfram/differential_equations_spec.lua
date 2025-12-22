@@ -389,7 +389,7 @@ describe("Differential Equations Wolfram Handlers", function()
 				right = { type = "variable", name = "g" },
 			}
 			local result = handlers.convolution(ast, mock_render)
-			assert.are.same("Convolve[f, g, t, y]", result)
+			assert.are.same("Integrate[(f /. t -> tau) * (g /. t -> (t - tau)), {tau, 0, t}]", result)
 		end)
 	end)
 end)

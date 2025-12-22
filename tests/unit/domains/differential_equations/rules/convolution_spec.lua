@@ -9,7 +9,12 @@ describe("Differential Equations Convolution Rule", function()
 	end
 
 	before_each(function()
-		package.loaded["tungsten.core.tokenizer"] = { space = S(" \t\n\r") ^ 0 }
+		package.loaded["tungsten.core.tokenizer"] = {
+			space = S(" \t\n\r") ^ 0,
+			variable = C(R("az", "AZ") ^ 1) / function(s)
+				return { type = "variable", name = s }
+			end,
+		}
 		package.loaded["tungsten.core.ast"] = {
 			create_convolution_node = function(left, right)
 				return { type = "convolution", left = left, right = right }

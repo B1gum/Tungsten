@@ -55,6 +55,10 @@ describe("Arithmetic foundational rule coverage", function()
 			number = (P("-") ^ -1 * R("09") ^ 1) / function(s)
 				return { type = "number", value = tonumber(s) }
 			end,
+			Greek = P("\\") ^ -1 * (R("az", "AZ") ^ 1) / function(s)
+				local name = s:gsub("^\\", "")
+				return { type = "greek", name = name }
+			end,
 		}
 		package.loaded["tungsten.core.tokenizer"] = mock_tokenizer_module
 
