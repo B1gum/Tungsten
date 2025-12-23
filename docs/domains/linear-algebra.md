@@ -159,6 +159,10 @@ As mentioned above, the linear algebra domain overrides the multiplication defau
 
 Calculating the norm of a vector and the determinant of a matrix is supported directly via `:TungstenEvaluate`. 
 
+```latex
+  |  |
+```
+
 ### Transposes
 
 ## Matrix Analysis

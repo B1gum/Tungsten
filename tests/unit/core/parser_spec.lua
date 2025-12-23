@@ -403,17 +403,19 @@ describe("tungsten.core.parser.parse with combined grammar", function()
 			end)
 
 			it(
-				"should parse a 3x1 vmatrix with complex entries: \\begin{vmatrix} x^2 \\\\ \\frac{1}{y} \\\\ z_i \\end{vmatrix}",
+				"should parse a 3x1 vmatrix with complex entries as a determinant: \\begin{vmatrix} x^2 \\\\ \\frac{1}{y} \\\\ z_i \\end{vmatrix}",
 				function()
 					local input = "\\begin{vmatrix} x^2 \\\\ \\frac{1}{y} \\\\ z_i \\end{vmatrix}"
-					local expected_ast = ast_utils.create_matrix_node({
+					local matrix_ast = ast_utils.create_matrix_node({
 						{ ast_utils.create_superscript_node({ type = "variable", name = "x" }, { type = "number", value = 2 }) },
 						{ ast_utils.create_fraction_node({ type = "number", value = 1 }, { type = "variable", name = "y" }) },
 						{ ast_utils.create_subscript_node({ type = "variable", name = "z" }, { type = "variable", name = "i" }) },
 					})
+					local expected_ast = ast_utils.create_determinant_node(matrix_ast)
 					local parsed = parse_input(input)
-					assert.are.equal("matrix", parsed.type)
-					assert.are.same(expected_ast.rows, parsed.rows)
+					assert.are.equal("determinant", parsed.type)
+					assert.are.equal("matrix", parsed.expression.type)
+					assert.are.same(expected_ast.expression.rows, parsed.expression.rows)
 				end
 			)
 

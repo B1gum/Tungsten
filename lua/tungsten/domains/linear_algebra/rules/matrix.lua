@@ -85,7 +85,12 @@ local MatrixRule = Ct(matrix_begin_pattern * space * MatrixBody * space * matrix
 			return nil
 		end
 
-		return ast.create_matrix_node(actual_matrix_rows, begin_env_type)
+		local matrix_node = ast.create_matrix_node(actual_matrix_rows, begin_env_type)
+		if begin_env_type == "vmatrix" then
+			return ast.create_determinant_node(matrix_node)
+		end
+
+		return matrix_node
 	end
 
 return MatrixRule

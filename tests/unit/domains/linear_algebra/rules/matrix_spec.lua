@@ -54,6 +54,12 @@ describe("Linear Algebra Matrix Rule: tungsten.domains.linear_algebra.rules.matr
 					rows = rows_table,
 				}
 			end,
+			create_determinant_node = function(expression)
+				return {
+					type = "determinant",
+					expression = expression,
+				}
+			end,
 		}
 		package.loaded["tungsten.core.ast"] = mock_ast_module
 
@@ -131,16 +137,19 @@ describe("Linear Algebra Matrix Rule: tungsten.domains.linear_algebra.rules.matr
 		end)
 
 		it(
-			"should parse a 3x3 vmatrix with varied spacing: \\begin{vmatrix} 1&2&3 \\\\ 4 & 5 & 6 \\\\ 7  &  8  &  9 \\end{vmatrix}",
+			"should parse a 3x3 vmatrix with varied spacing as a determinant: \\begin{vmatrix} 1&2&3 \\\\ 4 & 5 & 6 \\\\ 7  &  8  &  9 \\end{vmatrix}",
 			function()
 				local input = "\\begin{vmatrix} 1&2&3 \\\\ 4 & 5 & 6 \\\\ 7  &  8  &  9 \\end{vmatrix}"
 				local expected_ast = {
-					type = "matrix",
-					env_type = "vmatrix",
-					rows = {
-						{ placeholder_expr_node("num:1"), placeholder_expr_node("num:2"), placeholder_expr_node("num:3") },
-						{ placeholder_expr_node("num:4"), placeholder_expr_node("num:5"), placeholder_expr_node("num:6") },
-						{ placeholder_expr_node("num:7"), placeholder_expr_node("num:8"), placeholder_expr_node("num:9") },
+					type = "determinant",
+					expression = {
+						type = "matrix",
+						env_type = "vmatrix",
+						rows = {
+							{ placeholder_expr_node("num:1"), placeholder_expr_node("num:2"), placeholder_expr_node("num:3") },
+							{ placeholder_expr_node("num:4"), placeholder_expr_node("num:5"), placeholder_expr_node("num:6") },
+							{ placeholder_expr_node("num:7"), placeholder_expr_node("num:8"), placeholder_expr_node("num:9") },
+						},
 					},
 				}
 				assert.are.same(expected_ast, parse_input(input))
