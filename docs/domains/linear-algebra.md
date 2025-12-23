@@ -30,13 +30,134 @@ In Tungsten a vector is defined as a matrix with only one row or column.
 
 ## Basic Operations
 
-As mentioned above, the linear algebra domain overrides the multiplication defaults of the [arithmatics domain](arithmetics.md)
-
 ### Addition and Subtraction
+
+You are also able to subtract and add matrices or vectors using `:TungstenEvaluate`.
+
+Adding or subtracting a constant from a vector or matrix is parsed as an element-wise operation as:
+```latex
+  \begin{pmatrix}
+    1 & 2\\
+  2 & 2\\
+  \end{pmatrix} - 2 = \left(
+  \begin{array}{cc}
+   -1 & 0 \\
+   0 & 0 \\
+  \end{array}
+  \right)
+```
+
+Addition and subtraction between matrices or vectors works as
+```latex
+    \begin{pmatrix}
+    1 & 2\\
+  3 & 4\\
+  \end{pmatrix} + \begin{pmatrix}
+  2 & 3\\
+  3 & 4\\
+  \end{pmatrix} = \left(
+  \begin{array}{cc}
+     3 & 5 \\
+     6 & 8 \\
+  \end{array}
+  \right)
+
+  \begin{bmatrix}
+    1 & 2 & 3\\
+  \end{bmatrix} + \begin{bmatrix}
+    2 & 3 & 4\\
+  \end{bmatrix} = \left(
+  \begin{array}{ccc}
+   3 & 5 & 7 \\
+  \end{array}
+  \right)
+```
+
 
 ### Multiplication and Products
 
+As mentioned above, the linear algebra domain overrides the multiplication defaults of the [arithmatics domain](arithmetics.md).
+
+**Matrix Multiplication**: Using `\cdot` between two matrices (or a matrix and a vector) results in standard matrix multiplication.
+
+**Examples**:
+```latex
+  \begin{pmatrix}
+    1 & 2\\
+  3 & 4\\
+  \end{pmatrix} \cdot \begin{pmatrix}
+    1 & 3\\
+  2 & 4\\
+  \end{pmatrix} = \left(
+  \begin{array}{cc}
+     5 & 11 \\
+     11 & 25 \\
+  \end{array}
+  \right)
+
+  \begin{bmatrix}
+    g & h & i\\
+  \end{bmatrix} \cdot \begin{bmatrix}
+    a & b\\
+  c & d\\
+  e & f\\
+  \end{bmatrix} = \{a g+c h+e i,b g+d h+f i\}
+```
+
+**Dot Product**: Using `\cdot` between two vectors calculates the dot or scalar product.
+
+**Example**:
+```latex
+  \begin{bmatrix}
+    a & b \\
+  \end{bmatrix} \cdot \begin{bmatrix}
+  c\\
+  d\\
+  \end{bmatrix}  = a c+d b
+
+  \begin{bmatrix}
+    8\\
+  6\\
+  1\\
+  \end{bmatrix} \cdot \begin{bmatrix}
+    2 & 3 & 1\\
+  \end{bmatrix} = 35
+```
+
+**Cross Product**: Using `\times` between two vectors calculates the cross product.
+
+**Example**:
+```latex
+  \begin{bmatrix}
+    a & b & c\\
+  \end{bmatrix} \times \begin{bmatrix}
+    d\\
+  e\\
+  f\\
+  \end{bmatrix} = \{b f-e c,c d-a f,e a-b d\}
+
+  \begin{bmatrix}
+    a & b & c\\
+  \end{bmatrix}\times \begin{bmatrix}
+    d & e & f\\
+  \end{bmatrix}  = \{b f-e c,c d-a f,e a-b d\}
+
+  \begin{bmatrix}
+    2 & 2 & 4\\
+  \end{bmatrix} \times \begin{bmatrix}
+    1\\
+  6\\
+  3\\
+  \end{bmatrix} = \{-18,-2,10\}
+```
+
+*Note*: The Wolfram engine does not differentiate between row and column-vectors, hence, the cross product between a row and a column vector is parsed the same as that between two row or two column vectors. This is not true for addition and subtraction between vectors and matrices, where Wolfram respects their directionality. 
+
+
+
 ### Norms and Determinants
+
+Calculating the norm of a vector and the determinant of a matrix is supported directly via `:TungstenEvaluate`. 
 
 ### Transposes
 

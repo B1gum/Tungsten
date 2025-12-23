@@ -292,9 +292,6 @@ function M.parse(input, opts)
 	local pattern = space * current_grammar * (space * -1 + lpeg.T("extra_input"))
 
 	local series_separators = { [";"] = true }
-	if not opts.preserve_newlines then
-		series_separators["\n"] = true
-	end
 
 	local series_strs = lexer.split_top_level(input, series_separators)
 	local series = {}
