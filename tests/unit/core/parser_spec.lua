@@ -479,9 +479,9 @@ describe("tungsten.core.parser.parse with combined grammar", function()
 					{ { type = "number", value = 1 }, { type = "number", value = 0 } },
 					{ { type = "number", value = 0 }, { type = "number", value = 1 } },
 				})
-				local expected_ast = ast_utils.create_determinant_node(matrix_ast)
+				local expected_ast = ast_utils.create_norm_node(matrix_ast)
 				local parsed = parse_input(input)
-				assert.are.equal("determinant", parsed.type)
+				assert.are.equal("norm", parsed.type)
 				assert.are.equal("matrix", parsed.expression.type)
 				assert.are.same(expected_ast.expression.rows, parsed.expression.rows)
 			end)
@@ -668,6 +668,33 @@ describe("tungsten.core.parser.parse with combined grammar", function()
 					{ type = "variable", name = "A" },
 					{ type = "variable", name = "F" }
 				)
+				assert.are.same(expected_ast, parse_input(input))
+			end)
+
+			it("should parse |\\begin{bmatrix} 1 & 2 & 3 \\end{bmatrix}| as a norm", function()
+				local input = "|\\begin{bmatrix} 1 & 2 & 3 \\end{bmatrix}|"
+				local matrix_ast = ast_utils.create_matrix_node({
+					{ { type = "number", value = 1 }, { type = "number", value = 2 }, { type = "number", value = 3 } },
+				}, "bmatrix")
+				local expected_ast = ast_utils.create_norm_node(matrix_ast, nil)
+				assert.are.same(expected_ast, parse_input(input))
+			end)
+
+			it("should parse \\|\\begin{bmatrix} 1 & 2 & 3 \\end{bmatrix}\\|", function()
+				local input = "\\|\\begin{bmatrix} 1 & 2 & 3 \\end{bmatrix}\\|"
+				local matrix_ast = ast_utils.create_matrix_node({
+					{ { type = "number", value = 1 }, { type = "number", value = 2 }, { type = "number", value = 3 } },
+				}, "bmatrix")
+				local expected_ast = ast_utils.create_norm_node(matrix_ast, nil)
+				assert.are.same(expected_ast, parse_input(input))
+			end)
+
+			it("should parse \\left| \\begin{bmatrix} 1 & 2 & 3 \\end{bmatrix} \\right| as a norm", function()
+				local input = "\\left| \\begin{bmatrix} 1 & 2 & 3 \\end{bmatrix} \\right|"
+				local matrix_ast = ast_utils.create_matrix_node({
+					{ { type = "number", value = 1 }, { type = "number", value = 2 }, { type = "number", value = 3 } },
+				}, "bmatrix")
+				local expected_ast = ast_utils.create_norm_node(matrix_ast, nil)
 				assert.are.same(expected_ast, parse_input(input))
 			end)
 

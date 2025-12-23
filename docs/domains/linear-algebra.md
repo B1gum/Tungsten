@@ -159,11 +159,48 @@ As mentioned above, the linear algebra domain overrides the multiplication defau
 
 Calculating the norm of a vector and the determinant of a matrix is supported directly via `:TungstenEvaluate`. 
 
+The norm of a vector is found, simply by encapsulating the vector in any of `|...|`, `\|...\|`, or `\left|...\right|`, visually selecting the expression and running `:TungstenEvaluate` as
+
 ```latex
-  |  |
+  |\begin{bmatrix}
+    1 & 2 & 3\\
+  \end{bmatrix}| = \sqrt{14}
+
+  \|\begin{bmatrix}
+    1 & 2 & 3\\
+  \end{bmatrix} \| = \sqrt{14}
+
+  \left| \begin{bmatrix}
+    1 & 2 & 3\\
+  \end{bmatrix} \right| = \sqrt{14}
+```
+
+To find the determinant of a matrix, simply write the matrix using `\begin{vmatrix} ... \end{vmatrix}`, encapsulate a `bmatrix` or `pmatrix` in `|...|` delimiters, or encapsulating a `bmatrix` or `pmatrix` environment in `\det(...)`, visually select it, and run the `:TungstenEvaluate` command.
+
+**Examples**:
+```latex
+  \begin{vmatrix}
+    1 & 3\\
+  2 & 4\\
+  \end{vmatrix} = -2
+
+  \left| \begin{bmatrix}
+    1 & 3 & 4\\
+  2 & 3 & 6\\
+  \end{bmatrix} \right| = \sqrt{\frac{1}{2} \left(75+\sqrt{5429}\right)}
+
+  \det\left( \begin{bmatrix}
+    1 & a\\
+  b & 4\\
+  \end{bmatrix}\right) = 4-a b
 ```
 
 ### Transposes
+
+You can transpose a matrix or vector using the `^\intercal` or `^T` syntax.
+
+
+
 
 ## Matrix Analysis
 

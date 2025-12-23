@@ -22,7 +22,7 @@ local function placeholder_expr_node(val_str, original_type)
 end
 
 local function matrix_node(env_type_str)
-	return { type = "matrix_placeholder", env = env_type_str }
+	return { type = "matrix", env = env_type_str }
 end
 
 describe("Linear Algebra Determinant Rule: tungsten.domains.linear_algebra.rules.determinant", function()
@@ -62,6 +62,13 @@ describe("Linear Algebra Determinant Rule: tungsten.domains.linear_algebra.rules
 				return {
 					type = "determinant",
 					expression = expression_ast,
+				}
+			end,
+			create_norm_node = function(expression_ast)
+				return {
+					type = "norm",
+					expression = expression_ast,
+					p = nil,
 				}
 			end,
 			create_matrix_node = function(_, env_type)
@@ -162,10 +169,10 @@ describe("Linear Algebra Determinant Rule: tungsten.domains.linear_algebra.rules
 			assert.are.same(expected_ast, parse_input(input))
 		end)
 
-		it("should parse |\\begin{pmatrix}b\\end{pmatrix}|", function()
+		it("should parse |\\begin{pmatrix}b\\end{pmatrix}| as a norm", function()
 			local input = "|\\begin{pmatrix}b\\end{pmatrix}|"
 			local expected_ast = {
-				type = "determinant",
+				type = "norm",
 				expression = matrix_node("pmatrix"),
 			}
 			assert.are.same(expected_ast, parse_input(input))
