@@ -11,6 +11,7 @@ local logger = require("tungsten.util.logger")
 local error_handler = require("tungsten.util.error_handler")
 local ast = require("tungsten.core.ast")
 local helpers = require("tungsten.domains.plotting.helpers")
+local semantic_pass = require("tungsten.core.semantic_pass")
 
 local M = {}
 
@@ -380,6 +381,7 @@ function M.parse(input, opts)
 		return nil, validation_err, validation_pos, input
 	end
 
+	ast_root = semantic_pass.apply(ast_root)
 	return ast_root
 end
 

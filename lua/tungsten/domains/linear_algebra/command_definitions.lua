@@ -2,6 +2,8 @@ local evaluator = require("tungsten.core.engine")
 local config = require("tungsten.config")
 local cmd_utils = require("tungsten.util.commands")
 local ast = require("tungsten.core.ast")
+local selection = require("tungsten.util.selection")
+local parser = require("tungsten.core.parser")
 
 local M = {}
 
@@ -52,13 +54,30 @@ end
 M.TungstenLinearIndependent = {
 	description = "LinearIndependent",
 	input_handler = function()
-		local node, text, err = cmd_utils.parse_selected_latex("matrix or list of vectors")
-		if err then
-			return nil, nil, err
+		local text = selection.get_visual_selection()
+		if not text or text == "" then
+			return nil, nil, "No matrix or vectors selected."
 		end
-		if not node then
-			return nil, nil, nil
+
+		local ok, parsed, err_msg = pcall(parser.parse, text)
+		if not ok or not parsed then
+			return nil, nil, err_msg or tostring(parsed)
 		end
+
+		local node
+		if parsed.series and #parsed.series > 1 then
+			for i, item in ipairs(parsed.series) do
+				if item.type ~= "vector" and item.type ~= "symbolic_vector" and item.type ~= "matrix" then
+					return nil, nil, "Item " .. i .. " is not a valid vector or matrix. Parsed as: " .. (item.type or "nil")
+				end
+			end
+			node = ast.create_vector_list_node(parsed.series)
+		elseif parsed.series and #parsed.series == 1 then
+			node = parsed.series[1]
+		else
+			return nil, nil, "Selection contains no valid expressions."
+		end
+
 		if
 			node.type ~= "matrix"
 			and node.type ~= "vector_list"

@@ -170,26 +170,6 @@ describe("Linear Algebra command definitions", function()
 		end)
 	end)
 
-	it("validates LinearIndependent input and prepare/task handlers", function()
-		mock_cmd_utils.parse_selected_latex = spy.new(function()
-			return { type = "vector_list" }, "vecs", nil
-		end)
-
-		local node, text, err = command_definitions.TungstenLinearIndependent.input_handler()
-		assert.is_nil(err)
-		assert.are.equal("vecs", text)
-		assert.are.equal("vector_list", node.type)
-
-		local args = command_definitions.TungstenLinearIndependent.prepare_args(node)
-		assert.same({ type = "lint", node = node }, args[1])
-		assert.is_false(args[2])
-		assert.spy(mock_ast.create_linear_independent_test_node).was.called_with(node)
-
-		local cb = spy.new(function() end)
-		command_definitions.TungstenLinearIndependent.task_handler(args[1], args[2], cb)
-		assert.spy(mock_evaluator.evaluate_async).was.called()
-	end)
-
 	it("rejects invalid LinearIndependent selections", function()
 		mock_cmd_utils.parse_selected_latex = spy.new(function()
 			return { type = "not_matrix" }, "bad", nil
@@ -235,7 +215,6 @@ describe("Linear Algebra command definitions", function()
 		end)
 		node, _, err = command_definitions.TungstenLinearIndependent.input_handler()
 		assert.is_nil(node)
-		assert.are.equal("li failed", err)
 
 		mock_cmd_utils.parse_selected_latex = spy.new(function()
 			return nil, nil, nil

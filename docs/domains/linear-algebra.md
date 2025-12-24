@@ -195,19 +195,146 @@ To find the determinant of a matrix, simply write the matrix using `\begin{vmatr
   \end{bmatrix}\right) = 4-a b
 ```
 
-### Transposes
+### Transposed and Inverse Matrices
 
-You can transpose a matrix or vector using the `^\intercal` or `^T` syntax.
+You can transpose a matrix or vector using the `^\intercal` or `^T` syntax and running `:TungstenEvaluate` as:
 
+```latex
+  \begin{bmatrix}
+    1 & 2 & 3\\
+  4 & 5 & 6\\
+  7 & 8 & 9\\
+  \end{bmatrix}^{T} = \left(
+\begin{array}{ccc}
+ 1 & 4 & 7 \\
+ 2 & 5 & 8 \\
+ 3 & 6 & 9 \\
+\end{array}
+\right)
 
+  \begin{bmatrix}
+    a & b & c\\
+  \end{bmatrix}^{\intercal} = \left(
+\begin{array}{c}
+ a \\
+ b \\
+ c \\
+\end{array}
+\right)
+```
+
+The inverse of a square matrix is found using `^{-1}` syntax and running `:TungstenEvaluate` as:
+```latex
+  \begin{pmatrix}
+    1 & 2\\
+  3 & 4\\
+  \end{pmatrix}^{-1} = \left(
+\begin{array}{cc}
+ -2 & 1 \\
+ \frac{3}{2} & -\frac{1}{2} \\
+\end{array}
+\right)
+
+  \begin{pmatrix}
+    a & b\\
+  c & d\\
+  \end{pmatrix}^{-1} = \left(
+\begin{array}{cc}
+ \frac{d}{a d-b c} & -\frac{b}{a d-b c} \\
+ -\frac{c}{a d-b c} & \frac{a}{a d-b c} \\
+\end{array}
+\right)
+```
 
 
 ## Matrix Analysis
 
+Tungsten also provides specific commands for analyzing the properties of matrices.
+
 ### Gauss Elimination
+
+To perform Gaussian elimination (also called row reduction) on a matrix, visually select it and run the `:TungstenGaussEliminate` command.
+The result is inserted as `<Matrix> \rightarrow <ReducedMatrix>`.
+
+**Example**:
+```latex
+  \begin{bmatrix}
+    1 & 2 & 3\\
+  4 & 5 & 6\\
+  \end{bmatrix} \rightarrow \left(
+\begin{array}{ccc}
+ 1 & 0 & -1 \\
+ 0 & 1 & 2 \\
+\end{array}
+\right)
+```
 
 ### Rank
 
+To find the rank of a matrix, visually select it and run `:TungstenRank`.
+
+**Example**:
+```latex
+  \begin{pmatrix}
+    1 & 2\\
+  2 & 4\\
+  \end{pmatrix} \rightarrow 1.
+```
+
 ### Linear Dependence
 
+You can check if a matrix (columns) or a list of (`;`-separated) vectors are linearly independent using the `:TungstenLinearIndependent` command.
+The output will be either `True` or `False`.
+
+**Example**:
+```latex
+  \begin{pmatrix}
+    1 & 2\\
+  2 & 4\\
+  \end{pmatrix} = False
+
+  \begin{pmatrix}
+    1\\
+  0\\
+  \end{pmatrix}; \begin{pmatrix}
+    0\\
+  1\\
+  \end{pmatrix} = True
+```
+
 ### Eigenvalues and Eigenvectors
+
+Tungsten also allows you to compute the spectral properties of matrices using the commands:
+
+  - `:TungstenEigenvalue`: Computes the eigenvalues.
+  - `:TungstenEigenvector`: Computes the eigenvectors.
+  - `TungstenEigensystem`: Computes both eigenvalues and corresponding eigenvectors.
+
+These are shown in order in the following example:
+
+```latex
+  \begin{pmatrix}
+    1 & 0\\
+  0 & 2\\
+  \end{pmatrix} \rightarrow \{2,1\}
+
+  \begin{pmatrix}
+    1 & 0\\
+  0 & 2\\
+  \end{pmatrix} \rightarrow \left(
+\begin{array}{cc}
+ 0 & 1 \\
+ 1 & 0 \\
+\end{array}
+\right)
+
+  \begin{pmatrix}
+    1 & 0\\
+  0 & 2\\
+  \end{pmatrix}  \rightarrow \left(
+\begin{array}{cc}
+ 2 & 1 \\
+ \{0,1\} & \{1,0\} \\
+\end{array}
+\right)
+```
