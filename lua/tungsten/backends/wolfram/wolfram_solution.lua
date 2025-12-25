@@ -1,5 +1,4 @@
 -- lua/tungsten/backends/wolfram/wolfram_solution.lua
--- Helper for parsing WolframScript Solve[] output and formatting Quantities
 
 local string_util = require("tungsten.util.string")
 local error_parser = require("tungsten.backends.wolfram.wolfram_error")
@@ -8,7 +7,7 @@ local M = {}
 
 local unit_map = {
 	["Meters"] = "\\meter",
-	["Seconds"] = "\\seconds",
+	["Seconds"] = "\\second",
 	["Kilograms"] = "\\kilogram",
 	["Newtons"] = "\\newton",
 	["Joules"] = "\\joule",
@@ -46,7 +45,7 @@ local function normalize_unit_expression(unit_expr)
 		return unit_map[unit] or unit
 	end)
 
-	return replaced_units:gsub("%s*%*%s*", "."):gsub("%s*/%s*", "\\\\per"):gsub("%s+", "."):gsub("%^", "^")
+	return replaced_units:gsub("%s*%*%s*", "."):gsub("%s*/%s*", "\\per"):gsub("%s+", "."):gsub("%^", "^")
 end
 
 function M.format_quantities(str)
@@ -55,6 +54,11 @@ function M.format_quantities(str)
 	end
 
 	return str:gsub("Quantity%[([^,]+),%s*(.-)%]", function(val, unit_expr)
+		local clean_unit = unit_expr:gsub('"', "")
+		if clean_unit == "AngularDegrees" then
+			return string.format("\\ang{%s}", val)
+		end
+
 		local latex_unit = normalize_unit_expression(unit_expr)
 
 		return string.format("\\qty{%s}{%s}", val, latex_unit)

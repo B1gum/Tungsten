@@ -106,6 +106,8 @@ function M.evaluate_async(ast, opts, callback)
 
 				local result = stdout
 
+				result = result:gsub('Interpreting unit ".-"%.+\n*', "")
+
 				result = result:gsub("\\theta", "u") -- Use u for the heaviside step function instead of theta
 
 				if form == "InputForm" then

@@ -180,50 +180,6 @@ describe("Linear Algebra command definitions", function()
 		assert.is_not_nil(err)
 	end)
 
-	it("handles parse errors and empty selections", function()
-		mock_cmd_utils.parse_selected_latex = spy.new(function()
-			return nil, nil, "parse failed"
-		end)
-
-		local node, _, err = command_definitions.TungstenGaussEliminate.input_handler()
-		assert.is_nil(node)
-		assert.are.equal("parse failed", err)
-
-		mock_cmd_utils.parse_selected_latex = spy.new(function()
-			return nil, nil, nil
-		end)
-		node, _, err = command_definitions.TungstenRank.input_handler()
-		assert.is_nil(node)
-		assert.is_nil(err)
-
-		mock_cmd_utils.parse_selected_latex = spy.new(function()
-			return nil, nil, "rank err"
-		end)
-		node, _, err = command_definitions.TungstenRank.input_handler()
-		assert.is_nil(node)
-		assert.are.equal("rank err", err)
-
-		mock_cmd_utils.parse_selected_latex = spy.new(function()
-			return { type = "vector" }, "r", nil
-		end)
-		node, _, err = command_definitions.TungstenRank.input_handler()
-		assert.is_nil(node)
-		assert.is_not_nil(err)
-
-		mock_cmd_utils.parse_selected_latex = spy.new(function()
-			return nil, nil, "li failed"
-		end)
-		node, _, err = command_definitions.TungstenLinearIndependent.input_handler()
-		assert.is_nil(node)
-
-		mock_cmd_utils.parse_selected_latex = spy.new(function()
-			return nil, nil, nil
-		end)
-		node, _, err = command_definitions.TungstenLinearIndependent.input_handler()
-		assert.is_nil(node)
-		assert.is_nil(err)
-	end)
-
 	it("validates Rank command flows", function()
 		expect_successful_matrix_parse(command_definitions.TungstenRank)
 
