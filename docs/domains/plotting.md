@@ -31,9 +31,17 @@ Tungsten assumes the result maps to `y` (unless the explicit variable is `y`, in
   \cos(y) \cdot e^{x/5}
   \includegraphics[width=0.8\linewidth]{tungsten_plots/plot_002}
 ```
-| **Plot of $\sin(x)$** | **Plot of $\cos(x)$** |
-| :---: | :---: |
-|![sine of x times exponential of negative one fifth x](images/expsin.png)| ![cosine of x times exponential of one fifth x](images/expcos.png)|
+
+<table>
+  <tr>
+    <th width="50%">plot_001</th>
+    <th width="50%">plot_002</th>
+  </tr>
+  <tr>
+    <td><img src="images/expsin.png" alt="Sine of x times exponential of negative one fifth x" width="100%"></td>
+    <td><img src="images/expcos.png" alt="Cosine of x times exponential of one fifth x" width="100%"></td>
+  </tr>
+</table>
 
 
 ### Implicit Equations
