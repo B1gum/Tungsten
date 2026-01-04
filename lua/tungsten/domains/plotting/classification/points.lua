@@ -62,6 +62,23 @@ function M.analyze_point2(point, opts)
 			}
 		end
 	end
+
+	local params = util.union_vars(util.find_free_variables(point.x), util.find_free_variables(point.y))
+	if #params == 1 then
+		return {
+			dim = 2,
+			form = "parametric",
+			series = {
+				{
+					kind = "function",
+					ast = point,
+					independent_vars = params,
+					dependent_vars = { "x", "y" },
+				},
+			},
+		}
+	end
+
 	return {
 		dim = 2,
 		form = "explicit",
@@ -103,6 +120,27 @@ function M.analyze_point3(point, opts)
 			series = { { kind = "function", ast = point, independent_vars = params, dependent_vars = { "x", "y", "z" } } },
 		}
 	end
+
+	local params = util.union_vars(
+		util.find_free_variables(point.x),
+		util.find_free_variables(point.y),
+		util.find_free_variables(point.z)
+	)
+	if #params >= 1 and #params <= 2 then
+		return {
+			dim = 3,
+			form = "parametric",
+			series = {
+				{
+					kind = "function",
+					ast = point,
+					independent_vars = params,
+					dependent_vars = { "x", "y", "z" },
+				},
+			},
+		}
+	end
+
 	return {
 		dim = 3,
 		form = "explicit",
