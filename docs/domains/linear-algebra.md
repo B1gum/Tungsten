@@ -76,7 +76,7 @@ Addition and subtraction between matrices or vectors works as
 
 ### Multiplication and Products
 
-As mentioned above, the linear algebra domain overrides the multiplication defaults of the [arithmatics domain](arithmetics.md).
+As mentioned above, the linear algebra domain overrides the multiplication defaults of the [arithmetic and algebra domain](algebra.md).
 
 **Matrix Multiplication**: Using `\cdot` between two matrices (or a matrix and a vector) results in standard matrix multiplication.
 

@@ -46,7 +46,11 @@ function M.analyze_expression(ast_node, opts)
 	if #vars == 1 then
 		result.dim = 2
 		result.form = "explicit"
-		result.series[1].dependent_vars = { "y" }
+		if vars[1] == "y" then
+			result.series[1].dependent_vars = { "x" }
+		else
+			result.series[1].dependent_vars = { "y" }
+		end
 	elseif #vars == 2 then
 		if opts and (opts.simple_mode or opts.mode == "simple") then
 			result.dim = 2
