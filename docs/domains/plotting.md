@@ -33,7 +33,7 @@ Tungsten assumes the result maps to `y` (unless the explicit variable is `y`, in
 ```
 | **Plot of $\sin(x)$** | **Plot of $\cos(x)$** |
 | :---: | :---: |
-|![sine of x times exponential of negative one fifth x](images/expsin.pdf)| ![cosine of x times exponential of one fifth x](images/expcos.pdf)|
+|![sine of x times exponential of negative one fifth x](images/expsin.png)| ![cosine of x times exponential of one fifth x](images/expcos.png)|
 
 
 ### Implicit Equations
