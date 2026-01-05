@@ -135,9 +135,15 @@ local function determine_axis_variables(opts)
 	end
 
 	local series = opts.series or {}
-	local first = series[1] or {}
-	local indep = first.independent_vars or {}
-	local dep = first.dependent_vars or {}
+	local indep = {}
+	local dep = {}
+	for _, s in ipairs(series) do
+		if s.independent_vars and #s.independent_vars > 0 then
+			indep = s.independent_vars
+			dep = s.dependent_vars or {}
+			break
+		end
+	end
 
 	axis_vars.x = indep[1] or axis_vars.x
 	if opts.dim == 3 then
@@ -568,7 +574,24 @@ end
 local function build_implicit_code(opts)
 	local series = opts.series or {}
 	local exprs = {}
+	local point_sets = {}
 	local has_inequality = false
+
+	local indep = {}
+	for _, s in ipairs(series) do
+		if s.independent_vars and #s.independent_vars > 0 then
+			indep = s.independent_vars
+			break
+		end
+	end
+	if #indep == 0 then
+		if opts.dim == 3 then
+			indep = { "x", "y", "z" }
+		else
+			indep = { "x", "y" }
+		end
+	end
+
 	for _, s in ipairs(series) do
 		if s.kind == "function" or s.kind == "inequality" then
 			if s.kind == "inequality" then
@@ -579,62 +602,116 @@ local function build_implicit_code(opts)
 			if code then
 				table.insert(exprs, code)
 			end
+		elseif s.kind == "points" then
+			local coords = {}
+			for _, p in ipairs(s.points or {}) do
+				local x = render_ast_to_wolfram(p.x)
+				local y = render_ast_to_wolfram(p.y)
+				local z = p.z and render_ast_to_wolfram(p.z)
+				if x and y and (opts.dim ~= 3 or z) then
+					if opts.dim == 3 then
+						coords[#coords + 1] = string.format("{%s, %s, %s}", x, y, z)
+					else
+						coords[#coords + 1] = string.format("{%s, %s}", x, y)
+					end
+				end
+			end
+			if #coords > 0 then
+				point_sets[#point_sets + 1] = coords
+			end
 		end
 	end
-	if #exprs == 0 then
+	if #exprs == 0 and #point_sets == 0 then
 		return nil, "No expressions to plot"
 	end
 
-	local indep = series[1] and series[1].independent_vars or {}
-	local ranges = {}
-	if indep[1] and opts.xrange then
-		table.insert(ranges, string.format("{%s, %s, %s}", indep[1], opts.xrange[1], opts.xrange[2]))
-	end
-	if indep[2] and opts.yrange then
-		table.insert(ranges, string.format("{%s, %s, %s}", indep[2], opts.yrange[1], opts.yrange[2]))
-	end
-	if indep[3] and opts.zrange then
-		table.insert(ranges, string.format("{%s, %s, %s}", indep[3], opts.zrange[1], opts.zrange[2]))
-	end
+	local plots = {}
 
-	local expr
-	if #exprs == 1 then
-		expr = exprs[1]
-	else
-		expr = "{" .. table.concat(exprs, ", ") .. "}"
-	end
-
-	local fn
-	if has_inequality then
-		fn = opts.dim == 3 and "RegionPlot3D" or "RegionPlot"
-	else
-		fn = opts.dim == 3 and "ContourPlot3D" or "ContourPlot"
-	end
-
-	local code = fn .. "[" .. expr .. ", " .. table.concat(ranges, ", ")
-	local extra_opts = translate_opts_to_wolfram(opts)
-	if opts.plot_points then
-		extra_opts[#extra_opts + 1] = string.format("PlotPoints -> %d", opts.plot_points)
-	end
-	if opts.max_recursion then
-		extra_opts[#extra_opts + 1] = string.format("MaxRecursion -> %d", opts.max_recursion)
-	end
-	if opts.dim == 3 then
-		if fn == "RegionPlot3D" then
-			ensure_option(extra_opts, "BoundaryStyle", "BoundaryStyle -> None")
-		elseif fn == "ContourPlot3D" then
-			ensure_option(extra_opts, "Mesh", "Mesh -> None")
+	if #exprs > 0 then
+		local ranges = {}
+		if indep[1] and opts.xrange then
+			table.insert(ranges, string.format("{%s, %s, %s}", indep[1], opts.xrange[1], opts.xrange[2]))
 		end
-	end
-	local style_option = (fn == "ContourPlot" or fn == "ContourPlot3D") and "ContourStyle" or "PlotStyle"
-	apply_series_styles(extra_opts, series, style_option)
-	apply_legend(extra_opts, opts)
-	if #extra_opts > 0 then
-		code = code .. ", " .. table.concat(extra_opts, ", ")
-	end
-	code = code .. "]"
+		if indep[2] and opts.yrange then
+			table.insert(ranges, string.format("{%s, %s, %s}", indep[2], opts.yrange[1], opts.yrange[2]))
+		end
+		if indep[3] and opts.zrange then
+			table.insert(ranges, string.format("{%s, %s, %s}", indep[3], opts.zrange[1], opts.zrange[2]))
+		end
 
-	return code
+		local expr
+		if #exprs == 1 then
+			expr = exprs[1]
+		else
+			expr = "{" .. table.concat(exprs, ", ") .. "}"
+		end
+
+		local fn
+		if has_inequality then
+			fn = opts.dim == 3 and "RegionPlot3D" or "RegionPlot"
+		else
+			fn = opts.dim == 3 and "ContourPlot3D" or "ContourPlot"
+		end
+
+		local code = fn .. "[" .. expr .. ", " .. table.concat(ranges, ", ")
+		local extra_opts = translate_opts_to_wolfram(opts)
+		if opts.plot_points then
+			extra_opts[#extra_opts + 1] = string.format("PlotPoints -> %d", opts.plot_points)
+		end
+		if opts.max_recursion then
+			extra_opts[#extra_opts + 1] = string.format("MaxRecursion -> %d", opts.max_recursion)
+		end
+		if opts.dim == 3 then
+			if fn == "RegionPlot3D" then
+				ensure_option(extra_opts, "BoundaryStyle", "BoundaryStyle -> None")
+			elseif fn == "ContourPlot3D" then
+				ensure_option(extra_opts, "Mesh", "Mesh -> None")
+			end
+		end
+		local style_option = (fn == "ContourPlot" or fn == "ContourPlot3D") and "ContourStyle" or "PlotStyle"
+		apply_series_styles(extra_opts, series, style_option)
+		apply_legend(extra_opts, opts)
+		if #extra_opts > 0 then
+			code = code .. ", " .. table.concat(extra_opts, ", ")
+		end
+		code = code .. "]"
+		table.insert(plots, code)
+	end
+
+	if #point_sets > 0 then
+		local list_expr
+		if #point_sets == 1 then
+			list_expr = "{" .. table.concat(point_sets[1], ", ") .. "}"
+		else
+			local wrapped = {}
+			for _, set in ipairs(point_sets) do
+				wrapped[#wrapped + 1] = "{" .. table.concat(set, ", ") .. "}"
+			end
+			list_expr = "{" .. table.concat(wrapped, ", ") .. "}"
+		end
+
+		local plot_fun = opts.dim == 3 and "ListPointPlot3D" or "ListPlot"
+
+		local extras = {}
+		apply_legend(extras, opts)
+
+		local point_plot = plot_fun .. "[" .. list_expr
+		if #extras > 0 then
+			point_plot = point_plot .. ", " .. table.concat(extras, ", ")
+		end
+		point_plot = point_plot .. "]"
+		table.insert(plots, point_plot)
+	end
+
+	if #plots == 0 then
+		return nil, "No plots generated"
+	end
+
+	if #plots == 1 then
+		return plots[1]
+	end
+
+	return string.format("Show[{%s}]", table.concat(plots, ", "))
 end
 
 local function build_parametric_code(opts)

@@ -76,6 +76,36 @@ local function parse_and_classify_selection(text, parse_opts, empty_error)
 	return classification_data, parsed
 end
 
+local function substitute_ast(node, defs)
+	if not node then
+		return nil
+	end
+	if type(node) ~= "table" then
+		return node
+	end
+
+	if node.type == "variable" or node.type == "symbol" then
+		local entry = defs[node.name]
+		if entry and entry.value then
+			return ast.create_number_node(entry.value)
+		end
+	end
+
+	local copy = vim.deepcopy(node)
+	for k, v in pairs(copy) do
+		if type(v) == "table" then
+			if v.type then
+				copy[k] = substitute_ast(v, defs)
+			elseif vim.tbl_islist(v) then
+				for i, child in ipairs(v) do
+					v[i] = substitute_ast(child, defs)
+				end
+			end
+		end
+	end
+	return copy
+end
+
 function M.run_simple(text)
 	if type(text) ~= "string" then
 		text = ""
@@ -133,6 +163,36 @@ function M.run_simple(text)
 		end
 
 		plot_opts.definitions = definitions
+
+		if not vim.tbl_isempty(definitions) then
+			local new_series = {}
+			for _, s_node in ipairs(parsed.series) do
+				table.insert(new_series, substitute_ast(s_node, definitions))
+			end
+
+			local new_classification, new_classify_err = classification_merge.merge(new_series, { simple_mode = true })
+
+			if new_classification then
+				local new_opts = options_builder.build(new_classification, {})
+
+				new_opts.expression = plot_opts.expression
+				new_opts.bufnr = plot_opts.bufnr
+				new_opts.start_line = plot_opts.start_line
+				new_opts.start_col = plot_opts.start_col
+				new_opts.end_line = plot_opts.end_line
+				new_opts.end_col = plot_opts.end_col
+				new_opts.definitions = definitions
+
+				new_opts.series = new_opts.series or new_classification.series
+
+				plot_opts = new_opts
+				plot_ast = build_plot_ast(new_series)
+			else
+				if new_classify_err then
+					notify_error(new_classify_err)
+        end
+			end
+		end
 
 		local out_path, out_err = plotting_io.assign_output_path(plot_opts, output_dir, uses_graphicspath, tex_root)
 

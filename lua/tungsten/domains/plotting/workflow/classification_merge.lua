@@ -18,12 +18,23 @@ function M.merge(nodes, opts)
 					message = "Select expressions of the same dimension before plotting.",
 				}
 		end
+
 		if combined.form and res.form and combined.form ~= res.form then
-			return nil,
-				{
-					code = error_handler.E_MIXED_COORD_SYS,
-					message = "Use the same coordinate system for all expressions before plotting.",
-				}
+			local compatible = false
+			if
+				(combined.form == "explicit" and res.form == "implicit")
+				or (combined.form == "implicit" and res.form == "explicit")
+			then
+				compatible = true
+			end
+
+			if not compatible then
+				return nil,
+					{
+						code = error_handler.E_MIXED_COORD_SYS,
+						message = "Use the same coordinate system for all expressions before plotting.",
+					}
+			end
 		end
 
 		for key, value in pairs(res) do
@@ -34,6 +45,10 @@ function M.merge(nodes, opts)
 			elseif combined[key] == nil and value ~= nil then
 				combined[key] = value
 			end
+		end
+
+		if combined.form == "explicit" and res.form == "implicit" then
+			combined.form = "implicit"
 		end
 	end
 
