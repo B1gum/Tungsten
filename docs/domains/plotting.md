@@ -25,11 +25,11 @@ These are standard functions of one variable (e.g. `x`).
 Tungsten assumes the result maps to `y` (unless the explicit variable is `y`, in which case the result is assumed to map to `x`.
 
 ```latex
-  \sin(x) \cdot e^{-\frac{x}{5}}
-  \includegraphics[width=0.8\linewidth]{tungsten_plots/plot_001}
+\sin(x) \cdot e^{-\frac{x}{5}}
+\includegraphics[width=0.8\linewidth]{tungsten_plots/plot_001}
 
-  \cos(y) \cdot e^{x/5}
-  \includegraphics[width=0.8\linewidth]{tungsten_plots/plot_002}
+\cos(y) \cdot e^{x/5}
+\includegraphics[width=0.8\linewidth]{tungsten_plots/plot_002}
 ```
 
 
@@ -44,11 +44,11 @@ These are equations relating two variables (usually `x` and `y`).
 They are typically used for circles, ellipses, and other curves where `y` cannot be easily isolated.
 
 ```latex
-  x^2 + y^2 = 4
-  \includegraphics[width=0.8\linewidth]{tungsten_plots/plot_001}
+x^2 + y^2 = 4
+\includegraphics[width=0.8\linewidth]{tungsten_plots/plot_001}
 
-  \frac{p^2}{4} + \frac{q^2}{9} = 1
-  \includegraphics[width=0.8\linewidth]{tungsten_plots/plot_002}
+\frac{p^2}{4} + \frac{q^2}{9} = 1
+\includegraphics[width=0.8\linewidth]{tungsten_plots/plot_002}
 ```
 
 
@@ -64,11 +64,11 @@ They are typically used for circles, ellipses, and other curves where `y` cannot
 For regions defined by inequality operators (`<`, `>`, `≤`, `≥`, `\leq`, `geq`, etc.) the backend will shade the region satisfying the condition.
 
 ```latex
-  y < \sin(x)
-  \includegraphics[width=0.8\linewidth]{tungsten_plots/plot_001}
+y < \sin(x)
+\includegraphics[width=0.8\linewidth]{tungsten_plots/plot_001}
 
-  x \cdot y \leq 2 \cdot y
-  \includegraphics[width=0.8\linewidth]{tungsten_plots/plot_002}
+x \cdot y \leq 2 \cdot y
+\includegraphics[width=0.8\linewidth]{tungsten_plots/plot_002}
 ```
 
 
@@ -86,15 +86,15 @@ Tuples of two functions depending on a single parameter (usually `t`) are parsed
 The first element maps to the first axis, and the second to the second axis.
 
 ```latex
-  (\cos(3t), \sin(2t))
-  \includegraphics[width=0.8\linewidth]{tungsten_plots/plot_001}
+(\cos(3t), \sin(2t))
+\includegraphics[width=0.8\linewidth]{tungsten_plots/plot_001}
 
-  (\tan(3x), \tan(4x))
-  \includegraphics[width=0.8\linewidth]{tungsten_plots/plot_002}
+(\tan(3x), \tan(4x))
+\includegraphics[width=0.8\linewidth]{tungsten_plots/plot_002}
 
 
-  (\sin(2y^2), 2y)
-  \includegraphics[width=0.8\linewidth]{tungsten_plots/plot_003}
+(\sin(2y^2), 2y)
+\includegraphics[width=0.8\linewidth]{tungsten_plots/plot_003}
 ```
 
 | **Plot_001** | **Plot_002** | **Plot_003** |
@@ -109,9 +109,9 @@ Expressions involving the variable `\theta` (θ) are automatically parsed as pol
 By default, polar plots are generated with `0 < \theta < 2 \pi`.
 
 ```latex
-  1 + \cos(\theta)
-  \includegraphics[width=0.8\linewidth]{tungsten_plots/plot_001}
-```
+1 + \cos(\theta)
+\includegraphics[width=0.8\linewidth]{tungsten_plots/plot_001}
+``
 
 | **Plot_001** |
 | :---: |
@@ -125,11 +125,11 @@ By default, polar plots are generated with `0 < \theta < 2 \pi`.
 A finite set of 2D points is parsed as a scatter plot.
 
 ```latex
-  (0,0), (1,1), (2,4), (3,9)
-  \includegraphics[width=0.8\linewidth]{tungsten_plots/plot_001}
+(0,0), (1,1), (2,4), (3,9)
+\includegraphics[width=0.8\linewidth]{tungsten_plots/plot_001}
 
-  (-1,1), (0,0), (1,-1), (4,-4)
-  \includegraphics[width=0.8\linewidth]{tungsten_plots/plot_002}
+(-1,1), (0,0), (1,-1), (4,-4)
+\includegraphics[width=0.8\linewidth]{tungsten_plots/plot_002}
 ```
 
 | **Plot_001** | **Plot_002** |
@@ -148,11 +148,11 @@ Functions of two variables (e.g. `x` and `y`) are parsed as a 3D explicit surfac
 By default, Tungsten assumes the result maps to a height coordinate `z`.
 
 ```latex
-  x^2 - y^2
-  \includegraphics[width=0.8\linewidth]{tungsten_plots/plot_001}
+x^2 - y^2
+\includegraphics[width=0.8\linewidth]{tungsten_plots/plot_001}
 
-  \frac{\sin(x \cdot y)}{2 x} \cdot \cos(x)
-  \includegraphics[width=0.8\linewidth]{tungsten_plots/plot_002}
+\frac{\sin(x \cdot y)}{2 x} \cdot \cos(x)
+\includegraphics[width=0.8\linewidth]{tungsten_plots/plot_002}
 ```
 
 
@@ -167,11 +167,11 @@ By default, Tungsten assumes the result maps to a height coordinate `z`.
 Equations relating three variables (`x`, `y` and `z`) are parsed as implicit surfaces.
 
 ```latex
-  x^2 + y^2 + z^2 = 10
-  \includegraphics[width=0.8\linewidth]{tungsten_plots/plot_001}
+x^2 + y^2 + z^2 = 10
+\includegraphics[width=0.8\linewidth]{tungsten_plots/plot_001}
 
-  sin(x \cdot z) + y = 1
-  \includegraphics[width=0.8\linewidth]{tungsten_plots/plot_002}
+sin(x \cdot z) + y = 1
+\includegraphics[width=0.8\linewidth]{tungsten_plots/plot_002}
 ```
 
 | **Plot_001** | **Plot_002** |
@@ -184,13 +184,13 @@ Equations relating three variables (`x`, `y` and `z`) are parsed as implicit sur
 A 3-tuple dependent on **one** parameter (e.g. `t`) is parsed as a 3D curve whilst a 3-tuple dependent on **two** parameters (e.g. `u`, `v`) is parsed as a 3D surface.
 
 ```latex
-  Parametric Curve:
-  (\cos t, \sin t, t)
-  \includegraphics[width=0.8\linewidth]{tungsten_plots/plot_001}
+Parametric Curve:
+    (\cos t, \sin t, t)
+    \includegraphics[width=0.8\linewidth]{tungsten_plots/plot_001}
 
-  Parametric Surface:
-  (u, v, 6 - 2u + 3v)
-  \includegraphics[width=0.8\linewidth]{tungsten_plots/plot_002}
+Parametric Surface:
+    (u, v, 6 - 2u + 3v)
+    \includegraphics[width=0.8\linewidth]{tungsten_plots/plot_002}
 ```
 
 | **Plot_001** | **Plot_002** |
@@ -206,11 +206,11 @@ A 3-tuple dependent on **one** parameter (e.g. `t`) is parsed as a 3D curve whil
 Finite sets of 3D points are parsed as 3D scatter plots.
 
 ```latex
-  (1,2,3), (4,5,6)
-  \includegraphics[width=0.8\linewidth]{tungsten_plots/plot_001}
+(1,2,3), (4,5,6)
+\includegraphics[width=0.8\linewidth]{tungsten_plots/plot_001}
 
-  (0,0,0), (0,1,1), (1,0,1), (1,1,\sqrt{2})
-  \includegraphics[width=0.8\linewidth]{tungsten_plots/plot_002}
+(0,0,0), (0,1,1), (1,0,1), (1,1,\sqrt{2})
+\includegraphics[width=0.8\linewidth]{tungsten_plots/plot_002}
 ```
 
 | **Plot_001** | **Plot_002** |
@@ -228,12 +228,12 @@ These expressions will then be plotted on the same axes.
 *Note*: All expressions must share the same dimension (i.e. you cannot mix 2D and 3D plots).
 
 ```latex
-  \sin x;
-  \cos x
-  \includegraphics[width=0.8\linewidth]{tungsten_plots/plot_001}
+\sin x;
+\cos x
+\includegraphics[width=0.8\linewidth]{tungsten_plots/plot_001}
 
-  x^2 + y^2 = 1; (0, 1)
-  \includegraphics[width=0.8\linewidth]{tungsten_plots/plot_002}
+x^2 + y^2 = 1; (0, 1)
+\includegraphics[width=0.8\linewidth]{tungsten_plots/plot_002}
 ```
 | **Plot_001** | **Plot_002** |
 | :---: | :---: |
@@ -285,8 +285,8 @@ You can explicitly set the domain of plot variables.
 
 **Example**:
 ```yaml
-  X-range: [-2\pi, 2\pi]
-  Y-range: [-1, 1]
+X-range: [-2\pi, 2\pi]
+Y-range: [-1, 1]
 ```
 
 ### Series Settings
@@ -311,11 +311,11 @@ Tungsten provides a robust system for resolving these.
 
 Variables defined using `:=` (as explained in [algebra](algebra.md)) are automatically substituted meaning if you have defined
 ```latex
-  a := 5
+a := 5
 ```
 somewhere previously and then plot
 ```latex
-  \sin(a \cdot x)
+\sin(a \cdot x)
 ```
 Tungsten will interpret the plotting input as `\sin(5x)`. 
 

@@ -7,11 +7,11 @@ This allows for the evaluation of expressions involving units directly from your
 
 **Example**:
 ```latex
-  \qty{10}{\km} + \qty{500}{\m} + \qty{5}{\cm} = \qty{10.50005}{Kilometers}
+\qty{10}{\km} + \qty{500}{\m} + \qty{5}{\cm} = \qty{10.50005}{Kilometers}
 
-  \ang{90} + \ang{45} = \ang{135}
+\ang{90} + \ang{45} = \ang{135}
 
-  \qty{5}{\m\per\s} \cdot \qty{10}{\s}  = \qty{50}{\meter}
+\qty{5}{\m\per\s} \cdot \qty{10}{\s}  = \qty{50}{\meter}
 ```
 
 ## Quantities
@@ -21,8 +21,8 @@ The syntax follows the pattern `\qty{<number>}{<unit>}`.
 
 **Example**:
 ```latex
-  \qty{5}{\kg}
-  \qty{9.81}{\m\per\s\squared}
+\qty{5}{\kg}
+\qty{9.81}{\m\per\s\squared}
 ```
 
 ### Unit Syntax
@@ -48,11 +48,11 @@ Powers cna be applied to units using the standard `^` (caret) syntax or through 
 
 **Example**:
 ```latex
- \qty{100}{\newton\cdot\meter} = \qty{100}{\joule}
+\qty{100}{\newton\cdot\meter} = \qty{100}{\joule}
 
- \qty{9.8}{\meter\per\second\squared}  = \qty{9.8}{\meter\per\second^2}
+\qty{9.8}{\meter\per\second\squared}  = \qty{9.8}{\meter\per\second^2}
 
- \qty{1000}{\kg.\m^{-3}} = \qty{1000}{\kilogram\per\meter^3}
+\qty{1000}{\kg.\m^{-3}} = \qty{1000}{\kilogram\per\meter^3}
 ```
 
 *Note*: You can use both the LaTeX-macros (e.g. `\m`, `\kg`) and literals (e.g. `m`, `kg`) for unit components.
@@ -63,7 +63,7 @@ The `units` domain provides support for angles given in angular degrees using th
 
 **Example**:
 ```latex
- \ang{180} + \ang{25}  = \ang{205}
+\ang{180} + \ang{25}  = \ang{205}
 ```
 
 ## Formatted Numbers
@@ -73,8 +73,8 @@ While primarily used for formatting in LaTeX, Tungsten will automatically unders
 I.e. all of the following are valid Tungsten constructs:
 
 ```latex
- \num{7e8} = 700000000
- \num{2e-2} = 0.02
- \num{2,2} = 2.2
- \num{3.7} = 3.7
+\num{7e8} = 700000000
+\num{2e-2} = 0.02
+\num{2,2} = 2.2
+\num{3.7} = 3.7
 ```

@@ -7,20 +7,20 @@ This is showcased underneath, where the expressions on the left have been evalua
 
 **Symbolic Evaluation (Default)**:
 ```latex
-  \sqrt{2} = \sqrt{2}
+\sqrt{2} = \sqrt{2}
 
-  \pi = \pi
+\pi = \pi
 
-  \sin(1) = \sin (1)
+\sin(1) = \sin (1)
 ```
 
 **Numeric Evaluation**:
 ```latex
-  \sqrt{2} = 1.41421
+\sqrt{2} = 1.41421
 
-  \pi = 3.14159
+\pi = 3.14159
 
-  \sin(1) = 0.841471
+\sin(1) = 0.841471
 ```
 
 ## Toggling Numeric Mode
