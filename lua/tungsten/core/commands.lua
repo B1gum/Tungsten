@@ -17,6 +17,7 @@ local persistent_vars = require("tungsten.core.persistent_vars")
 local ast_creator = require("tungsten.core.ast")
 local workflow = require("tungsten.core.workflow")
 local definitions = require("tungsten.core.command_definitions")
+local units_util = require("tungsten.domains.units.util")
 
 local function tungsten_evaluate_command(_)
 	workflow.run(definitions.TungstenEvaluate)
@@ -67,6 +68,92 @@ local function tungsten_show_ast_command(_)
 	local formatter = require("tungsten.util.ast_format")
 	local float = require("tungsten.ui.float_result")
 	float.show(formatter.format(ast))
+end
+
+local function parse_unit_expression(unit_input)
+	local trimmed = string_util.trim(unit_input or "")
+	if trimmed == "" then
+		return nil, "No unit entered."
+	end
+
+	local parse_target = trimmed
+	if not trimmed:find("\\qty") then
+		parse_target = "\\qty{1}{" .. trimmed .. "}"
+	end
+
+	local ok, parsed, err_msg = pcall(parser.parse, parse_target)
+	if not ok or not parsed or not parsed.series or #parsed.series ~= 1 then
+		return nil, err_msg or "Invalid unit expression."
+	end
+
+	local qty_ast = parsed.series[1]
+	if not qty_ast or qty_ast.type ~= "quantity" then
+		return nil, "Invalid unit expression."
+	end
+
+	return qty_ast.unit
+end
+
+local function tungsten_unit_convert_command(_)
+	local selection_ast, selection_text, parse_err = cmd_utils.parse_selected_latex("quantity or angle")
+	if parse_err then
+		error_handler.notify_error("UnitConvert", parse_err)
+		return
+	end
+	if not selection_ast then
+		return
+	end
+
+	if selection_ast.type ~= "quantity" and selection_ast.type ~= "angle" then
+		error_handler.notify_error("UnitConvert", "Selected text is not a quantity or angle.")
+		return
+	end
+
+	local _, start_mark, end_mark, mode = selection.create_selection_extmarks()
+
+	vim.ui.input({ prompt = "Enter output unit (e.g., m or \\meter):" }, function(unit_input)
+		if not unit_input or unit_input:match("^%s*$") then
+			error_handler.notify_error("UnitConvert", "No unit entered.")
+			return
+		end
+
+		local unit_ast, unit_err = parse_unit_expression(unit_input)
+		if not unit_ast then
+			error_handler.notify_error("UnitConvert", unit_err)
+			return
+		end
+
+		local unit_str = units_util.render_unit(unit_ast)
+		if unit_str == "" then
+			error_handler.notify_error("UnitConvert", "Invalid unit expression.")
+			return
+		end
+
+		local unit_literal = ast_creator.create_variable_node(string.format('"%s"', unit_str))
+		local unit_convert_ast = ast_creator.create_function_call_node(
+			ast_creator.create_variable_node("UnitConvert"),
+			{ selection_ast, unit_literal }
+		)
+
+		evaluator.evaluate_async(unit_convert_ast, config.numeric_mode, function(result, err)
+			if err then
+				error_handler.notify_error("UnitConvert", err)
+				return
+			end
+			if not result or result == "" then
+				error_handler.notify_error("UnitConvert", "No conversion result returned.")
+				return
+			end
+			event_bus.emit("result_ready", {
+				result = result,
+				start_mark = start_mark,
+				end_mark = end_mark,
+				selection_text = selection_text,
+				mode = mode,
+				separator = " \\rightarrow ",
+			})
+		end)
+	end)
 end
 
 local function define_persistent_variable_command(_)
@@ -248,6 +335,7 @@ local M = {
 	tungsten_clear_persistent_vars_command = tungsten_clear_persistent_vars_command,
 	tungsten_status_command = tungsten_status_command,
 	tungsten_show_ast_command = tungsten_show_ast_command,
+	tungsten_unit_convert_command = tungsten_unit_convert_command,
 }
 
 M.commands = {
@@ -319,6 +407,11 @@ M.commands = {
 		name = "TungstenShowAST",
 		func = tungsten_show_ast_command,
 		opts = { range = true, desc = "Display AST of selected expression" },
+	},
+	{
+		name = "TungstenUnitConvert",
+		func = tungsten_unit_convert_command,
+		opts = { range = true, desc = "Convert a selected quantity or angle to another unit" },
 	},
 }
 

@@ -36,6 +36,24 @@ These commands handle general expression manipulation and evaluation.
 
 ---
 
+## Units
+
+Commands for unit-aware quantities.
+
+| Command | Description |
+| :--- | :--- |
+| **`:TungstenUnitConvert`** | Converts a selected quantity or angle to a specified output unit. |
+
+### Usage Examples
+
+**Convert Units**
+* **Signature:** `:TungstenUnitConvert` (on selection)
+* **Input:** `\qty{1}{m}`
+* **Prompt:** `cm`
+* **Output:** `\qty{100}{cm}`
+
+---
+
 ## Linear Algebra
 
 Commands specifically designed for matrix and vector operations.

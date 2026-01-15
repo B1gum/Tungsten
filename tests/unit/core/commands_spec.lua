@@ -219,6 +219,13 @@ describe("Tungsten core commands", function()
 		eval_async_behaviors.assignment_eval = function(_, _, callback)
 			callback("4")
 		end
+		eval_async_behaviors.unit_convert_eval = function(ast, _, callback)
+			if ast and ast.type == "function_call" and ast.name_node and ast.name_node.name == "UnitConvert" then
+				callback("\\qty{100}{cm}")
+			else
+				callback(nil)
+			end
+		end
 		eval_async_behaviors.nil_eval = function(_, _, callback)
 			callback(nil)
 		end
@@ -517,6 +524,65 @@ describe("Tungsten core commands", function()
 		it("should call insert_result when solver callback provides a solution", function()
 			commands_module.tungsten_solve_command({})
 			assert.spy(mock_event_bus_emit_spy).was.called_with("result_ready", match.is_table())
+		end)
+	end)
+
+	describe(":TungstenUnitConvert", function()
+		local original_ui_input
+
+		before_each(function()
+			current_parse_selected_latex_config["quantity or angle"] = {
+				ast = { type = "quantity", representation = "parsed:\\qty{1}{m}" },
+				text = "\\qty{1}{m}",
+			}
+			current_parser_configs["\\qty{1}{cm}"] = {
+				ast = {
+					type = "quantity",
+					unit = { type = "unit_component", name = "cm" },
+				},
+			}
+			current_eval_async_config_key = "unit_convert_eval"
+
+			original_ui_input = vim.ui.input
+			vim.ui.input = spy.new(function(_, on_confirm)
+				on_confirm("cm")
+			end)
+		end)
+
+		after_each(function()
+			vim.ui.input = original_ui_input
+		end)
+
+		it("wraps the selection in UnitConvert and inserts the converted result", function()
+			vim_test_env.set_visual_selection(1, 1, 1, 8)
+
+			commands_module.tungsten_unit_convert_command({})
+
+			assert.spy(mock_cmd_utils_parse_selected_latex_spy).was.called_with("quantity or angle")
+			assert.spy(mock_parser_parse_spy).was.called_with("\\qty{1}{cm}")
+			assert.spy(mock_evaluator_evaluate_async_spy).was.called(1)
+			local ast_arg = mock_evaluator_evaluate_async_spy.calls[1].vals[1]
+			assert.are.equal("function_call", ast_arg.type)
+			assert.are.equal("UnitConvert", ast_arg.name_node.name)
+			assert.are.same({ type = "quantity", representation = "parsed:\\qty{1}{m}" }, ast_arg.args[1])
+			assert.are.equal('"cm"', ast_arg.args[2].name)
+			assert.spy(mock_event_bus_emit_spy).was.called_with("result_ready", match.is_table())
+			local payload = mock_event_bus_emit_spy.calls[1].vals[2]
+			assert.are.equal(" \\rightarrow ", payload.separator)
+		end)
+
+		it("reports an error when the selection is not a quantity or angle", function()
+			current_parse_selected_latex_config["quantity or angle"] = {
+				ast = { type = "variable", name = "x" },
+				text = "x",
+			}
+
+			commands_module.tungsten_unit_convert_command({})
+
+			assert
+				.spy(mock_error_handler_notify_error_spy).was
+				.called_with("UnitConvert", "Selected text is not a quantity or angle.")
+			assert.spy(mock_evaluator_evaluate_async_spy).was_not.called()
 		end)
 	end)
 

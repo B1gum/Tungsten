@@ -41,6 +41,9 @@ local mappings = {
 	{ "<leader>tdi", ":<C-u>TungstenInverseLaplace<CR>", desc = "Inverse Laplace Transform" },
 	{ "<leader>tdc", ":<C-u>TungstenConvolve<CR>", desc = "Convolution" },
 
+	{ "<leader>tu", group = "Units" },
+	{ "<leader>tuc", ":<C-u>TungstenUnitConvert<CR>", desc = "Convert Units" },
+
 	{ "<leader>tc", group = "Cache" },
 	{ "<leader>tcc", ":<C-u>TungstenClearCache<CR>", desc = "Clear Cache" },
 	{ "<leader>tcp", ":<C-u>TungstenClearPersistentVars<CR>", desc = "Clear Persistent Vars" },

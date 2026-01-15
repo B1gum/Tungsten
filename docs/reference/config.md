@@ -144,6 +144,8 @@ If `enable_default_mappings` is set to `true`, Tungsten registers mappings using
 | `<leader>tdo` | `TungstenSolveODE` | Solve an Ordinary Differential Equation. |
 | `<leader>tdl` | `TungstenLaplace` | Compute the Laplace Transform. |
 | `<leader>tdi` | `TungstenInverseLaplace` | Compute the Inverse Laplace Transform. |
+| **Units** | | |
+| `<leader>tuc` | `TungstenUnitConvert` | Convert a selected quantity or angle into another unit. |
 | **System** | | |
 | `<leader>tcc` | `TungstenClearCache` | Clear the internal result cache. |
 | `<leader>ttn` | `TungstenToggleNumericMode` | Toggle between symbolic and numeric output. |
