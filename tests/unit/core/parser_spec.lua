@@ -1047,6 +1047,21 @@ describe("tungsten.core.parser.parse with combined grammar", function()
 		end)
 	end)
 
+	describe("units formatting", function()
+		it("parses \\num with exponent notation", function()
+			local input = "\\num{3e2}"
+			local expected_ast = ast_utils.create_num_node(ast_utils.create_number_node(300))
+			assert.are.same(expected_ast, parse_input(input))
+		end)
+
+		it("parses \\qty with decimal comma and exponent notation", function()
+			local input = "\\qty{1,8e3}{\\Pa}"
+			local expected_ast =
+				ast_utils.create_quantity_node(ast_utils.create_number_node(1800), ast_utils.create_unit_component_node("Pa"))
+			assert.are.same(expected_ast, parse_input(input))
+		end)
+	end)
+
 	describe("solve system input", function()
 		it("parses multiline LaTeX systems with aligned equals", function()
 			local input = [[
