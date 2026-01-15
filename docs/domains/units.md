@@ -18,11 +18,13 @@ This allows for the evaluation of expressions involving units directly from your
 
 The primary way to define a value with a unit is using the `\qty` command.
 The syntax follows the pattern `\qty{<number>}{<unit>}`.
+The numeric portion supports scientific notation via `e` and either `.` or `,` as decimal separators.
 
 **Example**:
 ```latex
 \qty{5}{\kg}
 \qty{9.81}{\m\per\s\squared}
+\qty{2,8e3}{\Pa}
 ```
 
 ### Unit Syntax
