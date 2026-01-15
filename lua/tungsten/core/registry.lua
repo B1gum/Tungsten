@@ -200,23 +200,17 @@ function M.build_atom_base(sorted)
 			combined_atom_base = combined_atom_base + atom_base_item_patterns[i]
 		end
 		grammar_def.AtomBase = combined_atom_base
-			+ (tokens_mod.lbrace * tokens_mod.space * V("Expression") * tokens_mod.space * tokens_mod.rbrace)
-			+ (tokens_mod.lparen * tokens_mod.space * V("Expression") * tokens_mod.space * tokens_mod.rparen)
-			+ (tokens_mod.lbrack * tokens_mod.space * V("Expression") * tokens_mod.space * tokens_mod.rbrack)
+			+ (tokens_mod.lbrace * V("Expression") * tokens_mod.rbrace)
+			+ (tokens_mod.lparen * V("Expression") * tokens_mod.rparen)
+			+ (tokens_mod.lbrack * V("Expression") * tokens_mod.rbrack)
 	else
 		logger.warn(
 			"Tungsten Registry",
 			"Registry: No 'AtomBaseItem' contributions. AtomBase will only be parenthesized expressions."
 		)
-		grammar_def.AtomBase = (
-			tokens_mod.lbrace
-			* tokens_mod.space
-			* V("Expression")
-			* tokens_mod.space
-			* tokens_mod.rbrace
-		)
-			+ (tokens_mod.lparen * tokens_mod.space * V("Expression") * tokens_mod.space * tokens_mod.rparen)
-			+ (tokens_mod.lbrack * tokens_mod.space * V("Expression") * tokens_mod.space * tokens_mod.rbrack)
+		grammar_def.AtomBase = (tokens_mod.lbrace * V("Expression") * tokens_mod.rbrace)
+			+ (tokens_mod.lparen * V("Expression") * tokens_mod.rparen)
+			+ (tokens_mod.lbrack * V("Expression") * tokens_mod.rbrack)
 			+ P(false)
 	end
 

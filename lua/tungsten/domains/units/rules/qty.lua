@@ -23,11 +23,6 @@ local function num_node(n)
 	return ast.create_number_node(tonumber(n))
 end
 
-local function parse_si_num(str)
-	local clean_str = str:gsub(",", ".")
-	return tonumber(clean_str)
-end
-
 local ExpContent = lpeg.R("09") ^ 1 * (P(".") * lpeg.R("09") ^ 1) ^ -1
 local ExplicitExp = Caret
 	* ((LBrace * tk.space * C(S("+-") ^ -1 * ExpContent) * tk.space * RBrace) + C(ExpContent))
@@ -70,13 +65,7 @@ local UnitExpr = P({
 })
 
 local QtyCmd = P("\\qty")
-local Content = (
-	lpeg.R("09") ^ 1
-	* (lpeg.S(".,") * lpeg.R("09") ^ 1) ^ -1
-	* (lpeg.S("eE") * lpeg.S("+-") ^ -1 * lpeg.R("09") ^ 1) ^ -1
-)
-	/ parse_si_num
-	/ ast.create_number_node
+local Content = lpeg.R("09") ^ 1 * (P(".") * lpeg.R("09") ^ 1) ^ -1 / tonumber / ast.create_number_node
 
 local QtyRule = QtyCmd
 	* tk.space

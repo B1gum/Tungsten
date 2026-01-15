@@ -190,7 +190,7 @@ function M.run_simple(text)
 			else
 				if new_classify_err then
 					notify_error(new_classify_err)
-				end
+        end
 			end
 		end
 
