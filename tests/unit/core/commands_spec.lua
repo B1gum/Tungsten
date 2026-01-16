@@ -565,7 +565,7 @@ describe("Tungsten core commands", function()
 			assert.are.equal("function_call", ast_arg.type)
 			assert.are.equal("UnitConvert", ast_arg.name_node.name)
 			assert.are.same({ type = "quantity", representation = "parsed:\\qty{1}{m}" }, ast_arg.args[1])
-			assert.are.equal('"cm"', ast_arg.args[2].name)
+			assert.are.equal('"Centimeters"', ast_arg.args[2].name)
 			assert.spy(mock_event_bus_emit_spy).was.called_with("result_ready", match.is_table())
 			local payload = mock_event_bus_emit_spy.calls[1].vals[2]
 			assert.are.equal(" \\rightarrow ", payload.separator)

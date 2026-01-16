@@ -33,6 +33,130 @@ local unit_map = {
 	["Webers"] = "\\weber",
 }
 
+local prefixed_unit_macros = {
+	Deca = "\\deca",
+	Yotta = "\\yotta",
+	Zetta = "\\zetta",
+	Exa = "\\exa",
+	Peta = "\\peta",
+	Tera = "\\tera",
+	Giga = "\\giga",
+	Mega = "\\mega",
+	Kilo = "\\kilo",
+	Hecto = "\\hecto",
+	Deci = "\\deci",
+	Centi = "\\centi",
+	Milli = "\\milli",
+	Micro = "\\micro",
+	Nano = "\\nano",
+	Pico = "\\pico",
+	Femto = "\\femto",
+	Atto = "\\atto",
+	Zepto = "\\zepto",
+	Yocto = "\\yocto",
+}
+
+local tex_unit_prefixes = {
+	"da",
+	"Y",
+	"Z",
+	"E",
+	"P",
+	"T",
+	"G",
+	"M",
+	"k",
+	"h",
+	"d",
+	"c",
+	"m",
+	"u",
+	"μ",
+	"n",
+	"p",
+	"f",
+	"a",
+	"z",
+	"y",
+}
+
+local tex_unit_base_macros = {
+	m = "\\meter",
+	s = "\\second",
+	A = "\\ampere",
+	K = "\\kelvin",
+	mol = "\\mole",
+	cd = "\\candela",
+	Pa = "\\pascal",
+	N = "\\newton",
+	J = "\\joule",
+	W = "\\watt",
+	V = "\\volt",
+	ohm = "\\ohm",
+	Hz = "\\hertz",
+	C = "\\coulomb",
+	F = "\\farad",
+	T = "\\tesla",
+	Wb = "\\weber",
+	H = "\\henry",
+	lm = "\\lumen",
+	lx = "\\lux",
+	Bq = "\\becquerel",
+	Gy = "\\gray",
+	Sv = "\\sievert",
+	kat = "\\katal",
+	rad = "\\radian",
+	deg = "\\degree",
+}
+
+table.sort(tex_unit_prefixes, function(a, b)
+	return #a > #b
+end)
+
+local prefixed_unit_names = {}
+for prefix_name, prefix_macro in pairs(prefixed_unit_macros) do
+	table.insert(prefixed_unit_names, { name = prefix_name, macro = prefix_macro })
+end
+
+table.sort(prefixed_unit_names, function(a, b)
+	return #a.name > #b.name
+end)
+
+local function normalize_prefixed_unit(unit_name)
+	for _, prefix in ipairs(prefixed_unit_names) do
+		if unit_name:sub(1, #prefix.name) == prefix.name then
+			local base_name = unit_name:sub(#prefix.name + 1)
+			local base_macro = unit_map[base_name]
+			if not base_macro and base_name ~= "" then
+				local capitalized = base_name:gsub("^%l", string.upper)
+				base_macro = unit_map[capitalized]
+			end
+			if base_macro then
+				return prefix.macro .. base_macro
+			end
+		end
+	end
+	return nil
+end
+
+local function normalize_texform_unit(unit_text)
+	local trimmed = unit_text:gsub("%s+", "")
+	if trimmed == "" then
+		return nil
+	end
+
+	for _, prefix in ipairs(tex_unit_prefixes) do
+		if trimmed:sub(1, #prefix) == prefix then
+			local base = trimmed:sub(#prefix + 1)
+			if base ~= "" and tex_unit_base_macros[base] then
+				return "\\" .. prefix .. base
+			end
+		end
+	end
+
+	return tex_unit_base_macros[trimmed]
+end
+
 local function normalize_unit_expression(unit_expr)
 	local sanitized = unit_expr:gsub('"', "")
 
@@ -42,7 +166,7 @@ local function normalize_unit_expression(unit_expr)
 	end
 
 	local replaced_units = sanitized:gsub("%a+", function(unit)
-		return unit_map[unit] or unit
+		return normalize_prefixed_unit(unit) or unit_map[unit] or unit
 	end)
 
 	return replaced_units:gsub("%s*%*%s*", "."):gsub("%s*/%s*", "\\per"):gsub("%s+", "."):gsub("%^", "^")
@@ -53,7 +177,7 @@ function M.format_quantities(str)
 		return ""
 	end
 
-	return str:gsub("Quantity%[([^,]+),%s*(.-)%]", function(val, unit_expr)
+	local formatted = str:gsub("Quantity%[([^,]+),%s*(.-)%]", function(val, unit_expr)
 		local clean_unit = unit_expr:gsub('"', "")
 		if clean_unit == "AngularDegrees" then
 			return string.format("\\ang{%s}", val)
@@ -62,6 +186,14 @@ function M.format_quantities(str)
 		local latex_unit = normalize_unit_expression(unit_expr)
 
 		return string.format("\\qty{%s}{%s}", val, latex_unit)
+	end)
+
+	return formatted:gsub("([%+%-]?[%d%.]+)%s*\\text%{([^}]+)%}", function(val, unit_text)
+		local normalized = normalize_texform_unit(unit_text)
+		if normalized then
+			return string.format("\\qty{%s}{%s}", val, normalized)
+		end
+		return string.format("%s\\text{%s}", val, unit_text)
 	end)
 end
 

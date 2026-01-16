@@ -25,6 +25,17 @@ local function has_units(node)
 	return false
 end
 
+local function is_unit_convert_call(node)
+	if type(node) ~= "table" then
+		return false
+	end
+	if node.type ~= "function_call" then
+		return false
+	end
+	local name_node = node.name_node
+	return name_node and name_node.name == "UnitConvert"
+end
+
 function M.ast_to_code(ast)
 	handlers.ensure_handlers()
 
@@ -77,11 +88,15 @@ function M.evaluate_async(ast, opts, callback)
 		code = "N[" .. code .. "]"
 	end
 
-	if units_present then
+	local is_unit_convert = is_unit_convert_call(ast)
+	if units_present and not is_unit_convert_call(ast) then
 		code = "Quiet[UnitSimplify[" .. code .. "]]"
 		if not form then
 			form = "InputForm"
 		end
+	end
+	if is_unit_convert and not form then
+		form = "InputForm"
 	end
 
 	if not form then
