@@ -8,7 +8,7 @@ This guide provides solutions for common runtime errors encountered when using T
 
 **Symptom**: `Tungsten[Executor] E_BACKEND_UNAVAILABLE`
 
-**Cause**: The plugin cannot locate the configured backend executable (e.g., `wolframscript` or `python`). This usually means the executable is not in your system's `$PATH` or the path specified in the configuration is incorrect.
+**Cause**: The plugin cannot locate the configured backend executable (e.g., `wolframscript`). This usually means the executable is not in your system's `$PATH` or the path specified in the configuration is incorrect.
 
 **Solution**:
   1. Verify that the backend is installed and accessible from your terminal.
@@ -37,7 +37,7 @@ require("tungsten").setup({
 
 ### Syntax & Backend Errors
 
-**Symptom**: Specific error messages from the backend, such as `Syntax::sntx` (Wolfram) or `Traceback` (Python).
+**Symptom**: Specific error messages from the backend, such as `Syntax::sntx` (Wolfram).
 
 **Cause**: The code sent to the backend contained invalid syntax or triggered a runtime exception.
 

@@ -259,7 +259,7 @@ Saving the buffer (with `:wq`) triggers plot generation and closing the buffer (
 These settings affect the entire figure.
 
   - **Form**: Here, you can force a specific plot mode (`explicit`, `implicit`, `paramtetric`, or `polar`). Tungsten will automatically try to guess the correct form for you and insert that in the buffer. 
-  - **Backend**: Override the backend for this specific plot (`wolfram`, `python`).
+  - **Backend**: Override the backend for this specific plot (`wolfram`, `python` (under implementation)).
   - **Output mode**:
     - `latex`: Inserts the image code into the text (default).
     - `viewer`: Opens the image in an external viewer (for configuration of this see [Configuration](../introduction/configuration.md)).

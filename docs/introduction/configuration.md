@@ -39,7 +39,7 @@ Below is the default configuration. You can copy and paste this into your setup 
   persistent_variable_assignment_operator = ":=", -- Operator used for persistent variable assignment
   
   -- Backend Configuration
-  backend = "wolfram",             -- Default backend: "wolfram" or "python"
+  backend = "wolfram",             -- Default backend: "wolfram" or "python" (under implementation)
   backend_opts = {
     wolfram = {
       wolfram_path = "wolframscript", -- Path to the wolframscript executable
