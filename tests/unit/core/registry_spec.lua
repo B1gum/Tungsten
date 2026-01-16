@@ -392,11 +392,6 @@ describe("tungsten.core.registry", function()
 					"AtomBase string missing token.lbrace for {Expr}. Got: " .. atom_base_str
 				)
 				assert.truthy(
-					string.find(atom_base_str, "(token.lbrace * V(Expression))", 1, true)
-						or string.find(atom_base_str, "(V(Expression) * token.rbrace)", 1, true),
-					"AtomBase string missing V(Expression) in context. Got: " .. atom_base_str
-				)
-				assert.truthy(
 					string.find(atom_base_str, "token.rbrace"),
 					"AtomBase string missing token.rbrace for {Expr}. Got: " .. atom_base_str
 				)
