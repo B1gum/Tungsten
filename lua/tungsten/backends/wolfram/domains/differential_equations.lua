@@ -105,7 +105,6 @@ local function find_ode_vars(equation_nodes)
 			return
 		end
 
-		-- Ensure input is a table (list of variables)
 		local indeps_to_add = type(indep_names) == "table" and indep_names or { indep_names }
 
 		if not dependent_var_map[func_name] then
@@ -127,7 +126,6 @@ local function find_ode_vars(equation_nodes)
 		end
 	end
 
-	-- Pass 1: Scan ONLY for derivatives to establish the "ground truth" of independent variables
 	local function derivative_visitor(node)
 		if not node or type(node) ~= "table" then
 			return
@@ -166,14 +164,12 @@ local function find_ode_vars(equation_nodes)
 		end
 	end
 
-	-- Pass 2: Infer dependencies for bare variables using ALL found independent variables
 	local function variable_visitor(node)
 		if not node or type(node) ~= "table" then
 			return
 		end
 
 		if node.type == "variable" then
-			-- Check if this variable is one of the independent variables (like x, y, t)
 			local is_independent = false
 			for _, iv in ipairs(independent_vars) do
 				if node.name == iv then
@@ -183,8 +179,6 @@ local function find_ode_vars(equation_nodes)
 			end
 
 			if not is_independent then
-				-- If it's a dependent variable (like u, v), assign ALL found independent vars to it
-				-- If no independent vars found yet, default to "x"
 				local target_indeps = #independent_vars > 0 and independent_vars or { "x" }
 				add_dependent_var(node.name, target_indeps)
 			end
@@ -197,7 +191,6 @@ local function find_ode_vars(equation_nodes)
 		end
 	end
 
-	-- Execute Scan
 	for _, eq_node in ipairs(equation_nodes) do
 		derivative_visitor(eq_node)
 	end
@@ -209,12 +202,10 @@ local function find_ode_vars(equation_nodes)
 		table.insert(independent_vars, "x")
 	end
 
-	-- Construct the string for DSolve arguments
 	for _, func_name in ipairs(dependent_seen_order) do
 		local wolfram_func_name = map_function_name(func_name)
 		local indep_list = dependent_var_map[func_name]
 
-		-- Sort independent variables to ensure consistent order (e.g. u[x,y] everywhere)
 		table.sort(indep_list, function(a, b)
 			local ia, ib = 0, 0
 			for k, v in ipairs(independent_vars) do
