@@ -2,125 +2,51 @@
 ![License](https://img.shields.io/github/license/B1gum/Tungsten)
 ![Latest Release](https://img.shields.io/github/v/release/B1gum/Tungsten)
 
-
 # Tungsten
-
-**Tungsten** is a Neovim plugin that seamlessly integrates Wolfram functionalities directly into your editor. Includes capabilities like equation solving, plotting, partial derivatives, and more—all within Neovim.
-
-## Table of Contents
-
-- [Installation](#installation)
-  - [Using packer.nvim](#using-packernvim)
-  - [Using lazy.nvim](#using-lazynvim)
-  - [Using vim-plug](#using-vim-plug)
-  - [Setting up the Wolfram engine](#setting-up-the-wolfram-engine)
-- [Features](#features)
-- [Usage](#usage)
-  - [Example: Solving an Equation](#example-solving-an-equation)
-- [Roadmap](#roadmap)
-  - [Ongoing](#ongoing)
-  - [Q1 2025](#q1-2025)
-  - [Q2 2025](#q2-2025)
-- [Contributing](#contributing)
-- [License](#license)
-- [Contact](#contact)
+**Tungsten** is a Neovim plugin that seamlessly integrates Wolfram capabilities directly into your editor. It keeps you in flow by letting you evaluate LaTeX-formatted math, solve equations, generate plots, and much more without leaving your buffer.
 
 
-## Installation
+## Documentation
 
-You can install **Tungsten** using your preferred Neovim plugin manager. Please refer to your plugin manager's documentation for specific installation instructions.
+- **[Introduction](docs/introduction/index.md)**
+  Start here for installation, configuration, and a quick tour of the plugin's philosophy.
+- **[Domains](docs/domains/index.md)**
+  Dive into specialized domains including Algebra, Calculus, Differential Equations, Linear Algebra, and Plotting.
+- **[Reference](docs/reference/index.md)**
+  Detailed API documentation, command lists, syntax grammar specifications, and backend integration details.
+- **[Table of Contents](docs/toc.md)**
+  An overview of every documentation page.
 
+## Key Features
 
-### Using packer.nvim
+* **Seamless Workflow**: Evaluate LaTeX-formatted math without leaving Neovim.
+* **Specialized Domains**: Purpose-built handling for Arithmetic, Calculus, Linear Algebra, and more.
+* **Rich Plotting**: Generate 2D curves, 3D surfaces, and scatter plots directly from your code.
+* **LaTeX Native**: Write expressions using standard LaTeX syntax and shorthand.
+
+## Quick Install
+For `lazy.nvim` users:
 
 ```lua
-use 'B1gum/Tungsten'
+{ 'B1gum/Tungsten' }
 ```
+Need more detail or using a different package manager? See the [Installation Guide](docs/introduction/installation.md).
 
-### Using lazy.nvim
-Add the following to your lazy.nvim setup configuration:
+Tungsten relies on the Wolfram Engine and WolframScript. Follow the full walkthrough in the [Installation Guide](docs/introduction/installation.md) to:
 
-```lua
-require('lazy').setup({
-  {
-    'B1gum/Tungsten',
-    config = function()
-      -- Plugin configuration goes here
-    end
-  }
-})
-```
+1. Download and install the Wolfram Engine.
+2. Install WolframScript.
+3. Activate a free Wolfram Engine license.
 
+## Getting Started
 
-### Using vim-plug
-Add the following to your init.vim or init.lua:
-
-```vim
-Plug 'B1gum/Tungsten'
-```
-
-Then run `:PlugInstall` within Neovim.
-
-
-### Setting Up the Wolfram Engine
-**Tungsten** integrates Wolfram functionalities, which requires the Wolfram Engine and WolframScript to be installed and properly configured on your computer. The steps below outline the steps to set up the necessary components.
-
-  1. **Download and Install the Wolfram Engine**
-  
-  The Wolfram Engine is available for free for developers, students, and for non-commercial use. Follow these steps to download and install it:
-
-  a. **Download the Wolfram Engine**
-
-  1. Visit the [Wolfram Engine page](https://www.wolfram.com/engine/).
-  2. Click on *Start Download*
-  3. Follow the installation-guide
-
-  b. **Download WolframScript**
-
-  1. WolframScript available for download [here](https://www.wolfram.com/wolframscript/).
-  2. Click **Download** and follow the installation guide
-
-  c. **Get and Activate Your Free Wolfram License**
-
-  1. If you have just followed step **a. Download the Wolfra Engine** you should be able to click a box saying **Get Your License** (or just [click here](https://account.wolfram.com/access/wolfram-engine/free)) to be taken to a site where you can obtain your free Wolfram License
-  2. Agree to Wolfram's Terms-and-services and click **Get License** (you have to have a Wolfram-account for this to be possible)
-  3. To activate your license you have to open up the Wolfram-engine on your device and log in once. After this your license is activated and you are ready to use **Tungsten**
-
-As the plugin is still in rather early development please do not hesitate to [open an issue](https://github.com/B1gum/Tungsten/issues) or [Contact B1gum](https://github.com/B1gum).
-
+- Learn the workflow in the [Quickstart Guide](docs/introduction/quickstart.md).
+- Customize Tungsten in the [Configuration Guide](docs/introduction/configuration.md).
+- Explore domain-specific syntax in [Domains](docs/domains/index.md).
 
 ## Contributing
 
-Contributions are welcome! Please follow these steps to contribute:
-
-1. **Fork the Repository:** Click the "Fork" button at the top of the repository page.
-
-2. **Clone Your Fork:**
-```bash
-git clone https://github.com/your-username/Tungsten.git
-```    
-
-3. **Create a New Branch:**
-```bash
-git checkout -b feature/YourFeatureName
-```
-
-4. **Make Your Changes:** Implement your feature or bug fix.
-
-5. **Commit Your Changes:**
-```bash
-git commit -m "Add feature: YourFeatureName"
-```
-
-6. **Push to Your Fork:**
-```bash
-git push origin feature/YourFeatureName
-```
-
-7. **Submit a Pull Request:** Navigate to the original repository and click "Compare & pull request."
-
-
-Please ensure your code follows the project's coding standards and includes appropriate tests.
+Contributions are welcome! Please follow the guidelines in the [Contributing Guide](docs/introduction/overview.md) and open issues or PRs as needed.
 
 ## Running Tests
 
