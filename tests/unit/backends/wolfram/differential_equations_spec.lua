@@ -69,6 +69,25 @@ describe("Differential Equations Wolfram Handlers", function()
 		end
 	end)
 
+	describe("ordinary_derivative handler", function()
+		it("handles higher-order derivatives of function calls", function()
+			local ast = {
+				type = "ordinary_derivative",
+				expression = {
+					type = "function_call",
+					name_node = { type = "variable", name = "y" },
+					args = { { type = "variable", name = "x" } },
+				},
+				variable = { type = "variable", name = "x" },
+				order = { type = "number", value = 2 },
+			}
+
+			local result = handlers.ordinary_derivative(ast, mock_render)
+
+			assert.are.same("D[Y[x], {x, 2}]", result)
+		end)
+	end)
+
 	describe("ode handler", function()
 		it("should generate a full DSolve command for a single ODE", function()
 			local ast = {
@@ -95,6 +114,26 @@ describe("Differential Equations Wolfram Handlers", function()
 			local result = handlers.ode(ast, mock_render)
 
 			assert.are.same("DSolve[Y''[x] == Y[x], Y[x], {x}]", result)
+		end)
+
+		it("attaches independent variables to bare function calls", function()
+			local ast = {
+				type = "ode",
+				lhs = {
+					type = "ordinary_derivative",
+					expression = { type = "variable", name = "y" },
+					variable = { type = "variable", name = "x" },
+					order = { type = "number", value = 1 },
+				},
+				rhs = {
+					type = "function_call",
+					name_node = { type = "variable", name = "y" },
+				},
+			}
+
+			local result = handlers.ode(ast, mock_render)
+
+			assert.are.same("DSolve[Y'[x] == Y[x], Y[x], {x}]", result)
 		end)
 	end)
 
@@ -136,6 +175,35 @@ describe("Differential Equations Wolfram Handlers", function()
 			assert.is_truthy(result:match("D%[%s*[%w_]+%s*%[%s*[tx]%s*,%s*[tx]%s*%]%s*,%s*x%s*%]"))
 			assert.is_truthy(has_all_args(result))
 			assert.is_truthy(result:match("DSolve"))
+		end)
+	end)
+
+	describe("solve_system_equations_capture handler", function()
+		it("falls back to Solve when no dependent variables are present", function()
+			local ast = {
+				type = "solve_system_equations_capture",
+				equations = {
+					{
+						type = "binary",
+						operator = "==",
+						left = { type = "number", value = 1 },
+						right = { type = "number", value = 2 },
+					},
+				},
+			}
+
+			local function render(node)
+				if node.type == "number" then
+					return tostring(node.value)
+				end
+				if node.type == "binary" then
+					return render(node.left) .. " " .. node.operator .. " " .. render(node.right)
+				end
+				return ""
+			end
+
+			local result = handlers.solve_system_equations_capture(ast, render)
+			assert.are.same("Solve[{1 == 2}]", result)
 		end)
 	end)
 
@@ -332,6 +400,19 @@ describe("Differential Equations Wolfram Handlers", function()
 				expression = {
 					type = "function_call",
 					name_node = { type = "variable", name = "delta" },
+					args = { { type = "variable", name = "t" } },
+				},
+			}
+			local result = handlers.laplace_transform(ast, mock_render)
+			assert.are.same("LaplaceTransform[DiracDelta[t], t, s]", result)
+		end)
+
+		it("maps greek delta to DiracDelta inside Laplace transforms", function()
+			local ast = {
+				type = "laplace_transform",
+				expression = {
+					type = "function_call",
+					name_node = { type = "greek", name = "\\delta" },
 					args = { { type = "variable", name = "t" } },
 				},
 			}

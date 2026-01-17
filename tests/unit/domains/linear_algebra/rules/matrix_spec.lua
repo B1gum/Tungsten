@@ -84,6 +84,15 @@ describe("Linear Algebra Matrix Rule: tungsten.domains.linear_algebra.rules.matr
 		return lpeg.match(compiled_test_grammar, input_str)
 	end
 
+	local function compile_grammar(expression_rule)
+		local definition = {
+			"TestEntryPoint",
+			TestEntryPoint = MatrixRule * -P(1),
+			Expression = expression_rule,
+		}
+		compiled_test_grammar = lpeg.P(definition)
+	end
+
 	describe("Valid Matrix Structures", function()
 		it("should parse a simple 1x1 pmatrix: \\begin{pmatrix} 1 \\end{pmatrix}", function()
 			local input = "\\begin{pmatrix} 1 \\end{pmatrix}"
@@ -227,5 +236,21 @@ describe("Linear Algebra Matrix Rule: tungsten.domains.linear_algebra.rules.matr
 			local parsed = parse_input(input)
 			assert.are.same(expected_ast, parsed, "Matrix with trailing row separator should parse correctly.")
 		end)
+	end)
+
+	it("should reject matrix elements that are not AST tables", function()
+		compile_grammar(P("x") / function()
+			return "not-a-table"
+		end)
+		local input = "\\begin{pmatrix} x \\end{pmatrix}"
+		assert.is_nil(parse_input(input))
+	end)
+
+	it("should reject matrix elements without a type field", function()
+		compile_grammar(P("y") / function()
+			return { value = "missing-type" }
+		end)
+		local input = "\\begin{pmatrix} y \\end{pmatrix}"
+		assert.is_nil(parse_input(input))
 	end)
 end)

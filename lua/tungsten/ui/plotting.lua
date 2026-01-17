@@ -1229,6 +1229,19 @@ M._advanced_helpers = {
 	ensure_all_keys_present = ensure_all_keys_present,
 }
 
+M._test_helpers = {
+	strip_dependents_hint = strip_dependents_hint,
+	parse_definitions = parse_definitions,
+	parse_numeric_result = parse_numeric_result,
+	normalize_buffer_lines = normalize_buffer_lines,
+	populate_symbol_buffer = populate_symbol_buffer,
+	symbol_requires_point3 = symbol_requires_point3,
+	collect_dependents = collect_dependents,
+	build_default_lines = build_default_lines,
+	parse_advanced_buffer = parse_advanced_buffer,
+	evaluate_definitions = evaluate_definitions,
+}
+
 function M.open_advanced_config(opts)
 	opts = opts or {}
 	local bufnr = vim.api.nvim_create_buf(false, true)

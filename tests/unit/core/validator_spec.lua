@@ -28,6 +28,30 @@ describe("validator.validate tuple handling", function()
 		assert.are.equal(4, pos)
 	end)
 
+	it("uses tuple metadata offsets and trims for error positions", function()
+		local meta = {
+			base_offset = 5,
+			elements = {
+				{ type = "number", value = 2 },
+				{ type = "variable", name = "theta" },
+			},
+			input = "  (2,theta)",
+			parts = {
+				{ start_pos = 1 },
+				{ start_pos = 3, trim_leading = 2 },
+			},
+		}
+
+		local ok, msg, pos = validator.validate({ series = { tuple_node(meta) } }, { form = "cartesian" })
+
+		assert.is_nil(ok)
+		assert.are.equal(
+			"Coordinate system mismatch: theta can unly be used with polar coordinates at line 1, column 9",
+			msg
+		)
+		assert.are.equal(9, pos)
+	end)
+
 	it("rejects polar tuples with wrong arity", function()
 		local meta = {
 			elements = {
@@ -49,6 +73,26 @@ describe("validator.validate tuple handling", function()
 		assert.is_nil(ok)
 		assert.are.equal("Polar typles support only 2D at line 1, column 10", msg)
 		assert.are.equal(10, pos)
+	end)
+
+	it("falls back to base offset when tuple parts are missing", function()
+		local meta = {
+			base_offset = 7,
+			elements = {
+				{ type = "number", value = 1 },
+				{ type = "variable", name = "theta" },
+				{ type = "number", value = 3 },
+			},
+			input = "  (1,theta,3)",
+			parts = {},
+			opts = { form = "polar" },
+		}
+
+		local ok, msg, pos = validator.validate({ series = { tuple_node(meta) } }, { form = "polar" })
+
+		assert.is_nil(ok)
+		assert.are.equal("Polar typles support only 2D at line 1, column 7", msg)
+		assert.are.equal(7, pos)
 	end)
 
 	it("rejects polar tuples without theta as second element", function()
@@ -118,6 +162,58 @@ describe("validator.validate tuple handling", function()
 		assert.are.equal("Parametric 3D tuples must use parameters u and v at line 1, column 1", msg)
 		assert.are.equal(1, pos)
 	end)
+
+	it("accepts parametric 3D tuples that use u and v parameters", function()
+		local meta = {
+			elements = {
+				{
+					type = "function",
+					name = "f",
+					args = { { type = "variable", name = "u" }, { type = "variable", name = "v" } },
+				},
+				{
+					type = "function",
+					name = "g",
+					args = { { type = "variable", name = "u" }, { type = "variable", name = "v" } },
+				},
+				{
+					type = "function",
+					name = "h",
+					args = { { type = "variable", name = "u" }, { type = "variable", name = "v" } },
+				},
+			},
+			input = "(f(u),g(v),h(u,v))",
+			parts = {
+				{ start_pos = 1 },
+				{ start_pos = 6 },
+				{ start_pos = 11 },
+			},
+			opts = { form = "parametric", mode = "advanced" },
+		}
+
+		local ok = validator.validate({ series = { tuple_node(meta) } }, { form = "parametric", mode = "advanced" })
+
+		assert.is_true(ok)
+	end)
+
+	it("accepts polar tuples with theta and r(theta)", function()
+		local meta = {
+			elements = {
+				{ type = "function", name = "r", args = { { type = "variable", name = "theta" } } },
+				{ type = "variable", name = "theta" },
+			},
+			input = "(r(theta),theta)",
+			parts = {
+				{ start_pos = 1 },
+				{ start_pos = 11 },
+			},
+			opts = { form = "polar" },
+		}
+
+		local ok = validator.validate({ series = { tuple_node(meta) } }, { form = "polar" })
+
+		assert.is_true(ok)
+	end)
 end)
 
 describe("validator.validate dimension and AST guards", function()
@@ -132,6 +228,40 @@ describe("validator.validate dimension and AST guards", function()
 		assert.is_nil(ok)
 		assert.are.equal("Cannot mix 2D and 3D points in the same sequence or series at line 1, column 2", msg)
 		assert.are.equal(2, pos)
+	end)
+
+	it("rejects mixed 2D and 3D points inside sequences", function()
+		local series = {
+			{
+				type = "Sequence",
+				nodes = {
+					{ type = "Point2", _source = { input = "p2", start_pos = 4 } },
+					{ type = "Point3", _source = { input = "p3", start_pos = 9 } },
+				},
+			},
+		}
+
+		local ok, msg, pos = validator.validate({ series = series })
+
+		assert.is_nil(ok)
+		assert.are.equal("Cannot mix 2D and 3D points in the same sequence or series at line 1, column 9", msg)
+		assert.are.equal(9, pos)
+	end)
+
+	it("accepts consistent dimensions across sequences and standalone nodes", function()
+		local series = {
+			{ type = "Point2", _source = { input = "p2", start_pos = 1 } },
+			{
+				type = "Sequence",
+				nodes = {
+					{ type = "Point2", _source = { input = "p2b", start_pos = 3 } },
+				},
+			},
+		}
+
+		local ok = validator.validate({ series = series })
+
+		assert.is_true(ok)
 	end)
 
 	it("guards against nil or malformed AST roots", function()

@@ -315,6 +315,26 @@ describe("tungsten.core.registry", function()
 		end)
 	end)
 
+	describe("M.set_domain_priority(domain_name, priority)", function()
+		it("updates domain metadata and existing contributions with the new priority", function()
+			registry_module.register_grammar_contribution("priority_domain", 5, "RuleP", create_mock_pattern("pat_p"), "Op")
+			registry_module.set_domain_priority("priority_domain", 42)
+
+			assert.are.equal(42, registry_module.domains_metadata.priority_domain.priority)
+			assert.are.equal(42, registry_module.grammar_contributions[1].domain_priority)
+			assert.spy(mock_logger_notify_spy).was.called_with(
+				"Registry: Domain 'priority_domain' priority set to 42.",
+				mock_logger_module.levels.DEBUG,
+				{ title = "Tungsten Debug" }
+			)
+		end)
+
+		it("creates metadata entry when none exists", function()
+			registry_module.set_domain_priority("new_domain", 7)
+			assert.are.same({ priority = 7 }, registry_module.domains_metadata.new_domain)
+		end)
+	end)
+
 	describe("M.get_combined_grammar()", function()
 		before_each(function()
 			reset_registry_state_in_module()
@@ -417,6 +437,31 @@ describe("tungsten.core.registry", function()
 					)
 			end
 		)
+
+		it("warns and includes only parenthesized AtomBase when no AtomBaseItem contributions exist", function()
+			registry_module.register_grammar_contribution(
+				"arithmetic",
+				100,
+				"AddSub",
+				create_mock_pattern("add_sub_pattern"),
+				"AddSub"
+			)
+
+			local grammar = registry_module.get_combined_grammar()
+			assert.are.same("mock_compiled_grammar_table", grammar)
+
+			local final_call_arg = mock_lpeg_P_spy.calls[#mock_lpeg_P_spy.calls].vals[1]
+			local atom_base_str = final_call_arg.AtomBase._name
+			assert.truthy(
+				string.find(atom_base_str, "P(false)", 1, true),
+				"AtomBase should include P(false) when no AtomBaseItem contributions exist. Got: " .. atom_base_str
+			)
+			assert.spy(mock_logger_notify_spy).was.called_with(
+				"Registry: No 'AtomBaseItem' contributions. AtomBase will only be parenthesized expressions.",
+				mock_logger_module.levels.WARN,
+				{ title = "Tungsten Registry" }
+			)
+		end)
 
 		it("Expression rule should default to V('AddSub') if AddSub is defined", function()
 			registry_module.register_grammar_contribution(
@@ -792,6 +837,18 @@ describe("tungsten.core.registry", function()
 			assert.is_table(exprs.Expression)
 		end)
 
+		it("choose_expression_content logs error when no core expression rules exist", function()
+			mock_logger_notify_spy:clear()
+			local atoms = {}
+			local exprs = registry_module.choose_expression_content(atoms, {})
+			assert.are.same(create_mock_pattern("P(false)"), exprs.ExpressionContent)
+			assert.spy(mock_logger_notify_spy).was.called_with(
+				"Registry: CRITICAL - Cannot define 'ExpressionContent' as core rules are missing. Defaulting to P(false).",
+				mock_logger_module.levels.ERROR,
+				{ title = "Tungsten Registry Error" }
+			)
+		end)
+
 		it("compile_grammar merges and compiles", function()
 			local atoms = { AtomBase = create_mock_pattern("atom") }
 			local exprs = { ExpressionContent = create_mock_pattern("V(AtomBase)"), Expression = create_mock_pattern("expr") }
@@ -807,6 +864,42 @@ describe("tungsten.core.registry", function()
 			registry_module.register_command(cmd)
 			assert.are.equal(1, #registry_module.commands)
 			assert.are.same(cmd, registry_module.commands[1])
+		end)
+	end)
+
+	describe("Handlers and reset", function()
+		it("reset clears registry state including handlers", function()
+			registry_module.register_domain_metadata("reset_domain", { priority = 9 })
+			registry_module.register_grammar_contribution(
+				"reset_domain",
+				9,
+				"ResetRule",
+				create_mock_pattern("reset_pat"),
+				"Op"
+			)
+			registry_module.register_command({ name = "ResetCmd" })
+			registry_module.register_handler("node", function() end)
+
+			registry_module.reset()
+
+			assert.are.equal(0, vim.tbl_count(registry_module.domains_metadata))
+			assert.are.equal(0, #registry_module.grammar_contributions)
+			assert.are.equal(0, #registry_module.commands)
+			assert.are.equal(0, vim.tbl_count(registry_module.handlers))
+		end)
+
+		it("registers and resets handlers", function()
+			local handler_a = function() end
+			local handler_b = function() end
+			registry_module.register_handler("type_a", handler_a)
+			registry_module.register_handlers({ type_b = handler_b })
+
+			local handlers = registry_module.get_handlers()
+			assert.are.same(handler_a, handlers.type_a)
+			assert.are.same(handler_b, handlers.type_b)
+
+			registry_module.reset_handlers()
+			assert.are.equal(0, vim.tbl_count(registry_module.get_handlers()))
 		end)
 	end)
 end)

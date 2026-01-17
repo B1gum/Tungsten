@@ -57,6 +57,12 @@ describe("point literal parsing", function()
 		assert.are.equal("Parametric2D(sin(t),cos(t))", canonical)
 	end)
 
+	it("parses parametric 3D tuples with shared u,v parameters", function()
+		local res = parser.parse("(f(u,v), g(u,v), h(u,v))", { mode = "advanced", form = "parametric" })
+		local canonical = ast_core.canonical(res.series[1])
+		assert.are.equal("Parametric3D(f(u,v),g(u,v),h(u,v))", canonical)
+	end)
+
 	it("treats variable tuples as Point2 in parametric mode", function()
 		local res = parser.parse("(x, y)", { mode = "advanced", form = "parametric" })
 		local node = res.series[1]

@@ -413,6 +413,49 @@ describe("Plotting UI and UX", function()
 			assert.spy(callback_spy).was_not.called()
 		end)
 
+		it("should parse numeric outputs with LaTeX formatting and scientific notation", function()
+			mock_plotting_core.get_undefined_symbols:returns({
+				{ name = "a", type = "variable" },
+				{ name = "b", type = "variable" },
+				{ name = "c", type = "variable" },
+			})
+
+			local callback_spy = spy.new()
+			plotting_ui.handle_undefined_symbols({}, callback_spy)
+			buffer_lines = { "Variables:", "a: 1", "b: 2", "c: 3" }
+			eval_overrides["1"] = { output = "1\\,000" }
+			eval_overrides["2"] = { output = "1 \\times10^{2}" }
+			eval_overrides["3"] = { output = "10^{3}" }
+
+			trigger_autocmd("BufWipeout")
+
+			assert.spy(callback_spy).was.called(1)
+			local definitions = callback_spy.calls[1].vals[1]
+			assert.are.equal(1000, definitions.a.value)
+			assert.are.equal(100, definitions.b.value)
+			assert.are.equal(1000, definitions.c.value)
+		end)
+
+		it("should surface parser errors when definitions cannot be parsed", function()
+			mock_plotting_core.get_undefined_symbols:returns({ { name = "bad", type = "variable" } })
+			local callback_spy = spy.new()
+			parser_overrides["bad_expr"] = { error = "parse fail" }
+
+			plotting_ui.handle_undefined_symbols({}, callback_spy)
+			buffer_lines = { "Variables:", "bad: bad_expr" }
+
+			trigger_autocmd("BufWipeout")
+
+			assert.spy(mock_error_handler.notify_error).was.called_with(
+				"Plot Definitions",
+				mock_error_handler.E_BAD_OPTS,
+				nil,
+				nil,
+				match.has_match("Failed to parse definition for 'bad'")
+			)
+			assert.spy(callback_spy).was_not.called()
+		end)
+
 		it("should notify error if a definition cannot be evaluated to a real number", function()
 			local error_callback
 			mock_plotting_core.initiate_plot = spy.new(function(opts)
@@ -632,6 +675,22 @@ describe("Plotting UI and UX", function()
 			assert.falsy(content:find("Marker:"))
 			assert.falsy(content:find("Markersize:"))
 			assert.truthy(content:find("Alpha:"))
+		end)
+
+		it("should include parametric 3D configuration and marker fields for point series", function()
+			plotting_ui.open_advanced_config({
+				classification = { dim = 3, form = "parametric" },
+				series = { { ast = "p(u,v)", kind = "points" } },
+			})
+			local content = table.concat(vim.api.nvim_buf_set_lines.calls[1].vals[5], "\n")
+			assert.truthy(content:find("U%-range:"))
+			assert.truthy(content:find("V%-range:"))
+			assert.truthy(content:find("Z%-range:"))
+			assert.truthy(content:find("View elevation:"))
+			assert.truthy(content:find("View azimuth:"))
+			assert.truthy(content:find("Colormap:"))
+			assert.truthy(content:find("Marker:"))
+			assert.truthy(content:find("Markersize:"))
 		end)
 
 		it("should create separate sections for each series", function()
@@ -921,6 +980,64 @@ describe("Plotting UI and UX", function()
 
 			assert.spy(mock_error_handler.notify_error).was.called()
 			assert.spy(mock_options_builder.build).was_not.called()
+			assert.spy(mock_plotting_core.initiate_plot).was_not_called()
+		end)
+
+		it("should report missing keys when required config entries are deleted", function()
+			local classification = { form = "explicit", dim = 2, series = { { ast = "sin(x)" } } }
+			plotting_ui.open_advanced_config({ classification = classification, series = classification.series })
+
+			local wq_callback
+			for _, call in ipairs(vim.api.nvim_create_autocmd.calls) do
+				if call.vals[1] == "BufWriteCmd" then
+					wq_callback = call.vals[2].callback
+				end
+			end
+
+			assert.is_function(wq_callback)
+
+			local defaults = vim.deepcopy(vim.api.nvim_buf_set_lines.calls[1].vals[5])
+			local mutated = {}
+			for _, line in ipairs(defaults) do
+				if not line:match("^Legend placement:") then
+					table.insert(mutated, line)
+				end
+			end
+			buffer_lines = mutated
+
+			wq_callback()
+
+			assert.spy(mock_error_handler.notify_error).was.called()
+			assert.spy(mock_options_builder.build).was_not_called()
+			assert.spy(mock_plotting_core.initiate_plot).was_not_called()
+		end)
+
+		it("should report unexpected series headers", function()
+			local classification = { form = "explicit", dim = 2, series = { { ast = "sin(x)" } } }
+			plotting_ui.open_advanced_config({ classification = classification, series = classification.series })
+
+			local wq_callback
+			for _, call in ipairs(vim.api.nvim_create_autocmd.calls) do
+				if call.vals[1] == "BufWriteCmd" then
+					wq_callback = call.vals[2].callback
+				end
+			end
+
+			assert.is_function(wq_callback)
+
+			local defaults = vim.deepcopy(vim.api.nvim_buf_set_lines.calls[1].vals[5])
+			for i, line in ipairs(defaults) do
+				if line:match("^%-%-%-%s*Series%s+1:") then
+					defaults[i] = "--- Series 2: sin(x) ---"
+					break
+				end
+			end
+			buffer_lines = defaults
+
+			wq_callback()
+
+			assert.spy(mock_error_handler.notify_error).was.called()
+			assert.spy(mock_options_builder.build).was_not_called()
 			assert.spy(mock_plotting_core.initiate_plot).was_not_called()
 		end)
 	end)

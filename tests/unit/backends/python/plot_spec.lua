@@ -481,4 +481,109 @@ describe("python polar plotting", function()
 		assert.is_truthy(script:find("xs = np.ma.masked_where(xs <= 0, xs)", 1, true))
 		assert.is_truthy(script:find("ys1 = np.ma.masked_where(ys1 <= 0, ys1)", 1, true))
 	end)
+
+	describe("python plot rendering options", function()
+		before_each(function()
+			ast_stub = stub(executor, "ast_to_code", function(ast)
+				if type(ast) == "table" and ast.__code then
+					return ast.__code
+				end
+				return "expr"
+			end)
+		end)
+
+		after_each(function()
+			if ast_stub then
+				ast_stub:revert()
+			end
+		end)
+
+		it("normalizes range values provided as AST tables", function()
+			local opts = {
+				dim = 2,
+				form = "explicit",
+				xrange = { { __code = "0" }, { __code = "2" } },
+				yrange = { { __code = "-1" }, { __code = "1" } },
+				out_path = "plot.png",
+				series = {
+					{
+						kind = "function",
+						ast = { __code = "x" },
+						independent_vars = { "x" },
+					},
+				},
+			}
+
+			local script, err = plot_backend.build_python_script(opts)
+			assert.is_nil(err)
+			assert.is_truthy(script:find("ax.set_xlim(0, 2)", 1, true))
+			assert.is_truthy(script:find("ax.set_ylim(-1, 1)", 1, true))
+		end)
+
+		it("skips legend creation when legend_auto is false without a position", function()
+			local opts = {
+				dim = 2,
+				form = "explicit",
+				legend_auto = false,
+				out_path = "plot.png",
+				series = {
+					{
+						kind = "function",
+						ast = { __code = "x" },
+						independent_vars = { "x" },
+						label = "line",
+					},
+				},
+			}
+
+			local script, err = plot_backend.build_python_script(opts)
+			assert.is_nil(err)
+			assert.is_nil(script:find("ax.legend", 1, true))
+		end)
+
+		it("adds a colorbar when requested for implicit plots", function()
+			local opts = {
+				dim = 2,
+				form = "implicit",
+				xrange = { -1, 1 },
+				yrange = { -1, 1 },
+				colorbar = true,
+				out_path = "plot.png",
+				series = {
+					{
+						kind = "function",
+						ast = { __code = "x + y" },
+						independent_vars = { "x", "y" },
+					},
+				},
+			}
+
+			local script, err = plot_backend.build_python_script(opts)
+			assert.is_nil(err)
+			assert.is_truthy(script:find("fig.colorbar(cs, ax=ax)", 1, true))
+		end)
+
+		it("configures 3D view angles when provided", function()
+			local opts = {
+				dim = 3,
+				form = "explicit",
+				xrange = { -1, 1 },
+				yrange = { -1, 1 },
+				view_elev = 10,
+				view_azim = 20,
+				out_path = "plot.png",
+				series = {
+					{
+						kind = "function",
+						ast = { __code = "x + y" },
+						independent_vars = { "x", "y" },
+					},
+				},
+			}
+
+			local script, err = plot_backend.build_python_script(opts)
+			assert.is_nil(err)
+			assert.is_truthy(script:find("ax.view_init(elev=10, azim=20)", 1, true))
+		end)
+	end)
 end)

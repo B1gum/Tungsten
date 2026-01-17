@@ -31,6 +31,10 @@ describe("Tungsten core commands", function()
 	local mock_parser_module
 	local mock_persistent_vars_module
 	local mock_error_handler_module
+	local mock_status_window_module
+	local mock_ast_format_module
+	local mock_float_result_module
+	local mock_units_util_module
 
 	local original_require
 
@@ -41,6 +45,8 @@ describe("Tungsten core commands", function()
 	local current_parser_configs
 	local current_parse_definition_config
 	local current_backend_conversion
+	local current_unit_rendered_value
+	local current_persistent_store_error
 
 	local eval_async_behaviors = {}
 
@@ -59,6 +65,10 @@ describe("Tungsten core commands", function()
 		"tungsten.core.parser",
 		"tungsten.util.selection",
 		"tungsten.util.error_handler",
+		"tungsten.ui.status_window",
+		"tungsten.util.ast_format",
+		"tungsten.ui.float_result",
+		"tungsten.domains.units.util",
 	}
 
 	before_each(function()
@@ -87,6 +97,10 @@ describe("Tungsten core commands", function()
 		mock_parser_module = {}
 		mock_persistent_vars_module = {}
 		mock_error_handler_module = {}
+		mock_status_window_module = {}
+		mock_ast_format_module = {}
+		mock_float_result_module = {}
+		mock_units_util_module = {}
 
 		original_require = _G.require
 		_G.require = function(module_path)
@@ -129,6 +143,22 @@ describe("Tungsten core commands", function()
 				package.loaded[module_path] = mock_error_handler_module
 				return mock_error_handler_module
 			end
+			if module_path == "tungsten.ui.status_window" then
+				package.loaded[module_path] = mock_status_window_module
+				return mock_status_window_module
+			end
+			if module_path == "tungsten.util.ast_format" then
+				package.loaded[module_path] = mock_ast_format_module
+				return mock_ast_format_module
+			end
+			if module_path == "tungsten.ui.float_result" then
+				package.loaded[module_path] = mock_float_result_module
+				return mock_float_result_module
+			end
+			if module_path == "tungsten.domains.units.util" then
+				package.loaded[module_path] = mock_units_util_module
+				return mock_units_util_module
+			end
 
 			if package.loaded[module_path] then
 				return package.loaded[module_path]
@@ -147,11 +177,13 @@ describe("Tungsten core commands", function()
 		current_parser_configs = {}
 		current_parse_definition_config = nil
 		current_backend_conversion = { def = nil, err = nil }
+		current_unit_rendered_value = "Centimeters"
+		current_persistent_store_error = nil
 
 		mock_cmd_utils_parse_selected_latex_spy = spy.new(function(desc)
 			local config = current_parse_selected_latex_config[desc]
 			if config then
-				return config.ast, config.text
+				return config.ast, config.text, config.err
 			end
 			return nil, ""
 		end)
@@ -191,8 +223,11 @@ describe("Tungsten core commands", function()
 			return current_backend_conversion.def, current_backend_conversion.err
 		end)
 
-		mock_persistent_vars_store_spy = spy.new(function(name, backend_def)
+		mock_persistent_vars_store_spy = spy.new(function(name, backend_def, callback)
 			mock_state_module.persistent_variables[name] = backend_def
+			if callback then
+				callback(nil, current_persistent_store_error)
+			end
 		end)
 
 		mock_persistent_vars_module.parse_definition = mock_persistent_vars_parse_definition_spy
@@ -201,6 +236,18 @@ describe("Tungsten core commands", function()
 
 		mock_error_handler_notify_error_spy = spy.new(function() end)
 		mock_error_handler_module.notify_error = mock_error_handler_notify_error_spy
+
+		mock_status_window_module.open = spy.new(function() end)
+
+		mock_ast_format_module.format = spy.new(function(ast)
+			return "formatted:" .. tostring(ast and ast.type or "nil")
+		end)
+
+		mock_float_result_module.show = spy.new(function() end)
+
+		mock_units_util_module.render_unit = spy.new(function()
+			return current_unit_rendered_value
+		end)
 
 		eval_async_behaviors.default_eval = function(ast, _, callback)
 			if ast and ast.representation == "parsed:\\frac{1+1}{2}" then
@@ -481,6 +528,7 @@ describe("Tungsten core commands", function()
 
 	describe(":TungstenSolve", function()
 		local original_ui_input
+		local current_var_parse_behavior
 
 		before_each(function()
 			vim_test_env.set_visual_selection(1, 1, 1, 15)
@@ -495,11 +543,15 @@ describe("Tungsten core commands", function()
 				on_confirm("x")
 			end)
 
-			package.loaded["tungsten.core.parser"].parse = spy.new(function(text)
+			current_var_parse_behavior = function(text)
 				if text == "x" then
 					return { series = { { type = "variable", name = "x" } } }
 				end
 				return nil
+			end
+
+			package.loaded["tungsten.core.parser"].parse = spy.new(function(text)
+				return current_var_parse_behavior(text)
 			end)
 		end)
 
@@ -524,6 +576,42 @@ describe("Tungsten core commands", function()
 		it("should call insert_result when solver callback provides a solution", function()
 			commands_module.tungsten_solve_command({})
 			assert.spy(mock_event_bus_emit_spy).was.called_with("result_ready", match.is_table())
+		end)
+
+		it("reports an error when the parsed AST is not a valid single equation", function()
+			current_parse_selected_latex_config["equation"] = {
+				ast = { type = "binary", operator = "+" },
+				text = "x+y",
+			}
+
+			commands_module.tungsten_solve_command({})
+
+			assert
+				.spy(mock_error_handler_notify_error_spy).was
+				.called_with("Solve", "Selected text is not a valid single equation.")
+			assert.spy(mock_solver_solve_asts_async_spy).was_not.called()
+		end)
+
+		it("reports an error when no variable input is provided", function()
+			vim.ui.input = spy.new(function(_, on_confirm)
+				on_confirm("")
+			end)
+
+			commands_module.tungsten_solve_command({})
+
+			assert.spy(mock_error_handler_notify_error_spy).was.called_with("Solve", "No variable entered.")
+			assert.spy(mock_solver_solve_asts_async_spy).was_not.called()
+		end)
+
+		it("reports an error when variable parsing fails", function()
+			current_var_parse_behavior = function()
+				return { series = { { type = "number", value = 2 } } }
+			end
+
+			commands_module.tungsten_solve_command({})
+
+			assert.spy(mock_error_handler_notify_error_spy).was.called()
+			assert.spy(mock_solver_solve_asts_async_spy).was_not.called()
 		end)
 	end)
 
@@ -582,6 +670,39 @@ describe("Tungsten core commands", function()
 			assert
 				.spy(mock_error_handler_notify_error_spy).was
 				.called_with("UnitConvert", "Selected text is not a quantity or angle.")
+			assert.spy(mock_evaluator_evaluate_async_spy).was_not.called()
+		end)
+
+		it("reports an error when no unit is entered", function()
+			vim.ui.input = spy.new(function(_, on_confirm)
+				on_confirm("   ")
+			end)
+
+			commands_module.tungsten_unit_convert_command({})
+
+			assert.spy(mock_error_handler_notify_error_spy).was.called_with("UnitConvert", "No unit entered.")
+			assert.spy(mock_parser_parse_spy).was_not.called()
+		end)
+
+		it("reports an error when the unit expression cannot be parsed", function()
+			current_parser_configs["\\qty{1}{bad}"] = { err = "parse failure" }
+
+			vim.ui.input = spy.new(function(_, on_confirm)
+				on_confirm("bad")
+			end)
+
+			commands_module.tungsten_unit_convert_command({})
+
+			assert.spy(mock_error_handler_notify_error_spy).was.called_with("UnitConvert", "parse failure")
+			assert.spy(mock_evaluator_evaluate_async_spy).was_not.called()
+		end)
+
+		it("reports an error when the unit renders to an empty string", function()
+			current_unit_rendered_value = ""
+
+			commands_module.tungsten_unit_convert_command({})
+
+			assert.spy(mock_error_handler_notify_error_spy).was.called_with("UnitConvert", "Invalid unit expression.")
 			assert.spy(mock_evaluator_evaluate_async_spy).was_not.called()
 		end)
 	end)
@@ -669,6 +790,90 @@ describe("Tungsten core commands", function()
 			commands_module.tungsten_status_command({})
 			assert.spy(summary_spy).was.called()
 			assert.spy(mock_logger_notify_spy).was.called_with("status", mock_logger_module.levels.INFO, match.is_table())
+		end)
+
+		it("opens the status window", function()
+			mock_evaluator_module.get_active_jobs_summary = function()
+				return "status"
+			end
+
+			commands_module.tungsten_status_command({})
+
+			assert.spy(mock_status_window_module.open).was.called()
+		end)
+	end)
+
+	describe(":TungstenShowAST", function()
+		it("shows formatted AST in a float when parsing succeeds", function()
+			current_parse_selected_latex_config["expression"] = {
+				ast = { type = "expression" },
+			}
+
+			commands_module.tungsten_show_ast_command({})
+
+			assert.spy(mock_ast_format_module.format).was.called()
+			assert.spy(mock_float_result_module.show).was.called_with("formatted:expression")
+		end)
+
+		it("reports parse errors", function()
+			current_parse_selected_latex_config["expression"] = {
+				ast = nil,
+				err = "parse error",
+			}
+
+			commands_module.tungsten_show_ast_command({})
+
+			assert.spy(mock_error_handler_notify_error_spy).was.called_with("AST", "parse error")
+			assert.spy(mock_float_result_module.show).was_not.called()
+		end)
+	end)
+
+	describe(":TungstenDefinePersistentVariable", function()
+		it("stores a persistent variable definition when conversion succeeds", function()
+			current_visual_selection_text = "a := 3"
+			current_parse_definition_config = { name = "a", rhs = "3" }
+			current_backend_conversion = { def = "backend_three", err = nil }
+
+			commands_module.define_persistent_variable_command({})
+
+			assert.spy(mock_persistent_vars_parse_definition_spy).was.called_with("a := 3")
+			assert.spy(mock_persistent_vars_latex_to_backend_code_spy).was.called_with("a", "3")
+			assert.spy(mock_persistent_vars_store_spy).was.called_with("a", "backend_three", match.is_function())
+		end)
+
+		it("reports errors when conversion fails", function()
+			current_visual_selection_text = "a := 3"
+			current_parse_definition_config = { name = "a", rhs = "3" }
+			current_backend_conversion = { def = nil, err = "conversion error" }
+
+			commands_module.define_persistent_variable_command({})
+
+			assert.spy(mock_error_handler_notify_error_spy).was.called_with("DefineVar", "conversion error")
+			assert.spy(mock_persistent_vars_store_spy).was_not.called()
+		end)
+
+		it("reports errors when storing fails", function()
+			current_visual_selection_text = "a := 3"
+			current_parse_definition_config = { name = "a", rhs = "3" }
+			current_backend_conversion = { def = "backend_three", err = nil }
+			current_persistent_store_error = "store error"
+
+			commands_module.define_persistent_variable_command({})
+
+			assert.spy(mock_error_handler_notify_error_spy).was.called_with("DefineVar", "store error")
+		end)
+	end)
+
+	describe(":TungstenClearPersistentVars", function()
+		it("clears persistent variables and logs", function()
+			mock_state_module.persistent_variables = { a = 1 }
+
+			commands_module.tungsten_clear_persistent_vars_command({})
+
+			assert.are.same({}, mock_state_module.persistent_variables)
+			assert
+				.spy(mock_logger_notify_spy).was
+				.called_with("Persistent variables cleared.", mock_logger_module.levels.INFO, match.is_table())
 		end)
 	end)
 end)

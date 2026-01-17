@@ -54,4 +54,24 @@ describe("wolfram error and solution helpers", function()
 		assert.is_true(fallback.ok)
 		assert.equals("raw text", fallback.formatted)
 	end)
+
+	it("fills in missing variables when mapping is incomplete", function()
+		local solution = require("tungsten.backends.wolfram.wolfram_solution")
+
+		local result = solution.parse_wolfram_solution("{x -> 7}", { "x", "y" }, true)
+
+		assert.is_true(result.ok)
+		assert.equals("x = 7, y = (Not explicitly solved)", result.formatted)
+	end)
+
+	it("formats Wolfram quantities into siunitx", function()
+		local solution = require("tungsten.backends.wolfram.wolfram_solution")
+
+		assert.equals("", solution.format_quantities(nil))
+		assert.equals("\\ang{30}", solution.format_quantities('Quantity[30, "AngularDegrees"]'))
+		assert.equals("\\qty{5}{\\kilo\\meter}", solution.format_quantities('Quantity[5, "Kilometers"]'))
+		assert.equals("\\qty{9.8}{\\meter\\per\\second^2}", solution.format_quantities('Quantity[9.8, "Meters/Seconds^2"]'))
+		assert.equals("\\qty{3}{\\km}", solution.format_quantities("3 \\text{km}"))
+		assert.equals("3\\text{blob}", solution.format_quantities("3 \\text{blob}"))
+	end)
 end)

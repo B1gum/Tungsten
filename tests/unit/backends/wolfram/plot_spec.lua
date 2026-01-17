@@ -163,6 +163,23 @@ describe("wolfram plot option translation", function()
 		assert.is_truthy(code:find("PlotRange -> {Automatic, {-2, 2}}", 1, true))
 	end)
 
+	it("resolves alias ranges for independent variables", function()
+		local opts = build_base_opts({
+			xrange = { -2, 2 },
+			yrange = { -1, 1 },
+			clip_axes = { t = "x", x = true },
+		})
+		opts.series[1].independent_vars = { "t" }
+		opts.series[1].dependent_vars = { "y" }
+		opts.series[1].ast = { __code = "t^2" }
+
+		local code, err = wolfram_plot.build_plot_code(opts)
+
+		assert.is_nil(err)
+		assert.is_truthy(code:find("{t, -2, 2}", 1, true))
+		assert.is_truthy(code:find("PlotRange -> {{-2, 2}, Automatic}", 1, true))
+	end)
+
 	it("ignores figsize_in and defers to Wolfram defaults", function()
 		local opts = build_base_opts({
 			clip_axes = { y = true },
@@ -204,6 +221,37 @@ describe("wolfram plot option translation", function()
 		local code, err = wolfram_plot.build_plot_code(opts)
 		assert.is_nil(err)
 		assert.is_truthy(code:find("AspectRatio -> 1", 1, true))
+	end)
+
+	it("emits BoxRatios -> {1,1,1} when 3D aspect is equal", function()
+		local opts = {
+			form = "explicit",
+			dim = 3,
+			aspect = "equal",
+			xrange = { -1, 1 },
+			yrange = { -2, 2 },
+			zrange = { -3, 3 },
+			series = {
+				{
+					kind = "function",
+					ast = { __code = "x^2 + y^2" },
+					independent_vars = { "x", "y" },
+					dependent_vars = { "z" },
+				},
+			},
+		}
+
+		local code, err = wolfram_plot.build_plot_code(opts)
+
+		assert.is_nil(err)
+		assert.is_truthy(code:find("BoxRatios -> {1,1,1}", 1, true))
+	end)
+
+	it("adds GridLines when grids are enabled for 2D plots", function()
+		local opts = build_base_opts({ grids = true })
+		local code, err = wolfram_plot.build_plot_code(opts)
+		assert.is_nil(err)
+		assert.is_truthy(code:find("GridLines -> Automatic", 1, true))
 	end)
 
 	it("unwraps Equality nodes before rendering explicit plots", function()

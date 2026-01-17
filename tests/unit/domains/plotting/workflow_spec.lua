@@ -172,6 +172,9 @@ describe("Plotting workflow", function()
 			create_sequence_node = function(nodes)
 				return { type = "Sequence", nodes = nodes }
 			end,
+			create_number_node = function(value)
+				return { type = "number", value = value }
+			end,
 		}
 
 		mock_ui = {
@@ -267,6 +270,31 @@ describe("Plotting workflow", function()
 		assert.are.same(definitions, final_plot_data.var_defs)
 	end)
 
+	it("reclassifies with substituted definitions when values are provided", function()
+		vim.api.nvim_buf_set_name(0, unique_tex_path())
+
+		mock_parser.parse = spy.new(function()
+			return { series = { { type = "variable", name = "c" } } }
+		end)
+
+		local captured_opts
+		mock_ui.handle_undefined_symbols = spy.new(function(opts, cb)
+			captured_opts = opts
+			if cb then
+				cb({ definitions = { c = { value = 3 } } })
+			end
+		end)
+
+		workflow.run_simple("c")
+
+		assert.spy(mock_ui.handle_undefined_symbols).was.called(1)
+		assert.are.equal("c", captured_opts.expression)
+		assert.spy(mock_classification.analyze).was.called()
+		local last_call = mock_classification.analyze.calls[#mock_classification.analyze.calls]
+		assert.are.equal("number", last_call.vals[1].type)
+		assert.are.equal(3, last_call.vals[1].value)
+	end)
+
 	it("surfaces E_UNSUPPORTED_FORM when Python backend lacks implicit 3D support", function()
 		vim.api.nvim_buf_set_name(0, unique_tex_path())
 
@@ -306,6 +334,59 @@ describe("Plotting workflow", function()
 			nil,
 			"Implicit 3D plots are not supported by the Python backend"
 		)
+	end)
+
+	it("surfaces errors for empty advanced selections", function()
+		package.loaded["tungsten.domains.plotting.workflow.selection"] = {
+			get_trimmed_visual_selection = function()
+				return ""
+			end,
+			get_selection_range = function()
+				return vim.api.nvim_get_current_buf(), 0, 0, 0, 0
+			end,
+		}
+		mock_utils.reset_modules({ "tungsten.domains.plotting.workflow", "tungsten.domains.plotting.workflow.runner" })
+		workflow = require("tungsten.domains.plotting.workflow")
+
+		workflow.run_advanced()
+
+		assert
+			.spy(mock_error_handler.notify_error).was
+			.called_with("TungstenPlot", mock_error_handler.E_BAD_OPTS, nil, nil, "Advanced plot requires an expression")
+		assert.spy(mock_ui.open_advanced_config).was_not_called()
+	end)
+
+	it("reports parser failures for advanced selections", function()
+		mock_parser.parse = function()
+			error("Parse explosion", 0)
+		end
+		package.loaded["tungsten.core.parser"] = mock_parser
+		mock_utils.reset_modules({ "tungsten.domains.plotting.workflow", "tungsten.domains.plotting.workflow.runner" })
+		workflow = require("tungsten.domains.plotting.workflow")
+
+		workflow.run_advanced()
+
+		assert
+			.spy(mock_error_handler.notify_error).was
+			.called_with("TungstenPlot", mock_error_handler.E_BAD_OPTS, nil, nil, "Parse explosion")
+	end)
+
+	it("reports output path failures when submitting advanced plots", function()
+		vim.api.nvim_buf_set_name(0, unique_tex_path())
+
+		mock_io.resolve_paths = spy.new(function()
+			return nil, nil, nil, "Missing project root"
+		end)
+		mock_ui.open_advanced_config = spy.new(function(opts)
+			opts.on_submit(vim.deepcopy(opts))
+		end)
+
+		workflow.run_advanced()
+
+		assert
+			.spy(mock_error_handler.notify_error).was
+			.called_with("TungstenPlot", mock_error_handler.E_BAD_OPTS, nil, nil, "Missing project root")
+		assert.spy(mock_job_manager.submit).was_not_called()
 	end)
 
 	it("reports parse errors", function()
