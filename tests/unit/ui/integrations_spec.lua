@@ -95,7 +95,7 @@ describe("Optional integrations", function()
 			api.nvim_open_win = open_win_spy
 			api.nvim_buf_set_option = set_option_spy
 
-			mock_utils.mock_module("tungsten.core.engine", {
+			mock_utils.mock_module("tungsten.core.job_reporter", {
 				get_active_jobs_summary = function()
 					return "line1\nline2"
 				end,
@@ -140,7 +140,7 @@ describe("Optional integrations", function()
 		api.nvim_buf_set_option = set_option_spy
 
 		local summary = "αβγδ\nxy"
-		mock_utils.mock_module("tungsten.core.engine", {
+		mock_utils.mock_module("tungsten.core.job_reporter", {
 			get_active_jobs_summary = function()
 				return summary
 			end,

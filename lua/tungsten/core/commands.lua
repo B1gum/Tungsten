@@ -5,6 +5,7 @@
 local parser = require("tungsten.core.parser")
 local solver = require("tungsten.core.solver")
 local evaluator = require("tungsten.core.engine")
+local job_reporter = require("tungsten.core.job_reporter")
 local selection = require("tungsten.util.selection")
 local event_bus = require("tungsten.event_bus")
 local config = require("tungsten.config")
@@ -51,7 +52,7 @@ end
 local function tungsten_status_command(_)
 	local status_window = require("tungsten.ui.status_window")
 	status_window.open()
-	local summary = evaluator.get_active_jobs_summary()
+	local summary = job_reporter.get_active_jobs_summary()
 	logger.info("Tungsten", summary)
 end
 
@@ -374,7 +375,7 @@ M.commands = {
 	{
 		name = "TungstenViewActiveJobs",
 		func = function()
-			evaluator.view_active_jobs()
+			job_reporter.view_active_jobs()
 		end,
 		opts = { desc = "View active Tungsten evaluation jobs" },
 	},

@@ -1,4 +1,4 @@
-local engine = require("tungsten.core.engine")
+local job_reporter = require("tungsten.core.job_reporter")
 
 local M = {}
 
@@ -159,7 +159,7 @@ local function build_queue_lines(snapshot)
 end
 
 function M.open(summary)
-	summary = summary or engine.get_active_jobs_summary()
+	summary = summary or job_reporter.get_active_jobs_summary()
 	local lines = vim.split(summary, "\n")
 	if #lines == 0 then
 		lines = { "" }

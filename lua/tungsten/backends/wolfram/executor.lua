@@ -36,6 +36,54 @@ local function is_unit_convert_call(node)
 	return name_node and name_node.name == "UnitConvert"
 end
 
+local function prepare_wolfram_code(raw_code, opts, has_units_flag)
+	opts = opts or {}
+	local code = raw_code
+	local form = opts.form
+
+	if config.numeric_mode or opts.numeric then
+		code = "N[" .. code .. "]"
+	end
+
+	if has_units_flag and not opts.is_unit_convert then
+		code = "Quiet[UnitSimplify[" .. code .. "]]"
+		if not form then
+			form = "InputForm"
+		end
+	end
+	if opts.is_unit_convert and not form then
+		form = "InputForm"
+	end
+
+	if not form then
+		form = "TeXForm"
+	end
+
+	if form == "InputForm" then
+		code = "ToString[" .. code .. ', CharacterEncoding -> "UTF8", FormatType -> InputForm]'
+	else
+		code = "ToString[TeXForm[" .. code .. '], CharacterEncoding -> "UTF8"]'
+	end
+
+	return code, form
+end
+
+local function sanitize_wolfram_output(stdout, form_type)
+	local result = stdout
+
+	result = result:gsub('Interpreting unit ".-"%.+\n*', "")
+	result = result:gsub("\\theta", "u") -- Use u for the heaviside step function instead of theta
+
+	if form_type == "InputForm" then
+		local format_quantities = solution_parser.format_quantities or function(x)
+			return x
+		end
+		result = format_quantities(result)
+	end
+
+	return result
+end
+
 function M.ast_to_code(ast)
 	handlers.ensure_handlers()
 
@@ -65,9 +113,7 @@ function M.evaluate_async(ast, opts, callback)
 	assert(type(callback) == "function", "evaluate_async expects callback")
 
 	opts = opts or {}
-	local numeric = opts.numeric
 	local cache_key = opts.cache_key
-	local form = opts.form
 
 	local ok, code = pcall(M.ast_to_code, ast)
 	if not ok or not code then
@@ -84,30 +130,12 @@ function M.evaluate_async(ast, opts, callback)
 		units_present = has_units(ast)
 	end
 
-	if config.numeric_mode or numeric then
-		code = "N[" .. code .. "]"
-	end
-
 	local is_unit_convert = is_unit_convert_call(ast)
-	if units_present and not is_unit_convert_call(ast) then
-		code = "Quiet[UnitSimplify[" .. code .. "]]"
-		if not form then
-			form = "InputForm"
-		end
-	end
-	if is_unit_convert and not form then
-		form = "InputForm"
-	end
-
-	if not form then
-		form = "TeXForm"
-	end
-
-	if form == "InputForm" then
-		code = "ToString[" .. code .. ', CharacterEncoding -> "UTF8", FormatType -> InputForm]'
-	else
-		code = "ToString[TeXForm[" .. code .. '], CharacterEncoding -> "UTF8"]'
-	end
+	code, opts.form = prepare_wolfram_code(code, {
+		numeric = opts.numeric,
+		form = opts.form,
+		is_unit_convert = is_unit_convert,
+	}, units_present)
 
 	local wolfram_opts = (config.backend_opts and config.backend_opts.wolfram) or {}
 	local wolfram_path = wolfram_opts.wolfram_path or "wolframscript"
@@ -119,18 +147,7 @@ function M.evaluate_async(ast, opts, callback)
 					logger.debug("Tungsten Debug", "Tungsten Debug (stderr): " .. stderr)
 				end
 
-				local result = stdout
-
-				result = result:gsub('Interpreting unit ".-"%.+\n*', "")
-
-				result = result:gsub("\\theta", "u") -- Use u for the heaviside step function instead of theta
-
-				if form == "InputForm" then
-					local format_quantities = solution_parser.format_quantities or function(x)
-						return x
-					end
-					result = format_quantities(result)
-				end
+				local result = sanitize_wolfram_output(stdout, opts.form)
 
 				callback(result, nil)
 			else

@@ -50,125 +50,165 @@ local function trim(s)
 	return trimmed, leading
 end
 
+local relation_pattern = lpeg.P("\\leq")
+	+ lpeg.P("\\le")
+	+ lpeg.P("\\geq")
+	+ lpeg.P("\\ge")
+	+ lpeg.P("<=")
+	+ lpeg.P(">=")
+	+ lpeg.P("≤")
+	+ lpeg.P("≥")
+	+ lpeg.P("<")
+	+ lpeg.P(">")
+	+ lpeg.P("=")
+
+local function update_delimiter_state(state, delimiter, delta)
+	if delimiter == "(" or delimiter == ")" then
+		state.paren = state.paren + delta
+	elseif delimiter == "{" or delimiter == "}" then
+		state.brace = state.brace + delta
+	elseif
+		delimiter == "["
+		or delimiter == "]"
+		or delimiter_open_cmds[delimiter]
+		or delimiter_close_cmds[delimiter]
+		or delimiter == "."
+	then
+		state.bracket = state.bracket + delta
+	end
+end
+
+local function consume_delimiter_command(expr, i, state)
+	local next_five = expr:sub(i, i + 4)
+	if next_five == "\\left" then
+		local delimiter, consumed = lexer.read_delimiter(expr, i + 5)
+		update_delimiter_state(state, delimiter, 1)
+		return 5 + consumed
+	end
+
+	local next_six = expr:sub(i, i + 5)
+	if next_six == "\\right" then
+		local delimiter, consumed = lexer.read_delimiter(expr, i + 6)
+		update_delimiter_state(state, delimiter, -1)
+		return 6 + consumed
+	end
+
+	local j = i + 1
+	local len = #expr
+	while j <= len and expr:sub(j, j):match("%a") do
+		j = j + 1
+	end
+	local cmd = expr:sub(i, j - 1)
+	update_delimiter_state(state, cmd, delimiter_open_cmds[cmd] and 1 or delimiter_close_cmds[cmd] and -1 or 0)
+	return j - i
+end
+
 local function detect_chained_relations(expr)
-	local paren, brace, bracket = 0, 0, 0
+	local state = { paren = 0, brace = 0, bracket = 0 }
 	local count = 0
 	local i, len = 1, #expr
 	while i <= len do
-		local c = expr:sub(i, i)
 		local advance = 1
-		if c == "\\" then
-			local next_five = expr:sub(i, i + 4)
-			local next_six = expr:sub(i, i + 5)
-			if next_five == "\\left" then
-				local d, consumed = lexer.read_delimiter(expr, i + 5)
-				if d == "(" then
-					paren = paren + 1
-				elseif d == "{" then
-					brace = brace + 1
-				elseif d == "[" or delimiter_open_cmds[d] then
-					bracket = bracket + 1
-				elseif d == "." then
-					bracket = bracket + 1
+		local at_top = state.paren == 0 and state.brace == 0 and state.bracket == 0
+		if at_top then
+			local relation_end = lpeg.match(relation_pattern, expr, i)
+			if relation_end then
+				count = count + 1
+				if count > 1 then
+					return i
 				end
-				advance = 5 + consumed
-			elseif next_six == "\\right" then
-				local d, consumed = lexer.read_delimiter(expr, i + 6)
-				if d == ")" then
-					paren = paren - 1
-				elseif d == "}" then
-					brace = brace - 1
-				elseif d == "]" or delimiter_close_cmds[d] then
-					bracket = bracket - 1
-				elseif d == "." then
-					bracket = bracket - 1
-				end
-				advance = 6 + consumed
-			elseif expr:sub(i, i + 3) == "\\leq" then
-				if paren == 0 and brace == 0 and bracket == 0 then
-					count = count + 1
-					if count > 1 then
-						return i
-					end
-				end
-				advance = 4
-			elseif expr:sub(i, i + 2) == "\\le" then
-				if paren == 0 and brace == 0 and bracket == 0 then
-					count = count + 1
-					if count > 1 then
-						return i
-					end
-				end
-				advance = 3
-			elseif expr:sub(i, i + 3) == "\\geq" then
-				if paren == 0 and brace == 0 and bracket == 0 then
-					count = count + 1
-					if count > 1 then
-						return i
-					end
-				end
-				advance = 4
-			elseif expr:sub(i, i + 2) == "\\ge" then
-				if paren == 0 and brace == 0 and bracket == 0 then
-					count = count + 1
-					if count > 1 then
-						return i
-					end
-				end
-				advance = 3
-			else
-				local j = i + 1
-				while j <= len and expr:sub(j, j):match("%a") do
-					j = j + 1
-				end
-				local cmd = expr:sub(i, j - 1)
-				if delimiter_open_cmds[cmd] then
-					bracket = bracket + 1
-				elseif delimiter_close_cmds[cmd] then
-					bracket = bracket - 1
-				end
-				advance = j - i
+				advance = relation_end - i
 			end
-		else
-			if c == "(" then
-				paren = paren + 1
-			elseif c == ")" then
-				paren = paren - 1
-			elseif c == "{" then
-				brace = brace + 1
-			elseif c == "}" then
-				brace = brace - 1
-			elseif c == "[" then
-				bracket = bracket + 1
-			elseif c == "]" then
-				bracket = bracket - 1
-			elseif paren == 0 and brace == 0 and bracket == 0 then
-				if c == "<" or c == ">" or c == "=" or c == "≤" or c == "≥" then
-					if c == "<" or c == ">" then
-						if expr:sub(i + 1, i + 1) == "=" then
-							count = count + 1
-							if count > 1 then
-								return i
-							end
-							advance = 2
-						else
-							count = count + 1
-							if count > 1 then
-								return i
-							end
-						end
-					else
-						count = count + 1
-						if count > 1 then
-							return i
-						end
-					end
-				end
+		end
+
+		if advance == 1 then
+			local c = expr:sub(i, i)
+			if c == "\\" then
+				advance = consume_delimiter_command(expr, i, state)
+			elseif c == "(" or c == ")" or c == "{" or c == "}" or c == "[" or c == "]" then
+				local delta = (c == "(" or c == "{" or c == "[") and 1 or -1
+				update_delimiter_state(state, c, delta)
 			end
 		end
 		i = i + advance
 	end
 	return nil
+end
+
+local function create_tuple_node(elements, opts, context_info)
+	local tuple_node
+	local element_count = #elements
+	local mode = opts and opts.mode
+	local form = opts and opts.form
+
+	local function create_parametric_node()
+		if mode ~= "advanced" or form ~= "parametric" then
+			return nil
+		end
+
+		local elem_params = {}
+		local union_set = {}
+		for i, e in ipairs(elements) do
+			local params = helpers.extract_param_names(e)
+			elem_params[i] = params
+			for _, p in ipairs(params) do
+				union_set[p] = true
+			end
+		end
+
+		local union = {}
+		for p in pairs(union_set) do
+			table.insert(union, p)
+		end
+		table.sort(union)
+
+		local function elements_share_union()
+			for _, params in ipairs(elem_params) do
+				if #params ~= #union then
+					return false
+				end
+				for _, n in ipairs(params) do
+					if not union_set[n] then
+						return false
+					end
+				end
+			end
+			return true
+		end
+
+		if element_count == 2 then
+			if #union == 1 and union[1] == "t" and elements_share_union() then
+				return ast.create_parametric2d_node(elements[1], elements[2])
+			end
+		elseif element_count == 3 then
+			if #union == 2 and union[1] == "u" and union[2] == "v" and elements_share_union() then
+				return ast.create_parametric3d_node(elements[1], elements[2], elements[3])
+			end
+		end
+
+		return nil
+	end
+
+	local function create_polar_node()
+		if form ~= "polar" or element_count ~= 2 then
+			return nil
+		end
+		return ast.create_polar2d_node(elements[1])
+	end
+
+	tuple_node = create_parametric_node()
+	if not tuple_node then
+		tuple_node = create_polar_node()
+	end
+	if not tuple_node then
+		if element_count == 2 then
+			tuple_node = ast.create_point2_node(elements[1], elements[2])
+		else
+			tuple_node = ast.create_point3_node(elements[1], elements[2], elements[3])
+		end
+	end
+
+	return tuple_node, context_info
 end
 
 local function try_point_tuple(expr, pattern, ser_start, item_start, input, opts, lead)
@@ -212,58 +252,7 @@ local function try_point_tuple(expr, pattern, ser_start, item_start, input, opts
 			table.insert(elems, subres)
 		end
 
-		local tuple_node
-		if opts and opts.mode == "advanced" and opts.form == "parametric" then
-			local elem_params = {}
-			local union_set = {}
-			for i, e in ipairs(elems) do
-				local params = helpers.extract_param_names(e)
-				elem_params[i] = params
-				for _, p in ipairs(params) do
-					union_set[p] = true
-				end
-			end
-
-			local union = {}
-			for p in pairs(union_set) do
-				table.insert(union, p)
-			end
-			table.sort(union)
-
-			local function elements_share_union()
-				for _, params in ipairs(elem_params) do
-					if #params ~= #union then
-						return false
-					end
-					for _, n in ipairs(params) do
-						if not union_set[n] then
-							return false
-						end
-					end
-				end
-				return true
-			end
-
-			if #elems == 2 then
-				if #union == 1 and union[1] == "t" and elements_share_union() then
-					tuple_node = ast.create_parametric2d_node(elems[1], elems[2])
-				end
-			elseif #elems == 3 then
-				if #union == 2 and union[1] == "u" and union[2] == "v" and elements_share_union() then
-					tuple_node = ast.create_parametric3d_node(elems[1], elems[2], elems[3])
-				end
-			end
-		elseif opts and opts.form == "polar" and #elems == 2 then
-			tuple_node = ast.create_polar2d_node(elems[1])
-		end
-
-		if not tuple_node then
-			if #elems == 2 then
-				tuple_node = ast.create_point2_node(elems[1], elems[2])
-			else
-				tuple_node = ast.create_point3_node(elems[1], elems[2], elems[3])
-			end
-		end
+		local tuple_node = create_tuple_node(elems, opts, { element_count = #elems })
 
 		tuple_node._tuple_meta = {
 			base_offset = base_offset + offset,
@@ -284,6 +273,16 @@ local function try_point_tuple(expr, pattern, ser_start, item_start, input, opts
 	return nil
 end
 
+local function tokenize_structure(input)
+	local series_strs = lexer.split_top_level(input, { [";"] = true })
+	local structure = {}
+	for _, ser in ipairs(series_strs) do
+		local seq_strs = lexer.split_top_level(ser.str, { [","] = true })
+		table.insert(structure, { start_pos = ser.start_pos, items = seq_strs })
+	end
+	return structure
+end
+
 function M.parse(input, opts)
 	opts = opts or {}
 	if opts.allow_multiple_relations then
@@ -292,14 +291,10 @@ function M.parse(input, opts)
 	local current_grammar = M.get_grammar()
 	local pattern = space * current_grammar * (space * -1 + lpeg.T("extra_input"))
 
-	local series_separators = { [";"] = true }
-
-	local series_strs = lexer.split_top_level(input, series_separators)
 	local series = {}
-	for _, ser in ipairs(series_strs) do
-		local seq_strs = lexer.split_top_level(ser.str, { [","] = true })
+	for _, ser in ipairs(tokenize_structure(input)) do
 		local nodes = {}
-		for _, item in ipairs(seq_strs) do
+		for _, item in ipairs(ser.items) do
 			local expr, lead = trim(item.str)
 			if expr ~= "" then
 				local rel_pos = (not opts.allow_multiple_relations) and detect_chained_relations(expr)

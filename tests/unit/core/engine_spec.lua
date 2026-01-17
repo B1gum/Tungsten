@@ -323,46 +323,9 @@ describe("tungsten.core.engine", function()
 	end)
 
 	describe("Active Job Management", function()
-		it("get_active_jobs_summary() should report no jobs when table empty", function()
-			local summary = engine.get_active_jobs_summary()
-			assert.are.equal("Tungsten: No active jobs.", summary)
-		end)
-
-		it("get_active_jobs_summary() should include details for active jobs", function()
-			mock_state.active_jobs = {
-				[123] = { bufnr = 1, cache_key = "key1", start_time = vim.loop.now() - 1000 },
-				[456] = { bufnr = 2, cache_key = "key2", start_time = vim.loop.now() - 2000 },
-			}
-			local summary = engine.get_active_jobs_summary()
-			assert.truthy(summary:find("Active Tungsten Jobs:"))
-			assert.truthy(summary:find("ID: 123"))
-			assert.truthy(summary:find("ID: 456"))
-		end)
-
-		it("view_active_jobs() should log 'No active jobs.' if active_jobs is empty", function()
-			local summary_spy = spy.on(engine, "get_active_jobs_summary")
-			engine.view_active_jobs()
-			assert.spy(summary_spy).was.called()
-			assert
-				.spy(logger_notify_spy).was
-				.called_with("Tungsten: No active jobs.", mock_logger.levels.INFO, match.is_table())
-			summary_spy:revert()
-		end)
-
-		it("view_active_jobs() should log details of active jobs", function()
-			mock_state.active_jobs = {
-				[123] = { bufnr = 1, cache_key = "key1", start_time = vim.loop.now() - 1000 },
-				[456] = { bufnr = 2, cache_key = "key2", start_time = vim.loop.now() - 2000 },
-			}
-			local summary_spy = spy.on(engine, "get_active_jobs_summary")
-			engine.view_active_jobs()
-			assert.spy(summary_spy).was.called()
-			assert.spy(logger_notify_spy).was.called_with(match.is_string(), mock_logger.levels.INFO, match.is_table())
-			local log_message = logger_notify_spy.calls[1].vals[1]
-			assert.truthy(log_message:find("Active Tungsten Jobs:"))
-			assert.truthy(log_message:find("ID: 123"))
-			assert.truthy(log_message:find("ID: 456"))
-			summary_spy:revert()
+		it("get_active_jobs() should return the active jobs state", function()
+			mock_state.active_jobs = { [123] = { bufnr = 1, cache_key = "key1" } }
+			assert.are.same(mock_state.active_jobs, engine.get_active_jobs())
 		end)
 	end)
 end)

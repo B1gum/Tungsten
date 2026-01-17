@@ -35,6 +35,7 @@ describe("Tungsten core commands", function()
 	local mock_ast_format_module
 	local mock_float_result_module
 	local mock_units_util_module
+	local mock_job_reporter_module
 
 	local original_require
 
@@ -55,6 +56,7 @@ describe("Tungsten core commands", function()
 		"tungsten.core.workflow",
 		"tungsten.core.command_definitions",
 		"tungsten.core.engine",
+		"tungsten.core.job_reporter",
 		"tungsten.core.solver",
 		"tungsten.event_bus",
 		"tungsten.config",
@@ -101,6 +103,7 @@ describe("Tungsten core commands", function()
 		mock_ast_format_module = {}
 		mock_float_result_module = {}
 		mock_units_util_module = {}
+		mock_job_reporter_module = {}
 
 		original_require = _G.require
 		_G.require = function(module_path)
@@ -109,6 +112,9 @@ describe("Tungsten core commands", function()
 			end
 			if module_path == "tungsten.core.engine" then
 				return mock_evaluator_module
+			end
+			if module_path == "tungsten.core.job_reporter" then
+				return mock_job_reporter_module
 			end
 			if module_path == "tungsten.event_bus" then
 				return mock_event_bus_module
@@ -782,18 +788,18 @@ describe("Tungsten core commands", function()
 	end)
 
 	describe(":TungstenStatus", function()
-		it("calls engine.get_active_jobs_summary and logs", function()
-			mock_evaluator_module.get_active_jobs_summary = function()
+		it("calls job_reporter.get_active_jobs_summary and logs", function()
+			mock_job_reporter_module.get_active_jobs_summary = function()
 				return "status"
 			end
-			local summary_spy = spy.on(mock_evaluator_module, "get_active_jobs_summary")
+			local summary_spy = spy.on(mock_job_reporter_module, "get_active_jobs_summary")
 			commands_module.tungsten_status_command({})
 			assert.spy(summary_spy).was.called()
 			assert.spy(mock_logger_notify_spy).was.called_with("status", mock_logger_module.levels.INFO, match.is_table())
 		end)
 
 		it("opens the status window", function()
-			mock_evaluator_module.get_active_jobs_summary = function()
+			mock_job_reporter_module.get_active_jobs_summary = function()
 				return "status"
 			end
 
