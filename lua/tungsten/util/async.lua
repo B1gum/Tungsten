@@ -38,6 +38,7 @@ function JobQueue:remove(handle_proxy)
 end
 
 function JobQueue:is_full(limit)
+	local _ = self
 	local max_jobs = limit or math.huge
 	return active_job_count() >= max_jobs
 end
@@ -189,7 +190,7 @@ local function create_job_handle(pid, job_obj)
 		return not handle._state.completed
 	end
 
-  return handle
+	return handle
 end
 
 local function setup_timeout(handle, timeout_ms)
@@ -228,6 +229,7 @@ end
 
 local function spawn_process(cmd, opts)
 	opts = opts or {}
+	local _ = process_queue
 	local cache_key = opts.cache_key
 	local on_exit = opts.on_exit or opts.on_complete
 	local timeout = opts.timeout or config.process_timeout_ms or 10000

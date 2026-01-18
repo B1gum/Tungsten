@@ -78,4 +78,3 @@ function VariableResolver.resolve(code_string, variables_map)
 end
 
 return VariableResolver
-

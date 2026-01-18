@@ -144,7 +144,7 @@ local function collect_parametric_union(elements)
 		for _, param in ipairs(params) do
 			union_set[param] = true
 		end
-		end
+	end
 
 	local union = {}
 	for param in pairs(union_set) do
@@ -165,8 +165,8 @@ local function elements_share_union(elem_params, union_set, union)
 				return false
 			end
 		end
-  end
-  return true
+	end
+	return true
 end
 
 local function try_create_parametric_node(elements, opts)
