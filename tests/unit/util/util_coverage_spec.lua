@@ -63,24 +63,22 @@ describe("tungsten util additional coverage", function()
 		local create_proxy_handle = run_job_upvalues.create_proxy_handle
 		local spawn_process = run_job_upvalues.spawn_process
 
-		local proxy_helpers = collect_upvalues(create_proxy_handle)
-		local remove_from_queue = proxy_helpers.remove_from_queue
 		local process_queue = collect_upvalues(spawn_process).process_queue
 		local attach_real_handle = collect_upvalues(process_queue).attach_real_handle
 
 		assert.is_function(create_proxy_handle)
-		assert.is_function(remove_from_queue)
+		assert.is_function(job_queue.remove)
 		assert.is_function(attach_real_handle)
 
 		local on_exit = spy.new(function() end)
 		local proxy = create_proxy_handle({ on_exit = on_exit })
-		job_queue[1] = { handle = proxy }
+		job_queue:enqueue({ "cmd" }, {}, proxy)
 
 		assert.is_true(proxy.is_active())
 		proxy.cancel()
 		assert.spy(on_exit).was_called_with(-1, "", "")
 		assert.is_false(proxy.is_active())
-		assert.is_false(remove_from_queue(proxy))
+		assert.is_false(job_queue:remove(proxy))
 
 		attach_real_handle(nil, {})
 

@@ -30,6 +30,7 @@ describe("tungsten.core.engine", function()
 		"tungsten.config",
 		"tungsten.state",
 		"tungsten.util.async",
+		"tungsten.core.variable_resolver",
 		"tungsten.util.logger",
 		"tungsten.core.parser",
 		"tungsten.core.semantic_pass",

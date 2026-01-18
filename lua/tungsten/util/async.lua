@@ -7,18 +7,43 @@ local config = require("tungsten.config")
 
 local M = {}
 
-local job_queue = {}
-local process_queue
+local active_job_count
 
-local function remove_from_queue(proxy)
-	for index, entry in ipairs(job_queue) do
-		if entry.handle == proxy then
-			table.remove(job_queue, index)
+local JobQueue = {}
+JobQueue.__index = JobQueue
+
+function JobQueue.new()
+	return setmetatable({ items = {} }, JobQueue)
+end
+
+function JobQueue:enqueue(cmd, opts, handle)
+	table.insert(self.items, { cmd = cmd, opts = opts, handle = handle })
+end
+
+function JobQueue:pop()
+	if #self.items == 0 then
+		return nil
+	end
+	return table.remove(self.items, 1)
+end
+
+function JobQueue:remove(handle_proxy)
+	for index, entry in ipairs(self.items) do
+		if entry.handle == handle_proxy then
+			table.remove(self.items, index)
 			return true
 		end
 	end
 	return false
 end
+
+function JobQueue:is_full(limit)
+	local max_jobs = limit or math.huge
+	return active_job_count() >= max_jobs
+end
+
+local job_queue = JobQueue.new()
+local process_queue
 
 local function attach_real_handle(proxy, real_handle)
 	if not proxy then
@@ -54,7 +79,7 @@ local function create_proxy_handle(opts)
 			return
 		end
 
-		local removed = remove_from_queue(proxy)
+		local removed = job_queue:remove(proxy)
 		if removed then
 			proxy._queued = false
 			local pending_opts = proxy._opts
@@ -81,12 +106,124 @@ local function create_proxy_handle(opts)
 	return proxy
 end
 
-local function active_job_count()
+active_job_count = function()
 	local n = 0
 	for _ in pairs(state.active_jobs) do
 		n = n + 1
 	end
 	return n
+end
+
+local function replace_table(target, source)
+	for index = #target, 1, -1 do
+		target[index] = nil
+	end
+	for _, value in ipairs(source) do
+		table.insert(target, value)
+	end
+end
+
+local function create_plenary_job(cmd, stdout_table, stderr_table, on_exit_callback)
+	local Job = require("plenary.job")
+	local job = Job:new({
+		command = cmd[1],
+		args = vim.list_slice(cmd, 2),
+		enable_recording = true,
+		on_stdout = function(_, line)
+			if line then
+				table.insert(stdout_table, line)
+			end
+		end,
+		on_stderr = function(_, line)
+			if line then
+				table.insert(stderr_table, line)
+			end
+		end,
+		on_exit = function(j, code)
+			replace_table(stdout_table, j:result())
+			replace_table(stderr_table, j:stderr_result())
+			if on_exit_callback then
+				on_exit_callback(code)
+			end
+		end,
+	})
+	job:start()
+	return job
+end
+
+local function create_job_handle(pid, job_obj)
+	local handle = {
+		id = pid,
+		_job = job_obj,
+		_state = {
+			completed = false,
+			finalize = nil,
+			on_exit = nil,
+		},
+	}
+
+	function handle.cancel()
+		if handle._state.completed then
+			return
+		end
+
+		job_obj:shutdown(15)
+
+		local active_job = state.active_jobs[handle.id]
+		if active_job then
+			active_job.cancellation_time = vim.loop.now()
+		end
+
+		vim.defer_fn(function()
+			if handle._state.completed then
+				return
+			end
+
+			job_obj:shutdown(9)
+			if handle._state.finalize then
+				handle._state.finalize(-1)
+			end
+		end, 1000)
+	end
+	function handle.is_active()
+		return not handle._state.completed
+	end
+
+  return handle
+end
+
+local function setup_timeout(handle, timeout_ms)
+	if not timeout_ms then
+		return
+	end
+
+	vim.defer_fn(function()
+		if handle.is_active() then
+			logger.warn("Tungsten", string.format("Tungsten: job %d timed out after %d ms.", handle.id, timeout_ms))
+			handle.cancel()
+		end
+	end, timeout_ms)
+end
+
+local function finalize_job(handle, exit_code, stdout_chunks, stderr_chunks)
+	if handle._state.completed then
+		return
+	end
+	handle._state.completed = true
+
+	if handle and handle.id and state.active_jobs[handle.id] then
+		state.active_jobs[handle.id] = nil
+	end
+
+	process_queue()
+
+	if handle._state.on_exit then
+		local stdout = table.concat(stdout_chunks, "\n"):gsub("^%s*(.-)%s*$", "%1")
+		local stderr = table.concat(stderr_chunks, "\n"):gsub("^%s*(.-)%s*$", "%1")
+		vim.schedule(function()
+			handle._state.on_exit(exit_code, stdout, stderr)
+		end)
+	end
 end
 
 local function spawn_process(cmd, opts)
@@ -97,89 +234,17 @@ local function spawn_process(cmd, opts)
 
 	local stdout_chunks, stderr_chunks = {}, {}
 
-	local completed = false
 	local handle
-
-	local function finalize(code)
-		if completed then
-			return
-		end
-		completed = true
-
-		if handle and handle.id and state.active_jobs[handle.id] then
-			state.active_jobs[handle.id] = nil
-		end
-
-		process_queue()
-
-		if on_exit then
-			local stdout = table.concat(stdout_chunks, "\n"):gsub("^%s*(.-)%s*$", "%1")
-			local stderr = table.concat(stderr_chunks, "\n"):gsub("^%s*(.-)%s*$", "%1")
-			vim.schedule(function()
-				on_exit(code, stdout, stderr)
-			end)
-		end
+	local function on_job_exit(code)
+		finalize_job(handle, code, stdout_chunks, stderr_chunks)
 	end
 
-	local Job = require("plenary.job")
-	local job = Job:new({
-		command = cmd[1],
-		args = vim.list_slice(cmd, 2),
-		enable_recording = true,
-		on_stdout = function(_, line)
-			if line then
-				table.insert(stdout_chunks, line)
-			end
-		end,
-		on_stderr = function(_, line)
-			if line then
-				table.insert(stderr_chunks, line)
-			end
-		end,
-		on_exit = function(j, code)
-			stdout_chunks = j:result()
-			stderr_chunks = j:stderr_result()
-			finalize(code)
-		end,
-	})
-	job:start()
-	handle = {
-		id = job.pid,
-		_job = job,
-	}
-	function handle.cancel()
-		if completed then
-			return
-		end
+	local job = create_plenary_job(cmd, stdout_chunks, stderr_chunks, on_job_exit)
+	handle = create_job_handle(job.pid, job)
+	handle._state.finalize = on_job_exit
+	handle._state.on_exit = on_exit
 
-		job:shutdown(15)
-
-		local active_job = state.active_jobs[handle.id]
-		if active_job then
-			active_job.cancellation_time = vim.loop.now()
-		end
-
-		vim.defer_fn(function()
-			if completed then
-				return
-			end
-
-			job:shutdown(9)
-			finalize(-1)
-		end, 1000)
-	end
-	function handle.is_active()
-		return not completed
-	end
-
-	if timeout then
-		vim.defer_fn(function()
-			if not completed then
-				logger.warn("Tungsten", string.format("Tungsten: job %d timed out after %d ms.", handle.id, timeout))
-				handle.cancel()
-			end
-		end, timeout)
-	end
+	setup_timeout(handle, timeout)
 
 	state.active_jobs[handle.id] = {
 		handle = handle,
@@ -193,8 +258,16 @@ local function spawn_process(cmd, opts)
 end
 
 process_queue = function()
-	while #job_queue > 0 and active_job_count() < (config.max_jobs or math.huge) do
-		local next_job = table.remove(job_queue, 1)
+	while true do
+		if job_queue:is_full(config.max_jobs) then
+			return
+		end
+
+		local next_job = job_queue:pop()
+		if not next_job then
+			return
+		end
+
 		vim.schedule(function()
 			local handle = spawn_process(next_job.cmd, next_job.opts)
 			attach_real_handle(next_job.handle, handle)
@@ -209,10 +282,10 @@ function M.run_job(cmd, opts)
 		logger.error("Tungsten", msg)
 		error(msg)
 	end
-	if active_job_count() >= (config.max_jobs or math.huge) then
+	if job_queue:is_full(config.max_jobs) then
 		logger.warn("Tungsten", string.format("Maximum of %d jobs reached; queuing job", config.max_jobs))
 		local proxy = create_proxy_handle(opts)
-		table.insert(job_queue, { cmd = cmd, opts = opts, handle = proxy })
+		job_queue:enqueue(cmd, opts, proxy)
 		return proxy
 	end
 	return spawn_process(cmd, opts)

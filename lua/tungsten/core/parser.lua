@@ -135,80 +135,89 @@ local function detect_chained_relations(expr)
 	return nil
 end
 
-local function create_tuple_node(elements, opts, context_info)
-	local tuple_node
-	local element_count = #elements
+local function collect_parametric_union(elements)
+	local elem_params = {}
+	local union_set = {}
+	for i, element in ipairs(elements) do
+		local params = helpers.extract_param_names(element)
+		elem_params[i] = params
+		for _, param in ipairs(params) do
+			union_set[param] = true
+		end
+		end
+
+	local union = {}
+	for param in pairs(union_set) do
+		table.insert(union, param)
+	end
+	table.sort(union)
+
+	return elem_params, union_set, union
+end
+
+local function elements_share_union(elem_params, union_set, union)
+	for _, params in ipairs(elem_params) do
+		if #params ~= #union then
+			return false
+		end
+		for _, name in ipairs(params) do
+			if not union_set[name] then
+				return false
+			end
+		end
+  end
+  return true
+end
+
+local function try_create_parametric_node(elements, opts)
 	local mode = opts and opts.mode
 	local form = opts and opts.form
-
-	local function create_parametric_node()
-		if mode ~= "advanced" or form ~= "parametric" then
-			return nil
-		end
-
-		local elem_params = {}
-		local union_set = {}
-		for i, e in ipairs(elements) do
-			local params = helpers.extract_param_names(e)
-			elem_params[i] = params
-			for _, p in ipairs(params) do
-				union_set[p] = true
-			end
-		end
-
-		local union = {}
-		for p in pairs(union_set) do
-			table.insert(union, p)
-		end
-		table.sort(union)
-
-		local function elements_share_union()
-			for _, params in ipairs(elem_params) do
-				if #params ~= #union then
-					return false
-				end
-				for _, n in ipairs(params) do
-					if not union_set[n] then
-						return false
-					end
-				end
-			end
-			return true
-		end
-
-		if element_count == 2 then
-			if #union == 1 and union[1] == "t" and elements_share_union() then
-				return ast.create_parametric2d_node(elements[1], elements[2])
-			end
-		elseif element_count == 3 then
-			if #union == 2 and union[1] == "u" and union[2] == "v" and elements_share_union() then
-				return ast.create_parametric3d_node(elements[1], elements[2], elements[3])
-			end
-		end
-
+	if mode ~= "advanced" or form ~= "parametric" then
 		return nil
 	end
 
-	local function create_polar_node()
-		if form ~= "polar" or element_count ~= 2 then
-			return nil
-		end
-		return ast.create_polar2d_node(elements[1])
+	local element_count = #elements
+	local elem_params, union_set, union = collect_parametric_union(elements)
+	if not elements_share_union(elem_params, union_set, union) then
+		return nil
 	end
 
-	tuple_node = create_parametric_node()
-	if not tuple_node then
-		tuple_node = create_polar_node()
-	end
-	if not tuple_node then
-		if element_count == 2 then
-			tuple_node = ast.create_point2_node(elements[1], elements[2])
-		else
-			tuple_node = ast.create_point3_node(elements[1], elements[2], elements[3])
+	if element_count == 2 then
+		if #union == 1 and union[1] == "t" then
+			return ast.create_parametric2d_node(elements[1], elements[2])
+		end
+	elseif element_count == 3 then
+		if #union == 2 and union[1] == "u" and union[2] == "v" then
+			return ast.create_parametric3d_node(elements[1], elements[2], elements[3])
 		end
 	end
 
-	return tuple_node, context_info
+	return nil
+end
+
+local function try_create_polar_node(elements, opts)
+	if not opts or opts.form ~= "polar" or #elements ~= 2 then
+		return nil
+	end
+	return ast.create_polar2d_node(elements[1])
+end
+
+local function create_tuple_node(elements, opts, context_info)
+	local tuple_node = try_create_parametric_node(elements, opts)
+	if tuple_node then
+		return tuple_node, context_info
+	end
+
+	tuple_node = try_create_polar_node(elements, opts)
+	if tuple_node then
+		return tuple_node, context_info
+	end
+
+	if #elements == 2 then
+		return ast.create_point2_node(elements[1], elements[2]), context_info
+	end
+
+	return ast.create_point3_node(elements[1], elements[2], elements[3]), context_info
 end
 
 local function try_point_tuple(expr, pattern, ser_start, item_start, input, opts, lead)
@@ -283,6 +292,82 @@ local function tokenize_structure(input)
 	return structure
 end
 
+local function parse_expression_item(expr, pattern, ser_start, item_start, opts)
+	local input = opts and opts.input
+	local trimmed, lead = trim(expr)
+	if trimmed == "" then
+		return nil
+	end
+
+	local rel_pos = (not opts.allow_multiple_relations) and detect_chained_relations(trimmed)
+	if rel_pos then
+		local global_pos = ser_start + item_start - 1 + lead + rel_pos - 1
+		local msg = "Chained inequalities are not supported (v1)."
+		return nil, msg, global_pos
+	end
+
+	local tuple, tuple_err, tuple_pos
+	if trimmed:sub(1, 1) == "(" or trimmed:sub(1, 6) == "\\left(" then
+		tuple, tuple_err, tuple_pos = try_point_tuple(trimmed, pattern, ser_start, item_start, input, opts, lead)
+		if tuple_err then
+			return nil, tuple_err, tuple_pos
+		end
+	end
+
+	if tuple then
+		return tuple
+	end
+
+	local result, err_label, err_pos = lpeg.match(pattern, trimmed)
+	if not result then
+		local msg = label_messages[err_label] or tostring(err_label)
+		if err_pos then
+			local global_pos = ser_start + item_start - 1 + lead + err_pos - 1
+			msg = msg .. " at " .. error_handler.format_line_col(input, global_pos)
+			return nil, msg, global_pos
+		end
+		return nil, msg
+	end
+
+	return result
+end
+
+local function post_process_series(series, opts)
+	if not (opts and opts.allow_multiple_relations) or #series == 0 then
+		return series
+	end
+
+	local equations = {}
+	local has_non_equation = false
+	local function collect_eqs(node)
+		if not node then
+			return
+		end
+		if node.type == "Sequence" and node.nodes then
+			for _, child in ipairs(node.nodes) do
+				collect_eqs(child)
+			end
+			return
+		end
+
+		if node.type == "Equality" then
+			table.insert(equations, node)
+		else
+			has_non_equation = true
+		end
+	end
+
+	for _, node in ipairs(series) do
+		collect_eqs(node)
+	end
+
+	if #equations > 1 and not has_non_equation then
+		return { ast.create_solve_system_equations_capture_node(equations) }
+	end
+
+	return series
+end
+
 function M.parse(input, opts)
 	opts = opts or {}
 	if opts.allow_multiple_relations then
@@ -290,44 +375,22 @@ function M.parse(input, opts)
 	end
 	local current_grammar = M.get_grammar()
 	local pattern = space * current_grammar * (space * -1 + lpeg.T("extra_input"))
+	local parse_opts = {}
+	for key, value in pairs(opts) do
+		parse_opts[key] = value
+	end
+	parse_opts.input = input
 
 	local series = {}
 	for _, ser in ipairs(tokenize_structure(input)) do
 		local nodes = {}
 		for _, item in ipairs(ser.items) do
-			local expr, lead = trim(item.str)
-			if expr ~= "" then
-				local rel_pos = (not opts.allow_multiple_relations) and detect_chained_relations(expr)
-				if rel_pos then
-					local global_pos = ser.start_pos + item.start_pos - 1 + lead + rel_pos - 1
-					local msg = "Chained inequalities are not supported (v1)."
-					return nil, msg, global_pos, input
-				end
-
-				local tuple, tuple_err, tuple_pos
-				if expr:sub(1, 1) == "(" or expr:sub(1, 6) == "\\left(" then
-					tuple, tuple_err, tuple_pos = try_point_tuple(expr, pattern, ser.start_pos, item.start_pos, input, opts, lead)
-					if tuple_err then
-						return nil, tuple_err, tuple_pos, input
-					end
-				end
-
-				local result, err_label, err_pos
-				if tuple then
-					result = tuple
-				else
-					result, err_label, err_pos = lpeg.match(pattern, expr)
-					if not result then
-						local msg = label_messages[err_label] or tostring(err_label)
-						if err_pos then
-							local global_pos = ser.start_pos + item.start_pos - 1 + lead + err_pos - 1
-							msg = msg .. " at " .. error_handler.format_line_col(input, global_pos)
-							return nil, msg, global_pos, input
-						end
-						return nil, msg, nil, input
-					end
-				end
-
+			local result, err_msg, err_pos =
+				parse_expression_item(item.str, pattern, ser.start_pos, item.start_pos, parse_opts)
+			if err_msg then
+				return nil, err_msg, err_pos, input
+			end
+			if result then
 				table.insert(nodes, result)
 			end
 		end
@@ -339,35 +402,7 @@ function M.parse(input, opts)
 		end
 	end
 
-	if opts.allow_multiple_relations and #series > 0 then
-		local equations = {}
-		local has_non_equation = false
-		local function collect_eqs(node)
-			if not node then
-				return
-			end
-			if node.type == "Sequence" and node.nodes then
-				for _, child in ipairs(node.nodes) do
-					collect_eqs(child)
-				end
-				return
-			end
-
-			if node.type == "Equality" then
-				table.insert(equations, node)
-			else
-				has_non_equation = true
-			end
-		end
-
-		for _, node in ipairs(series) do
-			collect_eqs(node)
-		end
-
-		if #equations > 1 and not has_non_equation then
-			series = { ast.create_solve_system_equations_capture_node(equations) }
-		end
-	end
+	series = post_process_series(series, opts)
 
 	local ast_root = { series = series }
 
