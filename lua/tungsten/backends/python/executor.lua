@@ -1,7 +1,6 @@
 -- lua/tungsten/backends/python/executor.lua
 -- Provides function to convert AST to python (sympy) code and execute it
 
-local render = require("tungsten.core.render")
 local config = require("tungsten.config")
 local base_executor = require("tungsten.backends.base_executor")
 local handlers = require("tungsten.backends.python.handlers")
@@ -10,24 +9,64 @@ local M = {}
 M.display_name = "Python"
 M.not_found_message = "Python interpreter not found. Check python_path."
 
+local ScriptBuilder = {}
+ScriptBuilder.__index = ScriptBuilder
+
+function ScriptBuilder.new()
+	return setmetatable({ lines = {}, expr = nil, numeric = false }, ScriptBuilder)
+end
+
+function ScriptBuilder:add_import(module, alias)
+	local statement = ("import %s"):format(module)
+	if alias then
+		statement = ("%s as %s"):format(statement, alias)
+	end
+	table.insert(self.lines, statement)
+	return self
+end
+
+function ScriptBuilder:add_from_import(module, items)
+	table.insert(self.lines, ("from %s import %s"):format(module, items))
+	return self
+end
+
+function ScriptBuilder:set_expression(expr)
+	self.expr = expr
+	return self
+end
+
+function ScriptBuilder:enable_numeric()
+	self.numeric = true
+	return self
+end
+
+function ScriptBuilder:output_latex()
+	local expression = self.expr or ""
+	if self.numeric then
+		expression = ("sp.N(%s)"):format(expression)
+	end
+	table.insert(self.lines, ("expr = %s"):format(expression))
+	table.insert(self.lines, "print(sp.latex(expr))")
+	return self
+end
+
+function ScriptBuilder:build()
+	return table.concat(self.lines, "; ")
+end
+
 function M.get_interpreter_command()
 	local python_opts = (config.backend_opts and config.backend_opts.python) or {}
 	return python_opts.python_path or "python3"
 end
 
 function M.build_command(code, opts)
-	local final_code = code
+	local builder = ScriptBuilder.new():add_import("sympy", "sp"):add_from_import("sympy", "*"):set_expression(code)
 
 	if config.numeric_mode or opts.numeric then
-		final_code = "sp.N(" .. final_code .. ")"
+		builder:enable_numeric()
 	end
 
-	local command = table.concat({
-		"import sympy as sp",
-		"from sympy import *",
-		"expr = " .. final_code,
-		"print(sp.latex(expr))",
-	}, "; ")
+	local command = builder:output_latex():build()
 
 	return { "-c", command }
 end
@@ -42,28 +81,10 @@ function M.parse_solution(result, variables, opts)
 end
 
 function M.ast_to_code(ast)
-	handlers.ensure_handlers()
-
-	if not ast then
-		return "Error: AST is nil"
-	end
-	local registry = require("tungsten.core.registry")
-	local registry_handlers = registry.get_handlers()
-	if next(registry_handlers) == nil then
-		return "Error: No Python handlers loaded for AST conversion."
-	end
-
-	local rendered_result = render.render(ast, registry_handlers)
-
-	if type(rendered_result) == "table" and rendered_result.error then
-		local error_message = rendered_result.message
-		if rendered_result.node_type then
-			error_message = error_message .. " (Node type: " .. rendered_result.node_type .. ")"
-		end
-		return "Error: AST rendering failed: " .. error_message
-	end
-
-	return rendered_result
+	return base_executor.ast_to_code(M, ast, {
+		ensure_handlers = handlers.ensure_handlers,
+		handlers_label = M.display_name,
+	})
 end
 
 function M.exit_error(exit_code)

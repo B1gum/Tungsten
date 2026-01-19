@@ -2,9 +2,10 @@
 -- Manages evaluation through the active backend
 
 local manager = require("tungsten.backends.manager")
-local config = require("tungsten.config")
 local state = require("tungsten.state")
 local logger = require("tungsten.util.logger")
+local CacheService = require("tungsten.core.cache_service")
+local JobCoordinator = require("tungsten.core.job_coordinator")
 local VariableResolver = require("tungsten.core.variable_resolver")
 
 local M = {}
@@ -13,47 +14,8 @@ function M.substitute_persistent_vars(code_string, variables_map)
 	return VariableResolver.resolve(code_string, variables_map)
 end
 
-local function get_cache_key(code_string, numeric)
-	return code_string .. (numeric and "::numeric" or "::symbolic")
-end
-M.get_cache_key = get_cache_key
-
-local function try_get_cached_result(cache_key, use_cache, callback)
-	if not use_cache then
-		return false
-	end
-
-	local cached = state.cache:get(cache_key)
-	if not cached then
-		return false
-	end
-
-	logger.info("Tungsten", "Tungsten: Result from cache.")
-	logger.debug("Tungsten Debug", "Tungsten Debug: Cache hit for key: " .. cache_key)
-	vim.schedule(function()
-		callback(cached, nil)
-	end)
-	return true
-end
-
-local function is_job_already_running(cache_key)
-	for job_id_running, job_info in pairs(state.active_jobs) do
-		if job_info.cache_key == cache_key then
-			local notify_msg = "Tungsten: Evaluation already in progress for this expression."
-			logger.info("Tungsten", notify_msg)
-			logger.debug(
-				"Tungsten Debug",
-				("Tungsten: Evaluation already in progress for key: '%s' (Job ID: %s)"):format(
-					cache_key,
-					tostring(job_id_running)
-				)
-			)
-			logger.notify(notify_msg, logger.levels.INFO, { title = "Tungsten" })
-			return true
-		end
-	end
-
-	return false
+function M.get_cache_key(code_string, numeric)
+	return CacheService.get_cache_key(code_string, numeric)
 end
 
 function M.evaluate_async(ast, numeric, callback)
@@ -82,14 +44,14 @@ function M.evaluate_async(ast, numeric, callback)
 		logger.debug("Tungsten Debug", "No persistent variable substitutions made.")
 	end
 
-	local cache_key = get_cache_key(code_with_vars_substituted, numeric)
-	local use_cache = (config.cache_enabled == nil) or (config.cache_enabled == true)
+	local cache_key = CacheService.get_cache_key(code_with_vars_substituted, numeric)
+	local use_cache = CacheService.should_use_cache()
 
-	if try_get_cached_result(cache_key, use_cache, callback) then
+	if CacheService.try_get(cache_key, use_cache, callback) then
 		return
 	end
 
-	if is_job_already_running(cache_key) then
+	if JobCoordinator.is_job_already_running(cache_key) then
 		return
 	end
 
@@ -98,8 +60,7 @@ function M.evaluate_async(ast, numeric, callback)
 		{ numeric = numeric, code = code_with_vars_substituted, cache_key = cache_key },
 		function(final_stdout, err)
 			if not err and use_cache then
-				state.cache:set(cache_key, final_stdout)
-				logger.info("Tungsten Debug", "Tungsten: Result for key '" .. cache_key .. "' stored in cache.")
+				CacheService.store(cache_key, final_stdout)
 			end
 			callback(final_stdout, err)
 		end
@@ -107,8 +68,7 @@ function M.evaluate_async(ast, numeric, callback)
 end
 
 function M.clear_cache()
-	state.cache:clear()
-	logger.info("Tungsten", "Tungsten: Cache cleared.")
+	CacheService.clear()
 end
 
 function M.get_active_jobs()

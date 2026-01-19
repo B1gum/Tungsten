@@ -62,77 +62,49 @@ local relation_pattern = lpeg.P("\\leq")
 	+ lpeg.P(">")
 	+ lpeg.P("=")
 
-local function update_delimiter_state(state, delimiter, delta)
-	if delimiter == "(" or delimiter == ")" then
-		state.paren = state.paren + delta
-	elseif delimiter == "{" or delimiter == "}" then
-		state.brace = state.brace + delta
-	elseif
-		delimiter == "["
-		or delimiter == "]"
-		or delimiter_open_cmds[delimiter]
-		or delimiter_close_cmds[delimiter]
-		or delimiter == "."
-	then
-		state.bracket = state.bracket + delta
+local function build_command_pattern(cmds)
+	local pattern = lpeg.P(false)
+	for cmd in pairs(cmds) do
+		pattern = pattern + lpeg.P(cmd)
 	end
+	return pattern
 end
 
-local function consume_delimiter_command(expr, i, state)
-	local next_five = expr:sub(i, i + 4)
-	if next_five == "\\left" then
-		local delimiter, consumed = lexer.read_delimiter(expr, i + 5)
-		update_delimiter_state(state, delimiter, 1)
-		return 5 + consumed
-	end
-
-	local next_six = expr:sub(i, i + 5)
-	if next_six == "\\right" then
-		local delimiter, consumed = lexer.read_delimiter(expr, i + 6)
-		update_delimiter_state(state, delimiter, -1)
-		return 6 + consumed
-	end
-
-	local j = i + 1
-	local len = #expr
-	while j <= len and expr:sub(j, j):match("%a") do
-		j = j + 1
-	end
-	local cmd = expr:sub(i, j - 1)
-	update_delimiter_state(state, cmd, delimiter_open_cmds[cmd] and 1 or delimiter_close_cmds[cmd] and -1 or 0)
-	return j - i
-end
+local alpha_pattern = lpeg.R("az", "AZ")
+local command_pattern = lpeg.P("\\") * alpha_pattern ^ 1
+local delimiter_atom_pattern = command_pattern + lpeg.P(1)
+local delimiter_open_pattern = build_command_pattern(delimiter_open_cmds)
+local delimiter_close_pattern = build_command_pattern(delimiter_close_cmds)
+local left_delimiter_pattern = lpeg.P("\\left") * delimiter_atom_pattern
+local right_delimiter_pattern = lpeg.P("\\right") * delimiter_atom_pattern
 
 local function detect_chained_relations(expr)
-	local state = { paren = 0, brace = 0, bracket = 0 }
 	local count = 0
-	local i, len = 1, #expr
-	while i <= len do
-		local advance = 1
-		local at_top = state.paren == 0 and state.brace == 0 and state.bracket == 0
-		if at_top then
-			local relation_end = lpeg.match(relation_pattern, expr, i)
-			if relation_end then
-				count = count + 1
-				if count > 1 then
-					return i
-				end
-				advance = relation_end - i
-			end
+	local second_pos = nil
+	local function note_relation(_, _, start_pos)
+		count = count + 1
+		if count == 2 then
+			second_pos = start_pos
 		end
-
-		if advance == 1 then
-			local c = expr:sub(i, i)
-			if c == "\\" then
-				advance = consume_delimiter_command(expr, i, state)
-			elseif c == "(" or c == ")" or c == "{" or c == "}" or c == "[" or c == "]" then
-				local delta = (c == "(" or c == "{" or c == "[") and 1 or -1
-				update_delimiter_state(state, c, delta)
-			end
-		end
-		i = i + advance
+		return true
 	end
-	return nil
+
+	local relation_scan = lpeg.P({
+		"Scan",
+		Scan = (lpeg.V("Group") + lpeg.V("Relation") + lpeg.V("Other")) ^ 0,
+		Relation = lpeg.Cmt(lpeg.Cp() * relation_pattern, note_relation),
+		Group = lpeg.V("Paren") + lpeg.V("Brace") + lpeg.V("Bracket") + lpeg.V("LeftRight") + lpeg.V("CommandGroup"),
+		Paren = lpeg.P("(") * lpeg.V("Content") * lpeg.P(")"),
+		Brace = lpeg.P("{") * lpeg.V("Content") * lpeg.P("}"),
+		Bracket = lpeg.P("[") * lpeg.V("Content") * lpeg.P("]"),
+		LeftRight = left_delimiter_pattern * lpeg.V("Content") * right_delimiter_pattern,
+		CommandGroup = delimiter_open_pattern * lpeg.V("Content") * delimiter_close_pattern,
+		Content = (lpeg.V("Group") + lpeg.V("Other")) ^ 0,
+		Other = lpeg.P(1),
+	})
+
+	lpeg.match(relation_scan, expr)
+	return second_pos
 end
 
 local function collect_parametric_union(elements)
@@ -220,66 +192,90 @@ local function create_tuple_node(elements, opts, context_info)
 	return ast.create_point3_node(elements[1], elements[2], elements[3]), context_info
 end
 
-local function try_point_tuple(expr, pattern, ser_start, item_start, input, opts, lead)
-	local inner, offset = nil, 0
+local function parse_tuple_inner(expr)
 	if expr:sub(1, 6) == "\\left(" and expr:sub(-7) == "\\right)" then
-		inner = expr:sub(7, -8)
-		offset = 6
-	elseif expr:sub(1, 1) == "(" and expr:sub(-1) == ")" then
-		inner = expr:sub(2, -2)
-		offset = 1
+		return expr:sub(7, -8), 6
 	end
+	if expr:sub(1, 1) == "(" and expr:sub(-1) == ")" then
+		return expr:sub(2, -2), 1
+	end
+	return nil
+end
+
+local function parse_tuple_parts(inner, base_offset, offset, input)
+	local parts = lexer.split_top_level(inner, { [","] = true })
+	if #parts == 2 or #parts == 3 then
+		return parts
+	end
+	if #parts > 3 then
+		local global_pos = base_offset + offset + parts[4].start_pos - 1
+		local msg = "Point tuples support only 2D or 3D at " .. error_handler.format_line_col(input, global_pos)
+		return nil, msg, global_pos
+	end
+	return nil
+end
+
+local function parse_tuple_elements(parts, pattern, input, base_offset, offset)
+	local elems = {}
+	local part_meta = {}
+	for idx, p in ipairs(parts) do
+		local subexpr, sublead = trim(p.str)
+		part_meta[idx] = { start_pos = p.start_pos, trim_leading = sublead }
+		local rel_pos = detect_chained_relations(subexpr)
+		if rel_pos then
+			local global_pos = base_offset + offset + p.start_pos - 1 + sublead + rel_pos - 1
+			local msg = "Chained inequalities are not supported (v1)."
+			return nil, nil, msg, global_pos
+		end
+		local subres, sublabel, subpos = lpeg.match(pattern, subexpr)
+		if not subres then
+			local msg = label_messages[sublabel] or tostring(sublabel)
+			if subpos then
+				local global_pos = base_offset + offset + p.start_pos - 1 + sublead + subpos - 1
+				msg = msg .. " at " .. error_handler.format_line_col(input, global_pos)
+				return nil, nil, msg, global_pos
+			end
+			return nil, nil, msg
+		end
+		table.insert(elems, subres)
+	end
+	return elems, part_meta
+end
+
+local function try_point_tuple(expr, pattern, ser_start, item_start, input, opts, lead)
+	local inner, offset = parse_tuple_inner(expr)
 	if not inner then
 		return nil
 	end
 
 	local base_offset = ser_start + item_start - 1 + (lead or 0)
 
-	local parts = lexer.split_top_level(inner, { [","] = true })
-	if #parts == 2 or #parts == 3 then
-		local elems = {}
-		local part_meta = {}
-		for idx, p in ipairs(parts) do
-			local subexpr, sublead = trim(p.str)
-			part_meta[idx] = { start_pos = p.start_pos, trim_leading = sublead }
-			local rel_pos = detect_chained_relations(subexpr)
-			if rel_pos then
-				local global_pos = base_offset + offset + p.start_pos - 1 + sublead + rel_pos - 1
-				local msg = "Chained inequalities are not supported (v1)."
-				return nil, msg, global_pos
-			end
-			local subres, sublabel, subpos = lpeg.match(pattern, subexpr)
-			if not subres then
-				local msg = label_messages[sublabel] or tostring(sublabel)
-				if subpos then
-					local global_pos = base_offset + offset + p.start_pos - 1 + sublead + subpos - 1
-					msg = msg .. " at " .. error_handler.format_line_col(input, global_pos)
-					return nil, msg, global_pos
-				end
-				return nil, msg
-			end
-			table.insert(elems, subres)
-		end
-
-		local tuple_node = create_tuple_node(elems, opts, { element_count = #elems })
-
-		tuple_node._tuple_meta = {
-			base_offset = base_offset + offset,
-			parts = part_meta,
-			input = input,
-			elements = elems,
-			opts = { mode = opts and opts.mode, form = opts and opts.form },
-		}
-
-		tuple_node._source = { input = input, start_pos = base_offset }
-
-		return tuple_node
-	elseif #parts > 3 then
-		local global_pos = base_offset + offset + parts[4].start_pos - 1
-		local msg = "Point tuples support only 2D or 3D at " .. error_handler.format_line_col(input, global_pos)
-		return nil, msg, global_pos
+	local parts, parts_err, parts_pos = parse_tuple_parts(inner, base_offset, offset, input)
+	if parts_err then
+		return nil, parts_err, parts_pos
 	end
-	return nil
+	if not parts then
+		return nil
+	end
+
+	local elems, part_meta, elem_err, elem_pos = parse_tuple_elements(parts, pattern, input, base_offset, offset)
+	if elem_err then
+		return nil, elem_err, elem_pos
+	end
+
+	local tuple_node = create_tuple_node(elems, opts, { element_count = #elems })
+
+	tuple_node._tuple_meta = {
+		base_offset = base_offset + offset,
+		parts = part_meta,
+		input = input,
+		elements = elems,
+		opts = { mode = opts and opts.mode, form = opts and opts.form },
+	}
+
+	tuple_node._source = { input = input, start_pos = base_offset }
+
+	return tuple_node
 end
 
 local function tokenize_structure(input)

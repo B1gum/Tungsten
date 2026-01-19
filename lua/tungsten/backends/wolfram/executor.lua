@@ -1,8 +1,8 @@
 -- lua/tungsten/backends/wolfram/executor.lua
 -- Provides function to convert AST to wolfram code and execute it
 
-local render = require("tungsten.core.render")
 local config = require("tungsten.config")
+local ast_utils = require("tungsten.core.ast_utils")
 local base_executor = require("tungsten.backends.base_executor")
 local handlers = require("tungsten.backends.wolfram.handlers")
 local solution_parser = require("tungsten.backends.wolfram.wolfram_solution")
@@ -16,62 +16,57 @@ function M.get_interpreter_command()
 	return wolfram_opts.wolfram_path or "wolframscript"
 end
 
-local function has_units(node)
-	if type(node) ~= "table" then
-		return false
-	end
-	if node.type == "quantity" or node.type == "unit_component" or node.type == "angle" then
-		return true
-	end
-	for _, v in pairs(node) do
-		if type(v) == "table" and has_units(v) then
-			return true
+local function build_wolfram_config(opts, has_units_flag)
+	opts = opts or {}
+	local numeric = config.numeric_mode or opts.numeric
+	local form = opts.form
+
+	if not form then
+		if (has_units_flag and not opts.is_unit_convert) or opts.is_unit_convert then
+			form = "InputForm"
+		else
+			form = "TeXForm"
 		end
 	end
-	return false
+
+	return {
+		numeric = numeric,
+		form = form,
+		has_units = has_units_flag,
+		is_unit_convert = opts.is_unit_convert,
+	}
 end
 
-local function is_unit_convert_call(node)
-	if type(node) ~= "table" then
-		return false
+local function apply_numeric_wrapper(code, build)
+	if build.numeric then
+		return "N[" .. code .. "]"
 	end
-	if node.type ~= "function_call" then
-		return false
+	return code
+end
+
+local function apply_unit_simplify_wrapper(code, build)
+	if build.has_units and not build.is_unit_convert then
+		return "Quiet[UnitSimplify[" .. code .. "]]"
 	end
-	local name_node = node.name_node
-	return name_node and name_node.name == "UnitConvert"
+	return code
+end
+
+local function apply_output_formatter(code, build)
+	if build.form == "InputForm" then
+		return "ToString[" .. code .. ', CharacterEncoding -> "UTF8", FormatType -> InputForm]'
+	end
+	return "ToString[TeXForm[" .. code .. '], CharacterEncoding -> "UTF8"]'
 end
 
 local function prepare_wolfram_code(raw_code, opts, has_units_flag)
-	opts = opts or {}
+	local build = build_wolfram_config(opts, has_units_flag)
 	local code = raw_code
-	local form = opts.form
 
-	if config.numeric_mode or opts.numeric then
-		code = "N[" .. code .. "]"
-	end
+	code = apply_numeric_wrapper(code, build)
+	code = apply_unit_simplify_wrapper(code, build)
+	code = apply_output_formatter(code, build)
 
-	if has_units_flag and not opts.is_unit_convert then
-		code = "Quiet[UnitSimplify[" .. code .. "]]"
-		if not form then
-			form = "InputForm"
-		end
-	end
-	if opts.is_unit_convert and not form then
-		form = "InputForm"
-	end
-
-	if not form then
-		form = "TeXForm"
-	end
-
-	if form == "InputForm" then
-		code = "ToString[" .. code .. ', CharacterEncoding -> "UTF8", FormatType -> InputForm]'
-	else
-		code = "ToString[TeXForm[" .. code .. '], CharacterEncoding -> "UTF8"]'
-	end
-
-	return code, form
+	return code, build.form
 end
 
 local function sanitize_wolfram_output(stdout, form_type)
@@ -93,10 +88,10 @@ end
 function M.build_command(raw_code, opts)
 	local units_present = false
 	if opts.ast then
-		units_present = has_units(opts.ast)
+		units_present = ast_utils.has_units(opts.ast)
 	end
 
-	local is_unit_convert = is_unit_convert_call(opts.ast)
+	local is_unit_convert = ast_utils.is_unit_convert_call(opts.ast)
 	local code, form = prepare_wolfram_code(raw_code, {
 		numeric = opts.numeric,
 		form = opts.form,
@@ -115,28 +110,10 @@ function M.parse_solution(result, variables, opts)
 end
 
 function M.ast_to_code(ast)
-	handlers.ensure_handlers()
-
-	if not ast then
-		return "Error: AST is nil"
-	end
-	local registry = require("tungsten.core.registry")
-	local registry_handlers = registry.get_handlers()
-	if next(registry_handlers) == nil then
-		return "Error: No Wolfram handlers loaded for AST conversion."
-	end
-
-	local rendered_result = render.render(ast, registry_handlers)
-
-	if type(rendered_result) == "table" and rendered_result.error then
-		local error_message = rendered_result.message
-		if rendered_result.node_type then
-			error_message = error_message .. " (Node type: " .. rendered_result.node_type .. ")"
-		end
-		return "Error: AST rendering failed: " .. error_message
-	end
-
-	return rendered_result
+	return base_executor.ast_to_code(M, ast, {
+		ensure_handlers = handlers.ensure_handlers,
+		handlers_label = M.display_name,
+	})
 end
 
 function M.prepare_solve_opts()

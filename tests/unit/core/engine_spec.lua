@@ -31,6 +31,8 @@ describe("tungsten.core.engine", function()
 		"tungsten.state",
 		"tungsten.util.async",
 		"tungsten.core.variable_resolver",
+		"tungsten.core.cache_service",
+		"tungsten.core.job_coordinator",
 		"tungsten.util.logger",
 		"tungsten.core.parser",
 		"tungsten.core.semantic_pass",

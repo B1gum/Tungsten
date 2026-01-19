@@ -1,3 +1,5 @@
+local render = require("tungsten.core.render")
+
 local BaseExecutor = {}
 
 local function get_async()
@@ -131,6 +133,35 @@ function BaseExecutor.solve_async(executor, solve_ast, opts, callback)
 			callback(nil, parsed.reason or "No solution")
 		end
 	end)
+end
+
+function BaseExecutor.ast_to_code(executor, ast, opts)
+	opts = opts or {}
+	if opts.ensure_handlers then
+		opts.ensure_handlers()
+	end
+
+	if not ast then
+		return "Error: AST is nil"
+	end
+	local registry = require("tungsten.core.registry")
+	local registry_handlers = registry.get_handlers()
+	if next(registry_handlers) == nil then
+		local label = opts.handlers_label or get_error_label(executor)
+		return ("Error: No %s handlers loaded for AST conversion."):format(label)
+	end
+
+	local rendered_result = render.render(ast, registry_handlers)
+
+	if type(rendered_result) == "table" and rendered_result.error then
+		local error_message = rendered_result.message
+		if rendered_result.node_type then
+			error_message = error_message .. " (Node type: " .. rendered_result.node_type .. ")"
+		end
+		return "Error: AST rendering failed: " .. error_message
+	end
+
+	return rendered_result
 end
 
 return BaseExecutor
