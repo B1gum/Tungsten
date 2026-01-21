@@ -50,10 +50,10 @@ local function trim(s)
 	return trimmed, leading
 end
 
-local relation_pattern = lpeg.P("\\leq")
-	+ lpeg.P("\\le")
-	+ lpeg.P("\\geq")
-	+ lpeg.P("\\ge")
+local alpha_pattern = lpeg.R("az", "AZ")
+
+local relation_command_pattern = (lpeg.P("\\leq") + lpeg.P("\\le") + lpeg.P("\\geq") + lpeg.P("\\ge")) * -alpha_pattern
+local relation_pattern = relation_command_pattern
 	+ lpeg.P("<=")
 	+ lpeg.P(">=")
 	+ lpeg.P("≤")
@@ -70,7 +70,6 @@ local function build_command_pattern(cmds)
 	return pattern
 end
 
-local alpha_pattern = lpeg.R("az", "AZ")
 local command_pattern = lpeg.P("\\") * alpha_pattern ^ 1
 local delimiter_atom_pattern = command_pattern + lpeg.P(1)
 local delimiter_open_pattern = build_command_pattern(delimiter_open_cmds)
