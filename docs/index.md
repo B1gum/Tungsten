@@ -21,16 +21,54 @@
 * **LaTeX Native**: Write mathematical expressions using standard LaTeX syntax and shorthand.
 
 ---
-
-### Quick Install
-
+## Quick Install
 For `lazy.nvim` users:
+
 ```lua
 { 'B1gum/Tungsten' }
 ```
-See the [Installation Guide](introduction/installation.md) for further installation instructions.
+Need more detail or using a different package manager? See the [Installation Guide](docs/introduction/installation.md).
+
+Tungsten relies on the Wolfram Engine and WolframScript. Follow the full walkthrough in the [Installation Guide](docs/introduction/installation.md) to:
+
+1. Download and install the Wolfram Engine.
+2. Install WolframScript.
+3. Activate a free Wolfram Engine license.
+
+---
+## Getting Started
+
+- Learn the workflow in the [Quickstart Guide](docs/introduction/quickstart.md).
+- Customize Tungsten in the [Configuration Guide](docs/introduction/configuration.md).
+- Explore domain-specific syntax in [Domains](docs/domains/index.md).
+
+---
+## Contributing
+
+Contributions are welcome! Please follow the guidelines in the [Contributing Guide](docs/introduction/overview.md) and open issues or PRs as needed.
+
+---
+## Running Tests
+
+Run the test suite with:
+
+```
+make test
+```
+
+The test helper will install Lua dependencies via `luarocks` and clone `plenary.nvim` into `~/.local/share/nvim/lazy` if it is missing.
 
 
 ---
+## License
 
+This project is licensed under the [MIT License](LICENSE).
+
+---
+## Contact
+
+For any questions or suggestions, feel free to open an issue or contact [B1gum](https://github.com/B1gum).
+
+
+---
 For an overview of all the documentation pages see the [Table of Contents](toc.md).
