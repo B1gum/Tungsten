@@ -28,7 +28,27 @@
 For `lazy.nvim` users:
 
 ```lua
-{ 'B1gum/Tungsten' }
+{
+  {
+    "vhyrro/luarocks.nvim",
+    priority = 1000,
+    config = true,
+  },
+  {
+    "B1gum/Tungsten",
+    dependencies = {
+      "vhyrro/luarocks.nvim",
+      "nvim-lua/plenary.nvim",
+    },
+    opts = {
+      -- Configuration options
+    },
+    rocks = {
+      "lpeg",
+      "lpeglabel",
+    },
+  },
+}
 ```
 Need more detail or using a different package manager? See the [Installation Guide](docs/introduction/installation.md).
 
