@@ -7,8 +7,14 @@ This guide covers the prerequisites and steps to install **Tungsten** and set up
 ### Neovim Version
   - **Neovim 0.8.0** or higher.
 
-### Lua Dependencies
-  - [nvim-lua/plenary.nvim](https://github.com/nvim-lua/plenary.nvim): Required for asynchronous job handling and utility functions.
+### lua dependencies
+
+#### Neovim plugins:
+- [nvim-lua/plenary.nvim](https://github.com/nvim-lua/plenary.nvim): required for asynchronous job handling and utility functions.
+
+#### LuaRocks packages:
+- [lpeg](https://luarocks.org/modules/gvvaughan/lpeg): used for parsing LaTeX input.
+- [lpeglabel](https://luarocks.org/modules/sqmedeiros/lpeglabel): provides labeled grammars used by the parser.
 
 ### System Dependencies
 Tungsten relies on external tools to perform calculations and render plots. Depending on your preferred backend, ensure the following are installed:
@@ -29,30 +35,72 @@ pip install sympy numpy matplotlib
 ```
 
 ## Installation
-Install Tungsten using your preferred Neovim plugin manager.
+Tungsten uses a couple of LuaRocks dependencies for its parser (`lpeg`, `lpeglabel`).  
+If you use `lazy.nvim`, these can be installed automatically via `vhyrro/luarocks.nvim`.
 
 ### Using lazy.nvim
+## Install
+
+Tungsten uses a couple of LuaRocks dependencies for its parser (`lpeg`, `lpeglabel`).  
+If you use `lazy.nvim`, these can be installed automatically via `vhyrro/luarocks.nvim`.
+
+### Using lazy.nvim
+
 ```lua
 {
-  "B1gum/Tungsten",
-  dependencies = { "nvim-lua/plenary.nvim" },
-  config = function()
-    require("tungsten").setup({
-        -- Configuration options
-    })
-  end
+  {
+    "vhyrro/luarocks.nvim",
+    priority = 1000,
+    config = true,
+  },
+  {
+    "B1gum/Tungsten",
+    dependencies = {
+      "vhyrro/luarocks.nvim",
+      "nvim-lua/plenary.nvim",
+    },
+    opts = {
+      -- Configuration options
+    },
+    rocks = {
+      "lpeg",
+      "lpeglabel",
+    },
+  },
 }
 ```
 
 ### Using packer.nvim
-```Lua
-use {
-  'B1gum/Tungsten',
-  requires = { 'nvim-lua/plenary.nvim' },
+Note: `packer.nvim` does not install LuaRocks dependencies automatically on its own.
+Recommended: install `vhyrro/luarocks.nvim` and ensure luarocks is available on your PATH.
+
+```lua
+use({
+  "vhyrro/luarocks.nvim",
   config = function()
-    require('tungsten').setup()
-  end
-}
+    require("luarocks").setup({})
+  end,
+})
+
+use({
+  "B1gum/Tungsten",
+  requires = {
+    "vhyrro/luarocks.nvim",
+    "nvim-lua/plenary.nvim",
+  },
+  config = function()
+    require("tungsten").setup({
+      -- Configuration options
+    })
+  end,
+})
+
+```
+
+If you prefer installing rocks manually instead of using luarocks.nvim:
+```sh
+luarocks install lpeg
+luarocks install lpeglabel
 ```
 
 ## Verification
