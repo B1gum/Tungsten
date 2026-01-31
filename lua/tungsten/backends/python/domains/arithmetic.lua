@@ -21,6 +21,26 @@ local python_symbols = {
 
 local op_attributes = operators.with_symbols("py", python_symbols)
 
+local function map_function_name(func_name_str)
+	local python_opts = (config.backend_opts and config.backend_opts.python) or {}
+	local func_name_map = python_opts.function_mappings or {}
+	local mapped = func_name_map[func_name_str:lower()]
+
+	if mapped then
+		return mapped, false
+	end
+
+	if func_name_str == "UnknownFunction" then
+		return func_name_str, false
+	end
+
+	if func_name_str:match("^%a") then
+		return ("sp.%s"):format(func_name_str), true
+	end
+
+	return func_name_str, false
+end
+
 local function bin_with_parens(node, recur_render)
 	local parent_op_data = op_attributes[node.operator]
 
@@ -52,7 +72,7 @@ local function bin_with_parens(node, recur_render)
 	if py_op_display == "**" then
 		return string.format("(%s) ** (%s)", rendered_left, rendered_right)
 	elseif py_op_display == "==" then
-		return string.format("Eq(%s, %s)", rendered_left, rendered_right)
+		return string.format("sp.Eq(%s, %s)", rendered_left, rendered_right)
 	end
 
 	return rendered_left .. " " .. py_op_display .. " " .. rendered_right
@@ -105,10 +125,19 @@ for node_type, handler in pairs({
 		end
 	end,
 	function_call = function(node, recur_render)
-		local python_opts = (config.backend_opts and config.backend_opts.python) or {}
-		local func_name_map = python_opts.function_mappings or {}
 		local func_name_str = (node.name_node and node.name_node.name) or "UnknownFunction"
-		local python_func_name = func_name_map[func_name_str:lower()] or func_name_str
+		local python_func_name, used_default = map_function_name(func_name_str)
+
+		if used_default then
+			local logger = require("tungsten.util.logger")
+			logger.warn(
+				"Tungsten",
+				("Tungsten Python Handler: No specific mapping for function '%s'. Using form '%s'."):format(
+					func_name_str,
+					python_func_name
+				)
+			)
+		end
 
 		local rendered_args = {}
 		if node.args then
