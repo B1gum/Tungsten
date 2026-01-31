@@ -58,6 +58,8 @@ If you use `lazy.nvim`, these can be installed automatically via `vhyrro/luarock
     dependencies = {
       "vhyrro/luarocks.nvim",
       "nvim-lua/plenary.nvim",
+      "nvim-telescope/telescope.nvim", -- Optional
+      "folke/which-key.nvim", -- Optional
     },
     opts = {
       -- Configuration options
@@ -87,6 +89,8 @@ use({
   requires = {
     "vhyrro/luarocks.nvim",
     "nvim-lua/plenary.nvim",
+    "nvim-telescope/telescope.nvim", -- Optional
+    "folke/which-key.nvim", -- Optional
   },
   config = function()
     require("tungsten").setup({

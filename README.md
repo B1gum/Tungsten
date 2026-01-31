@@ -39,6 +39,8 @@ For `lazy.nvim` users:
     dependencies = {
       "vhyrro/luarocks.nvim",
       "nvim-lua/plenary.nvim",
+      "nvim-telescope/telescope.nvim", -- Optional
+      "folke/which-key.nvim", -- Optional
     },
     opts = {
       -- Configuration options
