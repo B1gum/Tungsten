@@ -18,13 +18,31 @@ function M.get_cache_key(code_string, numeric)
 	return CacheService.get_cache_key(code_string, numeric)
 end
 
+function M.stop_persistent_session()
+	if state.persistent_job then
+		state.persistent_job:stop()
+		state.persistent_job = nil
+		logger.info("Tungsten", "Persistent session stopped.")
+	end
+end
+
 function M.evaluate_async(ast, numeric, callback)
 	assert(type(callback) == "function", "evaluate_async expects a callback function")
 
+	local config = require("tungsten.config")
 	local backend = manager.current()
 	if not backend then
 		callback(nil, "No active backend")
 		return
+	end
+
+	if config.persistent then
+		if backend.evaluate_persistent then
+			backend.evaluate_persistent(ast, { numeric = numeric }, callback)
+			return
+		else
+			logger.warn("Tungsten", "Backend does not support persistent mode. Falling back to standard.")
+		end
 	end
 
 	local ast_to_code = backend.ast_to_code

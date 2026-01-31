@@ -301,4 +301,92 @@ function M.cancel_all_jobs()
 	end
 end
 
+local PersistentJob = {}
+PersistentJob.__index = PersistentJob
+
+function PersistentJob.new(cmd, opts)
+	local self = setmetatable({}, PersistentJob)
+	self.buffer = {}
+	self.queue = {}
+	self.busy = false
+	self.current_callback = nil
+	self.delimiter = opts.delimiter or "__TUNGSTEN_END__"
+	self.ready = false
+
+	local Job = require("plenary.job")
+	self.job = Job:new({
+		command = cmd[1],
+		args = vim.list_slice(cmd, 2),
+		interactive = true,
+		on_stdout = function(err, line)
+			if line then
+				if line:find(self.delimiter, 1, true) then
+					local result = table.concat(self.buffer, "\n")
+					self.buffer = {}
+
+					if self.current_callback then
+						local cb = self.current_callback
+						self.current_callback = nil
+						vim.schedule(function()
+							cb(result, nil)
+						end)
+					end
+
+					if not self.ready then
+						self.ready = true
+						logger.info("Tungsten", "Persistent session ready.")
+					end
+
+					self.busy = false
+					self:process_queue()
+				else
+					table.insert(self.buffer, line)
+				end
+			elseif err then
+				vim.schedule(function()
+					if self.current_callback then
+						self.current_callback(nil, err)
+						self.current_callback = nil
+					end
+					self.busy = false
+				end)
+			end
+		end,
+		on_stderr = function(_, line)
+			if line and line ~= "" then
+				logger.debug("Tungsten Persistent Stderr", line)
+			end
+		end,
+	})
+
+	self.job:start()
+	return self
+end
+
+function PersistentJob:send(input, callback)
+	table.insert(self.queue, { input = input, callback = callback })
+	self:process_queue()
+end
+
+function PersistentJob:process_queue()
+	if self.busy or #self.queue == 0 then
+		return
+	end
+
+	local item = table.remove(self.queue, 1)
+	self.current_callback = item.callback
+	self.busy = true
+	self.job:send(item.input .. "\n")
+end
+
+function PersistentJob:stop()
+	if self.job then
+		self.job:shutdown()
+	end
+end
+
+function M.create_persistent_job(cmd, opts)
+	return PersistentJob.new(cmd, opts)
+end
+
 return M

@@ -2,6 +2,7 @@
 -- Defines default user configurations
 
 local config = {
+	persistent = true,
 	numeric_mode = false,
 	debug = true,
 	log_level = "INFO",

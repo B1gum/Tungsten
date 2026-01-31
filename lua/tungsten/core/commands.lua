@@ -38,6 +38,15 @@ local function tungsten_toggle_numeric_mode_command(_)
 	logger.info("Numeric mode " .. status .. ".")
 end
 
+local function tungsten_toggle_persistence_command(_)
+	config.persistent = not config.persistent
+	if not config.persistent then
+		evaluator.stop_persistent_session()
+	end
+	local status = config.persistent and "enabled" or "disabled"
+	logger.info("Tungsten", "Persistent session " .. status .. ".")
+end
+
 local function tungsten_toggle_debug_mode_command(_)
 	config.debug = not config.debug
 	if config.debug then
@@ -332,6 +341,7 @@ local M = {
 	tungsten_solve_command = tungsten_solve_command,
 	tungsten_solve_system_command = tungsten_solve_system_command,
 	tungsten_toggle_numeric_mode_command = tungsten_toggle_numeric_mode_command,
+	tungsten_toggle_persistence_command = tungsten_toggle_persistence_command,
 	tungsten_toggle_debug_mode_command = tungsten_toggle_debug_mode_command,
 	tungsten_clear_persistent_vars_command = tungsten_clear_persistent_vars_command,
 	tungsten_status_command = tungsten_status_command,
@@ -383,6 +393,11 @@ M.commands = {
 		name = "TungstenToggleNumericMode",
 		func = tungsten_toggle_numeric_mode_command,
 		opts = { desc = "Toggle Tungsten numeric mode" },
+	},
+	{
+		name = "TungstenTogglePersistence",
+		func = tungsten_toggle_persistence_command,
+		opts = { desc = "Toggle persistent engine session" },
 	},
 	{
 		name = "TungstenToggleDebugMode",

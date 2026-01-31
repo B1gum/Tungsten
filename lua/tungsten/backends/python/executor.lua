@@ -95,8 +95,29 @@ function M.evaluate_async(ast, opts, callback)
 	return base_executor.evaluate_async(M, ast, opts, callback)
 end
 
+function M.evaluate_persistent(ast, opts, callback)
+	return base_executor.evaluate_persistent(M, ast, opts, callback)
+end
+
 function M.solve_async(solve_ast, opts, callback)
 	return base_executor.solve_async(M, solve_ast, opts, callback)
+end
+
+function M.get_persistent_command()
+	local cmd = M.get_interpreter_command()
+	return { cmd, "-q", "-u" }
+end
+
+function M.get_persistent_init()
+	return "import sys; sys.ps1=''; sys.ps2=''; import sympy as sp; from sympy import *"
+end
+
+function M.format_persistent_init(code, delimiter)
+	return string.format("%s\nprint('%s')", code, delimiter)
+end
+
+function M.format_persistent_input(code, delimiter)
+	return string.format("print(sp.latex(%s))\nprint('%s')", code, delimiter)
 end
 
 return M

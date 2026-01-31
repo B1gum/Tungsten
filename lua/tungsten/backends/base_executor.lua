@@ -164,4 +164,43 @@ function BaseExecutor.ast_to_code(executor, ast, opts)
 	return rendered_result
 end
 
+function BaseExecutor.evaluate_persistent(executor, ast, opts, callback)
+	local state = require("tungsten.state")
+	local async = require("tungsten.util.async")
+
+	local ok, code = pcall(executor.ast_to_code, ast)
+	if not ok or not code then
+		callback(nil, format_convert_error(executor, code))
+		return
+	end
+
+	local delimiter = "__TUNGSTEN_END__"
+	local formatted_input = executor.format_persistent_input(code, delimiter)
+
+	if not state.persistent_job then
+		local cmd = executor.get_persistent_command()
+		state.persistent_job = async.create_persistent_job(cmd, { delimiter = delimiter })
+
+		if executor.get_persistent_init then
+			local init_code = executor.get_persistent_init()
+			if init_code then
+				local fmt_func = executor.format_persistent_init or executor.format_persistent_input
+				local formatted_init = fmt_func(init_code, delimiter)
+				state.persistent_job:send(formatted_init, function(_, _) end)
+			end
+		end
+	end
+
+	state.persistent_job:send(formatted_input, function(output, err)
+		if err then
+			callback(nil, err)
+		else
+			if executor.sanitize_persistent_output then
+				output = executor.sanitize_persistent_output(output, opts)
+			end
+			callback(output, nil)
+		end
+	end)
+end
+
 return BaseExecutor
