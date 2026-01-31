@@ -2,6 +2,7 @@
 -- Manages registration and initialization of Python domain handlers.
 
 local logger = require("tungsten.util.logger")
+local backend_utils = require("tungsten.backends.util")
 
 local M = {}
 
@@ -10,23 +11,7 @@ local renderableHandlers = {}
 local handlers_initialized = false
 local domain_aliases = { plotting = "plotting_handlers" }
 
-local function should_register_handler(node_type, new_domain, new_prio, registry)
-	local existing_handler_info = registry[node_type]
-
-	if not existing_handler_info then
-		return "new"
-	end
-
-	if new_prio > existing_handler_info.domain_priority then
-		return "override"
-	end
-
-	if new_prio == existing_handler_info.domain_priority and existing_handler_info.domain_name ~= new_domain then
-		return "conflict"
-	end
-
-	return "skip"
-end
+local should_register_handler = backend_utils.should_register_handler
 
 local function _process_domain_handlers(domain_name, registry)
 	local module_name = domain_aliases[domain_name] or domain_name

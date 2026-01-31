@@ -64,4 +64,40 @@ function M.render_fields(node, field_names, render_fn)
 	return mt.__index.table.unpack(rendered)
 end
 
+function M.should_register_handler(node_type, new_domain, new_prio, registry)
+	local existing_handler_info = registry[node_type]
+
+	if not existing_handler_info then
+		return "new"
+	end
+
+	if new_prio > existing_handler_info.domain_priority then
+		return "override"
+	end
+
+	if new_prio == existing_handler_info.domain_priority and existing_handler_info.domain_name ~= new_domain then
+		return "conflict"
+	end
+
+	return "skip"
+end
+
+function M.should_register_handler(node_type, new_domain, new_prio, registry)
+	local existing_handler_info = registry[node_type]
+
+	if not existing_handler_info then
+		return "new"
+	end
+
+	if new_prio > existing_handler_info.domain_priority then
+		return "override"
+	end
+
+	if new_prio == existing_handler_info.domain_priority and existing_handler_info.domain_name ~= new_domain then
+		return "conflict"
+	end
+
+	return "skip"
+end
+
 return M
