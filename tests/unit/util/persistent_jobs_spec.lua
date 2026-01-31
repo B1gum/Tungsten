@@ -21,7 +21,9 @@ describe("PersistentJob", function()
 	end)
 
 	after_each(function()
-		if mock_job_new then mock_job_new:revert() end
+		if mock_job_new then
+			mock_job_new:revert()
+		end
 	end)
 
 	it("creates a job with the correct command", function()

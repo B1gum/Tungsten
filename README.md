@@ -83,6 +83,13 @@ make test
 The test helper will install Lua dependencies via `luarocks` and clone
 `plenary.nvim` into `~/.local/share/nvim/lazy` if it is missing.
 
+### Linting and Formatting
+To maintain code quality, we enforce linting and formatting. You can run these checks locally:
+
+- **Linting**: Run `make lint` to check for code issues using `luacheck`.
+- **Formatting Check**: Run `make fmt-check` to see if your code matches the style guide.
+- **Auto-format**: Run `make fmt` to automatically format your code using `stylua`.
+- **All**: Run `make all` to automatically format, lint and run the tests.
 
 ## License
 

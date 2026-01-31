@@ -18,6 +18,11 @@ jobs:
           buildCache: false
       - name: Set up Luarocks
         uses: leafo/gh-actions-luarocks@v4
+      - name: Install Stylua
+        uses: JohnnyMorganz/stylua-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --check lua/ tests/
       - name: Lint
         run: make lint
 
