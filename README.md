@@ -1,7 +1,7 @@
 ![Build Status](https://img.shields.io/github/actions/workflow/status/B1gum/Tungsten/ci.yml?branch=main)
 ![License](https://img.shields.io/github/license/B1gum/Tungsten)
 ![Latest Release](https://img.shields.io/github/v/release/B1gum/Tungsten)
-
+[![codecov](https://codecov.io/github/B1gum/Tungsten/graph/badge.svg?token=M34Z3LCTCS)](https://codecov.io/github/B1gum/Tungsten)
 # Tungsten
 **Tungsten** is a Neovim plugin that seamlessly integrates Wolfram capabilities directly into your editor. It keeps you in flow by letting you evaluate LaTeX-formatted math, solve equations, generate plots, and much more without leaving your buffer.
 
