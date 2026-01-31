@@ -16,7 +16,16 @@ end
 function M.activate(name, opts)
 	local mod = registry[name]
 	if not mod then
-		return nil, string.format("Backend '%s' not registered", tostring(name))
+		local module_name = "tungsten.backends." .. tostring(name)
+		local ok, result = pcall(require, module_name)
+		if not ok then
+			return nil, string.format("Failed to load backend '%s': %s", tostring(name), tostring(result))
+		end
+
+		mod = registry[name]
+		if not mod then
+			return nil, string.format("Backend '%s' not registered", tostring(name))
+		end
 	end
 
 	local instance

@@ -35,9 +35,8 @@ describe("tungsten util additional coverage", function()
 			"tungsten.util.selection",
 			"tungsten.util.plotting.job_submit",
 			"tungsten.util.ast_format",
-			"tungsten.util.io",
 			"tungsten.domains.plotting.workflow.backend_command",
-			"tungsten.domains.plotting_io",
+			"tungsten.domains.plotting.io",
 			"tungsten.domains.plotting.job_manager",
 			"tungsten.ui.float_result",
 		})
@@ -361,19 +360,5 @@ describe("tungsten util additional coverage", function()
 		local formatted = ast_format.format({ type = "root", 1, child = { type = "leaf" } })
 		assert.matches("root", formatted)
 		assert.matches("child", formatted)
-	end)
-
-	it("delegates util.io math block lookup", function()
-		local called = false
-		package.loaded["tungsten.domains.plotting_io"] = {
-			find_math_block_end = function(_, start_line)
-				called = start_line
-				return 42
-			end,
-		}
-		local util_io = require("tungsten.util.io")
-		local result = util_io.find_math_block_end(5, 10)
-		assert.are.equal(42, result)
-		assert.are.equal(10, called)
 	end)
 end)

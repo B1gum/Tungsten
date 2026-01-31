@@ -84,7 +84,7 @@ describe("Plotting Job Manager", function()
 		}
 		logger_error_spy = spy.on(logger_stub, "error")
 		package.loaded["tungsten.util.logger"] = logger_stub
-		package.loaded["tungsten.util.plotting_io"] = {
+		package.loaded["tungsten.domains.plotting.io"] = {
 			find_math_block_end = function()
 				return 0
 			end,

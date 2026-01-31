@@ -6,26 +6,6 @@ local defaults = require("tungsten.config")
 local domain_manager = require("tungsten.core.domain_manager")
 local M = { config = vim.deepcopy(defaults) }
 
-local function load_backend_module(name)
-	if type(name) ~= "string" or name == "" then
-		return false, "backend name must be a non-empty string"
-	end
-
-	local module_name = "tungsten.backends." .. name
-	if package.loaded[module_name] ~= nil then
-		return true
-	end
-
-	local ok, result = pcall(require, module_name)
-	if not ok then
-		return false, result
-	end
-
-	return true, result
-end
-
-M._load_backend_module = load_backend_module
-
 local function execute_hook(name, ...)
 	local hooks = M.config.hooks or {}
 	local fn = hooks[name]
@@ -82,20 +62,9 @@ function M.setup(user_opts)
 		backend_opts = M.config.backend_opts[backend_name] or {}
 	end
 
-	local backend_loaded, load_err = load_backend_module(backend_name)
 	local backend_instance, activate_err = backend_manager.activate(backend_name, backend_opts)
 	if not backend_instance then
-		local messages = {}
-		if not backend_loaded and load_err then
-			messages[#messages + 1] = tostring(load_err)
-		end
-		if activate_err then
-			messages[#messages + 1] = tostring(activate_err)
-		end
-		local final_message = table.concat(messages, " | ")
-		if final_message == "" then
-			final_message = "Unknown error"
-		end
+		local final_message = activate_err and tostring(activate_err) or "Unknown error"
 		error(
 			string.format("tungsten.setup: failed to activate backend '%s': %s", tostring(backend_name), final_message),
 			0
