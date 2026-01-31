@@ -16,10 +16,10 @@ dependencies = {
   "lua >= 5.1",
   "lpeg",
   "lpeglabel",
-  -- add others here
+  "luafilesystem",
+  "penlight",
 }
 
 build = {
   type = "builtin",
 }
-

@@ -15,6 +15,8 @@ This guide covers the prerequisites and steps to install **Tungsten** and set up
 #### LuaRocks packages:
 - [lpeg](https://luarocks.org/modules/gvvaughan/lpeg): used for parsing LaTeX input.
 - [lpeglabel](https://luarocks.org/modules/sqmedeiros/lpeglabel): provides labeled grammars used by the parser.
+- [luafilesystem](https://luarocks.org/modules/hisham/luafilesystem): used for file system operations in plotting.
+- [penlight](https://luarocks.org/modules/steved/penlight): provides utility libraries (filesystem, paths) for plotting.
 
 ### System Dependencies
 Tungsten relies on external tools to perform calculations and render plots. Depending on your preferred backend, ensure the following are installed:
@@ -67,6 +69,8 @@ If you use `lazy.nvim`, these can be installed automatically via `vhyrro/luarock
     rocks = {
       "lpeg",
       "lpeglabel",
+      "luafilesystem",
+      "penlight",
     },
   },
 }
@@ -105,6 +109,8 @@ If you prefer installing rocks manually instead of using luarocks.nvim:
 ```sh
 luarocks install lpeg
 luarocks install lpeglabel
+luarocks install luafilesystem
+luarocks install penlight
 ```
 
 ## Verification
