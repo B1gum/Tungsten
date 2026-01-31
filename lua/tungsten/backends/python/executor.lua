@@ -60,7 +60,11 @@ function M.get_interpreter_command()
 end
 
 function M.build_command(code, opts)
-	local builder = ScriptBuilder.new():add_import("sympy", "sp"):add_from_import("sympy", "*"):set_expression(code)
+	local builder = ScriptBuilder.new()
+		:add_import("sympy", "sp")
+		:add_import("sympy.physics.units", "u")
+		:add_from_import("sympy", "*")
+		:set_expression(code)
 
 	if config.numeric_mode or opts.numeric then
 		builder:enable_numeric()
@@ -109,7 +113,7 @@ function M.get_persistent_command()
 end
 
 function M.get_persistent_init()
-	return "import sys; sys.ps1=''; sys.ps2=''; import sympy as sp; from sympy import *"
+	return "import sys; sys.ps1=''; sys.ps2=''; import sympy as sp; import sympy.physics.units as u; from sympy import *"
 end
 
 function M.format_persistent_init(code, delimiter)
