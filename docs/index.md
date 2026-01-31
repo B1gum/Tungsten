@@ -45,6 +45,8 @@ For `lazy.nvim` users:
     rocks = {
       "lpeg",
       "lpeglabel",
+      "luafilesystem",
+      "penlight",
     },
   },
 }
