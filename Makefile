@@ -1,13 +1,13 @@
 LUAROCKS ?= luarocks
 ROCKTREE ?= $(HOME)/.luarocks
 
-.PHONY: default all test deps lint clean test_deps lint_deps
+.PHONY: default all test deps lint clean test_deps lint_deps fmt fmt-check
 
-default: test
+default: all
 
-all: deps lint test
+all: deps fmt ci
 
-ci: lint test
+ci: lint fmt-check test
 
 deps: test_deps lint_deps
 	@echo "✔ All dependencies installed."
@@ -36,6 +36,14 @@ test: test_deps
 lint: lint_deps
 	@echo "Linting Lua code..."
 	@$(ROCKTREE)/bin/luacheck lua tests
+
+fmt:
+	@echo "Formatting Lua code with stylua..."
+	@stylua lua/ tests/
+
+fmt-check:
+	@echo "Checking Lua formatting with stylua..."
+	@stylua --check lua/ tests/
 
 clean:
 	@echo "Cleaning up test artifacts..."
