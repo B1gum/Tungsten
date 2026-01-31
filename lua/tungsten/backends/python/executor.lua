@@ -2,6 +2,7 @@
 -- Provides function to convert AST to python (sympy) code and execute it
 
 local config = require("tungsten.config")
+local ast_utils = require("tungsten.core.ast_utils")
 local base_executor = require("tungsten.backends.base_executor")
 local handlers = require("tungsten.backends.python.handlers")
 
@@ -13,7 +14,14 @@ local ScriptBuilder = {}
 ScriptBuilder.__index = ScriptBuilder
 
 function ScriptBuilder.new()
-	return setmetatable({ lines = {}, expr = nil, numeric = false }, ScriptBuilder)
+	return setmetatable({
+		lines = {},
+		expr = nil,
+		numeric = false,
+		has_units = false,
+		is_unit_convert = false,
+		form = "TeXForm",
+	}, ScriptBuilder)
 end
 
 function ScriptBuilder:add_import(module, alias)
@@ -40,13 +48,31 @@ function ScriptBuilder:enable_numeric()
 	return self
 end
 
-function ScriptBuilder:output_latex()
+function ScriptBuilder:set_units(has_units, is_unit_convert)
+	self.has_units = has_units
+	self.is_unit_convert = is_unit_convert
+	return self
+end
+
+function ScriptBuilder:set_form(form)
+	self.form = form or self.form
+	return self
+end
+
+function ScriptBuilder:output_formatted()
 	local expression = self.expr or ""
 	if self.numeric then
 		expression = ("sp.N(%s)"):format(expression)
 	end
+	if self.has_units and not self.is_unit_convert then
+		expression = ("sp.simplify(%s)"):format(expression)
+	end
 	table.insert(self.lines, ("expr = %s"):format(expression))
-	table.insert(self.lines, "print(sp.latex(expr))")
+	if self.form == "InputForm" then
+		table.insert(self.lines, "print(sp.sstr(expr))")
+	else
+		table.insert(self.lines, "print(sp.latex(expr))")
+	end
 	return self
 end
 
@@ -59,24 +85,83 @@ function M.get_interpreter_command()
 	return python_opts.python_path or "python3"
 end
 
+local function build_python_config(opts, has_units_flag)
+	opts = opts or {}
+	local numeric = config.numeric_mode or opts.numeric
+	local form = opts.form
+
+	if not form then
+		if (has_units_flag and not opts.is_unit_convert) or opts.is_unit_convert then
+			form = "InputForm"
+		else
+			form = "TeXForm"
+		end
+	end
+
+	return {
+		numeric = numeric,
+		form = form,
+		has_units = has_units_flag,
+		is_unit_convert = opts.is_unit_convert,
+	}
+end
+
 function M.build_command(code, opts)
+	local units_present = false
+	if opts.ast then
+		units_present = ast_utils.has_units(opts.ast)
+	end
+
+	local is_unit_convert = ast_utils.is_unit_convert_call(opts.ast)
+	local build = build_python_config({
+		numeric = opts.numeric,
+		form = opts.form,
+		is_unit_convert = is_unit_convert,
+	}, units_present)
+
 	local builder = ScriptBuilder.new()
 		:add_import("sympy", "sp")
 		:add_import("sympy.physics.units", "u")
 		:add_from_import("sympy", "*")
 		:set_expression(code)
+		:set_units(build.has_units, build.is_unit_convert)
+		:set_form(build.form)
 
-	if config.numeric_mode or opts.numeric then
+	if build.numeric then
 		builder:enable_numeric()
 	end
 
-	local command = builder:output_latex():build()
+	local command = builder:output_formatted():build()
 
-	return { "-c", command }
+	return { "-c", command }, { form = build.form }
+end
+
+local function sanitize_python_output(stdout)
+	if not stdout or stdout == "" then
+		return stdout
+	end
+
+	local cleaned = {}
+	for line in stdout:gmatch("[^\r\n]+") do
+		if
+			not line:match("SymPyDeprecationWarning")
+			and not line:match("DeprecationWarning")
+			and not line:match("FutureWarning")
+			and not line:match("RuntimeWarning")
+			and not line:match("UserWarning")
+			and not line:match("^%s*WARNING")
+			and not line:match("^%s*Warning:")
+		then
+			table.insert(cleaned, line)
+		end
+	end
+
+	local result = table.concat(cleaned, "\n")
+	return result:match("^%s*(.-)%s*$")
 end
 
 function M.sanitize_output(stdout)
-	return stdout
+	return sanitize_python_output(stdout)
 end
 
 function M.parse_solution(result, variables, opts)
