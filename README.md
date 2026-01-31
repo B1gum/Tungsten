@@ -70,7 +70,7 @@ Tungsten relies on the Wolfram Engine and WolframScript. Follow the full walkthr
 
 ## Contributing
 
-Contributions are welcome! Please follow the guidelines in the [Contributing Guide](docs/introduction/overview.md) and open issues or PRs as needed.
+Contributions are welcome! Please follow the guidelines in the [Contributing Guide](.github/CONTRIBUTING.md) and open issues or PRs as needed.
 
 ## Running Tests
 
@@ -98,4 +98,3 @@ This project is licensed under the [MIT License](LICENSE).
 ## Contact
 
 For any questions or suggestions, feel free to open an issue or contact [B1gum](https://github.com/B1gum).
-
