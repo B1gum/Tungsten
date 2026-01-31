@@ -94,4 +94,16 @@ end
 M.TungstenSimplify = make_simple_wrapped("Simplify", " \\rightarrow ")
 M.TungstenFactor = make_simple_wrapped("Factor", " \\rightarrow ")
 
+M.TungstenTogglePersistence = {
+	description = "Toggle persistent engine session",
+	task_handler = function()
+		config.persistent = not config.persistent
+		if not config.persistent then
+			require("tungsten.core.engine").stop_persistent_session()
+		end
+		local status = config.persistent and "Enabled" or "Disabled"
+		logger.info("Tungsten", "Persistent session " .. status)
+	end,
+}
+
 return M

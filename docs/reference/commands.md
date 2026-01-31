@@ -11,6 +11,7 @@ These commands handle general expression manipulation and evaluation.
 | Command | Description |
 | :--- | :--- |
 | **`:TungstenEvaluate`** | Evaluates the current selection. This is the primary entry point for arithmetic, calculus (derivatives/integrals), and variable assignment. |
+| **`:TungstenTogglePersistence`** | Toggles persistent mode on/off. When enabled, the engine stays alive between runs. |
 | **`:TungstenSimplify`** | Attempts to simplify the selected algebraic expression. |
 | **`:TungstenFactor`** | Computes the factors of the selected polynomial or integer. |
 
