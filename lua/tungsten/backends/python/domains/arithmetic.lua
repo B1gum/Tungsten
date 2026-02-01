@@ -19,13 +19,25 @@ local python_symbols = {
 	["\\times"] = "*",
 }
 
+local builtin_mappings = {
+	simplify = "sp.simplify",
+	expand = "sp.expand",
+	factor = "sp.factor",
+}
+
 local op_attributes = operators.with_symbols("py", python_symbols)
 
 local function map_function_name(func_name_str)
 	local python_opts = (config.backend_opts and config.backend_opts.python) or {}
 	local func_name_map = python_opts.function_mappings or {}
-	local mapped = func_name_map[func_name_str:lower()]
+	local lower_name = func_name_str:lower()
 
+	local mapped = func_name_map[lower_name]
+	if mapped then
+		return mapped, false
+	end
+
+	mapped = builtin_mappings[lower_name]
 	if mapped then
 		return mapped, false
 	end

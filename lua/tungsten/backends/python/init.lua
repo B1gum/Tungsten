@@ -13,6 +13,7 @@ local M = {
 	format_persistent_init = executor.format_persistent_init,
 	evaluate_persistent = executor.evaluate_persistent,
 	solve_async = executor.solve_async,
+	persistent_write_async = executor.persistent_write_async,
 	load_handlers = handlers.load_handlers,
 	reload_handlers = handlers.reload_handlers,
 	build_plot_command = plot.build_plot_command,

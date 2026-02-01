@@ -19,6 +19,8 @@ function M.parse_python_solution(output_lines, vars, _)
 		return { ok = false, reason = "No solution" }
 	end
 
+	output = output:gsub("\\right\\", "")
+
 	local map = {}
 	for var, val in output:gmatch("(%w+)%s*:%s*([^,%}%]]+)") do
 		map[trim(var)] = trim(val)

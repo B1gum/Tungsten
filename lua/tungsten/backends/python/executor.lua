@@ -5,6 +5,7 @@ local config = require("tungsten.config")
 local ast_utils = require("tungsten.core.ast_utils")
 local base_executor = require("tungsten.backends.base_executor")
 local handlers = require("tungsten.backends.python.handlers")
+local free_vars = require("tungsten.domains.plotting.free_vars")
 
 local M = {}
 M.display_name = "Python"
@@ -35,6 +36,16 @@ end
 
 function ScriptBuilder:add_from_import(module, items)
 	table.insert(self.lines, ("from %s import %s"):format(module, items))
+	return self
+end
+
+function ScriptBuilder:declare_variables(variables)
+	if not variables or #variables == 0 then
+		return self
+	end
+	for _, var in ipairs(variables) do
+		table.insert(self.lines, ("%s = sp.Symbol('%s')"):format(var, var))
+	end
 	return self
 end
 
@@ -129,8 +140,10 @@ end
 
 function M.build_command(code, opts)
 	local units_present = false
+	local variables = {}
 	if opts.ast then
 		units_present = ast_utils.has_units(opts.ast)
+		variables = free_vars.find(opts.ast)
 	end
 
 	local is_unit_convert = ast_utils.is_unit_convert_call(opts.ast)
@@ -144,12 +157,25 @@ function M.build_command(code, opts)
 		:add_import("sympy", "sp")
 		:add_import("sympy.physics.units", "u")
 		:add_from_import("sympy", "*")
+		:declare_variables(variables)
 		:set_expression(code)
 		:set_units(build.has_units, build.is_unit_convert)
 		:set_form(build.form)
 
 	if build.numeric then
 		builder:enable_numeric()
+	end
+
+	if opts.assignment and opts.variable_name then
+		local expression = code
+		if build.numeric then
+			expression = ("sp.N(%s)"):format(expression)
+		end
+		table.insert(builder.lines, ("%s = %s"):format(opts.variable_name, expression))
+		table.insert(builder.lines, ("print(sp.latex(%s))"):format(opts.variable_name))
+
+		local command = builder:build()
+		return { "-c", command }, { form = build.form }
 	end
 
 	local command = builder:output_formatted():build()
@@ -201,6 +227,20 @@ function M.exit_error(exit_code)
 	return ("Python interpreter exited with code %d"):format(exit_code)
 end
 
+function M.persistent_write_async(name, value, callback)
+	local state = require("tungsten.state")
+	local variable_resolver = require("tungsten.core.variable_resolver")
+
+	local resolved_value = variable_resolver.resolve(value, state.persistent_variables or {})
+
+	local opts = {
+		code = resolved_value,
+		variable_name = name,
+		assignment = true,
+	}
+	M.evaluate_async(nil, opts, callback)
+end
+
 function M.evaluate_async(ast, opts, callback)
 	return base_executor.evaluate_async(M, ast, opts, callback)
 end
@@ -228,6 +268,10 @@ end
 
 function M.format_persistent_input(code, delimiter)
 	return string.format("print(sp.latex(%s))\nprint('%s')", code, delimiter)
+end
+
+function M.prepare_solve_opts(solve_ast)
+	return { form = "TeXForm", ast = solve_ast }
 end
 
 return M
