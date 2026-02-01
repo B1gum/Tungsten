@@ -23,6 +23,43 @@ local builtin_mappings = {
 	simplify = "sp.simplify",
 	expand = "sp.expand",
 	factor = "sp.factor",
+
+	sin = "sp.sin",
+	cos = "sp.cos",
+	tan = "sp.tan",
+	cot = "sp.cot",
+	sec = "sp.sec",
+	csc = "sp.csc",
+	asin = "sp.asin",
+	acos = "sp.acos",
+	atan = "sp.atan",
+	sinh = "sp.sinh",
+	cosh = "sp.cosh",
+	tanh = "sp.tanh",
+	asinh = "sp.asinh",
+	acosh = "sp.acosh",
+	atanh = "sp.atanh",
+
+	exp = "sp.exp",
+	log = "sp.log",
+	ln = "sp.ln",
+	sqrt = "sp.sqrt",
+	root = "sp.root",
+
+	abs = "sp.Abs",
+	re = "sp.re",
+	im = "sp.im",
+	arg = "sp.arg",
+	conjugate = "sp.conjugate",
+
+	Heaviside = "sp.Heaviside",
+	DiracDelta = "sp.DiracDelta",
+	gamma = "sp.gamma",
+	factorial = "sp.factorial",
+	erf = "sp.erf",
+	erfc = "sp.erfc",
+	besselj = "sp.besselj",
+	bessely = "sp.bessely",
 }
 
 local op_attributes = operators.with_symbols("py", python_symbols)
@@ -30,24 +67,15 @@ local op_attributes = operators.with_symbols("py", python_symbols)
 local function map_function_name(func_name_str)
 	local python_opts = (config.backend_opts and config.backend_opts.python) or {}
 	local func_name_map = python_opts.function_mappings or {}
-	local lower_name = func_name_str:lower()
 
-	local mapped = func_name_map[lower_name]
+	local mapped = func_name_map[func_name_str] or func_name_map[func_name_str:lower()]
 	if mapped then
 		return mapped, false
 	end
 
-	mapped = builtin_mappings[lower_name]
+	mapped = builtin_mappings[func_name_str] or builtin_mappings[func_name_str:lower()]
 	if mapped then
 		return mapped, false
-	end
-
-	if func_name_str == "UnknownFunction" then
-		return func_name_str, false
-	end
-
-	if func_name_str:match("^%a") then
-		return ("sp.%s"):format(func_name_str), true
 	end
 
 	return func_name_str, false
@@ -138,18 +166,7 @@ for node_type, handler in pairs({
 	end,
 	function_call = function(node, recur_render)
 		local func_name_str = (node.name_node and node.name_node.name) or "UnknownFunction"
-		local python_func_name, used_default = map_function_name(func_name_str)
-
-		if used_default then
-			local logger = require("tungsten.util.logger")
-			logger.warn(
-				"Tungsten",
-				("Tungsten Python Handler: No specific mapping for function '%s'. Using form '%s'."):format(
-					func_name_str,
-					python_func_name
-				)
-			)
-		end
+		local python_func_name = map_function_name(func_name_str)
 
 		local rendered_args = {}
 		if node.args then
@@ -157,7 +174,8 @@ for node_type, handler in pairs({
 				table.insert(rendered_args, recur_render(arg_node))
 			end
 		end
-		return ("%s(%s)"):format(python_func_name, table.concat(rendered_args, ", "))
+
+		return ("_apply(%s, %s)"):format(python_func_name, table.concat(rendered_args, ", "))
 	end,
 
 	solve_system = function(node, recur_render)

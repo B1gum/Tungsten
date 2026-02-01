@@ -15,8 +15,6 @@ local flexible_order_capture =
 local superscript_part_capturing_order = P("^") * space * flexible_order_capture
 local expression_to_diff_capture = Cg(V("Expression"), "expression")
 
-local atom_to_diff_capture = Cg(V("AtomBase"), "expression")
-
 local parenthesized_expression_capture = tk.lparen * space * expression_to_diff_capture * space * tk.rparen
 local denominator_variable_part = d_operator_match * space * variable_of_diff_capture_cg
 local denominator_segment_full = denominator_variable_part * (P("^") * space * order_content_atom)
@@ -84,7 +82,7 @@ local first_order_derivative_frac_structure_with_numerator_expr = P("\\frac")
 	* space
 	* tk.rbrace
 
-local following_expression_segment = space * atom_to_diff_capture
+local following_expression_segment = space * expression_to_diff_capture
 
 local leibniz_higher_order_rule_with_parentheses = Ct(
 	higher_order_derivative_frac_structure * space * parenthesized_expression_capture

@@ -2,7 +2,6 @@
 -- Defines default user configurations
 
 local config = {
-	persistent = false,
 	numeric_mode = false,
 	debug = false,
 	log_level = "INFO",
@@ -16,9 +15,10 @@ local config = {
 	result_display = "insert",
 	max_jobs = 3,
 	persistent_variable_assignment_operator = ":=",
-	backend = "python",
+	backend = "wolfram",
 	backend_opts = {
 		wolfram = {
+			persistent = true,
 			wolfram_path = "wolframscript",
 			function_mappings = {
 				sin = "Sin",

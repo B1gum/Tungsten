@@ -36,7 +36,13 @@ function M.evaluate_async(ast, numeric, callback)
 		return
 	end
 
-	if config.persistent then
+	local backend_name = state.active_backend
+	local is_persistent = false
+	if config.backend_opts[backend_name] and config.backend_opts[backend_name].persistent then
+		is_persistent = true
+	end
+
+	if is_persistent then
 		if backend.evaluate_persistent then
 			backend.evaluate_persistent(ast, { numeric = numeric }, callback)
 			return

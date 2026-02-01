@@ -42,7 +42,7 @@ describe("Differential Equations Python Handlers", function()
 				rhs = { type = "variable", name = "y" },
 			}
 			local result = handlers.ode(ast, mock_render)
-			assert.are.same("sp.dsolve(sp.Eq(sp.diff(y(x), x), y))", result)
+			assert.are.same("sp.dsolve(sp.Eq(sp.diff(y(x), x), y), y)", result)
 		end)
 	end)
 
@@ -64,10 +64,7 @@ describe("Differential Equations Python Handlers", function()
 				},
 			}
 			local result = handlers.ode_system(ast, mock_render)
-			assert.is_true(
-				result == "sp.dsolve([sp.Eq(sp.diff(y(x), x), z), sp.Eq(sp.diff(z(x), x), y)])"
-					or result == "sp.dsolve([sp.Eq(sp.diff(z(x), x), y), sp.Eq(sp.diff(y(x), x), z)])"
-			)
+			assert.are.same("sp.dsolve([sp.Eq(sp.diff(y(x), x), z), sp.Eq(sp.diff(z(x), x), y)], [])", result)
 		end)
 	end)
 
@@ -96,7 +93,7 @@ describe("Differential Equations Python Handlers", function()
 				},
 			}
 			local result = handlers.laplace_transform(ast, mock_render)
-			assert.are.same("sp.laplace_transform(f(t), t, s)", result)
+			assert.are.same("sp.laplace_transform(f(t), t, s, noconds=True)", result)
 		end)
 
 		it("maps u() to Heaviside inside laplace transform", function()
@@ -109,7 +106,7 @@ describe("Differential Equations Python Handlers", function()
 				},
 			}
 			local result = handlers.laplace_transform(ast, mock_render)
-			assert.are.same("sp.laplace_transform(Heaviside(t), t, s)", result)
+			assert.are.same("sp.laplace_transform(Heaviside(t), t, s, noconds=True)", result)
 		end)
 
 		it("maps delta() to DiracDelta inside laplace transform", function()
@@ -122,7 +119,7 @@ describe("Differential Equations Python Handlers", function()
 				},
 			}
 			local result = handlers.laplace_transform(ast, mock_render)
-			assert.are.same("sp.laplace_transform(DiracDelta(t), t, s)", result)
+			assert.are.same("sp.laplace_transform(DiracDelta(t), t, s, noconds=True)", result)
 		end)
 	end)
 
@@ -175,7 +172,7 @@ describe("Differential Equations Python Handlers", function()
 				right = { type = "variable", name = "g" },
 			}
 			local result = handlers.convolution(ast, mock_render)
-			assert.are.same("sp.convolution(f, g, t, y)", result)
+			assert.are.same("sp.integrate(sp.sympify(f).subs(t, y) * sp.sympify(g).subs(t, t - y), (y, 0, t))", result)
 		end)
 	end)
 end)

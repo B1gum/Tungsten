@@ -14,7 +14,6 @@ require('tungsten').setup({
 Below is the default configuration. You can copy and paste this into your setup function and modify the values as needed.
 ```latex
 {
-  persistent = true,              -- If true, keeps the backend engine running between calculations (faster)
   numeric_mode = false,            -- If true, returns approximate numeric results (e.g., 1.414 instead of sqrt(2))
   debug = false,                    -- Enable debug logging
   log_level = "INFO",              -- Log level: "DEBUG", "INFO", "WARN", "ERROR"
@@ -43,6 +42,7 @@ Below is the default configuration. You can copy and paste this into your setup 
   backend = "wolfram",             -- Default backend: "wolfram" or "python" (under implementation)
   backend_opts = {
     wolfram = {
+      persistent = true,              -- If true, keeps the backend engine running between calculations (faster)
       wolfram_path = "wolframscript", -- Path to the wolframscript executable
       -- Internal function mappings for Wolfram
       function_mappings = {

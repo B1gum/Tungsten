@@ -39,12 +39,28 @@ local function tungsten_toggle_numeric_mode_command(_)
 end
 
 local function tungsten_toggle_persistence_command(_)
-	config.persistent = not config.persistent
-	if not config.persistent then
+	local backend_name = state.active_backend or config.backend
+	if not backend_name or not config.backend_opts[backend_name] then
+		logger.warn(
+			"Tungsten",
+			"No configuration found for backend: "
+				.. tostring(backend_name)
+				.. ". The Python backend does not support persistent sessions"
+		)
+		return
+	end
+
+	local current_val = config.backend_opts[backend_name].persistent or false
+	config.backend_opts[backend_name].persistent = not current_val
+
+	local new_status = config.backend_opts[backend_name].persistent
+
+	if not new_status then
 		evaluator.stop_persistent_session()
 	end
-	local status = config.persistent and "enabled" or "disabled"
-	logger.info("Tungsten", "Persistent session " .. status .. ".")
+
+	local status_text = new_status and "enabled" or "disabled"
+	logger.info("Tungsten", "Persistent session " .. status_text .. " for " .. backend_name .. ".")
 end
 
 local function tungsten_toggle_debug_mode_command(_)

@@ -25,7 +25,7 @@ Tungsten relies on external tools to perform calculations and render plots. Depe
 To use the Wolfram backend, you must install the Wolfram Engine and its scripting interface, WolframScript.
 See the [Wolfram Engine installation guide](https://www.wolfram.com/engine/) for download and activation instructions.
 
-#### Python Backend (Under Implementation)
+#### Python Backend
 The Python backend uses standard scientific libraries for calculations and plotting. You must have **Python 3** installed along with the following packages:
   - **sympy**: For symbolic mathematics and solving equations.
   - **numpy**: For numerical arrays and math operations.

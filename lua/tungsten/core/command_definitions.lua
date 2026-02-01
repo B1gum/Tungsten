@@ -97,12 +97,24 @@ M.TungstenFactor = make_simple_wrapped("Factor", " \\rightarrow ")
 M.TungstenTogglePersistence = {
 	description = "Toggle persistent engine session",
 	task_handler = function()
-		config.persistent = not config.persistent
-		if not config.persistent then
+		local state = require("tungsten.state")
+		local backend_name = state.active_backend
+
+		if not backend_name or not config.backend_opts[backend_name] then
+			logger.warn("Tungsten", "No active wolfram-backend configuration found to toggle persistence.")
+			return
+		end
+
+		local current_val = config.backend_opts[backend_name].persistent or false
+		config.backend_opts[backend_name].persistent = not current_val
+
+		local new_status = config.backend_opts[backend_name].persistent
+		if not new_status then
 			require("tungsten.core.engine").stop_persistent_session()
 		end
-		local status = config.persistent and "Enabled" or "Disabled"
-		logger.info("Tungsten", "Persistent session " .. status)
+
+		local status = new_status and "Enabled" or "Disabled"
+		logger.info("Tungsten", "Persistent session " .. status .. " for " .. backend_name)
 	end,
 }
 
