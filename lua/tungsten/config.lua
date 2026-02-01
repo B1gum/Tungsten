@@ -2,9 +2,9 @@
 -- Defines default user configurations
 
 local config = {
-	persistent = true,
+	persistent = false,
 	numeric_mode = false,
-	debug = true,
+	debug = false,
 	log_level = "INFO",
 	cache_enabled = true,
 	cache_max_entries = 100,
@@ -16,7 +16,7 @@ local config = {
 	result_display = "insert",
 	max_jobs = 3,
 	persistent_variable_assignment_operator = ":=",
-	backend = "wolfram",
+	backend = "python",
 	backend_opts = {
 		wolfram = {
 			wolfram_path = "wolframscript",

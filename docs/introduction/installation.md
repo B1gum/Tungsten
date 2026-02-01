@@ -63,6 +63,7 @@ If you use `lazy.nvim`, these can be installed automatically via `vhyrro/luarock
       "nvim-telescope/telescope.nvim", -- Optional
       "folke/which-key.nvim", -- Optional
     },
+    build = "./scripts/install_python_deps.sh", -- This automates the packaging!
     opts = {
       -- Configuration options
     },
@@ -96,6 +97,7 @@ use({
     "nvim-telescope/telescope.nvim", -- Optional
     "folke/which-key.nvim", -- Optional
   },
+  run = "./scripts/install_python_deps.sh",
   config = function()
     require("tungsten").setup({
       -- Configuration options

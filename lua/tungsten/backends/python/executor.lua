@@ -82,7 +82,28 @@ end
 
 function M.get_interpreter_command()
 	local python_opts = (config.backend_opts and config.backend_opts.python) or {}
-	return python_opts.python_path or "python3"
+
+	if python_opts.python_path then
+		return python_opts.python_path
+	end
+
+	local info = debug.getinfo(1, "S")
+	local source = info.source:sub(2)
+
+	local plugin_root = source:match("(.*)/lua/tungsten/backends/python/executor%.lua$")
+
+	if plugin_root then
+		local venv_python = plugin_root .. "/.venv/bin/python"
+		local venv_python_win = plugin_root .. "/.venv/Scripts/python.exe"
+
+		if vim.fn.executable(venv_python) == 1 then
+			return venv_python
+		elseif vim.fn.executable(venv_python_win) == 1 then
+			return venv_python_win
+		end
+	end
+
+	return "python3"
 end
 
 local function build_python_config(opts, has_units_flag)
