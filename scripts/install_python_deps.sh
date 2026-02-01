@@ -36,4 +36,4 @@ echo "Tungsten: Installing dependencies..."
 "$PYTHON_EXEC" -m pip install --upgrade pip
 "$PYTHON_EXEC" -m pip install -r "$PLUGIN_DIR/requirements.txt"
 
-echo "Tungsten: Python setup complete."mplete."
+echo "Tungsten: Python setup complete."
