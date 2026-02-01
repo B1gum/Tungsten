@@ -19,6 +19,8 @@ local ast_creator = require("tungsten.core.ast")
 local workflow = require("tungsten.core.workflow")
 local definitions = require("tungsten.core.command_definitions")
 local units_util = require("tungsten.domains.units.util")
+local manager = require("tungsten.backends.manager")
+local async = require("tungsten.util.async")
 
 local function tungsten_evaluate_command(_)
 	workflow.run(definitions.TungstenEvaluate)
@@ -61,6 +63,43 @@ local function tungsten_toggle_persistence_command(_)
 
 	local status_text = new_status and "enabled" or "disabled"
 	logger.info("Tungsten", "Persistent session " .. status_text .. " for " .. backend_name .. ".")
+end
+
+local function tungsten_switch_backend_command(opts)
+	local name = opts.args
+	if type(name) ~= "string" or name == "" then
+		logger.error("Tungsten", "Backend name must be a non-empty string")
+		return
+	end
+
+	if name == state.active_backend then
+		logger.info("Tungsten", "Backend '" .. name .. "' is already active.")
+		return
+	end
+
+	evaluator.stop_persistent_session()
+	async.cancel_all_jobs()
+
+	state.persistent_variables = {}
+
+	local backend_opts = {}
+	if type(config.backend_opts) == "table" then
+		backend_opts = config.backend_opts[name] or {}
+	end
+
+	local backend_instance, activate_err = manager.activate(name, backend_opts)
+	if not backend_instance then
+		logger.error(
+			"Tungsten",
+			string.format("Failed to activate backend '%s': %s", name, activate_err or "Unknown error")
+		)
+		return
+	end
+
+	state.active_backend = name
+	config.backend = name
+
+	logger.info("Tungsten", "Switched backend to '" .. name .. "'.")
 end
 
 local function tungsten_toggle_debug_mode_command(_)
@@ -354,6 +393,7 @@ local M = {
 	tungsten_simplify_command = tungsten_simplify_command,
 	tungsten_factor_command = tungsten_factor_command,
 	define_persistent_variable_command = define_persistent_variable_command,
+	tungsten_switch_backend_command = tungsten_switch_backend_command,
 	tungsten_solve_command = tungsten_solve_command,
 	tungsten_solve_system_command = tungsten_solve_system_command,
 	tungsten_toggle_numeric_mode_command = tungsten_toggle_numeric_mode_command,
@@ -414,6 +454,20 @@ M.commands = {
 		name = "TungstenTogglePersistence",
 		func = tungsten_toggle_persistence_command,
 		opts = { desc = "Toggle persistent engine session" },
+	},
+	{
+		name = "TungstenSwitchBackend",
+		func = tungsten_switch_backend_command,
+		opts = {
+			nargs = 1,
+			desc = "Switch the active Tungsten backend (e.g., wolfram, python)",
+			complete = function(arg_lead)
+				local backends = { "wolfram", "python" }
+				return vim.tbl_filter(function(item)
+					return vim.startswith(item, arg_lead)
+				end, backends)
+			end,
+		},
 	},
 	{
 		name = "TungstenToggleDebugMode",
