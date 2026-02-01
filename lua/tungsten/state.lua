@@ -9,6 +9,7 @@ local M = {}
 M.ns = vim.api.nvim_create_namespace("tungsten")
 M.active_jobs = {}
 M.persistent_job = nil
+M.active_backend = nil
 M.cache = Cache.new(config.cache_max_entries, config.cache_ttl)
 M.config = config
 M.persistent_variables = {}

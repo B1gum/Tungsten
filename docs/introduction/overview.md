@@ -27,8 +27,8 @@ Connects to the Wolfram Engine (Mathematica).
   - Pros: The industry standard for symbolic mathematics; handles extremely complex integrals and edge cases that might stump SymPy. By far the best-implemented backend currently. Free.
   - Cons: Requires a Wolfram Engine installation and license.
 
-### 2. Python (Under Implementation)
-Will leverage the robust open-source ecosystem of Python.
-  - Libraries: Will use SymPy for symbolic mathematics (integrals, derivatives, simplifications) and NumPy/Matplotlib for numerical operations and plotting.
+### 2. Python
+Leverages the robust open-source ecosystem of Python.
+  - Libraries: Uses SymPy for symbolic mathematics (integrals, derivatives, simplifications) and NumPy/Matplotlib for numerical operations and plotting.
   - Pros: Free, open-source, easy to install, and likely already available on your machine.
-  - Cons: Can be slower for extremely complex symbolic manipulations compared to Wolfram. Currently completely untested.
+  - Cons: Plotting capabilities are currently more limited compared to the Wolfram backend. Result formatting may also differ slightly from the Wolfram backend.

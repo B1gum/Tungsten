@@ -2,6 +2,7 @@ local stub = require("luassert.stub")
 local engine = require("tungsten.core.engine")
 local config = require("tungsten.config")
 local manager = require("tungsten.backends.manager")
+local state = require("tungsten.state")
 
 describe("Engine (Persistence)", function()
 	local mock_backend
@@ -15,15 +16,22 @@ describe("Engine (Persistence)", function()
 			end,
 		}
 		stub(manager, "current", mock_backend)
+		state.active_backend = "test_backend"
+		config.backend_opts = {
+			test_backend = {
+				persistent = false,
+			},
+		}
 	end)
 
 	after_each(function()
 		manager.current:revert()
-		config.persistent = false
+		state.active_backend = nil
+		config.backend_opts = {}
 	end)
 
 	it("calls evaluate_async when persistence is disabled", function()
-		config.persistent = false
+		config.backend_opts.test_backend.persistent = false
 		local callback = function() end
 
 		engine.evaluate_async({}, false, callback)
@@ -33,7 +41,7 @@ describe("Engine (Persistence)", function()
 	end)
 
 	it("calls evaluate_persistent when persistence is enabled", function()
-		config.persistent = true
+		config.backend_opts.test_backend.persistent = true
 		local callback = function() end
 
 		engine.evaluate_async({}, false, callback)
@@ -43,7 +51,7 @@ describe("Engine (Persistence)", function()
 	end)
 
 	it("falls back if backend lacks persistent support", function()
-		config.persistent = true
+		config.backend_opts.test_backend.persistent = true
 		mock_backend.evaluate_persistent = nil
 		local callback = function() end
 

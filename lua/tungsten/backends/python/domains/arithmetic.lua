@@ -19,7 +19,67 @@ local python_symbols = {
 	["\\times"] = "*",
 }
 
+local builtin_mappings = {
+	simplify = "sp.simplify",
+	expand = "sp.expand",
+	factor = "sp.factor",
+
+	sin = "sp.sin",
+	cos = "sp.cos",
+	tan = "sp.tan",
+	cot = "sp.cot",
+	sec = "sp.sec",
+	csc = "sp.csc",
+	asin = "sp.asin",
+	acos = "sp.acos",
+	atan = "sp.atan",
+	sinh = "sp.sinh",
+	cosh = "sp.cosh",
+	tanh = "sp.tanh",
+	asinh = "sp.asinh",
+	acosh = "sp.acosh",
+	atanh = "sp.atanh",
+
+	exp = "sp.exp",
+	log = "sp.log",
+	ln = "sp.ln",
+	sqrt = "sp.sqrt",
+	root = "sp.root",
+
+	abs = "sp.Abs",
+	re = "sp.re",
+	im = "sp.im",
+	arg = "sp.arg",
+	conjugate = "sp.conjugate",
+
+	Heaviside = "sp.Heaviside",
+	DiracDelta = "sp.DiracDelta",
+	gamma = "sp.gamma",
+	factorial = "sp.factorial",
+	erf = "sp.erf",
+	erfc = "sp.erfc",
+	besselj = "sp.besselj",
+	bessely = "sp.bessely",
+}
+
 local op_attributes = operators.with_symbols("py", python_symbols)
+
+local function map_function_name(func_name_str)
+	local python_opts = (config.backend_opts and config.backend_opts.python) or {}
+	local func_name_map = python_opts.function_mappings or {}
+
+	local mapped = func_name_map[func_name_str] or func_name_map[func_name_str:lower()]
+	if mapped then
+		return mapped, false
+	end
+
+	mapped = builtin_mappings[func_name_str] or builtin_mappings[func_name_str:lower()]
+	if mapped then
+		return mapped, false
+	end
+
+	return func_name_str, false
+end
 
 local function bin_with_parens(node, recur_render)
 	local parent_op_data = op_attributes[node.operator]
@@ -52,7 +112,7 @@ local function bin_with_parens(node, recur_render)
 	if py_op_display == "**" then
 		return string.format("(%s) ** (%s)", rendered_left, rendered_right)
 	elseif py_op_display == "==" then
-		return string.format("Eq(%s, %s)", rendered_left, rendered_right)
+		return string.format("sp.Eq(%s, %s)", rendered_left, rendered_right)
 	end
 
 	return rendered_left .. " " .. py_op_display .. " " .. rendered_right
@@ -105,10 +165,8 @@ for node_type, handler in pairs({
 		end
 	end,
 	function_call = function(node, recur_render)
-		local python_opts = (config.backend_opts and config.backend_opts.python) or {}
-		local func_name_map = python_opts.function_mappings or {}
 		local func_name_str = (node.name_node and node.name_node.name) or "UnknownFunction"
-		local python_func_name = func_name_map[func_name_str:lower()] or func_name_str
+		local python_func_name = map_function_name(func_name_str)
 
 		local rendered_args = {}
 		if node.args then
@@ -116,7 +174,8 @@ for node_type, handler in pairs({
 				table.insert(rendered_args, recur_render(arg_node))
 			end
 		end
-		return ("%s(%s)"):format(python_func_name, table.concat(rendered_args, ", "))
+
+		return ("_apply(%s, %s)"):format(python_func_name, table.concat(rendered_args, ", "))
 	end,
 
 	solve_system = function(node, recur_render)

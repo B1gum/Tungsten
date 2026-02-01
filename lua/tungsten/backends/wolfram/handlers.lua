@@ -2,6 +2,7 @@
 -- Manages registration and initialization of Wolfram domain handlers.
 
 local logger = require("tungsten.util.logger")
+local backend_utils = require("tungsten.backends.util")
 
 local M = {}
 
@@ -9,6 +10,7 @@ local handlerRegistry = {}
 local renderableHandlers = {}
 local handlers_initialized = false
 local domain_aliases = { plotting = "plotting_handlers" }
+local should_register_handler = backend_utils.should_register_handler
 
 local function _process_domain_handlers(domain_name, registry)
 	local module_name = domain_aliases[domain_name] or domain_name
@@ -27,50 +29,47 @@ local function _process_domain_handlers(domain_name, registry)
 		)
 
 		for node_type, handler_func in pairs(domain_module.handlers) do
-			if handlerRegistry[node_type] then
-				local existing_handler_info = handlerRegistry[node_type]
-				if domain_priority > existing_handler_info.domain_priority then
-					logger.debug(
-						"Tungsten Backend",
-						("Wolfram Backend: Handler for node type '%s': %s (Prio %d) overrides %s (Prio %d)."):format(
-							node_type,
-							domain_name,
-							domain_priority,
-							existing_handler_info.domain_name,
-							existing_handler_info.domain_priority
-						)
+			local status = should_register_handler(node_type, domain_name, domain_priority, handlerRegistry)
+			local existing_handler_info = handlerRegistry[node_type]
+
+			if status == "override" then
+				logger.debug(
+					"Tungsten Backend",
+					("Wolfram Backend: Handler for node type '%s': %s (Prio %d) overrides %s (Prio %d)."):format(
+						node_type,
+						domain_name,
+						domain_priority,
+						existing_handler_info.domain_name,
+						existing_handler_info.domain_priority
 					)
-					handlerRegistry[node_type] =
-						{ func = handler_func, domain_name = domain_name, domain_priority = domain_priority }
-				elseif
-					domain_priority == existing_handler_info.domain_priority
-					and existing_handler_info.domain_name ~= domain_name
-				then
-					logger.warn(
-						"Tungsten Backend Warning",
-						("Wolfram Backend: Handler for node type '%s': CONFLICT - %s and %s have same priority (%d). '%s' takes precedence (due to processing order). Consider adjusting priorities."):format(
-							node_type,
-							domain_name,
-							existing_handler_info.domain_name,
-							domain_priority,
-							domain_name
-						)
+				)
+				handlerRegistry[node_type] =
+					{ func = handler_func, domain_name = domain_name, domain_priority = domain_priority }
+			elseif status == "conflict" then
+				logger.warn(
+					"Tungsten Backend Warning",
+					("Wolfram Backend: Handler for node type '%s': CONFLICT - %s and %s have same priority (%d). '%s' takes precedence (due to processing order). Consider adjusting priorities."):format(
+						node_type,
+						domain_name,
+						existing_handler_info.domain_name,
+						domain_priority,
+						domain_name
 					)
-					handlerRegistry[node_type] =
-						{ func = handler_func, domain_name = domain_name, domain_priority = domain_priority }
-				elseif domain_priority < existing_handler_info.domain_priority then
-					logger.debug(
-						"Tungsten Backend",
-						("Wolfram Backend: Handler for node type '%s' from %s (Prio %d) NOT overriding existing from %s (Prio %d)."):format(
-							node_type,
-							domain_name,
-							domain_priority,
-							existing_handler_info.domain_name,
-							existing_handler_info.domain_priority
-						)
+				)
+				handlerRegistry[node_type] =
+					{ func = handler_func, domain_name = domain_name, domain_priority = domain_priority }
+			elseif status == "skip" and existing_handler_info and domain_priority < existing_handler_info.domain_priority then
+				logger.debug(
+					"Tungsten Backend",
+					("Wolfram Backend: Handler for node type '%s' from %s (Prio %d) NOT overriding existing from %s (Prio %d)."):format(
+						node_type,
+						domain_name,
+						domain_priority,
+						existing_handler_info.domain_name,
+						existing_handler_info.domain_priority
 					)
-				end
-			else
+				)
+			elseif status == "new" then
 				handlerRegistry[node_type] =
 					{ func = handler_func, domain_name = domain_name, domain_priority = domain_priority }
 			end

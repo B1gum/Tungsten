@@ -9,7 +9,7 @@ The following snippet demonstrates a comprehensive setup using `lazy.nvim` or a 
 ```lua
 require("tungsten").setup({
     -- Core Behavior
-    backend = "wolfram", -- Default backend
+    backend = "wolfram", -- Default backend, "wolfram" or "python"
     numeric_mode = false, -- If true, returns decimal approximations by default
     debug = false, -- Enable debug logging
     log_level = "INFO", -- Options: "DEBUG", "INFO", "WARN", "ERROR"
@@ -32,6 +32,7 @@ require("tungsten").setup({
     -- Backend Specific Configuration
     backend_opts = {
         wolfram = {
+            persistent = true, -- If true, keeps the backend engine running between calculations (faster)
             wolfram_path = "wolframscript", -- Path to the executable
             -- Custom function name mappings
             function_mappings = {
@@ -83,7 +84,7 @@ The configuration is broadly divided into general settings, backend options, and
 
 | Option | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `backend` | string | `"wolfram"` | The mathematical engine to use. Currently fully supports `"wolfram"`. `python` support is being built |
+| `backend` | string | `"wolfram"` | The mathematical engine to use. Currently supports `"wolfram"` and `python` |
 | `numeric_mode` | boolean | `false` | If true, results are computed numerically (e.g., `1.414`) instead of symbolically (e.g., `sqrt(2)`). |
 | `debug` | boolean | `true` | Enables extended debug information. |
 | `log_level` | string | `"INFO"` | Sets the verbosity of the logger. (`"DEBUG"`, `"INFO"`, `"WARN"`, `"ERROR"`) |
@@ -104,6 +105,8 @@ This table allows configuration specific to the chosen `backend`.
 | :--- | :--- | :--- | :--- |
 | `wolfram_path` | string | `"wolframscript"` | The system executable path for the Wolfram engine. |
 | `function_mappings` | table | `{...}` | Map internal function names (e.g., `sin`) to backend-specific names (e.g., `Sin`). |
+| `persistent` | boolean | `true` | Keeps the backend engine running between calculations (faster). |
+
 
 ### Plotting Configuration (`plotting`)
 

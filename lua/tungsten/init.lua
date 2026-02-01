@@ -72,6 +72,8 @@ function M.setup(user_opts)
 	end
 
 	local state = require("tungsten.state")
+	state.active_backend = backend_name
+
 	local Cache = require("tungsten.cache")
 	state.cache = Cache.new(M.config.cache_max_entries, M.config.cache_ttl)
 

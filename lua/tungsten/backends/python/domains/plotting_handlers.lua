@@ -73,7 +73,7 @@ M.handlers = {
 		if not rhs then
 			return err_rhs
 		end
-		return string.format("Eq(%s, %s)", lhs, rhs)
+		return string.format("sp.Eq(%s, %s)", lhs, rhs)
 	end,
 	Inequality = function(node, recur_render)
 		local lhs, err_lhs = render_child(node.lhs, recur_render)

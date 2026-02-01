@@ -19,7 +19,7 @@ The calculus domain provides support for both partial derivatives and ordinary d
 Derivatives written in Leibniz notation can be readily parsed by Tungsten.
 When writing Leibniz-style derivatives one can either choose to write the `d`'s upright as
 ```latex
-\frac{\mathrm{d}}{\mathrm{d}x} x^2 + 2 = 2x + 2
+\frac{\mathrm{d}}{\mathrm{d}x} x^2 + 2x = 2x + 2
 ```
 or as slanted `d`'s as
 ```latex
@@ -124,8 +124,8 @@ and
 
 **Example**:
 ```latex
-\lim_{x \to 0} \frac{\sin x}{x}
-\lim_{y \to \infty} \frac{1}{x}
+\lim_{x \to 0} \frac{\sin x}{x} = 1
+\lim_{y \to \infty} \frac{1}{y} = 0
 \sum_{i = 1}^{n} i = \frac{1}{2} n (n+1)
 \sum_{k = 1}^{\infty} \frac{1}{k^2} = \frac{\pi^2}{6}
 ```

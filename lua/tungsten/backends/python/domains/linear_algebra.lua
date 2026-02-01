@@ -96,9 +96,9 @@ M.handlers = {
 	end,
 
 	dot_product = function(node, recur_render)
-		local left_str = matrix_to_vector_str(node.left, recur_render)
-		local right_str = matrix_to_vector_str(node.right, recur_render)
-		return ("(%s).dot(%s)"):format(left_str, right_str)
+		local left_str = recur_render(node.left)
+		local right_str = recur_render(node.right)
+		return ("(%s) * (%s)"):format(left_str, right_str)
 	end,
 
 	cross_product = function(node, recur_render)
@@ -139,7 +139,7 @@ M.handlers = {
 
 	gauss_eliminate = function(node, recur_render)
 		local matrix_str = recur_render(node.expression)
-		return ("sp.Matrix(%s).rref()[1]"):format(matrix_str)
+		return ("sp.Matrix(%s).rref()[0]"):format(matrix_str)
 	end,
 
 	vector_list = function(node, recur_render)
@@ -153,11 +153,14 @@ M.handlers = {
 
 	linear_independent_test = function(node, recur_render)
 		local target_ast = node.target
-		local rendered_argument_list
 
 		if target_ast.type == "matrix" then
-			rendered_argument_list = recur_render(target_ast)
-		elseif target_ast.type == "vector_list" then
+			local matrix_str = recur_render(target_ast)
+			return ("(lambda m: m.rank() == m.shape[1])(%s)"):format(matrix_str)
+		end
+
+		local list_str
+		if target_ast.type == "vector_list" then
 			local vectors_for_python = {}
 			for _, vec_node in ipairs(target_ast.vectors) do
 				if vec_node.type == "matrix" then
@@ -179,15 +182,15 @@ M.handlers = {
 					table.insert(vectors_for_python, recur_render(vec_node))
 				end
 			end
-			rendered_argument_list = "[" .. table.concat(vectors_for_python, ", ") .. "]"
+			list_str = "[" .. table.concat(vectors_for_python, ", ") .. "]"
 		elseif target_ast.type == "vector" or target_ast.type == "symbolic_vector" then
-			rendered_argument_list = "[" .. recur_render(target_ast) .. "]"
+			list_str = "[" .. recur_render(target_ast) .. "]"
 		else
 			logger.warn("Tungsten: linear_independent_test handler received unexpected AST type: " .. target_ast.type)
-			rendered_argument_list = recur_render(target_ast)
+			list_str = "[" .. recur_render(target_ast) .. "]"
 		end
 
-		return ("sp.Matrix.hstack(%s).rank() == len(%s)"):format(rendered_argument_list, rendered_argument_list)
+		return ("sp.Matrix.hstack(*%s).rank() == len(%s)"):format(list_str, list_str)
 	end,
 
 	rank = function(node, recur_render)
@@ -197,17 +200,19 @@ M.handlers = {
 
 	eigenvalues = function(node, recur_render)
 		local matrix_str = recur_render(node.expression)
-		return ("sp.Matrix(%s).eigenvals()"):format(matrix_str)
+		return ("[v for v, c in sp.Matrix(%s).eigenvals().items() for _ in range(c)]"):format(matrix_str)
 	end,
 
 	eigenvectors = function(node, recur_render)
 		local matrix_str = recur_render(node.expression)
-		return ("sp.Matrix(%s).eigenvects()"):format(matrix_str)
+		return ("[vec for _, _, vecs in sp.Matrix(%s).eigenvects() for vec in vecs]"):format(matrix_str)
 	end,
 
 	eigensystem = function(node, recur_render)
 		local matrix_str = recur_render(node.expression)
-		return ("sp.Matrix(%s).eigenvects()"):format(matrix_str)
+		return ("(lambda evs: [[v for v, m, _ in evs for _ in range(m)], [vec for _, _, vecs in evs for vec in vecs]])(sp.Matrix(%s).eigenvects())"):format(
+			matrix_str
+		)
 	end,
 }
 

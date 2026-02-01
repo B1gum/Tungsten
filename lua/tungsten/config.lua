@@ -2,9 +2,8 @@
 -- Defines default user configurations
 
 local config = {
-	persistent = true,
 	numeric_mode = false,
-	debug = true,
+	debug = false,
 	log_level = "INFO",
 	cache_enabled = true,
 	cache_max_entries = 100,
@@ -19,6 +18,7 @@ local config = {
 	backend = "wolfram",
 	backend_opts = {
 		wolfram = {
+			persistent = true,
 			wolfram_path = "wolframscript",
 			function_mappings = {
 				sin = "Sin",

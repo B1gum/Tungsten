@@ -42,6 +42,7 @@ For `lazy.nvim` users:
       "nvim-telescope/telescope.nvim", -- Optional
       "folke/which-key.nvim", -- Optional
     },
+    build = "./scripts/install_python_deps.sh",
     opts = {
       -- Configuration options
     },

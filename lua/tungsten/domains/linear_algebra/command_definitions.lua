@@ -100,6 +100,7 @@ M.TungstenLinearIndependent = {
 			cb(linear_independent_result_handler(res), nil)
 		end)
 	end,
+	separator = " \\rightarrow ",
 }
 
 M.TungstenRank = {

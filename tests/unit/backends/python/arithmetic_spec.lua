@@ -116,7 +116,7 @@ describe("Tungsten Arithmetic Python Handlers", function()
 				right = { type = "number", value = 2 },
 			}
 
-			assert.are.equal("Eq(1, 2)", handlers.binary(node, mock_recur_render))
+			assert.are.equal("sp.Eq(1, 2)", handlers.binary(node, mock_recur_render))
 		end)
 	end)
 
@@ -147,7 +147,7 @@ describe("Tungsten Arithmetic Python Handlers", function()
 				name_node = { type = "variable", name = "sin" },
 				args = { { type = "variable", name = "x" } },
 			}
-			assert.are.equal("sin(x)", handlers.function_call(node, mock_recur_render))
+			assert.are.equal("_apply(sp.sin, x)", handlers.function_call(node, mock_recur_render))
 		end)
 
 		it("maps function names using python backend opts", function()
@@ -165,7 +165,7 @@ describe("Tungsten Arithmetic Python Handlers", function()
 				args = { { type = "variable", name = "x" }, { type = "number", value = 1 } },
 			}
 
-			assert.are.equal("math_sin(x, 1)", handlers.function_call(node, mock_recur_render))
+			assert.are.equal("_apply(math_sin, x, 1)", handlers.function_call(node, mock_recur_render))
 		end)
 	end)
 

@@ -129,7 +129,7 @@ describe("Tungsten Linear Algebra Domain Python Handlers", function()
 			local vec2_node = ast_node("vector_placeholder", { name = "v" })
 			local node = ast_node("dot_product", { left = vec1_node, right = vec2_node })
 			local result = handlers.dot_product(node, mock_recur_render)
-			assert.are.equal("(u).dot(v)", result)
+			assert.are.equal("(u) * (v)", result)
 		end)
 	end)
 
@@ -174,7 +174,7 @@ describe("Tungsten Linear Algebra Domain Python Handlers", function()
 		it("renders gaussian elimination", function()
 			local node = ast_node("gauss_eliminate", { expression = ast_node("expr_placeholder", { content = "M" }) })
 			local result = handlers.gauss_eliminate(node, mock_recur_render)
-			assert.are.equal("sp.Matrix(M).rref()[1]", result)
+			assert.are.equal("sp.Matrix(M).rref()[0]", result)
 		end)
 	end)
 
@@ -213,7 +213,7 @@ describe("Tungsten Linear Algebra Domain Python Handlers", function()
 
 			local result = handlers.linear_independent_test(node, mock_recur_render)
 			assert.are.equal(
-				"sp.Matrix.hstack([Matrix([1, 2]), Matrix([x, y])]).rank() == len([Matrix([1, 2]), Matrix([x, y])])",
+				"sp.Matrix.hstack(*[Matrix([1, 2]), Matrix([x, y])]).rank() == len([Matrix([1, 2]), Matrix([x, y])])",
 				result
 			)
 		end)
@@ -228,7 +228,7 @@ describe("Tungsten Linear Algebra Domain Python Handlers", function()
 				target = ast_node("expr_placeholder", { content = "K" }),
 			})
 			local result = handlers.linear_independent_test(node, mock_recur_render)
-			assert.are.equal("sp.Matrix.hstack(K).rank() == len(K)", result)
+			assert.are.equal("sp.Matrix.hstack(*[K]).rank() == len([K])", result)
 			assert.spy(warn_spy).was.called()
 			logger.warn = original_warn
 		end)

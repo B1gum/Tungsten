@@ -9,6 +9,43 @@ local M = {}
 M.handlers = {
 	ordinary_derivative = function(node, walk)
 		local order = (node.order and walk(node.order)) or 1
+		local variable = node.variable
+
+		local is_number_deriv = false
+		local point = nil
+
+		if variable then
+			if variable.type == "number" then
+				is_number_deriv = true
+				point = walk(variable)
+			else
+				local var_str = walk(variable)
+				if tonumber(var_str) then
+					is_number_deriv = true
+					point = var_str
+				end
+			end
+		end
+
+		if is_number_deriv and node.expression and node.expression.type == "function_call" then
+			local func_name_node = node.expression.name_node
+			if func_name_node then
+				local func_name = walk(func_name_node)
+
+				if tostring(order) == "1" then
+					return ("sp.diff(%s, %s.args[0]).subs(%s.args[0], %s)"):format(func_name, func_name, func_name, point)
+				else
+					return ("sp.diff(%s, %s.args[0], %s).subs(%s.args[0], %s)"):format(
+						func_name,
+						func_name,
+						order,
+						func_name,
+						point
+					)
+				end
+			end
+		end
+
 		local expression_str = walk(node.expression)
 		local variable_str = walk(node.variable)
 
