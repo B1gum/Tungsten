@@ -88,7 +88,7 @@ local function create_proxy_handle(opts)
 			if pending_opts and pending_opts.on_exit then
 				local on_exit = pending_opts.on_exit
 				vim.schedule(function()
-					on_exit(-1, "", "")
+					on_exit(-1, "", "", { cancel_reason = "cancelled" })
 				end)
 			end
 			return
@@ -160,12 +160,25 @@ local function create_job_handle(pid, job_obj)
 			completed = false,
 			finalize = nil,
 			on_exit = nil,
+			timed_out = false,
+			timeout_ms = nil,
+			cancel_reason = nil,
 		},
 	}
 
-	function handle.cancel()
+	function handle.cancel(reason)
 		if handle._state.completed then
 			return
+		end
+
+		if reason and handle._state.cancel_reason == nil then
+			handle._state.cancel_reason = reason
+		elseif handle._state.cancel_reason == nil then
+			handle._state.cancel_reason = "cancelled"
+		end
+
+		if handle._state.cancel_reason == "timeout" then
+			handle._state.timed_out = true
 		end
 
 		job_obj:shutdown(15)
@@ -182,7 +195,8 @@ local function create_job_handle(pid, job_obj)
 
 			job_obj:shutdown(9)
 			if handle._state.finalize then
-				handle._state.finalize(-1)
+				local exit_code = handle._state.timed_out and 124 or -1
+				handle._state.finalize(exit_code)
 			end
 		end, 1000)
 	end
@@ -194,16 +208,21 @@ local function create_job_handle(pid, job_obj)
 end
 
 local function setup_timeout(handle, timeout_ms)
-	if not timeout_ms then
+	local normalized = tonumber(timeout_ms)
+	if not normalized or normalized <= 0 then
 		return
 	end
 
+	handle._state.timeout_ms = normalized
+
 	vim.defer_fn(function()
 		if handle.is_active() then
-			logger.warn("Tungsten", string.format("Tungsten: job %d timed out after %d ms.", handle.id, timeout_ms))
-			handle.cancel()
+			handle._state.timed_out = true
+			handle._state.cancel_reason = "timeout"
+			logger.warn("Tungsten", string.format("Tungsten: job %d timed out after %d ms.", handle.id, normalized))
+			handle.cancel("timeout")
 		end
-	end, timeout_ms)
+	end, normalized)
 end
 
 local function finalize_job(handle, exit_code, stdout_chunks, stderr_chunks)
@@ -221,10 +240,28 @@ local function finalize_job(handle, exit_code, stdout_chunks, stderr_chunks)
 	if handle._state.on_exit then
 		local stdout = table.concat(stdout_chunks, "\n"):gsub("^%s*(.-)%s*$", "%1")
 		local stderr = table.concat(stderr_chunks, "\n"):gsub("^%s*(.-)%s*$", "%1")
+		local meta = {
+			timed_out = handle._state.timed_out or false,
+			timeout_ms = handle._state.timeout_ms,
+			cancel_reason = handle._state.cancel_reason,
+		}
 		vim.schedule(function()
-			handle._state.on_exit(exit_code, stdout, stderr)
+			handle._state.on_exit(exit_code, stdout, stderr, meta)
 		end)
 	end
+end
+
+local function resolve_timeout_ms(opts)
+	if not opts then
+		return nil
+	end
+	if opts.timeout ~= nil then
+		return opts.timeout
+	end
+	if opts.timeout_ms ~= nil then
+		return opts.timeout_ms
+	end
+	return nil
 end
 
 local function spawn_process(cmd, opts)
@@ -232,7 +269,16 @@ local function spawn_process(cmd, opts)
 	local _ = process_queue
 	local cache_key = opts.cache_key
 	local on_exit = opts.on_exit or opts.on_complete
-	local timeout = opts.timeout or config.process_timeout_ms or 10000
+	local timeout = resolve_timeout_ms(opts)
+	if timeout == nil then
+		timeout = config.timeout_ms
+	end
+	if timeout == nil then
+		timeout = config.process_timeout_ms
+	end
+	if timeout == nil then
+		timeout = 10000
+	end
 
 	local stdout_chunks, stderr_chunks = {}, {}
 
@@ -306,12 +352,16 @@ PersistentJob.__index = PersistentJob
 
 function PersistentJob.new(cmd, opts)
 	local self = setmetatable({}, PersistentJob)
+	opts = opts or {}
 	self.buffer = {}
 	self.queue = {}
 	self.busy = false
-	self.current_callback = nil
+	self.current_request = nil
 	self.delimiter = opts.delimiter or "__TUNGSTEN_END__"
 	self.ready = false
+	self.dead = false
+	self.last_error = nil
+	self._timeout_token = nil
 
 	local Job = require("plenary.job")
 	self.job = Job:new({
@@ -324,32 +374,17 @@ function PersistentJob.new(cmd, opts)
 					local result = table.concat(self.buffer, "\n")
 					self.buffer = {}
 
-					if self.current_callback then
-						local cb = self.current_callback
-						self.current_callback = nil
-						vim.schedule(function()
-							cb(result, nil)
-						end)
-					end
+					self:_finish_current(result, nil)
 
 					if not self.ready then
 						self.ready = true
 						logger.info("Tungsten", "Persistent session ready.")
 					end
-
-					self.busy = false
-					self:process_queue()
 				else
 					table.insert(self.buffer, line)
 				end
 			elseif err then
-				vim.schedule(function()
-					if self.current_callback then
-						self.current_callback(nil, err)
-						self.current_callback = nil
-					end
-					self.busy = false
-				end)
+				self:_finish_current(nil, err)
 			end
 		end,
 		on_stderr = function(_, line)
@@ -363,8 +398,118 @@ function PersistentJob.new(cmd, opts)
 	return self
 end
 
-function PersistentJob:send(input, callback)
-	table.insert(self.queue, { input = input, callback = callback })
+function PersistentJob:is_dead()
+	return self.dead
+end
+
+function PersistentJob:_finish_current(result, err)
+	local current = self.current_request
+	self.current_request = nil
+	self.buffer = {}
+
+	if self._timeout_token then
+		self._timeout_token.active = false
+		self._timeout_token = nil
+	end
+
+	if current and current.callback then
+		local cb = current.callback
+		vim.schedule(function()
+			cb(result, err)
+		end)
+	end
+
+	self.busy = false
+	self:process_queue()
+end
+
+function PersistentJob:_cancel_queued(cancel_error)
+	if #self.queue == 0 then
+		return
+	end
+	local pending = self.queue
+	self.queue = {}
+	for _, item in ipairs(pending) do
+		if item.callback then
+			local err_msg = item.cancel_error or cancel_error
+			vim.schedule(function()
+				item.callback(nil, err_msg)
+			end)
+		end
+	end
+end
+
+function PersistentJob:_handle_timeout(item, timeout_ms)
+	self.dead = true
+	self.busy = false
+	self.current_request = nil
+	self.buffer = {}
+	if self._timeout_token then
+		self._timeout_token.active = false
+		self._timeout_token = nil
+	end
+
+	local timeout_err = (item and item.timeout_error) or "E_TIMEOUT: persistent session timed out."
+	self.last_error = timeout_err
+
+	if self.job then
+		self.job:shutdown()
+	end
+
+	logger.warn("Tungsten", string.format("Persistent session timed out after %d ms.", timeout_ms))
+
+	if item and item.callback then
+		vim.schedule(function()
+			item.callback(nil, timeout_err)
+		end)
+	end
+
+	self:_cancel_queued(timeout_err)
+end
+
+function PersistentJob:_start_timeout(item)
+	local timeout_ms = item and item.timeout_ms
+	local normalized = tonumber(timeout_ms)
+	if not normalized or normalized <= 0 then
+		return
+	end
+
+	local token = { active = true }
+	self._timeout_token = token
+	vim.defer_fn(function()
+		if not token.active then
+			return
+		end
+		if self.current_request ~= item then
+			return
+		end
+		token.active = false
+		self:_handle_timeout(item, normalized)
+	end, normalized)
+end
+
+function PersistentJob:send(input, callback, opts)
+	if self.dead then
+		if callback then
+			local err_msg = self.last_error
+				or (opts and opts.timeout_error)
+				or (opts and opts.cancel_error)
+				or "E_CANCELLED: persistent session reset."
+			vim.schedule(function()
+				callback(nil, err_msg)
+			end)
+		end
+		return
+	end
+
+	opts = opts or {}
+	table.insert(self.queue, {
+		input = input,
+		callback = callback,
+		timeout_ms = opts.timeout_ms or opts.timeout,
+		timeout_error = opts.timeout_error,
+		cancel_error = opts.cancel_error,
+	})
 	self:process_queue()
 end
 
@@ -374,15 +519,21 @@ function PersistentJob:process_queue()
 	end
 
 	local item = table.remove(self.queue, 1)
-	self.current_callback = item.callback
+	self.current_request = item
 	self.busy = true
 	self.job:send(item.input .. "\n")
+	self:_start_timeout(item)
 end
 
 function PersistentJob:stop()
 	if self.job then
 		self.job:shutdown()
 	end
+	if self._timeout_token then
+		self._timeout_token.active = false
+		self._timeout_token = nil
+	end
+	self.dead = true
 end
 
 function M.create_persistent_job(cmd, opts)

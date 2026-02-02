@@ -75,7 +75,13 @@ describe("tungsten util additional coverage", function()
 
 		assert.is_true(proxy.is_active())
 		proxy.cancel()
-		assert.spy(on_exit).was_called_with(-1, "", "")
+		assert.spy(on_exit).was_called()
+		local args = on_exit.calls[1].vals
+		assert.are.equal(-1, args[1])
+		assert.are.equal("", args[2])
+		assert.are.equal("", args[3])
+		assert.is_table(args[4])
+		assert.are.equal("cancelled", args[4].cancel_reason)
 		assert.is_false(proxy.is_active())
 		assert.is_false(job_queue:remove(proxy))
 

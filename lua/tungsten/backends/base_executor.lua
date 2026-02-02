@@ -40,6 +40,38 @@ local function format_exit_error(executor, exit_code)
 	return ("%s interpreter exited with code %d"):format(get_error_label(executor), exit_code)
 end
 
+local function format_timeout_error(executor, timeout_ms)
+	local label = get_error_label(executor)
+	if timeout_ms and tonumber(timeout_ms) then
+		return string.format("E_TIMEOUT: %s evaluation timed out after %d ms.", label, timeout_ms)
+	end
+	return string.format("E_TIMEOUT: %s evaluation timed out.", label)
+end
+
+local function format_cancel_error(executor)
+	return string.format("E_CANCELLED: %s evaluation cancelled.", get_error_label(executor))
+end
+
+local function resolve_timeout_ms(opts, config)
+	if opts then
+		if opts.timeout ~= nil then
+			return opts.timeout
+		end
+		if opts.timeout_ms ~= nil then
+			return opts.timeout_ms
+		end
+	end
+	if config then
+		if config.timeout_ms ~= nil then
+			return config.timeout_ms
+		end
+		if config.process_timeout_ms ~= nil then
+			return config.process_timeout_ms
+		end
+	end
+	return nil
+end
+
 function BaseExecutor.evaluate_async(executor, ast, opts, callback)
 	assert(type(callback) == "function", "evaluate_async expects callback")
 
@@ -67,7 +99,8 @@ function BaseExecutor.evaluate_async(executor, ast, opts, callback)
 
 	get_async().run_job(full_command, {
 		cache_key = cache_key,
-		on_exit = function(exit_code, stdout, stderr)
+		timeout = opts.timeout or opts.timeout_ms,
+		on_exit = function(exit_code, stdout, stderr, meta)
 			if exit_code == 0 then
 				if stderr ~= "" then
 					get_logger().debug("Tungsten Debug", "Tungsten Debug (stderr): " .. stderr)
@@ -80,8 +113,17 @@ function BaseExecutor.evaluate_async(executor, ast, opts, callback)
 				callback(output, nil)
 			else
 				local err_msg
-				if exit_code == -1 or exit_code == 127 then
+				local timed_out = (meta and meta.timed_out) or exit_code == 124
+				if timed_out then
+					err_msg = format_timeout_error(executor, meta and meta.timeout_ms)
+				elseif exit_code == 127 then
 					err_msg = executor.not_found_message or (get_error_label(executor) .. " interpreter not found.")
+				elseif exit_code == -1 then
+					if meta and meta.cancel_reason then
+						err_msg = format_cancel_error(executor)
+					else
+						err_msg = executor.not_found_message or (get_error_label(executor) .. " interpreter not found.")
+					end
 				else
 					err_msg = format_exit_error(executor, exit_code)
 				end
@@ -167,6 +209,7 @@ end
 function BaseExecutor.evaluate_persistent(executor, ast, opts, callback)
 	local state = require("tungsten.state")
 	local async = require("tungsten.util.async")
+	local config = require("tungsten.config")
 
 	local ok, code = pcall(executor.ast_to_code, ast)
 	if not ok or not code then
@@ -176,6 +219,13 @@ function BaseExecutor.evaluate_persistent(executor, ast, opts, callback)
 
 	local delimiter = "__TUNGSTEN_END__"
 	local formatted_input = executor.format_persistent_input(code, delimiter)
+	local timeout_ms = resolve_timeout_ms(opts, config)
+	local timeout_error = format_timeout_error(executor, timeout_ms)
+	local cancel_error = format_cancel_error(executor)
+
+	if state.persistent_job and state.persistent_job.is_dead and state.persistent_job:is_dead() then
+		state.persistent_job = nil
+	end
 
 	if not state.persistent_job then
 		local cmd = executor.get_persistent_command()
@@ -186,13 +236,24 @@ function BaseExecutor.evaluate_persistent(executor, ast, opts, callback)
 			if init_code then
 				local fmt_func = executor.format_persistent_init or executor.format_persistent_input
 				local formatted_init = fmt_func(init_code, delimiter)
-				state.persistent_job:send(formatted_init, function(_, _) end)
+				state.persistent_job:send(formatted_init, function(_, _) end, {
+					timeout_ms = timeout_ms,
+					timeout_error = timeout_error,
+					cancel_error = cancel_error,
+				})
 			end
 		end
 	end
 
 	state.persistent_job:send(formatted_input, function(output, err)
 		if err then
+			local job = state.persistent_job
+			if job and job.is_dead and job:is_dead() and job.last_error then
+				local last = tostring(job.last_error)
+				if last:find("E_TIMEOUT", 1, true) then
+					err = job.last_error
+				end
+			end
 			callback(nil, err)
 		else
 			if executor.sanitize_persistent_output then
@@ -200,7 +261,11 @@ function BaseExecutor.evaluate_persistent(executor, ast, opts, callback)
 			end
 			callback(output, nil)
 		end
-	end)
+	end, {
+		timeout_ms = timeout_ms,
+		timeout_error = timeout_error,
+		cancel_error = cancel_error,
+	})
 end
 
 return BaseExecutor

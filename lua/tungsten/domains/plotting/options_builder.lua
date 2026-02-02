@@ -99,7 +99,7 @@ function M.build(classification, user_overrides)
 		viewer_cmd_pdf = get_default(defaults.viewer_cmd_pdf, "open"),
 		viewer_cmd_png = get_default(defaults.viewer_cmd_png, "open"),
 		crop = true,
-		timeout_ms = 30000,
+		timeout_ms = get_default(defaults.timeout_ms, config.process_timeout_ms or config.timeout_ms or 30000),
 		series = {},
 	}
 
