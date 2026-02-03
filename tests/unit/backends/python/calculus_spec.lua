@@ -152,6 +152,25 @@ describe("Tungsten Calculus Domain Python Handlers", function()
 		end)
 	end)
 
+	describe("product handler", function()
+		it("formats products", function()
+			local node = ast_node("product", {
+				body_expression = ast_node("variable", { name = "term" }),
+				index_variable = ast_node("variable", { name = "n" }),
+				start_expression = ast_node("number", { value = 1 }),
+				end_expression = ast_node("number", { value = 5 }),
+			})
+
+			local result = handlers.product(node, mock_recur_render)
+
+			assert.are.equal("sp.product(term, (n, 1, 5))", result)
+			assert.spy(mock_recur_render).was.called_with(node.body_expression)
+			assert.spy(mock_recur_render).was.called_with(node.index_variable)
+			assert.spy(mock_recur_render).was.called_with(node.start_expression)
+			assert.spy(mock_recur_render).was.called_with(node.end_expression)
+		end)
+	end)
+
 	describe("symbol handler", function()
 		it("maps infinity and pi", function()
 			assert.are.equal("sp.oo", handlers.symbol(ast_node("symbol", { name = "infinity" })))

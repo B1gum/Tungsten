@@ -1,12 +1,13 @@
 # Calculus
 
-Tungsten supports core calculus operations throught its calculus domain. This includes support for limits, dertivatives, integrals, and summations, all of which can be evaluated directly from the LaTeX-formatted input using `:TungstenEvaluate`.
+Tungsten supports core calculus operations throught its calculus domain. This includes support for limits, dertivatives, integrals, summations, and products, all of which can be evaluated directly from the LaTeX-formatted input using `:TungstenEvaluate`.
 
 ```latex
 \lim_{x \to 0} \frac{\sin x}{x} = 1
 \frac{\mathrm{d}}{\mathrm{d}x} x^2 = 2 x
 \int_{0}^{1} x^2 \, \mathrm{d}x  = \frac{1}{3}
 \sum_{i = 1}^{n} i  = \frac{1}{2} n (n+1)
+\prod_{i = 1}^{n} i = n!
 ```
 
 
@@ -111,7 +112,7 @@ Definite integrals follow the same rules as indefinite integrals, however here a
 ```
 
 
-## Limits and Summations
+## Limits, Summations, and Products
 
 Tungsten is also able to handle limits and sums. These follow the standard LaTeX-syntax of
 ```latex
@@ -121,6 +122,10 @@ and
 ```latex
 \sum_{<Variable> = <Start>}^{<End>} <Expression>
 ```
+and
+```latex
+\prod_{<Variable> = <Start>}^{<End>} <Expression>
+```
 
 **Example**:
 ```latex
@@ -128,4 +133,6 @@ and
 \lim_{y \to \infty} \frac{1}{y} = 0
 \sum_{i = 1}^{n} i = \frac{1}{2} n (n+1)
 \sum_{k = 1}^{\infty} \frac{1}{k^2} = \frac{\pi^2}{6}
+\prod_{k = 1}^{n} k = n!
+\prod_{i = 1}^{5} (i^2 + 1) = 44200
 ```

@@ -26,7 +26,7 @@ describe("free variable detection", function()
 		assert.are.same({ "y", "z" }, free_vars.find(integral))
 	end)
 
-	it("accounts for bindings introduced by summations, limits, and derivatives", function()
+	it("accounts for bindings introduced by summations, products, limits, and derivatives", function()
 		local start_expr = ast.create_variable_node("a")
 		local end_expr = ast.create_function_call_node(ast.create_variable_node("f"), {
 			ast.create_variable_node("b"),
@@ -37,6 +37,13 @@ describe("free variable detection", function()
 			start_expr,
 			end_expr,
 			ast.create_binary_operation_node("*", ast.create_variable_node("i"), ast.create_variable_node("c"))
+		)
+
+		local product = ast.create_product_node(
+			ast.create_variable_node("j"),
+			ast.create_number_node(1),
+			ast.create_variable_node("n"),
+			ast.create_binary_operation_node("*", ast.create_variable_node("j"), ast.create_variable_node("q"))
 		)
 
 		local limit = ast.create_limit_node(
@@ -61,12 +68,13 @@ describe("free variable detection", function()
 
 		local expr = ast.create_function_call_node(ast.create_variable_node("wrapper"), {
 			summation,
+			product,
 			limit,
 			ordinary,
 			partial,
 			ast.create_constant_node("π"),
 		})
 
-		assert.are.same({ "a", "b", "c", "d", "p", "t", "u", "v" }, free_vars.find(expr))
+		assert.are.same({ "a", "b", "c", "d", "n", "p", "q", "t", "u", "v" }, free_vars.find(expr))
 	end)
 end)

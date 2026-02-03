@@ -14,14 +14,17 @@
 
 ### Features
 
-- Added persistent sessions (on by default, can be toggled using `:TungstenTogglePersistence`)
+- Added persistent sessions for the wolfram backend (on by default, can be toggled using `:TungstenTogglePersistence`)
 - Implemented the Python backend for computation (everything except plotting)
 - Implemented the `:TungstenSwitchBackend` command allowing the user to switch the backend post-setup
+- Added parsing rules for `\prod` akin to those already implemented for `\sum`
 
 ### Fixed
 
 - Added `luafilesystem` and `penlight` to rockspec
 - Added `scripts/install_python_deps.sh` and run it at build-time to automatically install python dependencies
+- Corrected timout error-reporting
+- Made persistent sessiosn respect timeouts
 
 ### documentation
 

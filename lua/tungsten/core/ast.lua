@@ -138,6 +138,15 @@ function M.create_summation_node(index_variable, start_expression, end_expressio
 	})
 end
 
+function M.create_product_node(index_variable, start_expression, end_expression, body_expression)
+	return node("product", {
+		index_variable = index_variable,
+		start_expression = start_expression,
+		end_expression = end_expression,
+		body_expression = body_expression,
+	})
+end
+
 function M.create_matrix_node(rows, env_type)
 	return node("matrix", { rows = rows, env_type = env_type })
 end

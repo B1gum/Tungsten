@@ -317,6 +317,45 @@ describe("Tungsten Calculus Domain Wolfram Handlers", function()
 		end)
 	end)
 
+	describe("product handler", function()
+		it("should correctly format a product with numeric iterator bounds", function()
+			local node = ast_node("product", {
+				body_expression = ast_node("variable", { name = "ai" }),
+				index_variable = ast_node("variable", { name = "i" }),
+				start_expression = ast_node("number", { value = 1 }),
+				end_expression = ast_node("number", { value = 10 }),
+			})
+			local result = handlers.product(node, mock_recur_render)
+			assert.are.equal("Product[ai, {i, 1, 10}]", result)
+			assert.spy(mock_recur_render).was.called_with(node.body_expression)
+			assert.spy(mock_recur_render).was.called_with(node.index_variable)
+			assert.spy(mock_recur_render).was.called_with(node.start_expression)
+			assert.spy(mock_recur_render).was.called_with(node.end_expression)
+		end)
+
+		it("should correctly format a product with variable iterator bounds", function()
+			local node = ast_node("product", {
+				body_expression = ast_node("variable", { name = "xk" }),
+				index_variable = ast_node("variable", { name = "k" }),
+				start_expression = ast_node("variable", { name = "m" }),
+				end_expression = ast_node("variable", { name = "N" }),
+			})
+			local result = handlers.product(node, mock_recur_render)
+			assert.are.equal("Product[xk, {k, m, N}]", result)
+		end)
+
+		it("should correctly format a product with symbolic upper bound (Infinity)", function()
+			local node = ast_node("product", {
+				body_expression = ast_node("variable", { name = "term_n" }),
+				index_variable = ast_node("variable", { name = "n" }),
+				start_expression = ast_node("number", { value = 0 }),
+				end_expression = ast_node("symbol", { name = "infinity" }),
+			})
+			local result = handlers.product(node, mock_recur_render)
+			assert.are.equal("Product[term_n, {n, 0, Infinity}]", result)
+		end)
+	end)
+
 	describe("symbol handler", function()
 		it("should handle 'infinity'", function()
 			local node = ast_node("symbol", { name = "infinity" })

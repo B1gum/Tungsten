@@ -15,7 +15,7 @@ The fundamental domain for everyday calculations. It handles:
 Provides symbolic evaluation for core calculus concepts using standard Leibniz, Lagrange, or Newton notation.
 * **Derivatives**: Ordinary and partial derivatives.
 * **Integrals**: Definite and indefinite integration.
-* **Limits & Sums**: Evaluating limits (`\lim`) and summations (`\sum`).
+* **Limits, Sums, & Products**: Evaluating limits (`\lim`), summations (`\sum`), and products (`\prod`).
 
 ## [Differential Equations](differential-equations.md)
 A powerful domain for solving differential equations and performing integral transforms.

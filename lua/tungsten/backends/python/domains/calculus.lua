@@ -96,6 +96,15 @@ M.handlers = {
 		return ("sp.summation(%s, (%s, %s, %s))"):format(body_str, index_var_str, start_str, end_str)
 	end,
 
+	product = function(node, recur_render)
+		local body_str, index_var_str, start_str, end_str = render_util.render_fields(
+			node,
+			{ "body_expression", "index_variable", "start_expression", "end_expression" },
+			recur_render
+		)
+		return ("sp.product(%s, (%s, %s, %s))"):format(body_str, index_var_str, start_str, end_str)
+	end,
+
 	symbol = function(node, _)
 		local constant_info = constants.get(node.name)
 		if constant_info and constant_info.python then

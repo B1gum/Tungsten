@@ -1004,6 +1004,33 @@ describe("tungsten.core.parser.parse with combined grammar", function()
 			assert.are.same(expected_ast, parse_input(input))
 		end)
 
+		it("should parse products with arithmetic in body: \\prod_{i=1}^{N} (i^2 + 1)", function()
+			local input = "\\prod_{i=1}^{N} (i^2 + 1)"
+			local expected_ast = ast_utils.create_product_node(
+				{ type = "variable", name = "i" },
+				{ type = "number", value = 1 },
+				{ type = "variable", name = "N" },
+				ast_utils.create_binary_operation_node(
+					"+",
+					ast_utils.create_superscript_node({ type = "variable", name = "i" }, { type = "number", value = 2 }),
+					{ type = "number", value = 1 }
+				)
+			)
+			assert.are.same(expected_ast, parse_input(input))
+		end)
+
+		it("should parse products with infinity as an upper bound", function()
+			local input = "\\prod_{k=1}^{\\infty} k"
+			local expected_ast = ast_utils.create_product_node(
+				{ type = "variable", name = "k" },
+				{ type = "number", value = 1 },
+				{ type = "symbol", name = "infinity" },
+				{ type = "variable", name = "k" }
+			)
+
+			assert.are.same(expected_ast, parse_input(input))
+		end)
+
 		it("should parse definite integrals with infinity bounds", function()
 			local input = "\\int_{0}^{\\infty} 1 \\mathrm{d}x"
 			local expected_ast = ast_utils.create_definite_integral_node(

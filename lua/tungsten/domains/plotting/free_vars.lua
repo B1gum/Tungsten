@@ -43,7 +43,7 @@ local function collect(node, bound, acc)
 		return
 	end
 
-	if t == "summation" then
+	if t == "summation" or t == "product" then
 		if node.start_expression then
 			collect(node.start_expression, bound, acc)
 		end
