@@ -76,6 +76,10 @@ function BaseExecutor.evaluate_async(executor, ast, opts, callback)
 	assert(type(callback) == "function", "evaluate_async expects callback")
 
 	opts = opts or {}
+	local show_spinner = opts.show_spinner
+	if show_spinner == nil then
+		show_spinner = true
+	end
 	local cache_key = opts.cache_key
 
 	local ok, code = pcall(executor.ast_to_code, ast)
@@ -100,6 +104,8 @@ function BaseExecutor.evaluate_async(executor, ast, opts, callback)
 	get_async().run_job(full_command, {
 		cache_key = cache_key,
 		timeout = opts.timeout or opts.timeout_ms,
+		show_spinner = show_spinner,
+		spinner = opts.spinner,
 		on_exit = function(exit_code, stdout, stderr, meta)
 			if exit_code == 0 then
 				if stderr ~= "" then
@@ -222,6 +228,10 @@ function BaseExecutor.evaluate_persistent(executor, ast, opts, callback)
 	local timeout_ms = resolve_timeout_ms(opts, config)
 	local timeout_error = format_timeout_error(executor, timeout_ms)
 	local cancel_error = format_cancel_error(executor)
+	local show_spinner = opts.show_spinner
+	if show_spinner == nil then
+		show_spinner = true
+	end
 
 	if state.persistent_job and state.persistent_job.is_dead and state.persistent_job:is_dead() then
 		state.persistent_job = nil
@@ -262,6 +272,8 @@ function BaseExecutor.evaluate_persistent(executor, ast, opts, callback)
 			callback(output, nil)
 		end
 	end, {
+		show_spinner = show_spinner,
+		spinner = opts.spinner,
 		timeout_ms = timeout_ms,
 		timeout_error = timeout_error,
 		cancel_error = cancel_error,

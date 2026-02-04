@@ -14,6 +14,7 @@ local config = {
 	result_separator = " = ",
 	result_display = "insert",
 	max_jobs = 3,
+	job_spinner = true,
 	persistent_variable_assignment_operator = ":=",
 	backend = "wolfram",
 	backend_opts = {
@@ -41,7 +42,7 @@ local config = {
 		},
 	},
 	plotting = {
-		backend = "wolfram",
+		backend = "python",
 		usetex = true,
 		latex_engine = "pdflatex",
 		latex_preamble = "",

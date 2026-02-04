@@ -35,6 +35,7 @@ Below is the default configuration. You can copy and paste this into your setup 
   result_display = "insert",       -- How to show results: "insert", "virtual_text", or "float"
   
   max_jobs = 3,                    -- Maximum concurrent backend jobs
+  job_spinner = true,              -- Show a spinner during evaluation jobs
   
   persistent_variable_assignment_operator = ":=", -- Operator used for persistent variable assignment
   

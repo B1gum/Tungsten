@@ -22,6 +22,7 @@ require("tungsten").setup({
     -- Execution Settings
     process_timeout_ms = 30000,
     max_jobs = 3, -- Max concurrent async jobs
+    job_spinner = true, -- Show a spinner during evaluation jobs
     
     -- UI & Formatting
     result_separator = " = ",
@@ -90,6 +91,7 @@ The configuration is broadly divided into general settings, backend options, and
 | `log_level` | string | `"INFO"` | Sets the verbosity of the logger. (`"DEBUG"`, `"INFO"`, `"WARN"`, `"ERROR"`) |
 | `process_timeout_ms` | number | `30000` | Maximum duration (ms) for a backend process before it times out. |
 | `max_jobs` | number | `3` | Maximum number of concurrent backend jobs allowed. |
+| `job_spinner` | boolean | `true` | If true, shows a spinner while evaluation jobs are running. |
 | `result_separator` | string | `" = "` | The string inserted between the input expression and the result. |
 | `result_display` | string | `"insert"` | How results are shown. `"insert"` appends to buffer. `"virtual"` displays it as virtual text and `"float"` displays the result in a floating window. |
 | `persistent_variable_assignment_operator` | string | `":="` | Operator used to define variables that persist across evaluations. |

@@ -4,6 +4,7 @@
 local state = require("tungsten.state")
 local logger = require("tungsten.util.logger")
 local config = require("tungsten.config")
+local job_spinner = require("tungsten.util.job_spinner")
 
 local M = {}
 
@@ -232,6 +233,10 @@ local function finalize_job(handle, exit_code, stdout_chunks, stderr_chunks)
 	handle._state.completed = true
 
 	if handle and handle.id and state.active_jobs[handle.id] then
+		local info = state.active_jobs[handle.id]
+		if info.spinner then
+			job_spinner.stop(info.spinner)
+		end
 		state.active_jobs[handle.id] = nil
 	end
 
@@ -301,6 +306,9 @@ local function spawn_process(cmd, opts)
 		code_sent = table.concat(cmd, " "),
 		start_time = vim.loop.now(),
 	}
+	if opts.show_spinner then
+		state.active_jobs[handle.id].spinner = job_spinner.start(opts.spinner)
+	end
 
 	return handle
 end
@@ -407,6 +415,11 @@ function PersistentJob:_finish_current(result, err)
 	self.current_request = nil
 	self.buffer = {}
 
+	if current and current.spinner then
+		job_spinner.stop(current.spinner)
+		current.spinner = nil
+	end
+
 	if self._timeout_token then
 		self._timeout_token.active = false
 		self._timeout_token = nil
@@ -430,6 +443,10 @@ function PersistentJob:_cancel_queued(cancel_error)
 	local pending = self.queue
 	self.queue = {}
 	for _, item in ipairs(pending) do
+		if item.spinner then
+			job_spinner.stop(item.spinner)
+			item.spinner = nil
+		end
 		if item.callback then
 			local err_msg = item.cancel_error or cancel_error
 			vim.schedule(function()
@@ -444,6 +461,12 @@ function PersistentJob:_handle_timeout(item, timeout_ms)
 	self.busy = false
 	self.current_request = nil
 	self.buffer = {}
+
+	if item and item.spinner then
+		job_spinner.stop(item.spinner)
+		item.spinner = nil
+	end
+
 	if self._timeout_token then
 		self._timeout_token.active = false
 		self._timeout_token = nil
@@ -503,12 +526,17 @@ function PersistentJob:send(input, callback, opts)
 	end
 
 	opts = opts or {}
+	local spinner_handle
+	if opts.show_spinner then
+		spinner_handle = job_spinner.start(opts.spinner)
+	end
 	table.insert(self.queue, {
 		input = input,
 		callback = callback,
 		timeout_ms = opts.timeout_ms or opts.timeout,
 		timeout_error = opts.timeout_error,
 		cancel_error = opts.cancel_error,
+		spinner = spinner_handle,
 	})
 	self:process_queue()
 end
@@ -526,6 +554,18 @@ function PersistentJob:process_queue()
 end
 
 function PersistentJob:stop()
+	if self.current_request and self.current_request.spinner then
+		job_spinner.stop(self.current_request.spinner)
+		self.current_request.spinner = nil
+	end
+	if #self.queue > 0 then
+		for _, item in ipairs(self.queue) do
+			if item.spinner then
+				job_spinner.stop(item.spinner)
+				item.spinner = nil
+			end
+		end
+	end
 	if self.job then
 		self.job:shutdown()
 	end
