@@ -111,7 +111,7 @@ By default, polar plots are generated with `0 < \theta < 2 \pi`.
 ```latex
 1 + \cos(\theta)
 \includegraphics[width=0.8\linewidth]{tungsten_plots/plot_001}
-``
+```
 
 | **Plot_001** |
 | :---: |
