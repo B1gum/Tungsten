@@ -111,6 +111,10 @@ for node_type, handler in pairs({
 		end
 	end,
 
+	factorial = function(node, recur_render)
+		return string.format("Factorial[%s]", recur_render(node.expression))
+	end,
+
 	function_call = function(node, recur_render)
 		local wolfram_opts = (config.backend_opts and config.backend_opts.wolfram) or {}
 		local func_name_map = wolfram_opts.function_mappings or {}

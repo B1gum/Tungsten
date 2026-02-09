@@ -19,16 +19,16 @@ local PostfixOperator = (
 		end
 	end
 )
-	+ (
-		P("_")
-		* space
-		* ExponentOrSubscriptContent
-		/ function(subscript_ast)
-			return function(base_ast)
-				return ast.create_subscript_node(base_ast, subscript_ast)
-			end
+	+ (P("_") * space * ExponentOrSubscriptContent / function(subscript_ast)
+		return function(base_ast)
+			return ast.create_subscript_node(base_ast, subscript_ast)
 		end
-	)
+	end)
+	+ (P("!") / function()
+		return function(base_ast)
+			return ast.create_factorial_node(base_ast)
+		end
+	end)
 
 M.SupSub = Cf(V("AtomBase") * (space * PostfixOperator) ^ 0, function(accumulator_ast, operator_func)
 	if operator_func then

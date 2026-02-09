@@ -173,6 +173,10 @@ for node_type, handler in pairs({
 		end
 	end,
 
+	factorial = function(node, recur_render)
+		return string.format("sp.factorial(%s)", recur_render(node.expression))
+	end,
+
 	function_call = function(node, recur_render)
 		local func_name_str = (node.name_node and node.name_node.name) or "UnknownFunction"
 		local python_func_name = map_function_name(func_name_str)

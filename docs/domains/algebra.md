@@ -27,6 +27,8 @@ The arithmetic and algebra domain adds support for:
   - Exponents using `^{}`
   - The natural and base 10 logarithms, using `ln` and `log` respectively.
   - Roots, using `\sqrt[a]{b}` (corresponding to the `a`'th root of `b`)
+  - Factorials using `!` (e.g. `n!`)
+  - Binomial coefficients using `\binom{n}{k}`
   - The trig functions `\sin`, `\cos`, `\tan`, `\cot`, `\sec`, `\csc`, and the hyperbolic forms `\sinh`, `\cosh`, `\tanh`. The inverse trig functions are implemented via `\sin^{-1}` syntax.
   - Inequality relations i.e. `<`, `>`, `\le`, `\leq`, `\ge`, and `\geg`, as well as the forms `<=`, `>=`, `≤`, and `≥`.
 

@@ -57,6 +57,10 @@ function M.create_unary_operation_node(operator, value)
 	return node("unary", { operator = operator, value = value })
 end
 
+function M.create_factorial_node(expression)
+	return node("factorial", { expression = expression })
+end
+
 function M.create_function_call_node(name_node, args_table)
 	return node("function_call", { name_node = name_node, args = args_table })
 end

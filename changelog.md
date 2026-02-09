@@ -2,7 +2,7 @@
 
 ### Features
 
-- Initial release of Tungsten with Wolfram Engine integration and plotting features.
+- Initial release of Tungsten with Wolfram Engine integration and plotting features
 
 ### Fixed
 
@@ -24,6 +24,8 @@
 - Implemented the Python backend for computation and plotting
 - Implemented the `:TungstenSwitchBackend` command allowing the user to switch the backend post-setup
 - Added parsing rules for `\prod` akin to those already implemented for `\sum`
+- Added parsing rules for `\binom` meaning both backends are able to evaluate binomials
+- Added support for factorial notation using `!` (e.g. `n!`)
 
 ### Fixed
 
