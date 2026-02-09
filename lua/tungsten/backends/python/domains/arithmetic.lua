@@ -137,6 +137,11 @@ for node_type, handler in pairs({
 	fraction = function(node, recur_render)
 		return string.format("(%s) / (%s)", recur_render(node.numerator), recur_render(node.denominator))
 	end,
+
+	binomial = function(node, recur_render)
+		return string.format("sp.binomial(%s, %s)", recur_render(node.n), recur_render(node.k))
+	end,
+
 	sqrt = function(node, recur_render)
 		if node.index then
 			return ("sp.root(%s, %s)"):format(recur_render(node.radicand), recur_render(node.index))
@@ -144,14 +149,17 @@ for node_type, handler in pairs({
 			return ("sp.sqrt(%s)"):format(recur_render(node.radicand))
 		end
 	end,
+
 	superscript = function(node, recur_render)
 		local base_str = recur_render(node.base)
 		local exp_str = recur_render(node.exponent)
 		return ("(%s) ** (%s)"):format(base_str, exp_str)
 	end,
+
 	subscript = function(node, recur_render)
 		return ("Symbol('%s_%s')"):format(recur_render(node.base), recur_render(node.subscript))
 	end,
+
 	unary = function(node, recur_render)
 		local operand_str = recur_render(node.value)
 		if node.operator == "-" then
@@ -164,24 +172,22 @@ for node_type, handler in pairs({
 			return node.operator .. operand_str
 		end
 	end,
+
 	function_call = function(node, recur_render)
 		local func_name_str = (node.name_node and node.name_node.name) or "UnknownFunction"
 		local python_func_name = map_function_name(func_name_str)
-
 		local rendered_args = {}
 		if node.args then
 			for _, arg_node in ipairs(node.args) do
 				table.insert(rendered_args, recur_render(arg_node))
 			end
 		end
-
 		return ("_apply(%s, %s)"):format(python_func_name, table.concat(rendered_args, ", "))
 	end,
 
 	solve_system = function(node, recur_render)
 		local rendered_equations = util.map_render(node.equations, recur_render)
 		local rendered_variables = util.map_render(node.variables, recur_render)
-
 		local equations_str = "[" .. table.concat(rendered_equations, ", ") .. "]"
 		local variables_str = "[" .. table.concat(rendered_variables, ", ") .. "]"
 		return ("sp.solve(%s, %s)"):format(equations_str, variables_str)

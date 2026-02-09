@@ -75,6 +75,11 @@ for node_type, handler in pairs({
 	fraction = function(node, recur_render)
 		return string.format("(%s) / (%s)", recur_render(node.numerator), recur_render(node.denominator))
 	end,
+
+	binomial = function(node, recur_render)
+		return string.format("Binomial[%s, %s]", recur_render(node.n), recur_render(node.k))
+	end,
+
 	sqrt = function(node, recur_render)
 		if node.index then
 			return ("Surd[%s, %s]"):format(recur_render(node.radicand), recur_render(node.index))
@@ -82,14 +87,17 @@ for node_type, handler in pairs({
 			return ("Sqrt[%s]"):format(recur_render(node.radicand))
 		end
 	end,
+
 	superscript = function(node, recur_render)
 		local base_str = recur_render(node.base)
 		local exp_str = recur_render(node.exponent)
 		return ("Power[%s, %s]"):format(base_str, exp_str)
 	end,
+
 	subscript = function(node, recur_render)
 		return ("Subscript[%s, %s]"):format(recur_render(node.base), recur_render(node.subscript))
 	end,
+
 	unary = function(node, recur_render)
 		local operand_str = recur_render(node.value)
 		if node.operator == "-" then
@@ -102,12 +110,12 @@ for node_type, handler in pairs({
 			return node.operator .. operand_str
 		end
 	end,
+
 	function_call = function(node, recur_render)
 		local wolfram_opts = (config.backend_opts and config.backend_opts.wolfram) or {}
 		local func_name_map = wolfram_opts.function_mappings or {}
 		local func_name_str = (node.name_node and node.name_node.name) or "UnknownFunction"
 		local wolfram_func_name = func_name_map[func_name_str:lower()]
-
 		if not wolfram_func_name then
 			wolfram_func_name = func_name_str:match("^%a") and (func_name_str:sub(1, 1):upper() .. func_name_str:sub(2))
 				or func_name_str
@@ -120,7 +128,6 @@ for node_type, handler in pairs({
 				)
 			)
 		end
-
 		local rendered_args = {}
 		if node.args then
 			for _, arg_node in ipairs(node.args) do
@@ -133,10 +140,8 @@ for node_type, handler in pairs({
 	solve_system = function(node, recur_render)
 		local rendered_equations = util.map_render(node.equations, recur_render)
 		local rendered_variables = util.map_render(node.variables, recur_render)
-
 		local equations_str = "{" .. table.concat(rendered_equations, ", ") .. "}"
 		local variables_str = "{" .. table.concat(rendered_variables, ", ") .. "}"
-
 		return ("Solve[%s, %s]"):format(equations_str, variables_str)
 	end,
 }) do

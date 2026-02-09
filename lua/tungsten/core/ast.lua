@@ -73,6 +73,10 @@ function M.create_fraction_node(numerator, denominator)
 	return node("fraction", { numerator = numerator, denominator = denominator })
 end
 
+function M.create_binomial_node(n, k)
+	return node("binomial", { n = n, k = k })
+end
+
 function M.create_sqrt_node(radicand, index)
 	local t = { type = "sqrt", radicand = radicand }
 	if index then

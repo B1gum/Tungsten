@@ -33,6 +33,12 @@ c[#c + 1] = {
 	priority = prio,
 }
 c[#c + 1] = {
+	name = "Binomial",
+	pattern = require("tungsten.domains.arithmetic.rules.binomial"),
+	category = "AtomBaseItem",
+	priority = prio,
+}
+c[#c + 1] = {
 	name = "Sqrt",
 	pattern = require("tungsten.domains.arithmetic.rules.sqrt"),
 	category = "AtomBaseItem",

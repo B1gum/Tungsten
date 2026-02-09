@@ -42,7 +42,7 @@ local config = {
 		},
 	},
 	plotting = {
-		backend = "python",
+		backend = "wolfram",
 		usetex = true,
 		latex_engine = "pdflatex",
 		latex_preamble = "",
