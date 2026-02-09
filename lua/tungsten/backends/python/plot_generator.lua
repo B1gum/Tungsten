@@ -10,6 +10,29 @@ local special_function_guard = require("tungsten.backends.python.analyzers.speci
 
 local M = setmetatable({}, { __index = base })
 
+local APPLY_HELPER =
+	"_apply = lambda f, *args: f.func(*args) if isinstance(f, sp.core.function.AppliedUndef) else f(*args)"
+
+local MATRIX_PATCH = [[exec("""
+_orig_add = sp.MatrixBase.__add__
+_orig_sub = sp.MatrixBase.__sub__
+def _mx_add(s, o):
+    try: return _orig_add(s, o)
+    except TypeError: return s.applyfunc(lambda x: x + o)
+def _mx_radd(s, o):
+    try: return _orig_add(s, o)
+    except TypeError: return s.applyfunc(lambda x: o + x)
+def _mx_sub(s, o):
+    try: return _orig_sub(s, o)
+    except TypeError: return s.applyfunc(lambda x: x - o)
+def _mx_rsub(s, o):
+    return s.applyfunc(lambda x: o - x)
+sp.MatrixBase.__add__ = _mx_add
+sp.MatrixBase.__radd__ = _mx_radd
+sp.MatrixBase.__sub__ = _mx_sub
+sp.MatrixBase.__rsub__ = _mx_rsub
+""")]]
+
 local function unsupported_error(message)
 	return {
 		code = error_handler.E_UNSUPPORTED_FORM,
@@ -52,6 +75,7 @@ local function to_python_value(value)
 		end
 		return tostring(value)
 	end
+	value = value:gsub("%f[%w]Pi%f[%W]", "np.pi")
 	return value
 end
 
@@ -137,7 +161,10 @@ local function build_backend_and_axes_init_lines(opts)
 		"import matplotlib.pyplot as plt",
 		"import numpy as np",
 		"import sympy as sp",
+		"from sympy import *",
 		"from mpl_toolkits.mplot3d import Axes3D",
+		APPLY_HELPER,
+		MATRIX_PATCH,
 		"fig = plt.figure()",
 	}
 
@@ -573,9 +600,26 @@ local function build_implicit_2d_py_code(opts)
 	local exprs = {}
 	for _, s in ipairs(series) do
 		if s.kind == "function" then
+			local code
+			local is_equality = core_ast.is_equality_node(s.ast)
+
+			if is_equality then
+				local lhs = render_ast_to_python(s.ast.lhs)
+				local rhs = render_ast_to_python(s.ast.rhs)
+				if lhs and rhs then
+					code = string.format("(%s) - (%s)", lhs, rhs)
+				end
+			else
+				code = render_ast_to_python(s.ast)
+			end
+
+			if code then
+				table.insert(exprs, { code = code, series = s, kind = "contour", is_equality = is_equality })
+			end
+		elseif s.kind == "inequality" then
 			local code = render_ast_to_python(s.ast)
 			if code then
-				table.insert(exprs, { code = code, series = s })
+				table.insert(exprs, { code = code, series = s, kind = "region" })
 			end
 		end
 	end
@@ -602,8 +646,27 @@ local function build_implicit_2d_py_code(opts)
 		local fname = "f" .. i
 		table.insert(lines, string.format("%s = sp.lambdify((%s,%s), %s, 'numpy')", fname, xvar, yvar, item.code))
 		table.insert(lines, string.format("Z = %s(X, Y)", fname))
-		local style = build_style_args(item.series, "contour", "black")
-		table.insert(lines, string.format("%s = ax.contour(X, Y, Z, levels=[0]%s)", cont_var, style))
+
+		if item.kind == "region" then
+			table.insert(lines, "Z = (Z).astype(int)")
+
+			local color = item.series.color or "blue"
+			local alpha = item.series.alpha or 0.2
+			table.insert(
+				lines,
+				string.format("%s = ax.contourf(X, Y, Z, levels=[0.5, 1.5], colors=['%s'], alpha=%s)", cont_var, color, alpha)
+			)
+		else
+			if item.is_equality then
+				local style = build_style_args(item.series, "contour", "black")
+				table.insert(lines, string.format("%s = ax.contour(X, Y, Z, levels=[0]%s)", cont_var, style))
+			else
+				local style = build_style_args(item.series, "contour")
+				table.insert(lines, string.format("%s = ax.contourf(X, Y, Z, cmap='viridis'%s)", cont_var, style))
+
+				table.insert(lines, string.format("fig.colorbar(%s, ax=ax)", cont_var))
+			end
+		end
 	end
 
 	return table.concat(lines, "\n"), cont_var
@@ -669,41 +732,71 @@ local function build_parametric_3d_py_code(opts)
 	end
 
 	local indep = series[1] and series[1].independent_vars or {}
-	local uvar = indep[1] or "u"
-	local vvar = indep[2] or "v"
-	local u_range = opts.u_range or { 0, 1 }
-	local v_range = opts.v_range or { 0, 1 }
-	local grid = opts.grid_3d or { 64, 64 }
-
 	local lines = {}
-	table.insert(lines, string.format("%s, %s = sp.symbols('%s %s')", uvar, vvar, uvar, vvar))
-	table.insert(lines, string.format("u_vals = np.linspace(%s, %s, %d)", u_range[1], u_range[2], grid[1]))
-	table.insert(lines, string.format("v_vals = np.linspace(%s, %s, %d)", v_range[1], v_range[2], grid[2]))
-	table.insert(lines, "U, V = np.meshgrid(u_vals, v_vals)")
-	local surf_var = "surf"
-	for i, e in ipairs(exprs) do
-		local fx = "fx" .. i
-		local fy = "fy" .. i
-		local fz = "fz" .. i
-		table.insert(lines, string.format("%s = sp.lambdify((%s,%s), %s, 'numpy')", fx, uvar, vvar, e.x))
-		table.insert(lines, string.format("%s = sp.lambdify((%s,%s), %s, 'numpy')", fy, uvar, vvar, e.y))
-		table.insert(lines, string.format("%s = sp.lambdify((%s,%s), %s, 'numpy')", fz, uvar, vvar, e.z))
-		table.insert(lines, string.format("X = %s(U, V)", fx))
-		apply_log_mask(lines, "x", "X", opts)
-		table.insert(lines, string.format("Y = %s(U, V)", fy))
-		apply_log_mask(lines, "y", "Y", opts)
-		table.insert(lines, string.format("Z = %s(U, V)", fz))
-		apply_log_mask(lines, "z", "Z", opts)
-		local style = build_style_args(e.series, "surface")
-		table.insert(
-			lines,
-			string.format("%s = ax.plot_surface(X, Y, Z, cmap='%s'%s)", surf_var, opts.colormap or "viridis", style)
-		)
+
+	if #indep == 1 then
+		local tvar = indep[1]
+		local t_range = opts.t_range or { 0, "2*np.pi" }
+		local samples = opts.samples or 300
+		local t_vals = "t_vals"
+
+		table.insert(lines, string.format("%s = sp.symbols('%s')", tvar, tvar))
+		table.insert(lines, string.format("%s = np.linspace(%s, %s, %d)", t_vals, t_range[1], t_range[2], samples))
+
+		for i, e in ipairs(exprs) do
+			local fx, fy, fz = "fx" .. i, "fy" .. i, "fz" .. i
+			table.insert(lines, string.format("%s = sp.lambdify((%s,), %s, 'numpy')", fx, tvar, e.x))
+			table.insert(lines, string.format("%s = sp.lambdify((%s,), %s, 'numpy')", fy, tvar, e.y))
+			table.insert(lines, string.format("%s = sp.lambdify((%s,), %s, 'numpy')", fz, tvar, e.z))
+
+			local X, Y, Z = "X" .. i, "Y" .. i, "Z" .. i
+			table.insert(lines, string.format("%s = %s(%s)", X, fx, t_vals))
+			table.insert(lines, string.format("%s = %s(%s)", Y, fy, t_vals))
+			table.insert(lines, string.format("%s = %s(%s)", Z, fz, t_vals))
+
+			apply_log_mask(lines, "x", X, opts)
+			apply_log_mask(lines, "y", Y, opts)
+			apply_log_mask(lines, "z", Z, opts)
+
+			local style = build_style_args(e.series, "plot")
+			table.insert(lines, string.format("ax.plot(%s, %s, %s%s)", X, Y, Z, style))
+		end
+
+		return table.concat(lines, "\n"), nil
+	else
+		local uvar = indep[1] or "u"
+		local vvar = indep[2] or "v"
+		local u_range = opts.u_range or { 0, 1 }
+		local v_range = opts.v_range or { 0, 1 }
+		local grid = opts.grid_3d or { 64, 64 }
+
+		table.insert(lines, string.format("%s, %s = sp.symbols('%s %s')", uvar, vvar, uvar, vvar))
+		table.insert(lines, string.format("u_vals = np.linspace(%s, %s, %d)", u_range[1], u_range[2], grid[1]))
+		table.insert(lines, string.format("v_vals = np.linspace(%s, %s, %d)", v_range[1], v_range[2], grid[2]))
+		table.insert(lines, "U, V = np.meshgrid(u_vals, v_vals)")
+
+		local surf_var = "surf"
+		for i, e in ipairs(exprs) do
+			local fx, fy, fz = "fx" .. i, "fy" .. i, "fz" .. i
+			table.insert(lines, string.format("%s = sp.lambdify((%s,%s), %s, 'numpy')", fx, uvar, vvar, e.x))
+			table.insert(lines, string.format("%s = sp.lambdify((%s,%s), %s, 'numpy')", fy, uvar, vvar, e.y))
+			table.insert(lines, string.format("%s = sp.lambdify((%s,%s), %s, 'numpy')", fz, uvar, vvar, e.z))
+			table.insert(lines, string.format("X = %s(U, V)", fx))
+			apply_log_mask(lines, "x", "X", opts)
+			table.insert(lines, string.format("Y = %s(U, V)", fy))
+			apply_log_mask(lines, "y", "Y", opts)
+			table.insert(lines, string.format("Z = %s(U, V)", fz))
+			apply_log_mask(lines, "z", "Z", opts)
+
+			local style = build_style_args(e.series, "surface")
+			table.insert(
+				lines,
+				string.format("%s = ax.plot_surface(X, Y, Z, cmap='%s'%s)", surf_var, opts.colormap or "viridis", style)
+			)
+		end
+		return table.concat(lines, "\n"), surf_var
 	end
-
-	return table.concat(lines, "\n"), surf_var
 end
-
 function M.build_plot_code(opts)
 	local guard_err = validate_special_function_support(opts)
 	if guard_err then
@@ -783,8 +876,7 @@ function M.build_plot_command(opts, callback)
 			}
 	end
 
-	local python_opts = config.backend_opts and config.backend_opts.python or {}
-	local python_path = python_opts.python_path or "python3"
+	local python_path = executor.get_interpreter_command()
 
 	local cwd
 	if normalized_opts.tex_root and normalized_opts.tex_root ~= "" then

@@ -330,6 +330,16 @@ _process_queue = function()
 end
 
 local function validate_backend_support(plot_opts, backend, dep_vars, has_points, has_inequality)
+	logger.debug(
+		"TungstenPlot",
+		string.format(
+			"Validating: form=%s, dim=%s, has_inequality=%s",
+			plot_opts.form,
+			plot_opts.dim,
+			tostring(has_inequality)
+		)
+	)
+
 	local supported = true
 	if plot_opts and plot_opts.form and plot_opts.dim then
 		local backends = require("tungsten.domains.plotting.backends")
@@ -341,6 +351,7 @@ local function validate_backend_support(plot_opts, backend, dep_vars, has_points
 	end
 
 	if not supported then
+		logger.debug("TungstenPlot", "Validation failed in validate_backend_support")
 		error_handler.notify_error("TungstenPlot", error_handler.E_UNSUPPORTED_FORM)
 		return false
 	end

@@ -153,7 +153,8 @@ x^2 - y^2
 
 \frac{\sin(x \cdot y)}{2 x} \cdot \cos(x)
 \includegraphics[width=0.8\linewidth]{tungsten_plots/plot_002}
-```
+<t_��>hlua require"cmp.utils.feedkeys".run(12)
+ý```
 
 
 | **Plot_001** | **Plot_002** |
@@ -259,7 +260,7 @@ Saving the buffer (with `:wq`) triggers plot generation and closing the buffer (
 These settings affect the entire figure.
 
   - **Form**: Here, you can force a specific plot mode (`explicit`, `implicit`, `paramtetric`, or `polar`). Tungsten will automatically try to guess the correct form for you and insert that in the buffer. 
-  - **Backend**: Override the backend for this specific plot (`wolfram`, `python` (under implementation)).
+  - **Backend**: Override the backend for this specific plot (`wolfram`, `python`).
   - **Output mode**:
     - `latex`: Inserts the image code into the text (default).
     - `viewer`: Opens the image in an external viewer (for configuration of this see [Configuration](../introduction/configuration.md)).
@@ -365,6 +366,8 @@ You are also able to use timestamp-naming by changing `config.plotting.naming` t
 
 Tungsten supports the two backends, `Wolfram` and `Python`.
 You can switch between them in the config (see [Configuration](reference/config.md) or on a per-plot basis as explained above.
+Tungsten supports the two backends, `Wolfram` and `Python`.
+You can switch between them in the config (see [Configuration](reference/config.md) or on a per-plot basis as explained above.
 
 To check which backends are available on your system you can run the `:TungstenPlotCheck` command.
 
@@ -372,14 +375,14 @@ To check which backends are available on your system you can run the `:TungstenP
 
 | Feature | Dimension | Wolfram | Python |
 | :--- | :---: | :---: | :---: |
-| **Explicit Functions** | 2D | ✅ | ✅ |
-| | 3D | ✅ | ⚠️ (Restricted) |
-| **Implicit Equations** | 2D | ✅ | ✅ |
-| | 3D | ✅ | ❌ |
-| **Parametric Curves** | 2D | ✅ | ✅ |
-| | 3D | ✅ | ✅ |
-| **Polar Coordinates** | 2D | ✅ | ✅ |
-| **Scatter / Points** | 2D | ✅ | ✅ |
-| | 3D | ✅ | ✅ |
-| **Inequalities** | 2D | ✅ | ❌ |
-| | 3D | ✅ | ❌ |
+| **Explicit Functions** | 2D | :white_check_mark: | :white_check_mark: |
+| | 3D | :white_check_mark: | :white_check_mark: |
+| **Implicit Equations** | 2D | :white_check_mark: | :white_check_mark: |
+| | 3D | :white_check_mark: | :x: |
+| **Parametric Curves** | 2D | :white_check_mark: | :white_check_mark: |
+| | 3D | :white_check_mark: | :white_check_mark: |
+| **Polar Coordinates** | 2D | :white_check_mark: | :white_check_mark: |
+| **Scatter / Points** | 2D | :white_check_mark: | :white_check_mark: |
+| | 3D | :white_check_mark: | :white_check_mark: |
+| **Inequalities** | 2D | :white_check_mark: | :white_check_mark: |
+| | 3D | :white_check_mark: | :x: |

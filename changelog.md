@@ -12,10 +12,16 @@
 
 ## [0.1.1] - 2026-01-30
 
+### Fixed
+
+- Added `luafilesystem` and `penlight` to rockspec
+
+## [0.2.0]
+
 ### Features
 
 - Added persistent sessions for the wolfram backend (on by default, can be toggled using `:TungstenTogglePersistence`)
-- Implemented the Python backend for computation (everything except plotting)
+- Implemented the Python backend for computation and plotting
 - Implemented the `:TungstenSwitchBackend` command allowing the user to switch the backend post-setup
 - Added parsing rules for `\prod` akin to those already implemented for `\sum`
 
@@ -32,3 +38,4 @@
 - Updated documentation to mention `telescope` and `which-key` as optional dependencies
 - Added coverage reporting to readme
 - Added contributor documentation including `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SUPPORT.md` and `STYLE.md`
+- Updated the Capability Matrix and configuration guides to reflect that the Python backend is now fully supported for evaluation and plotting.
