@@ -22,7 +22,7 @@ local backend_capabilities = {
 			polar = { [2] = true },
 		},
 		points = { [2] = true, [3] = true },
-		inequalities = {},
+		inequalities = { [2] = true },
 	},
 }
 

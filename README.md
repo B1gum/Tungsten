@@ -19,7 +19,7 @@
 
 ## Key Features
 
-* **Seamless Workflow**: Evaluate LaTeX-formatted math without leaving Neovim.
+* **Seamless Workflow**: Evaluate LaTeX-formatted math using Wolfram or Python without leaving Neovim.
 * **Specialized Domains**: Purpose-built handling for Arithmetic, Calculus, Linear Algebra, and more.
 * **Rich Plotting**: Generate 2D curves, 3D surfaces, and scatter plots directly from your code.
 * **LaTeX Native**: Write expressions using standard LaTeX syntax and shorthand.

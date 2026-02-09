@@ -85,7 +85,7 @@ Below is the default configuration. You can copy and paste this into your setup 
     - `true` (default): Keeps the backend process (Wolfram/Python) running in the background. This makes subsequent evaluations almost instantaneous.
   - `backend`: Defines the computation engine used to solve expressions.
     - `"wolfram"` (default): Uses `wolframscript` and is currently the only fully-implemented backend.
-    - `"python"`: Uses Python libraries (like SymPy/NumPy). This backend is currently being implemented and is not tested – It is therefore not advised to use this backend currently.
+    - `"python"`: Uses Python libraries (SymPy, NumPy, and Matplotlib). This serves as a lightweight, open-source alternative for evaluation and plotting.
   - `result_display`: Controls how evaluation results are presented in the editor.
     - `"insert"` (default): Appends the result directly into the buffer (e.g., `1 + 1 = 2`).
     - `"virtual_text"`: Displays the result as virtual text next to the line (like a linter warning)

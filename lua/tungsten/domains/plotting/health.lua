@@ -1,4 +1,5 @@
 local M = {}
+local executor = require("tungsten.backends.python.executor")
 
 local current_check
 
@@ -154,10 +155,7 @@ local function start_check(callback)
 		end)
 	end
 
-	local python_cmd
-	if vim.fn.executable("python3") == 1 then
-		python_cmd = "python3"
-	end
+	local python_cmd = executor.get_interpreter_command()
 
 	if python_cmd then
 		local finish_python = register()
