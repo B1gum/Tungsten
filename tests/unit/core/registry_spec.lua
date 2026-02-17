@@ -59,10 +59,10 @@ describe("tungsten.core.registry", function()
 	local mock_logger_notify_spy
 
 	local original_require
+	local original_vim_lpeg
 
 	local modules_to_clear_from_cache = {
 		"tungsten.core.registry",
-		"lpeglabel",
 		"tungsten.core.tokenizer",
 		"tungsten.util.logger",
 		"tungsten.config",
@@ -81,12 +81,11 @@ describe("tungsten.core.registry", function()
 		mock_tokenizer_module = {}
 		mock_logger_module = {}
 		mock_config_module = { debug = false }
+		original_vim_lpeg = vim.lpeg
+		vim.lpeg = mock_lpeg_module
 
 		original_require = _G.require
 		_G.require = function(module_path)
-			if module_path == "lpeglabel" then
-				return mock_lpeg_module
-			end
 			if module_path == "tungsten.core.tokenizer" then
 				return mock_tokenizer_module
 			end
@@ -150,6 +149,8 @@ describe("tungsten.core.registry", function()
 
 	after_each(function()
 		_G.require = original_require
+
+		vim.lpeg = original_vim_lpeg
 
 		if mock_lpeg_P_spy and mock_lpeg_P_spy.clear then
 			mock_lpeg_P_spy:clear()

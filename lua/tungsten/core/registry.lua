@@ -1,6 +1,6 @@
 -- tungsten/lua/tungsten/core/registry.lua
 
-local lpeg = require("lpeglabel")
+local lpeg = vim.lpeg
 local P, V = lpeg.P, lpeg.V
 local tokens_mod = require("tungsten.core.tokenizer")
 local logger = require("tungsten.util.logger")

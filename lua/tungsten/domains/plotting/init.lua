@@ -1,4 +1,4 @@
-local lpeg = require("lpeglabel")
+local lpeg = vim.lpeg
 local tokens = require("tungsten.core.tokenizer")
 local ast = require("tungsten.core.ast")
 

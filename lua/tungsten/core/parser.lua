@@ -2,7 +2,7 @@
 -- Parses input strings based on grammar into an AST
 -----------------------------------------------------
 
-local lpeg = require("lpeglabel")
+local lpeg = vim.lpeg
 local registry = require("tungsten.core.registry")
 local space = require("tungsten.core.tokenizer").space
 local lexer = require("tungsten.core.lexer")
@@ -30,11 +30,6 @@ function M.get_grammar()
 	end
 	return compiled_grammar
 end
-
-local label_messages = {
-	extra_input = "unexpected text after expression",
-	fail = "syntax error",
-}
 
 local delimiter_open_cmds = lexer.delimiter_open_cmds
 local delimiter_close_cmds = lexer.delimiter_close_cmds
@@ -220,27 +215,34 @@ local function parse_tuple_elements(parts, pattern, input, base_offset, offset)
 	for idx, p in ipairs(parts) do
 		local subexpr, sublead = trim(p.str)
 		part_meta[idx] = { start_pos = p.start_pos, trim_leading = sublead }
+
 		local rel_pos = detect_chained_relations(subexpr)
 		if rel_pos then
 			local global_pos = base_offset + offset + p.start_pos - 1 + sublead + rel_pos - 1
 			local msg = "Chained inequalities are not supported (v1)."
 			return nil, nil, msg, global_pos
 		end
-		local subres, sublabel, subpos = lpeg.match(pattern, subexpr)
+
+		local subres, end_pos = lpeg.match(pattern, subexpr)
+
 		if not subres then
-			local msg = label_messages[sublabel] or tostring(sublabel)
-			if subpos then
-				local global_pos = base_offset + offset + p.start_pos - 1 + sublead + subpos - 1
-				msg = msg .. " at " .. error_handler.format_line_col(input, global_pos)
-				return nil, nil, msg, global_pos
-			end
-			return nil, nil, msg
+			local msg = "syntax error"
+			local global_pos = base_offset + offset + p.start_pos - 1 + sublead
+			msg = msg .. " at " .. error_handler.format_line_col(input, global_pos)
+			return nil, nil, msg, global_pos
 		end
+
+		if end_pos <= #subexpr then
+			local msg = "unexpected text after expression"
+			local global_pos = base_offset + offset + p.start_pos - 1 + sublead + end_pos - 1
+			msg = msg .. " at " .. error_handler.format_line_col(input, global_pos)
+			return nil, nil, msg, global_pos
+		end
+
 		table.insert(elems, subres)
 	end
 	return elems, part_meta
 end
-
 local function try_point_tuple(expr, pattern, ser_start, item_start, input, opts, lead)
 	local inner, offset = parse_tuple_inner(expr)
 	if not inner then
@@ -313,20 +315,24 @@ local function parse_expression_item(expr, pattern, ser_start, item_start, opts)
 		return tuple
 	end
 
-	local result, err_label, err_pos = lpeg.match(pattern, trimmed)
+	local result, end_pos = lpeg.match(pattern, trimmed)
+
 	if not result then
-		local msg = label_messages[err_label] or tostring(err_label)
-		if err_pos then
-			local global_pos = ser_start + item_start - 1 + lead + err_pos - 1
-			msg = msg .. " at " .. error_handler.format_line_col(input, global_pos)
-			return nil, msg, global_pos
-		end
-		return nil, msg
+		local msg = "syntax error"
+		local global_pos = ser_start + item_start - 1 + lead
+		msg = msg .. " at " .. error_handler.format_line_col(input, global_pos)
+		return nil, msg, global_pos
+	end
+
+	if end_pos <= #trimmed then
+		local msg = "unexpected text after expression"
+		local global_pos = ser_start + item_start - 1 + lead + end_pos - 1
+		msg = msg .. " at " .. error_handler.format_line_col(input, global_pos)
+		return nil, msg, global_pos
 	end
 
 	return result
 end
-
 local function post_process_series(series, opts)
 	if not (opts and opts.allow_multiple_relations) or #series == 0 then
 		return series
@@ -369,7 +375,7 @@ function M.parse(input, opts)
 		input = input:gsub("\\\\%s*\n", ";"):gsub("\\\\", ";")
 	end
 	local current_grammar = M.get_grammar()
-	local pattern = space * current_grammar * (space * -1 + lpeg.T("extra_input"))
+	local pattern = space * current_grammar * space * lpeg.Cp()
 	local parse_opts = {}
 	for key, value in pairs(opts) do
 		parse_opts[key] = value

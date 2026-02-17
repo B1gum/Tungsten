@@ -2,7 +2,7 @@
 -- Defines the lpeg rule for parsing cross product expressions like a \times b
 --------------------------------------------------------------------------
 
-local lpeg = require("lpeglabel")
+local lpeg = vim.lpeg
 local V, Cg, Ct = lpeg.V, lpeg.Cg, lpeg.Ct
 
 local tk = require("tungsten.core.tokenizer")

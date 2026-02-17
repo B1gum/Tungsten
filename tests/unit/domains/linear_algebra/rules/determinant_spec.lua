@@ -1,7 +1,7 @@
 -- tungsten/tests/unit/domains/linear_algebra/rules/determinant_spec.lua
 -- Unit tests for the determinant parsing rule.
 
-local lpeg = require("lpeglabel")
+local lpeg = vim.lpeg
 local P, C, R, S = lpeg.P, lpeg.C, lpeg.R, lpeg.S
 
 local DeterminantRule

@@ -1,5 +1,5 @@
 -- tests/unit/core/parser_error_spec.lua
--- Unit tests for parser error reporting using lpeglabel
+-- Unit tests for parser error reporting using lpeg
 
 package.loaded["tungsten.core.registry"] = nil
 package.loaded["tungsten.core.parser"] = nil

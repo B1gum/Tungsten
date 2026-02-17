@@ -1,7 +1,7 @@
 -- tests/unit/domains/linear_algebra/rules/cross_product_spec.lua
 -- Unit tests for the cross product parsing rule.
 
-local lpeg = require("lpeglabel")
+local lpeg = vim.lpeg
 local P, C, R, S = lpeg.P, lpeg.C, lpeg.R, lpeg.S
 
 local CrossProductRule

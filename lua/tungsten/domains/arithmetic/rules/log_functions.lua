@@ -1,8 +1,8 @@
-local lpeg = require("lpeglabel")
+local lpeg = vim.lpeg
 local P, V = lpeg.P, lpeg.V
 
 local tk = require("tungsten.core.tokenizer")
-local space = (type(tk) == "table" and tk.space) or require("lpeglabel").S(" \t\n\r") ^ 0
+local space = (type(tk) == "table" and tk.space) or lpeg.S(" \t\n\r") ^ 0
 local ast = require("tungsten.core.ast")
 
 local Unary = V("Unary")

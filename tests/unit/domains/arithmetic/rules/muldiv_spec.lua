@@ -1,6 +1,6 @@
 -- tungsten/tests/unit/domains/arithmetic/rules/muldiv_spec.lua
 
-local lpeg = require("lpeglabel")
+local lpeg = vim.lpeg
 local P, R, S, C, V = lpeg.P, lpeg.R, lpeg.S, lpeg.C, lpeg.V
 
 local mock_tk_original = {

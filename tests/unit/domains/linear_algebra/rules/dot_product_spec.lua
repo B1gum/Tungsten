@@ -1,7 +1,7 @@
 -- tests/unit/domains/linear_algebra/rules/dot_product_spec.lua
 -- Unit tests for the dot product parsing rule.
 
-local lpeg = require("lpeglabel")
+local lpeg = vim.lpeg
 local P, C, R, S = lpeg.P, lpeg.C, lpeg.R, lpeg.S
 
 local DotProductRule

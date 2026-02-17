@@ -1,6 +1,6 @@
 -- Unit tests for the plotting grammar rules, ensuring correct parsing of plot-related syntax.
 
-local lpeg = require("lpeglabel")
+local lpeg = vim.lpeg
 local P, C, R, S, V, Ct = lpeg.P, lpeg.C, lpeg.R, lpeg.S, lpeg.V, lpeg.Ct
 
 describe("Plotting Grammar Rules", function()

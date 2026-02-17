@@ -1,7 +1,7 @@
 -- tests/unit/domains/differential_equations/rules/laplace_spec.lua
 -- Busted tests for the Laplace transform parsing rule.
 
-local lpeg = require("lpeglabel")
+local lpeg = vim.lpeg
 local P, V, C, R, S = lpeg.P, lpeg.V, lpeg.C, lpeg.R, lpeg.S
 
 describe("Differential Equations Laplace Rule", function()

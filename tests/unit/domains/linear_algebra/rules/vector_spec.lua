@@ -1,6 +1,6 @@
 -- tungsten/tests/unit/domains/linear_algebra/rules/vector_spec.lua
 
-local lpeg = require("lpeglabel")
+local lpeg = vim.lpeg
 local P, C = lpeg.P, lpeg.C
 
 local VectorRule

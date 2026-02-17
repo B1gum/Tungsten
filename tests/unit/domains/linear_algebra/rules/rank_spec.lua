@@ -1,6 +1,6 @@
 -- tungsten/tests/unit/domains/linear_algebra/rules/rank_spec.lua
 
-local lpeg = require("lpeglabel")
+local lpeg = vim.lpeg
 local P, C, R, S = lpeg.P, lpeg.C, lpeg.R, lpeg.S
 
 local RankRule

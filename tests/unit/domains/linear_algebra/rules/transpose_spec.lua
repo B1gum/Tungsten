@@ -1,6 +1,6 @@
 -- tungsten/tests/unit/domains/linear_algebra/rules/transpose_spec.lua
 
-local lpeg = require("lpeglabel")
+local lpeg = vim.lpeg
 local P, V, C, R, S, Cf = lpeg.P, lpeg.V, lpeg.C, lpeg.R, lpeg.S, lpeg.Cf
 
 local TransposeRule

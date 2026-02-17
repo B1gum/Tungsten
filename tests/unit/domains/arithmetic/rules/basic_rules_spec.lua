@@ -1,4 +1,4 @@
-local lpeg = require("lpeglabel")
+local lpeg = vim.lpeg
 local P, R, S, V = lpeg.P, lpeg.R, lpeg.S, lpeg.V
 
 local modules_to_reset = {

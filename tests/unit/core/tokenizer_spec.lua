@@ -1,7 +1,7 @@
 -- tests/unit/core/tokenizer_spec.lua
 -- Unit tests for the tokenizer module
 
-local lpeg = require("lpeglabel")
+local lpeg = vim.lpeg
 local tokenizer = require("tungsten.core.tokenizer")
 
 describe("tungsten.core.tokenizer", function()

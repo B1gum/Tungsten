@@ -14,8 +14,6 @@ description = {
 
 dependencies = {
   "lua >= 5.1",
-  "lpeg",
-  "lpeglabel",
   "luafilesystem",
   "penlight",
 }

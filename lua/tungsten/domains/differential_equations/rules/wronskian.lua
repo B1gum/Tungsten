@@ -1,7 +1,7 @@
 -- lua/tungsten/domains/differential_equations/rules/wronskian.lua
 -- Defines the lpeg rule for parsing the Wronskian.
 
-local lpeg = require("lpeglabel")
+local lpeg = vim.lpeg
 local P, V, Ct = lpeg.P, lpeg.V, lpeg.Ct
 
 local tk = require("tungsten.core.tokenizer")

@@ -1,7 +1,7 @@
 -- core/tokenizer.lua
 -- Defines fundamental tokens for parser
 ------------------------------------------
-local lpeg = require("lpeglabel")
+local lpeg = vim.lpeg
 local P, R, S, C = lpeg.P, lpeg.R, lpeg.S, lpeg.C
 
 local constants = require("tungsten.core.constants")

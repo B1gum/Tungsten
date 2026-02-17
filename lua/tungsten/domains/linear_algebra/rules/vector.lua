@@ -1,7 +1,7 @@
 -- lua/tungsten/domains/linear_algebra/rules/vector.lua
 -- Defines the lpeg rule for parsing \vec, \mathbf vector notations, and lists of vectors.
 
-local lpeg = require("lpeglabel")
+local lpeg = vim.lpeg
 local P, V, Ct = lpeg.P, lpeg.V, lpeg.Ct
 
 local tk = require("tungsten.core.tokenizer")

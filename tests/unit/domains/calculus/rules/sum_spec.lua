@@ -1,6 +1,6 @@
 -- tests/unit/domains/calculus/rules/sum_spec.lua
 
-local lpeg = require("lpeglabel")
+local lpeg = vim.lpeg
 local P, C, R, S = lpeg.P, lpeg.C, lpeg.R, lpeg.S
 
 local SumRule

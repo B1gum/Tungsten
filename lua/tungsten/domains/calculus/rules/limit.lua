@@ -1,7 +1,7 @@
 -- lua/tungsten/domains/calculus/rules/limit.lua
 -- Defines the lpeg rule for parsing limit expressions like \lim_{x \to 0} f(x)
 
-local lpeg = require("lpeglabel")
+local lpeg = vim.lpeg
 local P, V, Cg, Ct = lpeg.P, lpeg.V, lpeg.Cg, lpeg.Ct
 
 local tk = require("tungsten.core.tokenizer")

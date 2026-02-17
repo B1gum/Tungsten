@@ -1,7 +1,7 @@
 -- lua/tungsten/domains/differential_equations/rules/laplace.lua
 -- Defines the lpeg rule for parsing Laplace transforms.
 
-local lpeg = require("lpeglabel")
+local lpeg = vim.lpeg
 local P, V, C = lpeg.P, lpeg.V, lpeg.C
 
 local tk = require("tungsten.core.tokenizer")

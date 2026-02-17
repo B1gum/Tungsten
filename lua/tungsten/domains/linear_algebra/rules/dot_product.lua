@@ -2,7 +2,7 @@
 -- Defines the lpeg rule for parsing dot product expressions like a \cdot b
 --------------------------------------------------------------------------
 
-local lpeg = require("lpeglabel")
+local lpeg = vim.lpeg
 local V, Cg, Ct = lpeg.V, lpeg.Cg, lpeg.Ct
 
 local tk = require("tungsten.core.tokenizer")

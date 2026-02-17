@@ -14,7 +14,6 @@ This guide covers the prerequisites and steps to install **Tungsten** and set up
 
 #### LuaRocks packages:
 - [lpeg](https://luarocks.org/modules/gvvaughan/lpeg): used for parsing LaTeX input.
-- [lpeglabel](https://luarocks.org/modules/sqmedeiros/lpeglabel): provides labeled grammars used by the parser.
 - [luafilesystem](https://luarocks.org/modules/hisham/luafilesystem): used for file system operations in plotting.
 - [penlight](https://luarocks.org/modules/steved/penlight): provides utility libraries (filesystem, paths) for plotting.
 
@@ -37,13 +36,13 @@ pip install sympy numpy matplotlib
 ```
 
 ## Installation
-Tungsten uses a couple of LuaRocks dependencies for its parser (`lpeg`, `lpeglabel`).  
+Tungsten uses the LuaRocks dependency `lpeg` for its parser.  
 If you use `lazy.nvim`, these can be installed automatically via `vhyrro/luarocks.nvim`.
 
 ### Using lazy.nvim
 ## Install
 
-Tungsten uses a couple of LuaRocks dependencies for its parser (`lpeg`, `lpeglabel`).  
+Tungsten uses the LuaRocks dependency `lpeg` for its parser. 
 If you use `lazy.nvim`, these can be installed automatically via `vhyrro/luarocks.nvim`.
 
 ### Using lazy.nvim
@@ -69,7 +68,6 @@ If you use `lazy.nvim`, these can be installed automatically via `vhyrro/luarock
     },
     rocks = {
       "lpeg",
-      "lpeglabel",
       "luafilesystem",
       "penlight",
     },
@@ -110,7 +108,6 @@ use({
 If you prefer installing rocks manually instead of using luarocks.nvim:
 ```sh
 luarocks install lpeg
-luarocks install lpeglabel
 luarocks install luafilesystem
 luarocks install penlight
 ```

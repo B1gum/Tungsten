@@ -1,7 +1,7 @@
 -- tests/unit/domains/differential_equations/rules/ode_spec.lua
 -- Busted tests for the ODE parsing rule.
 
-local lpeg = require("lpeglabel")
+local lpeg = vim.lpeg
 local P, V, C, R, S, Ct, Cg, Cf = lpeg.P, lpeg.V, lpeg.C, lpeg.R, lpeg.S, lpeg.Ct, lpeg.Cg, lpeg.Cf
 
 describe("Differential Equations ODE Rule", function()

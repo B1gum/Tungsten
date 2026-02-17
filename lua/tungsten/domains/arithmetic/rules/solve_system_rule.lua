@@ -1,5 +1,5 @@
 -- lua/tungsten/domains/arithmetic/rules/solve_system_rule.lua
-local lpeg = require("lpeglabel")
+local lpeg = vim.lpeg
 local P, V, Ct = lpeg.P, lpeg.V, lpeg.Ct
 
 local tk = require("tungsten.core.tokenizer")

@@ -1,6 +1,6 @@
 -- In tungsten/lua/tungsten/domains/linear_algebra/rules/matrix.lua
 
-local lpeg = require("lpeglabel")
+local lpeg = vim.lpeg
 local P, Ct, V = lpeg.P, lpeg.Ct, lpeg.V
 
 local tk = require("tungsten.core.tokenizer")

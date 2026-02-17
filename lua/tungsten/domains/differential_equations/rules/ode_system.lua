@@ -1,5 +1,5 @@
 -- lua/tungsten/domains/differential_equations/rules/ode_system.lua
-local lpeg = require("lpeglabel")
+local lpeg = vim.lpeg
 local P, V, Ct = lpeg.P, lpeg.V, lpeg.Ct
 local tk = require("tungsten.core.tokenizer")
 local ast = require("tungsten.core.ast")
