@@ -29,30 +29,17 @@ For `lazy.nvim` users:
 
 ```lua
 {
-  {
-    "vhyrro/luarocks.nvim",
-    priority = 1000,
-    config = true,
+  "B1gum/Tungsten",
+  dependencies = {
+    "nvim-lua/plenary.nvim",
+    "nvim-telescope/telescope.nvim", -- Optional
+    "folke/which-key.nvim", -- Optional
   },
-  {
-    "B1gum/Tungsten",
-    dependencies = {
-      "vhyrro/luarocks.nvim",
-      "nvim-lua/plenary.nvim",
-      "nvim-telescope/telescope.nvim", -- Optional
-      "folke/which-key.nvim", -- Optional
-    },
-    build = "./scripts/install_python_deps.sh",
-    opts = {
-      -- Configuration options
-    },
-    rocks = {
-      "lpeg",
-      "luafilesystem",
-      "penlight",
-    },
+  build = "./scripts/install_python_deps.sh",
+  opts = {
+    -- Configuration options
   },
-}
+},
 ```
 Need more detail or using a different package manager? See the [Installation Guide](docs/introduction/installation.md).
 

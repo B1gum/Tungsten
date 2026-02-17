@@ -7,15 +7,8 @@ This guide covers the prerequisites and steps to install **Tungsten** and set up
 ### Neovim Version
   - **Neovim 0.8.0** or higher.
 
-### lua dependencies
-
-#### Neovim plugins:
+### Neovim dependencies
 - [nvim-lua/plenary.nvim](https://github.com/nvim-lua/plenary.nvim): required for asynchronous job handling and utility functions.
-
-#### LuaRocks packages:
-- [lpeg](https://luarocks.org/modules/gvvaughan/lpeg): used for parsing LaTeX input.
-- [luafilesystem](https://luarocks.org/modules/hisham/luafilesystem): used for file system operations in plotting.
-- [penlight](https://luarocks.org/modules/steved/penlight): provides utility libraries (filesystem, paths) for plotting.
 
 ### System Dependencies
 Tungsten relies on external tools to perform calculations and render plots. Depending on your preferred backend, ensure the following are installed:
@@ -35,62 +28,30 @@ You can install these dependencies via pip:
 pip install sympy numpy matplotlib
 ```
 
-## Installation
-Tungsten uses the LuaRocks dependency `lpeg` for its parser.  
-If you use `lazy.nvim`, these can be installed automatically via `vhyrro/luarocks.nvim`.
-
-### Using lazy.nvim
 ## Install
-
-Tungsten uses the LuaRocks dependency `lpeg` for its parser. 
-If you use `lazy.nvim`, these can be installed automatically via `vhyrro/luarocks.nvim`.
 
 ### Using lazy.nvim
 
 ```lua
 {
-  {
-    "vhyrro/luarocks.nvim",
-    priority = 1000,
-    config = true,
+  "B1gum/Tungsten",
+  dependencies = {
+    "nvim-lua/plenary.nvim",
+    "nvim-telescope/telescope.nvim", -- Optional
+    "folke/which-key.nvim", -- Optional
   },
-  {
-    "B1gum/Tungsten",
-    dependencies = {
-      "vhyrro/luarocks.nvim",
-      "nvim-lua/plenary.nvim",
-      "nvim-telescope/telescope.nvim", -- Optional
-      "folke/which-key.nvim", -- Optional
-    },
-    build = "./scripts/install_python_deps.sh", -- This automates the packaging!
-    opts = {
-      -- Configuration options
-    },
-    rocks = {
-      "lpeg",
-      "luafilesystem",
-      "penlight",
-    },
+  build = "./scripts/install_python_deps.sh", -- This automates the packaging!
+  opts = {
+    -- Configuration options
   },
 }
 ```
 
 ### Using packer.nvim
-Note: `packer.nvim` does not install LuaRocks dependencies automatically on its own.
-Recommended: install `vhyrro/luarocks.nvim` and ensure luarocks is available on your PATH.
-
 ```lua
-use({
-  "vhyrro/luarocks.nvim",
-  config = function()
-    require("luarocks").setup({})
-  end,
-})
-
 use({
   "B1gum/Tungsten",
   requires = {
-    "vhyrro/luarocks.nvim",
     "nvim-lua/plenary.nvim",
     "nvim-telescope/telescope.nvim", -- Optional
     "folke/which-key.nvim", -- Optional
@@ -103,13 +64,6 @@ use({
   end,
 })
 
-```
-
-If you prefer installing rocks manually instead of using luarocks.nvim:
-```sh
-luarocks install lpeg
-luarocks install luafilesystem
-luarocks install penlight
 ```
 
 ## Verification

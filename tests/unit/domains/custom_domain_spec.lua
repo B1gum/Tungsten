@@ -1,4 +1,3 @@
-local lfs = require("lfs")
 local mock_utils = require("tests.helpers.mock_utils")
 local match = require("luassert.match")
 
@@ -6,12 +5,13 @@ describe("tungsten.register_domain", function()
 	local tmp_dir
 	local tungsten
 	local registry_mock
+	local uv = vim.uv or vim.loop
 
 	before_each(function()
-		tmp_dir = vim.loop.fs_mkdtemp("tungsten_custom_domXXXXXX")
-		lfs.mkdir(tmp_dir .. "/tungsten")
-		lfs.mkdir(tmp_dir .. "/tungsten/domains")
-		lfs.mkdir(tmp_dir .. "/tungsten/domains/custom")
+		tmp_dir = uv.fs_mkdtemp("tungsten_custom_domXXXXXX")
+
+		vim.fn.mkdir(tmp_dir .. "/tungsten/domains/custom", "p")
+
 		local f = io.open(tmp_dir .. "/tungsten/domains/custom/init.lua", "w")
 		f:write([[return {
       name='custom',
@@ -35,7 +35,8 @@ describe("tungsten.register_domain", function()
 		package.loaded["tungsten"] = nil
 		package.loaded["tungsten.core.domain_manager"] = nil
 		package.loaded["tungsten.core.registry"] = nil
-		os.execute("rm -rf " .. tmp_dir)
+
+		vim.fn.delete(tmp_dir, "rf")
 	end)
 
 	it("loads and registers the domain", function()

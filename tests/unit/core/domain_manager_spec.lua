@@ -1,4 +1,3 @@
-local lfs = require("lfs")
 local spy = require("luassert.spy")
 local match = require("luassert.match")
 
@@ -155,11 +154,13 @@ describe("DomainManager", function()
 		local registry_mock
 		local logger_mock
 		local orig_domains
+		local uv = vim.uv or vim.loop
+
 		before_each(function()
-			tmp_dir = vim.loop.fs_mkdtemp("tungsten_dm_integXXXXXX")
-			lfs.mkdir(tmp_dir .. "/tungsten")
-			lfs.mkdir(tmp_dir .. "/tungsten/domains")
-			lfs.mkdir(tmp_dir .. "/tungsten/domains/dom1")
+			tmp_dir = uv.fs_mkdtemp("tungsten_dm_integXXXXXX")
+
+			vim.fn.mkdir(tmp_dir .. "/tungsten/domains/dom1", "p")
+
 			local f = io.open(tmp_dir .. "/tungsten/domains/dom1/init.lua", "w")
 			f:write([[return {
         name='dom1', priority=10,
@@ -169,7 +170,7 @@ describe("DomainManager", function()
       }]])
 			f:close()
 
-			lfs.mkdir(tmp_dir .. "/tungsten/domains/dom2")
+			vim.fn.mkdir(tmp_dir .. "/tungsten/domains/dom2", "p")
 			f = io.open(tmp_dir .. "/tungsten/domains/dom2/init.lua", "w")
 			f:write([[return {
         name='dom2', priority=5,
@@ -197,7 +198,9 @@ describe("DomainManager", function()
 			package.loaded["tungsten.core.registry"] = nil
 			package.loaded["tungsten.util.logger"] = nil
 			package.loaded["tungsten.core.domain_manager"] = nil
-			os.execute("rm -rf " .. tmp_dir)
+
+			vim.fn.delete(tmp_dir, "rf")
+
 			require("tungsten.config").domains = orig_domains
 			_G.dom1_commands_called = nil
 			_G.dom1_handlers_called = nil

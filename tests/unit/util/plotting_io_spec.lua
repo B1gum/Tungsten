@@ -1,17 +1,17 @@
 -- Unit tests for the plotting I/O module covering TeX root and output directory logic.
 
-local lfs = require("lfs")
-
 describe("Plotting I/O and File Management", function()
 	local plotting_io
 	local temp_dir
 	local original_get_name
+	local uv = vim.uv or vim.loop
 
 	before_each(function()
-		temp_dir = vim.loop.fs_mkdtemp("tungsten_test_XXXXXX")
-		lfs.mkdir(temp_dir .. "/project")
-		lfs.mkdir(temp_dir .. "/project/sub")
-		lfs.mkdir(temp_dir .. "/images")
+		temp_dir = uv.fs_mkdtemp("tungsten_test_XXXXXX")
+
+		vim.fn.mkdir(temp_dir .. "/project", "p")
+		vim.fn.mkdir(temp_dir .. "/project/sub", "p")
+		vim.fn.mkdir(temp_dir .. "/images", "p")
 
 		package.loaded["tungsten.domains.plotting.io"] = nil
 
@@ -25,8 +25,8 @@ describe("Plotting I/O and File Management", function()
 
 	after_each(function()
 		vim.api.nvim_buf_get_name = original_get_name
-		if temp_dir and lfs.attributes(temp_dir) then
-			os.execute("rm -rf " .. temp_dir)
+		if temp_dir and uv.fs_stat(temp_dir) then
+			vim.fn.delete(temp_dir, "rf")
 		end
 	end)
 
@@ -125,12 +125,16 @@ describe("Plotting I/O and File Management", function()
 			f:write("\\documentclass{article}")
 			f:close()
 			local expected_dir = temp_dir .. "/project/tungsten_plots"
-			assert.is_nil(lfs.attributes(expected_dir))
+
+			assert.is_nil(uv.fs_stat(expected_dir))
 
 			local out_dir, err, used_graphicspath = plotting_io.get_output_directory(main_tex_path)
 			assert.is_nil(err)
 			assert.are.equal(expected_dir, out_dir)
-			assert.are.equal("directory", lfs.attributes(expected_dir, "mode"))
+
+			local stat = uv.fs_stat(expected_dir)
+			assert.is_not_nil(stat)
+			assert.are.equal("directory", stat.type)
 			assert.is_false(used_graphicspath)
 		end)
 	end)
@@ -161,7 +165,7 @@ describe("Plotting I/O and File Management", function()
 	describe("Final Path Assembly and Atomic Writes", function()
 		it("detects when an output would overwrite an existing file", function()
 			local out_dir = temp_dir .. "/project/tungsten_plots"
-			lfs.mkdir(out_dir)
+			vim.fn.mkdir(out_dir, "p")
 
 			local opts = { filename_mode = "sequential", format = "pdf" }
 			local path1, reused1 = plotting_io.get_final_path(out_dir, opts, {})
@@ -181,7 +185,7 @@ describe("Plotting I/O and File Management", function()
 
 		it("performs atomic file writes", function()
 			local out_dir = temp_dir .. "/project/tungsten_plots"
-			lfs.mkdir(out_dir)
+			vim.fn.mkdir(out_dir, "p")
 			local final_path = out_dir .. "/atomic_test.dat"
 
 			local ok, err = plotting_io.write_atomically(final_path, "hello")
@@ -192,7 +196,8 @@ describe("Plotting I/O and File Management", function()
 			local content = f:read("*a")
 			f:close()
 			assert.are.equal("hello", content)
-			assert.is_nil(lfs.attributes(final_path .. ".tmp"))
+
+			assert.is_nil(uv.fs_stat(final_path .. ".tmp"))
 		end)
 	end)
 end)

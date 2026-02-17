@@ -1,6 +1,5 @@
 local stub = require("luassert.stub")
 local async = require("tungsten.util.async")
-local lfs = require("lfs")
 local plot_backend = require("tungsten.backends.python.plot_generator")
 local executor = require("tungsten.backends.python.executor")
 local config = require("tungsten.config")
@@ -271,6 +270,7 @@ describe("python polar plotting", function()
 	describe("python plot_async working directory", function()
 		local run_job_stub
 		local temp_dir
+		local uv = vim.uv or vim.loop
 
 		local function create_basic_opts(overrides)
 			local opts = {
@@ -296,9 +296,9 @@ describe("python polar plotting", function()
 		end
 
 		before_each(function()
-			temp_dir = vim.loop.fs_mkdtemp("tungsten_plot_async_XXXXXX")
-			lfs.mkdir(temp_dir .. "/project")
-			lfs.mkdir(temp_dir .. "/project/tungsten_plots")
+			temp_dir = uv.fs_mkdtemp("tungsten_plot_async_XXXXXX")
+
+			vim.fn.mkdir(temp_dir .. "/project/tungsten_plots", "p")
 
 			ast_stub = stub(executor, "ast_to_code", function(ast)
 				if type(ast) == "table" and ast.__code then
@@ -322,8 +322,8 @@ describe("python polar plotting", function()
 			if ast_stub then
 				ast_stub:revert()
 			end
-			if temp_dir and lfs.attributes(temp_dir) then
-				os.execute("rm -rf " .. temp_dir)
+			if temp_dir and uv.fs_stat(temp_dir) then
+				vim.fn.delete(temp_dir, "rf")
 			end
 		end)
 

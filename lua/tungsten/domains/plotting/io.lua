@@ -1,9 +1,40 @@
-local lfs = require("lfs")
-local path = require("pl.path")
-local dir = require("pl.dir")
 local error_handler = require("tungsten.util.error_handler")
 
 local M = {}
+
+local uv = vim.uv or vim.loop
+
+local function path_join(...)
+	return table.concat({ ... }, "/"):gsub("//+", "/")
+end
+
+local function path_norm(path)
+	return vim.fs.normalize(path)
+end
+
+local function path_dirname(path)
+	return vim.fs.dirname(path)
+end
+
+local function path_isabs(path)
+	return path:sub(1, 1) == "/" or path:match("^%a:")
+end
+
+local function file_exists(path)
+	local stat = uv.fs_stat(path)
+	return stat ~= nil
+end
+
+local function scandir(path)
+	local handle = uv.fs_scandir(path)
+	if not handle then
+		return function() end
+	end
+	return function()
+		local name, _ = uv.fs_scandir_next(handle)
+		return name
+	end
+end
 
 local display_envs = {
 	"align",
@@ -235,7 +266,7 @@ local function find_latest_existing(dir_path, ext)
 	local max_index = 0
 
 	local ok = pcall(function()
-		for entry in lfs.dir(dir_path) do
+		for entry in scandir(dir_path) do
 			local number = entry:match(pattern)
 			if number then
 				local value = tonumber(number)
@@ -250,7 +281,7 @@ local function find_latest_existing(dir_path, ext)
 		return nil
 	end
 
-	return path.normpath(path.join(dir_path, string.format("plot_%03d.%s", max_index, ext or "pdf")))
+	return path_norm(path_join(dir_path, string.format("plot_%03d.%s", max_index, ext or "pdf")))
 end
 
 local function determine_next_available(dir_path)
@@ -261,7 +292,7 @@ local function determine_next_available(dir_path)
 	end
 
 	local ok = pcall(function()
-		for entry in lfs.dir(dir_path) do
+		for entry in scandir(dir_path) do
 			if entry ~= "." and entry ~= ".." then
 				local number = entry:match("^plot_(%d+)")
 				if number then
@@ -319,7 +350,7 @@ function M.find_tex_root(current_buf_path)
 		return nil, E_TEX_ROOT_NOT_FOUND
 	end
 
-	local current_dir = path.dirname(current_buf_path)
+	local current_dir = path_dirname(current_buf_path)
 
 	local file = io.open(current_buf_path, "r")
 	if file then
@@ -329,10 +360,10 @@ function M.find_tex_root(current_buf_path)
 		if magic and magic ~= "" then
 			magic = magic:gsub("^%s+", ""):gsub("%s+$", "")
 			local root_path
-			if path.isabs(magic) then
-				root_path = path.normpath(magic)
+			if path_isabs(magic) then
+				root_path = path_norm(magic)
 			else
-				root_path = path.normpath(path.join(current_dir, magic))
+				root_path = path_norm(path_join(current_dir, magic))
 			end
 			return root_path, nil
 		end
@@ -343,9 +374,9 @@ function M.find_tex_root(current_buf_path)
 
 	local search_dir = current_dir
 	while search_dir and search_dir ~= "" do
-		for entry in lfs.dir(search_dir) do
+		for entry in scandir(search_dir) do
 			if entry:match("%.tex$") then
-				local candidate = path.join(search_dir, entry)
+				local candidate = path_join(search_dir, entry)
 				local f = io.open(candidate, "r")
 				if f then
 					local text = f:read("*a") or ""
@@ -356,7 +387,7 @@ function M.find_tex_root(current_buf_path)
 				end
 			end
 		end
-		local parent = path.dirname(search_dir)
+		local parent = path_dirname(search_dir)
 		if not parent or parent == search_dir then
 			break
 		end
@@ -371,7 +402,7 @@ function M.get_output_directory(tex_root_path)
 		return nil, { code = error_handler.E_BAD_OPTS, message = "Invalid TeX root path" }
 	end
 
-	local base_dir = path.dirname(tex_root_path)
+	local base_dir = path_dirname(tex_root_path)
 	local target_base
 	local used_graphicspath = false
 
@@ -386,11 +417,11 @@ function M.get_output_directory(tex_root_path)
 				local first = entry:sub(2, -2)
 				first = first:gsub("^%s+", ""):gsub("%s+$", "")
 				if first ~= "" then
-					local normalized = path.normpath(first)
-					if path.isabs(normalized) then
+					local normalized = path_norm(first)
+					if path_isabs(normalized) then
 						target_base = normalized
 					else
-						target_base = path.normpath(path.join(base_dir, normalized))
+						target_base = path_norm(path_join(base_dir, normalized))
 					end
 					used_graphicspath = true
 					break
@@ -403,10 +434,10 @@ function M.get_output_directory(tex_root_path)
 		target_base = base_dir
 	end
 
-	local final_dir = path.normpath(path.join(target_base, "tungsten_plots"))
-	local ok, err = dir.makepath(final_dir)
-	if not ok then
-		return nil, err
+	local final_dir = path_norm(path_join(target_base, "tungsten_plots"))
+	local ok = vim.fn.mkdir(final_dir, "p")
+	if ok ~= 1 then
+		return nil, "Failed to create directory: " .. final_dir
 	end
 	return final_dir, nil, used_graphicspath
 end
@@ -441,10 +472,10 @@ function M.get_final_path(output_dir, opts, plot_data)
 		plot_data = plot_data,
 	})
 	local ext = opts.format or "pdf"
-	local final_path = path.normpath(path.join(output_dir, base .. "." .. ext))
+	local final_path = path_norm(path_join(output_dir, base .. "." .. ext))
 
 	local reused = false
-	if lfs.attributes(final_path) then
+	if file_exists(final_path) then
 		reused = true
 	elseif not had_counter then
 		local existing = find_latest_existing(output_dir, ext)
