@@ -5,7 +5,7 @@ This guide covers the prerequisites and steps to install **Tungsten** and set up
 ## Prerequisites
 
 ### Neovim Version
-  - **Neovim 0.8.0** or higher.
+  - **Neovim 0.10.0** or higher.
 
 ### Neovim dependencies
 - [nvim-lua/plenary.nvim](https://github.com/nvim-lua/plenary.nvim): required for asynchronous job handling and utility functions.

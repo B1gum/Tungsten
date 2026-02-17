@@ -1,4 +1,3 @@
-local path = require("pl.path")
 local base = require("tungsten.backends.plot_base")
 local logger = require("tungsten.util.logger")
 local async = require("tungsten.util.async")
@@ -880,13 +879,13 @@ function M.build_plot_command(opts, callback)
 
 	local cwd
 	if normalized_opts.tex_root and normalized_opts.tex_root ~= "" then
-		if path.isdir(normalized_opts.tex_root) then
+		if vim.fn.isdirectory(normalized_opts.tex_root) == 1 then
 			cwd = normalized_opts.tex_root
 		else
-			cwd = path.dirname(normalized_opts.tex_root)
+			cwd = vim.fn.fnamemodify(normalized_opts.tex_root, ":h")
 		end
 	elseif normalized_opts.out_path and normalized_opts.out_path ~= "" then
-		cwd = path.dirname(normalized_opts.out_path)
+		cwd = vim.fn.fnamemodify(normalized_opts.out_path, ":h")
 	end
 
 	local command = { python_path, "-c", script }

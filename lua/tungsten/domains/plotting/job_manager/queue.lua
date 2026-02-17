@@ -1,7 +1,6 @@
 local config = require("tungsten.config")
 local logger = require("tungsten.util.logger")
 local async = require("tungsten.util.async")
-local path = require("pl.path")
 local error_handler = require("tungsten.util.error_handler")
 local plotting_errors = require("tungsten.domains.plotting.errors")
 local plotting_io = require("tungsten.domains.plotting.io")
@@ -79,7 +78,7 @@ local function apply_output(plot_opts, image_path)
 		local cwd = vim.fn.fnamemodify(buf_path, ":p:h")
 		local tex_root_dir
 		if plot_opts.tex_root and plot_opts.tex_root ~= "" then
-			tex_root_dir = path.dirname(plot_opts.tex_root)
+			tex_root_dir = vim.fn.fnamemodify(plot_opts.tex_root, ":h")
 		end
 		if not tex_root_dir or tex_root_dir == "" then
 			tex_root_dir = cwd
@@ -89,25 +88,24 @@ local function apply_output(plot_opts, image_path)
 
 		local snippet_path
 		if plot_opts.uses_graphicspath then
-			local filename = path.basename(image_path) or image_path
-			local base, ext = path.splitext(filename)
-			local basename = filename
-			if base and ext and ext ~= "" then
-				basename = base
+			local filename = vim.fn.fnamemodify(image_path, ":t")
+			if filename == "" then
+				filename = image_path
 			end
+			local basename = vim.fn.fnamemodify(filename, ":r")
 			snippet_path = string.format("tungsten_plots/%s", basename)
 		else
 			local rel_path = image_path
-			local ok, rp = pcall(path.relpath, image_path, tex_root_dir)
-			if ok and rp then
-				rel_path = rp
+			local root_prefix = tex_root_dir
+			if not vim.endswith(root_prefix, "/") and not vim.endswith(root_prefix, "\\") then
+				root_prefix = root_prefix .. "/"
 			end
 
-			local base, ext = path.splitext(rel_path)
-			snippet_path = rel_path
-			if base and ext and ext ~= "" then
-				snippet_path = base
+			if vim.startswith(image_path, root_prefix) then
+				rel_path = string.sub(image_path, #root_prefix + 1)
 			end
+
+			snippet_path = vim.fn.fnamemodify(rel_path, ":r")
 		end
 
 		local snippet = string.format("\\includegraphics[width=%s]{%s}", snippet_width, snippet_path)

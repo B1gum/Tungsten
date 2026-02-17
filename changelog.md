@@ -29,7 +29,6 @@
 
 ### Fixed
 
-- Added `luafilesystem` and `penlight` to rockspec
 - Added `scripts/install_python_deps.sh` and run it at build-time to automatically install python dependencies
 - Corrected timout error-reporting
 - Made persistent sessiosn respect timeouts
