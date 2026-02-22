@@ -36,21 +36,6 @@ function M.evaluate_async(ast, numeric, callback)
 		return
 	end
 
-	local backend_name = state.active_backend
-	local is_persistent = false
-	if config.backend_opts[backend_name] and config.backend_opts[backend_name].persistent then
-		is_persistent = true
-	end
-
-	if is_persistent then
-		if backend.evaluate_persistent then
-			backend.evaluate_persistent(ast, { numeric = numeric }, callback)
-			return
-		else
-			logger.warn("Tungsten", "Backend does not support persistent mode. Falling back to standard.")
-		end
-	end
-
 	local ast_to_code = backend.ast_to_code
 	local initial_code
 	local pcall_ok, pcall_result = pcall(ast_to_code, ast)
@@ -66,6 +51,21 @@ function M.evaluate_async(ast, numeric, callback)
 		logger.debug("Tungsten Debug", "Code after persistent variable substitution: " .. code_with_vars_substituted)
 	else
 		logger.debug("Tungsten Debug", "No persistent variable substitutions made.")
+	end
+
+	local backend_name = state.active_backend
+	local is_persistent = false
+	if config.backend_opts[backend_name] and config.backend_opts[backend_name].persistent then
+		is_persistent = true
+	end
+
+	if is_persistent then
+		if backend.evaluate_persistent then
+			backend.evaluate_persistent(ast, { numeric = numeric, code = code_with_vars_substituted }, callback)
+			return
+		else
+			logger.warn("Tungsten", "Backend does not support persistent mode. Falling back to standard.")
+		end
 	end
 
 	local cache_key = CacheService.get_cache_key(code_with_vars_substituted, numeric)

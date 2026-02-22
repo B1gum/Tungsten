@@ -7,6 +7,7 @@ local plotting_ui = require("tungsten.ui.plotting")
 local job_submit = require("tungsten.util.plotting.job_submit")
 local classification_merge = require("tungsten.domains.plotting.workflow.classification_merge")
 local selection_utils = require("tungsten.domains.plotting.workflow.selection")
+local state = require("tungsten.state")
 
 local M = {}
 
@@ -51,31 +52,6 @@ local function build_plot_ast(nodes)
 	return nil
 end
 
-local function parse_and_classify_selection(text, parse_opts, empty_error)
-	if text == "" then
-		notify_error(empty_error)
-		return
-	end
-
-	local ok_parse, parsed, err_msg, err_pos, err_input = pcall(parser.parse, text, parse_opts)
-	if not ok_parse then
-		notify_error(parsed)
-		return
-	end
-	if not parsed or not parsed.series or #parsed.series == 0 then
-		notify_error(err_msg or "Unable to parse selection", err_pos, err_input)
-		return
-	end
-
-	local classification_data, classify_err = classification_merge.merge(parsed.series, parse_opts)
-	if not classification_data then
-		notify_error(classify_err)
-		return
-	end
-
-	return classification_data, parsed
-end
-
 local function substitute_ast(node, defs)
 	if not node then
 		return nil
@@ -106,6 +82,50 @@ local function substitute_ast(node, defs)
 	return copy
 end
 
+local function get_persistent_defs()
+	local defs = {}
+	local persistent = state.persistent_variables or {}
+	for name, code in pairs(persistent) do
+		local num = tonumber(code)
+		if num then
+			defs[name] = { value = num }
+		end
+	end
+	return defs
+end
+
+local function parse_and_classify_selection(text, parse_opts, empty_error)
+	if text == "" then
+		notify_error(empty_error)
+		return
+	end
+
+	local ok_parse, parsed, err_msg, err_pos, err_input = pcall(parser.parse, text, parse_opts)
+	if not ok_parse then
+		notify_error(parsed)
+		return
+	end
+	if not parsed or not parsed.series or #parsed.series == 0 then
+		notify_error(err_msg or "Unable to parse selection", err_pos, err_input)
+		return
+	end
+
+	local persistent_defs = get_persistent_defs()
+	if not vim.tbl_isempty(persistent_defs) then
+		for i, node in ipairs(parsed.series) do
+			parsed.series[i] = substitute_ast(node, persistent_defs)
+		end
+	end
+
+	local classification_data, classify_err = classification_merge.merge(parsed.series, parse_opts)
+	if not classification_data then
+		notify_error(classify_err)
+		return
+	end
+
+	return classification_data, parsed
+end
+
 function M.run_simple(text)
 	if type(text) ~= "string" then
 		text = ""
@@ -126,6 +146,13 @@ function M.run_simple(text)
 	if not parsed or not parsed.series or #parsed.series == 0 then
 		notify_error(err_msg or "Unable to parse selection", err_pos, err_input)
 		return
+	end
+
+	local persistent_defs = get_persistent_defs()
+	if not vim.tbl_isempty(persistent_defs) then
+		for i, node in ipairs(parsed.series) do
+			parsed.series[i] = substitute_ast(node, persistent_defs)
+		end
 	end
 
 	local classification_data, classify_err = classification_merge.merge(parsed.series)

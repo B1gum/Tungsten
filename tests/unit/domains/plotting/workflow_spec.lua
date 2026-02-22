@@ -231,7 +231,7 @@ describe("Plotting workflow", function()
 		assert.are.equal(0, submitted.start_line)
 		assert.are.equal(0, submitted.start_col)
 		assert.are.equal(0, submitted.end_line)
-		assert.are.equal(0, submitted.end_col)
+		assert.are.equal(6, submitted.end_col)
 		assert.are.same({ "wolfram", "-code", "plot" }, { submitted[1], submitted[2], submitted[3] })
 	end)
 

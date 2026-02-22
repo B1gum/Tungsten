@@ -7,8 +7,11 @@ function M.get_selection_range()
 	local start_pos = vim.fn.getpos("'<")
 	local end_pos = vim.fn.getpos("'>")
 
-	if start_pos[1] == 0 or end_pos[1] == 0 then
-		return bufnr, 0, 0, 0, 0
+	if start_pos[2] == 0 then
+		local cursor = vim.api.nvim_win_get_cursor(0)
+		local line = cursor[1] - 1
+		local col = cursor[2]
+		return bufnr, line, col, line, col
 	end
 
 	if start_pos[2] > end_pos[2] or (start_pos[2] == end_pos[2] and start_pos[3] > end_pos[3]) then

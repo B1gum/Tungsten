@@ -223,6 +223,10 @@ function BaseExecutor.evaluate_persistent(executor, ast, opts, callback)
 		return
 	end
 
+	if opts and opts.code then
+		code = opts.code
+	end
+
 	local delimiter = "__TUNGSTEN_END__"
 	local formatted_input = executor.format_persistent_input(code, delimiter)
 	local timeout_ms = resolve_timeout_ms(opts, config)
