@@ -26,6 +26,8 @@
 - Added parsing rules for `\prod` akin to those already implemented for `\sum`
 - Added parsing rules for `\binom` meaning both backends are able to evaluate binomials
 - Added support for factorial notation using `!` (e.g. `n!`)
+- Added support for `siunitx` formatted units, e.g. `\qty{}{}`, `\ang{}` and `\num{}`
+- Added the plotting job-spinner to all evaluations.
 
 ### Fixed
 
