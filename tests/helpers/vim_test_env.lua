@@ -188,7 +188,7 @@ function M.restore_plugin_configs()
 			end
 			current_table = current_table[path_keys[i]]
 		end
-		if current_table and current_table[path_keys[#path_keys]] ~= nil then
+		if current_table then
 			current_table[path_keys[#path_keys]] = original_value
 		end
 	end

@@ -53,6 +53,7 @@ describe("tungsten.backends.wolfram (Plenary Env)", function()
 
 	local function clear_tungsten_modules_from_cache()
 		mock_utils.reset_modules({
+			"tungsten",
 			"tungsten.backends.wolfram",
 			"tungsten.config",
 			"tungsten.core.registry",

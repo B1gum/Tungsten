@@ -73,6 +73,15 @@ describe("tungsten.setup", function()
 		end, "tungsten.setup: options table expected")
 	end)
 
+	it("throws error for invalid config value type", function()
+		assert.has_error(function()
+			tungsten.setup({ debug = "true" })
+		end)
+		assert.has_error(function()
+			tungsten.setup({ max_jobs = "5" })
+		end)
+	end)
+
 	it("creates user commands from registry", function()
 		local mock_registry = {
 			commands = {

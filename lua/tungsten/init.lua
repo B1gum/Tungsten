@@ -40,6 +40,27 @@ function M.setup(user_opts)
 
 	M.config.hooks = M.config.hooks or {}
 
+	vim.validate({
+		numeric_mode = { M.config.numeric_mode, "boolean" },
+		debug = { M.config.debug, "boolean" },
+		log_level = { M.config.log_level, "string" },
+		cache_enabled = { M.config.cache_enabled, "boolean" },
+		cache_max_entries = { M.config.cache_max_entries, "number" },
+		cache_ttl = { M.config.cache_ttl, "number" },
+		enable_default_mappings = { M.config.enable_default_mappings, "boolean" },
+		domains = { M.config.domains, "table", true },
+		process_timeout_ms = { M.config.process_timeout_ms, "number" },
+		result_separator = { M.config.result_separator, "string" },
+		result_display = { M.config.result_display, "string" },
+		max_jobs = { M.config.max_jobs, "number" },
+		job_spinner = { M.config.job_spinner, "boolean" },
+		persistent_variable_assignment_operator = { M.config.persistent_variable_assignment_operator, "string" },
+		backend = { M.config.backend, "string" },
+		backend_opts = { M.config.backend_opts, "table" },
+		plotting = { M.config.plotting, "table" },
+		hooks = { M.config.hooks, "table", true },
+	})
+
 	if type(M.config.domains) == "table" and not vim.tbl_islist(M.config.domains) then
 		local registry = require("tungsten.core.registry")
 		local domain_names = {}

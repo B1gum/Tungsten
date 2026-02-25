@@ -16,7 +16,7 @@
 
 - Added `luafilesystem` and `penlight` to rockspec
 
-## [0.2.0]
+## [0.2.0] – 2026-02-21
 
 ### Features
 
@@ -43,3 +43,10 @@
 - Added coverage reporting to readme
 - Added contributor documentation including `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SUPPORT.md` and `STYLE.md`
 - Updated the Capability Matrix and configuration guides to reflect that the Python backend is now fully supported for evaluation and plotting.
+
+## [0.2.1]
+
+### Fixed
+- Add support for negatives in `\num{}`
+- Pass config options to persistent wolfram sessions
+- Validate Tungsten user configuration during setup
