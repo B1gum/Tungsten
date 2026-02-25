@@ -50,6 +50,12 @@ c[#c + 1] = {
 	category = "AtomBaseItem",
 	priority = prio,
 }
+c[#c + 1] = {
+	name = "Abs",
+	pattern = require("tungsten.domains.arithmetic.rules.abs"),
+	category = "AtomBaseItem",
+	priority = prio,
+}
 c[#c + 1] = { name = "LnFunction", pattern = log_functions.LnRule, category = "AtomBaseItem", priority = prio }
 c[#c + 1] = { name = "LogFunction", pattern = log_functions.LogRule, category = "AtomBaseItem", priority = prio }
 c[#c + 1] = { name = "SupSub", pattern = supersub.SupSub, category = "SupSub", priority = prio }

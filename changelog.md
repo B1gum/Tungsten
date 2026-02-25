@@ -46,6 +46,9 @@
 
 ## [0.2.1]
 
+### Features
+- Add support for absolute values using `|...|`, `\left| ... \right|`, etc.
+
 ### Fixed
 - Add support for negatives in `\num{}`
 - Pass config options to persistent wolfram sessions
