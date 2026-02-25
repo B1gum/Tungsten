@@ -154,10 +154,17 @@ function M.sanitize_persistent_output(output)
 	return output:match("^%s*(.-)%s*$")
 end
 
-function M.format_persistent_input(code, delimiter)
+function M.format_persistent_input(code, delimiter, opts)
+	local numeric = config.numeric_mode or (opts and opts.numeric)
+	local final_code = code
+
+	if numeric then
+		final_code = "N[" .. code .. "]"
+	end
+
 	return string.format(
 		'\nPrint[ToString[TeXForm[Quiet[%s]], CharacterEncoding -> "UTF8"]]; Print["%s"];',
-		code,
+		final_code,
 		delimiter
 	)
 end

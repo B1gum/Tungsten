@@ -217,6 +217,8 @@ function BaseExecutor.evaluate_persistent(executor, ast, opts, callback)
 	local async = require("tungsten.util.async")
 	local config = require("tungsten.config")
 
+	opts = opts or {}
+
 	local ok, code = pcall(executor.ast_to_code, ast)
 	if not ok or not code then
 		callback(nil, format_convert_error(executor, code))
@@ -228,7 +230,7 @@ function BaseExecutor.evaluate_persistent(executor, ast, opts, callback)
 	end
 
 	local delimiter = "__TUNGSTEN_END__"
-	local formatted_input = executor.format_persistent_input(code, delimiter)
+	local formatted_input = executor.format_persistent_input(code, delimiter, opts)
 	local timeout_ms = resolve_timeout_ms(opts, config)
 	local timeout_error = format_timeout_error(executor, timeout_ms)
 	local cancel_error = format_cancel_error(executor)
@@ -249,7 +251,7 @@ function BaseExecutor.evaluate_persistent(executor, ast, opts, callback)
 			local init_code = executor.get_persistent_init()
 			if init_code then
 				local fmt_func = executor.format_persistent_init or executor.format_persistent_input
-				local formatted_init = fmt_func(init_code, delimiter)
+				local formatted_init = fmt_func(init_code, delimiter, opts)
 				state.persistent_job:send(formatted_init, function(_, _) end, {
 					timeout_ms = timeout_ms,
 					timeout_error = timeout_error,
