@@ -13,7 +13,8 @@ local function parse_si_num(str)
 end
 
 local Content = (
-	lpeg.R("09") ^ 1
+	lpeg.S("+-") ^ -1
+	* lpeg.R("09") ^ 1
 	* (lpeg.S(".,") * lpeg.R("09") ^ 1) ^ -1
 	* (lpeg.S("eE") * lpeg.S("+-") ^ -1 * lpeg.R("09") ^ 1) ^ -1
 )
