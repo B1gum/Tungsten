@@ -48,6 +48,7 @@
 
 ### Features
 - Add support for absolute values using `|...|`, `\left| ... \right|`, etc.
+- Add `:checkhealth Tungsten` command
 
 ### Fixed
 - Add support for negatives in `\num{}`
