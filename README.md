@@ -67,8 +67,10 @@ Run the test suite with:
 make test
 ```
 
-The test helper will install Lua dependencies via `luarocks` and clone
-`plenary.nvim` into `~/.local/share/nvim/lazy` if it is missing.
+The test helper installs Lua dependencies into the repository-local
+`.test_deps/rocks` tree and clones `plenary.nvim` into
+`.test_deps/plenary.nvim`. The development setup does not modify
+user-global LuaRocks trees.
 
 ### Linting and Formatting
 To maintain code quality, we enforce linting and formatting. You can run these checks locally:
