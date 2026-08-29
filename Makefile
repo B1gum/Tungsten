@@ -14,6 +14,9 @@ endif
 export TUNGSTEN_TEST_ROCKTREE := $(ROCKTREE)
 export TUNGSTEN_TEST_PLENARY := $(PLENARY_DIR)
 
+ROCK_LUA_PATH := $(ROCKTREE)/share/lua/$(LUA_VERSION)/?.lua;$(ROCKTREE)/share/lua/$(LUA_VERSION)/?/init.lua;;
+ROCK_LUA_CPATH := $(ROCKTREE)/lib/lua/$(LUA_VERSION)/?.so;;
+
 .PHONY: default all ci test deps lint clean clean_deps test_deps lint_deps fmt fmt-check cov coverage
 
 default: all
@@ -41,7 +44,9 @@ lint_deps:
 
 test: test_deps
 	@echo "Running tests..."
-	@$(ROCKTREE)/bin/vusted tests/minimal_init.lua ./tests
+	@LUA_PATH="$(ROCK_LUA_PATH)" \
+	 LUA_CPATH="$(ROCK_LUA_CPATH)" \
+	 $(ROCKTREE)/bin/vusted tests/minimal_init.lua ./tests
 
 lint: lint_deps
 	@echo "Linting Lua code..."
@@ -65,8 +70,12 @@ clean_deps:
 
 cov coverage: test_deps
 	@echo "Running tests with coverage..."
-	@$(ROCKTREE)/bin/vusted --coverage tests/minimal_init.lua ./tests
+	@LUA_PATH="$(ROCK_LUA_PATH)" \
+	 LUA_CPATH="$(ROCK_LUA_CPATH)" \
+	 $(ROCKTREE)/bin/vusted --coverage tests/minimal_init.lua ./tests
 	@echo "Generating coverage report..."
-	@$(ROCKTREE)/bin/luacov
+	@LUA_PATH="$(ROCK_LUA_PATH)" \
+	 LUA_CPATH="$(ROCK_LUA_CPATH)" \
+	 $(ROCKTREE)/bin/luacov
 	@echo "Coverage report generated: luacov.report.out"
 	@grep -A999 "^Summary" luacov.report.out || true
