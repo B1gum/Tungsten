@@ -10,3 +10,5 @@
 luacov.stats.out
 luacov.report.out
 .nvimlog
+
+.venv/
