@@ -72,7 +72,7 @@ local function substitute_ast(node, defs)
 		if type(v) == "table" then
 			if v.type then
 				copy[k] = substitute_ast(v, defs)
-			elseif vim.tbl_islist(v) then
+			elseif vim.islist(v) then
 				for i, child in ipairs(v) do
 					v[i] = substitute_ast(child, defs)
 				end

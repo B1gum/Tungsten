@@ -837,7 +837,7 @@ local function parse_range_value(value, key)
 end
 
 local function normalize_allowed_forms(allowed_forms)
-	if vim.tbl_islist(allowed_forms) then
+	if vim.islist(allowed_forms) then
 		local normalized = {}
 		for _, value in ipairs(allowed_forms) do
 			normalized[tostring(value):lower()] = true

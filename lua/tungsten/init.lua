@@ -61,7 +61,7 @@ function M.setup(user_opts)
 		hooks = { M.config.hooks, "table", true },
 	})
 
-	if type(M.config.domains) == "table" and not vim.tbl_islist(M.config.domains) then
+	if type(M.config.domains) == "table" and not vim.islist(M.config.domains) then
 		local registry = require("tungsten.core.registry")
 		local domain_names = {}
 		for name, prio in pairs(M.config.domains) do
