@@ -96,6 +96,15 @@ local function tungsten_switch_backend_command(opts)
 		return
 	end
 
+	-- Backend handlers live in a shared registry. Restore the newly activated
+	-- backend's handlers explicitly so a round-trip switch cannot leave the
+	-- previous backend's renderers installed.
+	if type(backend_instance.reload_handlers) == "function" then
+		backend_instance.reload_handlers()
+	end
+	-- Cached output is backend-specific even when generated code happens to match.
+	evaluator.clear_cache()
+
 	state.active_backend = name
 	config.backend = name
 

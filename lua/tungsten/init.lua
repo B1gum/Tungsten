@@ -6,6 +6,19 @@ local defaults = require("tungsten.config")
 local domain_manager = require("tungsten.core.domain_manager")
 local M = { config = vim.deepcopy(defaults) }
 
+local function replace_table_contents(target, source)
+	if target == source then
+		return
+	end
+
+	for key in pairs(target) do
+		target[key] = nil
+	end
+	for key, value in pairs(source) do
+		target[key] = value
+	end
+end
+
 local function execute_hook(name, ...)
 	local hooks = M.config.hooks or {}
 	local fn = hooks[name]
@@ -73,6 +86,10 @@ function M.setup(user_opts)
 
 	require("tungsten.util.logger").set_level(M.config.log_level or "INFO")
 
+	-- Keep the original config table alive so modules that required it before
+	-- setup() see the merged user configuration instead of stale defaults.
+	replace_table_contents(defaults, M.config)
+	M.config = defaults
 	package.loaded["tungsten.config"] = M.config
 
 	local backend_manager = require("tungsten.backends.manager")

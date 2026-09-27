@@ -67,6 +67,16 @@ describe("tungsten.setup", function()
 		assert.are.same(snapshot, defaults)
 	end)
 
+	it("updates config references captured before setup", function()
+		local captured = require("tungsten.config")
+
+		tungsten.setup({ process_timeout_ms = 1234, domains = { "arithmetic", "units" } })
+
+		assert.are.equal(1234, captured.process_timeout_ms)
+		assert.are.same({ "arithmetic", "units" }, captured.domains)
+		assert.are.equal(captured, tungsten.config)
+	end)
+
 	it("throws error for invalid option type", function()
 		assert.has_error(function()
 			tungsten.setup(42)

@@ -9,6 +9,9 @@ local unit_map = {
 	["Meters"] = "\\meter",
 	["Seconds"] = "\\second",
 	["Kilograms"] = "\\kilogram",
+	["Kelvins"] = "\\kelvin",
+	["Moles"] = "\\mole",
+	["Candelas"] = "\\candela",
 	["Newtons"] = "\\newton",
 	["Joules"] = "\\joule",
 	["Watts"] = "\\watt",
@@ -32,6 +35,15 @@ local unit_map = {
 	["Teslas"] = "\\tesla",
 	["Webers"] = "\\weber",
 }
+
+local tex_unit_name_macros = {}
+for unit_name, macro in pairs(unit_map) do
+	local lower = unit_name:lower()
+	tex_unit_name_macros[lower] = macro
+	if lower:sub(-1) == "s" then
+		tex_unit_name_macros[lower:sub(1, -2)] = macro
+	end
+end
 
 local prefixed_unit_macros = {
 	Deca = "\\deca",
@@ -143,6 +155,23 @@ local function normalize_texform_unit(unit_text)
 	local trimmed = unit_text:gsub("%s+", "")
 	if trimmed == "" then
 		return nil
+	end
+
+	local lower = trimmed:lower()
+	local named = tex_unit_name_macros[lower]
+	if named then
+		return named
+	end
+
+	for _, prefix in ipairs(prefixed_unit_names) do
+		local prefix_name = prefix.name:lower()
+		if lower:sub(1, #prefix_name) == prefix_name then
+			local base_name = lower:sub(#prefix_name + 1)
+			local base_macro = tex_unit_name_macros[base_name]
+			if base_macro then
+				return prefix.macro .. base_macro
+			end
+		end
 	end
 
 	for _, prefix in ipairs(tex_unit_prefixes) do

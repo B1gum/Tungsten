@@ -34,6 +34,21 @@ describe("Backend Persistence Formatting", function()
 			assert.matches('Print%["END"%]', result)
 		end)
 
+		it("uses InputForm and UnitSimplify for persistent unit expressions", function()
+			local ast = { type = "quantity" }
+			local result = wolfram.format_persistent_input('Quantity[10.5, "Meters"]', "END", { ast = ast })
+
+			assert.is_truthy(result:find("FormatType -> InputForm", 1, true))
+			assert.is_truthy(result:find("UnitSimplify", 1, true))
+		end)
+
+		it("normalizes persistent Wolfram quantities back to siunitx", function()
+			local raw = 'Out[1]= Quantity[10.5, "Meters"]'
+			local clean = wolfram.sanitize_persistent_output(raw, { ast = { type = "quantity" } })
+
+			assert.equals("\\qty{10.5}{\\meter}", clean)
+		end)
+
 		it("sanitizes output by removing prompts", function()
 			local raw = "In[1]:= \nOut[1]= 2"
 			local clean = wolfram.sanitize_persistent_output(raw)

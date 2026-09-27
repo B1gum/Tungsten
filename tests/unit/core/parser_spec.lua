@@ -1140,6 +1140,19 @@ describe("tungsten.core.parser.parse with combined grammar", function()
 				ast_utils.create_quantity_node(ast_utils.create_number_node(1800), ast_utils.create_unit_component_node("Pa"))
 			assert.are.same(expected_ast, parse_input(input))
 		end)
+
+		it("parses signed quantities", function()
+			local input = "\\qty{-5.5}{\\m}"
+			local expected_ast =
+				ast_utils.create_quantity_node(ast_utils.create_number_node(-5.5), ast_utils.create_unit_component_node("m"))
+			assert.are.same(expected_ast, parse_input(input))
+		end)
+
+		it("parses signed angles with decimal commas and exponent notation", function()
+			local input = "\\ang{-1,25e2}"
+			local expected_ast = ast_utils.create_angle_node(ast_utils.create_number_node(-125))
+			assert.are.same(expected_ast, parse_input(input))
+		end)
 	end)
 
 	describe("solve system input", function()

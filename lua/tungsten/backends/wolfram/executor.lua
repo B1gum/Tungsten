@@ -69,6 +69,23 @@ local function prepare_wolfram_code(raw_code, opts, has_units_flag)
 	return code, build.form
 end
 
+local function prepare_persistent_wolfram_code(raw_code, opts, has_units_flag)
+	local build = build_wolfram_config(opts, has_units_flag)
+	local code = raw_code
+
+	code = apply_numeric_wrapper(code, build)
+	if build.has_units and not build.is_unit_convert then
+		-- apply_unit_simplify_wrapper already wraps UnitSimplify in Quiet[].
+		code = apply_unit_simplify_wrapper(code, build)
+	else
+		-- Persistent sessions historically suppressed backend messages.
+		code = "Quiet[" .. code .. "]"
+	end
+	code = apply_output_formatter(code, build)
+
+	return code, build.form
+end
+
 local function sanitize_wolfram_output(stdout, form_type)
 	local result = stdout
 
@@ -145,28 +162,46 @@ function M.get_persistent_init()
 	return "Null"
 end
 
-function M.sanitize_persistent_output(output)
+function M.format_persistent_init(code, delimiter)
+	return string.format(
+		'\nPrint[ToString[TeXForm[Quiet[%s]], CharacterEncoding -> "UTF8"]]; Print["%s"];',
+		code,
+		delimiter
+	)
+end
+
+function M.sanitize_persistent_output(output, opts)
 	if not output then
 		return ""
 	end
+	opts = opts or {}
+
 	output = output:gsub("In%[%d+%]:=%s*", "")
 	output = output:gsub("Out%[%d+%]=%s*", "")
-	return output:match("^%s*(.-)%s*$")
+	output = output:match("^%s*(.-)%s*$")
+
+	local units_present = opts.ast and ast_utils.has_units(opts.ast) or false
+	local is_unit_convert = ast_utils.is_unit_convert_call(opts.ast)
+	local build = build_wolfram_config({
+		numeric = opts.numeric,
+		form = opts.form,
+		is_unit_convert = is_unit_convert,
+	}, units_present)
+
+	return sanitize_wolfram_output(output, build.form)
 end
 
 function M.format_persistent_input(code, delimiter, opts)
-	local numeric = config.numeric_mode or (opts and opts.numeric)
-	local final_code = code
+	opts = opts or {}
+	local units_present = opts.ast and ast_utils.has_units(opts.ast) or false
+	local is_unit_convert = ast_utils.is_unit_convert_call(opts.ast)
+	local final_code = prepare_persistent_wolfram_code(code, {
+		numeric = opts.numeric,
+		form = opts.form,
+		is_unit_convert = is_unit_convert,
+	}, units_present)
 
-	if numeric then
-		final_code = "N[" .. code .. "]"
-	end
-
-	return string.format(
-		'\nPrint[ToString[TeXForm[Quiet[%s]], CharacterEncoding -> "UTF8"]]; Print["%s"];',
-		final_code,
-		delimiter
-	)
+	return string.format('\nPrint[%s]; Print["%s"];', final_code, delimiter)
 end
 
 return M
