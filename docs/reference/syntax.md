@@ -84,6 +84,18 @@ You can often omit the multiplication operator, just like in handwritten math. T
     - `\sin \theta` is valid.
     - `\cos(x + 1)` is valid
 
+### Modified Bessel Functions
+Tungsten supports the modified Bessel functions of the first and second kinds using their conventional uppercase notation:
+
+- `I_0(x)` and `I_{0}(x)` denote the modified Bessel function of the first kind.
+- `K_0(x)` and `K_{0}(x)` denote the modified Bessel function of the second kind.
+- The order may be symbolic or an arbitrary braced expression, for example `I_\nu(x)`, `K_n(x)`, or `I_{n+1}(x)`.
+- The argument must be parenthesized.
+- Only uppercase `I` and `K` are recognized as modified Bessel notation.
+- A bare expression such as `I_0` remains an ordinary subscripted symbol; only `I_0(...)` is treated as a function call.
+
+Internally these are represented as `besseli(order, argument)` and `besselk(order, argument)`. Wolfram maps them to `BesselI` and `BesselK`, while the Python backend maps them to SymPy's `besseli` and `besselk`. Python plotting still requires SciPy for these special functions and will ask you to use the Wolfram plotting backend until SciPy support is added.
+
 ### Grouping Symbols
   - **Parentheses** `()`: Used for standard mathematical grouping and function arguments.
   - **Braces** `{}`: Used strictly for LaTeX command arguments (e.g., `x^{2}`, `\frac{a}{b}`).

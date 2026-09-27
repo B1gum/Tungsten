@@ -65,6 +65,8 @@ local BUILTIN_FUNCTIONS = {
 	erf = true,
 	erfc = true,
 	besselj = true,
+	besseli = true,
+	besselk = true,
 	bessely = true,
 }
 

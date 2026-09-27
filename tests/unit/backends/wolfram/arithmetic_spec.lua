@@ -528,6 +528,20 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
 			assert.are.same("Exp[x+1]", render_node_for_function_call(node))
 		end)
 
+		it("should render modified Bessel functions", function()
+			local i_node = ast.create_function_call_node(ast.create_symbol_node("besseli"), {
+				ast.create_number_node(0),
+				ast.create_symbol_node("x"),
+			})
+			local k_node = ast.create_function_call_node(ast.create_symbol_node("besselk"), {
+				ast.create_symbol_node("nu"),
+				ast.create_symbol_node("x"),
+			})
+
+			assert.are.same("BesselI[0, x]", render_node_for_function_call(i_node))
+			assert.are.same("BesselK[nu, x]", render_node_for_function_call(k_node))
+		end)
+
 		it("should use capitalized name for unknown function and log a warning", function()
 			local logger = require("tungsten.util.logger")
 			stub(logger, "notify")

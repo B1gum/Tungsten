@@ -77,6 +77,21 @@ describe("plotting analysis", function()
 			{ name = "g(a)", type = "function" },
 		}, entries)
 	end)
+
+	it("treats Bessel functions as builtins", function()
+		local expr = ast.create_function_call_node(ast.create_variable_node("besseli"), {
+			ast.create_number_node(0),
+			ast.create_variable_node("x"),
+		})
+
+		local ok, entries = analysis.get_undefined_symbols({
+			ast = expr,
+			dim = 2,
+		})
+
+		assert.is_true(ok)
+		assert.are.same({}, entries)
+	end)
 end)
 
 describe("plotting analysis", function()

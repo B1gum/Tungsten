@@ -59,6 +59,8 @@ local builtin_mappings = {
 	erf = "sp.erf",
 	erfc = "sp.erfc",
 	besselj = "sp.besselj",
+	besseli = "sp.besseli",
+	besselk = "sp.besselk",
 	bessely = "sp.bessely",
 }
 

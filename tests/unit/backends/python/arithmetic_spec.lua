@@ -150,6 +150,22 @@ describe("Tungsten Arithmetic Python Handlers", function()
 			assert.are.equal("_apply(sp.sin, x)", handlers.function_call(node, mock_recur_render))
 		end)
 
+		it("renders modified Bessel functions", function()
+			local i_node = {
+				type = "function_call",
+				name_node = { type = "variable", name = "besseli" },
+				args = { { type = "number", value = 0 }, { type = "variable", name = "x" } },
+			}
+			local k_node = {
+				type = "function_call",
+				name_node = { type = "variable", name = "besselk" },
+				args = { { type = "variable", name = "nu" }, { type = "variable", name = "x" } },
+			}
+
+			assert.are.equal("_apply(sp.besseli, 0, x)", handlers.function_call(i_node, mock_recur_render))
+			assert.are.equal("_apply(sp.besselk, nu, x)", handlers.function_call(k_node, mock_recur_render))
+		end)
+
 		it("maps function names using python backend opts", function()
 			config.backend_opts = {
 				python = {

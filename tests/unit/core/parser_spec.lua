@@ -208,6 +208,59 @@ describe("tungsten.core.parser.parse with combined grammar", function()
 		end)
 	end)
 
+	describe("modified Bessel functions", function()
+		it("parses unbraced and braced numeric orders", function()
+			local expected = ast_utils.create_function_call_node({ type = "variable", name = "besseli" }, {
+				{ type = "number", value = 0 },
+				{ type = "variable", name = "x" },
+			})
+
+			assert.are.same(expected, parse_input("I_0(x)"))
+			assert.are.same(expected, parse_input("I_{0}(x)"))
+		end)
+
+		it("parses arbitrary braced orders", function()
+			local expected = ast_utils.create_function_call_node({ type = "variable", name = "besselk" }, {
+				ast_utils.create_binary_operation_node("+", { type = "variable", name = "n" }, { type = "number", value = 1 }),
+				{ type = "variable", name = "x" },
+			})
+
+			assert.are.same(expected, parse_input("K_{n+1}(x)"))
+		end)
+
+		it("parses Greek orders", function()
+			local expected = ast_utils.create_function_call_node({ type = "variable", name = "besseli" }, {
+				{ type = "greek", name = "nu" },
+				{ type = "variable", name = "x" },
+			})
+
+			assert.are.same(expected, parse_input("I_\\nu(x)"))
+		end)
+
+		it("keeps a bare I-order expression as an ordinary subscripted symbol", function()
+			local expected = ast_utils.create_subscript_node(
+				{ type = "variable", name = "I" },
+				{ type = "number", value = 0 }
+			)
+
+			assert.are.same(expected, parse_input("I_0"))
+		end)
+
+		it("only recognizes uppercase I and K as modified Bessel notation", function()
+			local parsed = parse_input("i_0(x)")
+			if parsed then
+				assert.is_false(parsed.type == "function_call" and parsed.name_node and parsed.name_node.name == "besseli")
+			end
+		end)
+
+		it("requires parentheses around the argument", function()
+			local parsed = parse_input("I_0{x}")
+			if parsed then
+				assert.is_false(parsed.type == "function_call" and parsed.name_node and parsed.name_node.name == "besseli")
+			end
+		end)
+	end)
+
 	describe("unary operators", function()
 		it("should parse -5", function()
 			local input = "-5"
