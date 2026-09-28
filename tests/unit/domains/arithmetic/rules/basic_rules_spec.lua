@@ -46,6 +46,7 @@ describe("Arithmetic foundational rule coverage", function()
 			rbrace = P("}"),
 			lbrack = P("["),
 			rbrack = P("]"),
+			letter = R("az", "AZ"),
 			equals_op = P("=") / function(eq)
 				return eq
 			end,
