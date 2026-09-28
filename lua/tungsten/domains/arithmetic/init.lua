@@ -13,6 +13,7 @@ M.grammar = { contributions = {}, extensions = {} }
 local prio = M.priority
 local supersub = require("tungsten.domains.arithmetic.rules.supersub")
 local log_functions = require("tungsten.domains.arithmetic.rules.log_functions")
+local trig_functions = require("tungsten.domains.arithmetic.rules.trig_functions")
 
 local relation_rules = require("tungsten.domains.arithmetic.rules.relation")
 
@@ -72,24 +73,25 @@ c[#c + 1] = {
 	category = "AddSub",
 	priority = prio,
 }
-c[#c + 1] = {
-	name = "SinFunction",
-	pattern = require("tungsten.domains.arithmetic.rules.trig_functions").SinRule,
-	category = "AtomBaseItem",
-	priority = prio,
+local trig_contributions = {
+	{ "SinFunction", trig_functions.SinRule },
+	{ "CosFunction", trig_functions.CosRule },
+	{ "TanFunction", trig_functions.TanRule },
+	{ "CotFunction", trig_functions.CotRule },
+	{ "SecFunction", trig_functions.SecRule },
+	{ "CscFunction", trig_functions.CscRule },
+	{ "SinhFunction", trig_functions.SinhRule },
+	{ "CoshFunction", trig_functions.CoshRule },
+	{ "TanhFunction", trig_functions.TanhRule },
 }
-c[#c + 1] = {
-	name = "CosFunction",
-	pattern = require("tungsten.domains.arithmetic.rules.trig_functions").CosRule,
-	category = "AtomBaseItem",
-	priority = prio,
-}
-c[#c + 1] = {
-	name = "TanFunction",
-	pattern = require("tungsten.domains.arithmetic.rules.trig_functions").TanRule,
-	category = "AtomBaseItem",
-	priority = prio,
-}
+for _, contribution in ipairs(trig_contributions) do
+	c[#c + 1] = {
+		name = contribution[1],
+		pattern = contribution[2],
+		category = "AtomBaseItem",
+		priority = prio,
+	}
+end
 c[#c + 1] = { name = "Equality", pattern = relation_rules.Equality, category = "TopLevelRule", priority = prio + 5 }
 c[#c + 1] = { name = "Inequality", pattern = relation_rules.Inequality, category = "TopLevelRule", priority = prio + 5 }
 c[#c + 1] = {

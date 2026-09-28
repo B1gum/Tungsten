@@ -8,6 +8,7 @@ local Unary = V("Unary")
 
 local function trig_rule(cmd, name)
 	return P(cmd)
+		* -tk.letter
 		* space
 		* (tk.lparen * space * V("Expression") * space * tk.rparen + tk.lbrace * space * V("Expression") * space * tk.rbrace + Unary)
 		/ function(arg_expr)
@@ -24,6 +25,6 @@ return {
 	SecRule = trig_rule("\\sec", "sec"),
 	CscRule = trig_rule("\\csc", "csc"),
 	SinhRule = trig_rule("\\sinh", "sinh"),
-	CoshhRule = trig_rule("\\cosh", "cosh"),
+	CoshRule = trig_rule("\\cosh", "cosh"),
 	TanhRule = trig_rule("\\tanh", "tanh"),
 }
