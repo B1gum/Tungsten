@@ -1153,6 +1153,55 @@ describe("tungsten.core.parser.parse with combined grammar", function()
 			local expected_ast = ast_utils.create_angle_node(ast_utils.create_number_node(-125))
 			assert.are.same(expected_ast, parse_input(input))
 		end)
+
+		it("parses leading \\per as a reciprocal unit", function()
+			local input = "\\qty{2}{\\per\\minute}"
+			local expected_ast = ast_utils.create_quantity_node(
+				ast_utils.create_number_node(2),
+				ast_utils.create_binary_operation_node(
+					"/",
+					ast_utils.create_number_node(1),
+					ast_utils.create_unit_component_node("minute")
+				)
+			)
+			assert.are.same(expected_ast, parse_input(input))
+		end)
+
+		it("keeps infix \\per division working", function()
+			local input = "\\qty{2}{\\meter\\per\\second}"
+			local expected_ast = ast_utils.create_quantity_node(
+				ast_utils.create_number_node(2),
+				ast_utils.create_binary_operation_node(
+					"/",
+					ast_utils.create_unit_component_node("meter"),
+					ast_utils.create_unit_component_node("second")
+				)
+			)
+			assert.are.same(expected_ast, parse_input(input))
+		end)
+
+		it("applies modifiers after a leading \\per", function()
+			local input = "\\qty{2}{\\per\\meter\\squared}"
+			local expected_ast = ast_utils.create_quantity_node(
+				ast_utils.create_number_node(2),
+				ast_utils.create_binary_operation_node(
+					"/",
+					ast_utils.create_number_node(1),
+					ast_utils.create_superscript_node(
+						ast_utils.create_unit_component_node("meter"),
+						ast_utils.create_number_node(2)
+					)
+				)
+			)
+			assert.are.same(expected_ast, parse_input(input))
+		end)
+
+		it("does not treat longer unit macros beginning with per as the operator", function()
+			local input = "\\qty{2}{\\person}"
+			local expected_ast =
+				ast_utils.create_quantity_node(ast_utils.create_number_node(2), ast_utils.create_unit_component_node("person"))
+			assert.are.same(expected_ast, parse_input(input))
+		end)
 	end)
 
 	describe("solve system input", function()

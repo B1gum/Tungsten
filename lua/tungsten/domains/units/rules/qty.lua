@@ -10,9 +10,11 @@ local UnitItem = UnitMacro + UnitLiteral
 local DotOp = (P(".") + P("*") + P("\\cdot")) * tk.space / function()
 	return "*"
 end
-local PerOp = (P("\\per") + P("/")) * tk.space / function()
+local PerCommand = P("\\per") * -tk.letter
+local PerOp = (PerCommand + P("/")) * tk.space / function()
 	return "/"
 end
+local LeadingPer = PerCommand * tk.space * lpeg.Cc(true)
 local UnitOp = DotOp + PerOp
 
 local Caret = P("^") * tk.space
@@ -60,13 +62,17 @@ local UnitExpr = P({
 		end
 		return acc
 	end,
-	Term = ((PreMod + lpeg.Cc(nil)) * UnitItem * (PostMod + lpeg.Cc(nil))) / function(pre, item, post)
-		local exponent = pre or post
-		if exponent then
-			return ast.create_superscript_node(item, exponent)
-		end
-		return item
-	end,
+	Term = ((LeadingPer + lpeg.Cc(false)) * (PreMod + lpeg.Cc(nil)) * UnitItem * (PostMod + lpeg.Cc(nil)))
+		/ function(is_reciprocal, pre, item, post)
+			local exponent = pre or post
+			if exponent then
+				item = ast.create_superscript_node(item, exponent)
+			end
+			if is_reciprocal then
+				return ast.create_binary_operation_node("/", ast.create_number_node(1), item)
+			end
+			return item
+		end,
 })
 
 local QtyCmd = P("\\qty")

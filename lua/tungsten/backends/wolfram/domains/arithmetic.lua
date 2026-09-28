@@ -21,6 +21,16 @@ local wolfram_symbols = {
 
 local op_attributes = operators.with_symbols("wolfram", wolfram_symbols)
 
+local function render_wolfram_number(node)
+	local rendered = tostring(node.value)
+	local mantissa, exponent = rendered:match("^([^eE]+)[eE]([+-]?%d+)$")
+	if not mantissa then
+		return rendered
+	end
+
+	return ("%s*^%d"):format(mantissa, tonumber(exponent))
+end
+
 local function bin_with_parens(node, recur_render)
 	local parent_op_data = op_attributes[node.operator]
 
@@ -62,6 +72,8 @@ for node_type, handler in pairs(common_handlers) do
 end
 
 for node_type, handler in pairs({
+	number = render_wolfram_number,
+
 	constant = function(node)
 		local constant_info = constants.get(node.name)
 		if constant_info and constant_info.wolfram then

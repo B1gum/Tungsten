@@ -48,6 +48,11 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
 			assert.are.equal("1.23", handlers.number(node, mock_recur_render))
 		end)
 
+		it("should render scientific notation using Wolfram *^ syntax", function()
+			local node = { type = "number", value = 3.39e-5 }
+			assert.are.equal("3.39*^-5", handlers.number(node, mock_recur_render))
+		end)
+
 		it("should convert zero to its string representation", function()
 			local node = { type = "number", value = 0 }
 			assert.are.equal("0", handlers.number(node, mock_recur_render))
