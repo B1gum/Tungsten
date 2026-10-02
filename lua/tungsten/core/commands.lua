@@ -39,8 +39,18 @@ local function tungsten_collect_command(_)
 		if not collect_variable or collect_variable == "" then
 			return
 		end
+		local parsed, parse_err = parser.parse(collect_variable)
+		if not parsed or not parsed.series or #parsed.series ~= 1 then
+			error_handler.notify_error("Collect", parse_err or "Enter a single variable to collect by.")
+			return
+		end
+		local variable_ast = parsed.series[1]
+		if variable_ast.type ~= "variable" and variable_ast.type ~= "subscript" then
+			error_handler.notify_error("Collect", "Enter a variable to collect by.")
+			return
+		end
 		workflow.run(definitions.TungstenCollect, {
-			collect_variable = collect_variable,
+			collect_variable = variable_ast,
 		})
 	end)
 end
@@ -412,7 +422,7 @@ local M = {
 	tungsten_evaluate_command = tungsten_evaluate_command,
 	tungsten_simplify_command = tungsten_simplify_command,
 	tungsten_factor_command = tungsten_factor_command,
-    tungsten_collect_command = tungsten_collect_command,
+	tungsten_collect_command = tungsten_collect_command,
 	define_persistent_variable_command = define_persistent_variable_command,
 	tungsten_switch_backend_command = tungsten_switch_backend_command,
 	tungsten_solve_command = tungsten_solve_command,
@@ -442,11 +452,11 @@ M.commands = {
 		func = tungsten_factor_command,
 		opts = { range = true, desc = "Factor the selected LaTeX expression" },
 	},
-    {
-        name = "TungstenCollect",
-        func = tungsten_collect_command,
-        opts = {range = true, desc = "Collect expression by powers of a variable"}
-    },
+	{
+		name = "TungstenCollect",
+		func = tungsten_collect_command,
+		opts = { range = true, desc = "Collect expression by powers of a variable" },
+	},
 	{
 		name = "TungstenDefinePersistentVariable",
 		func = define_persistent_variable_command,

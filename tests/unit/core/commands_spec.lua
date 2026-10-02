@@ -532,6 +532,132 @@ describe("Tungsten core commands", function()
 		end)
 	end)
 
+	describe(":TungstenCollect", function()
+		local original_ui_input
+		local collect_variable
+
+		before_each(function()
+			original_ui_input = vim.ui.input
+			collect_variable = "x"
+			current_parser_configs.x = { ast = { type = "variable", name = "x" } }
+			vim.ui.input = spy.new(function(_, on_confirm)
+				on_confirm(collect_variable)
+			end)
+		end)
+
+		after_each(function()
+			vim.ui.input = original_ui_input
+		end)
+
+		it("collects selection by powers of the provided variable", function()
+			local expression_ast = { type = "expression" }
+			current_parse_selected_latex_config["expression"] = {
+				ast = expression_ast,
+				text = "x(x + 1) + 2x(x^2 + x)",
+			}
+			eval_async_behaviors.default_eval = function(_, _, cb)
+				cb("collected result")
+			end
+			current_eval_async_config_key = "default_eval"
+
+			vim_test_env.set_visual_selection(1, 1, 1, 5)
+
+			commands_module.tungsten_collect_command({})
+
+			assert.spy(mock_cmd_utils_parse_selected_latex_spy).was.called_with("expression")
+			assert.spy(mock_evaluator_evaluate_async_spy).was.called(1)
+			local ast_arg = mock_evaluator_evaluate_async_spy.calls[1].vals[1]
+			assert.are.equal("With", ast_arg.name_node.name)
+			local monomials = ast_arg.args[1].args[1].args[2]
+			assert.are.equal("MonomialList", monomials.name_node.name)
+			assert.are.equal("Apply", ast_arg.args[2].name_node.name)
+			assert.are.equal("HoldForm", ast_arg.args[2].args[2].name_node.name)
+			ast_arg = monomials.args[1]
+			assert.are.equal("function_call", ast_arg.type)
+			assert.are.equal("Collect", ast_arg.name_node.name)
+			assert.are.same(expression_ast, ast_arg.args[1])
+			assert.are.same({ type = "variable", name = "x" }, ast_arg.args[2])
+			assert.are.equal(3, #ast_arg.args)
+			assert.are.same({ type = "variable", name = "Simplify" }, ast_arg.args[3])
+			assert.spy(mock_event_bus_emit_spy).was.called_with("result_ready", match.is_table())
+		end)
+
+		it("uses the parsed subscript when collecting by C_l", function()
+			collect_variable = "C_l"
+			local variable_ast = {
+				type = "subscript",
+				base = { type = "variable", name = "C" },
+				subscript = { type = "variable", name = "l" },
+			}
+			current_parser_configs.C_l = { ast = variable_ast }
+			current_parse_selected_latex_config["expression"] = {
+				ast = { type = "expression" },
+				text = "C_l + C_l^2",
+			}
+
+			commands_module.tungsten_collect_command({})
+
+			assert.spy(mock_parser_parse_spy).was.called_with("C_l")
+			assert.spy(mock_evaluator_evaluate_async_spy).was.called(1)
+			local ast_arg = mock_evaluator_evaluate_async_spy.calls[1].vals[1]
+			assert.are.equal("With", ast_arg.name_node.name)
+			local monomials = ast_arg.args[1].args[1].args[2]
+			assert.are.equal("MonomialList", monomials.name_node.name)
+			assert.are.equal("Apply", ast_arg.args[2].name_node.name)
+			assert.are.equal("HoldForm", ast_arg.args[2].args[2].name_node.name)
+			ast_arg = monomials.args[1]
+			assert.are.same(variable_ast, ast_arg.args[2])
+		end)
+
+		it("reports invalid variable input without evaluating", function()
+			collect_variable = "invalid input"
+
+			commands_module.tungsten_collect_command({})
+
+			assert.spy(mock_error_handler_notify_error_spy).was.called_with("Collect", "parse error")
+			assert.spy(mock_evaluator_evaluate_async_spy).was_not.called()
+		end)
+
+		it("does nothing on parse failure", function()
+			current_parse_selected_latex_config["expression"] = { ast = nil, text = "" }
+			vim_test_env.set_visual_selection(1, 1, 1, 1)
+
+			commands_module.tungsten_collect_command({})
+
+			assert.spy(mock_evaluator_evaluate_async_spy).was_not.called()
+			assert.spy(mock_event_bus_emit_spy).was_not.called()
+		end)
+
+		it("does not insert result when evaluation returns nil", function()
+			current_parse_selected_latex_config["expression"] = { ast = { type = "expression" } }
+			current_eval_async_config_key = "nil_eval"
+			vim_test_env.set_visual_selection(1, 1, 1, 1)
+
+			commands_module.tungsten_collect_command({})
+
+			assert.spy(mock_event_bus_emit_spy).was_not.called()
+		end)
+		it("does nothing when the prompt is cancelled", function()
+			collect_variable = nil
+
+			commands_module.tungsten_collect_command({})
+
+			assert.spy(mock_cmd_utils_parse_selected_latex_spy).was_not.called()
+			assert.spy(mock_evaluator_evaluate_async_spy).was_not.called()
+			assert.spy(mock_event_bus_emit_spy).was_not.called()
+		end)
+
+		it("does nothing when the prompt is empty", function()
+			collect_variable = ""
+
+			commands_module.tungsten_collect_command({})
+
+			assert.spy(mock_cmd_utils_parse_selected_latex_spy).was_not.called()
+			assert.spy(mock_evaluator_evaluate_async_spy).was_not.called()
+			assert.spy(mock_event_bus_emit_spy).was_not.called()
+		end)
+	end)
+
 	describe(":TungstenSolve", function()
 		local original_ui_input
 		local current_var_parse_behavior

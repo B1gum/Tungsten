@@ -99,16 +99,34 @@ M.TungstenCollect = {
 		return cmd_utils.parse_selected_latex("expression")
 	end,
 	task_handler = function(ast, collect_variable, numeric_mode, cb)
-		evaluator.evaluate_async(
-			ast_creator.create_function_call_node(ast_creator.create_variable_node("Collect"), { ast, collect_variable }),
-			numeric_mode,
-			cb
-		)
+		local call = ast_creator.create_function_call_node(ast_creator.create_variable_node("Collect"), {
+			ast,
+			collect_variable,
+			ast_creator.create_variable_node("Simplify"),
+		})
+		local state = require("tungsten.state")
+		if (state.active_backend or config.backend or "wolfram") == "wolfram" then
+			local function fn(name, args)
+				return ast_creator.create_function_call_node(ast_creator.create_variable_node(name), args)
+			end
+			local terms = ast_creator.create_variable_node("tungstenTerms")
+			local polynomial = numeric_mode and fn("N", { call }) or call
+			local monomials = fn("MonomialList", { polynomial, fn("List", { collect_variable }) })
+			call = fn("With", {
+				fn("List", { fn("Set", { terms, monomials }) }),
+				fn("Apply", {
+					ast_creator.create_variable_node("Plus"),
+					fn("HoldForm", { terms }),
+					fn("List", { ast_creator.create_number_node(1) }),
+				}),
+			})
+		end
+		evaluator.evaluate_async(call, numeric_mode, cb)
 	end,
 	prepare_args = function(ast, _, opts)
 		return {
 			ast,
-			ast_creator.create_variable_node(opts.collect_variable),
+			opts.collect_variable,
 			config.numeric_mode,
 		}
 	end,
