@@ -567,11 +567,17 @@ describe("Tungsten core commands", function()
 			assert.spy(mock_cmd_utils_parse_selected_latex_spy).was.called_with("expression")
 			assert.spy(mock_evaluator_evaluate_async_spy).was.called(1)
 			local ast_arg = mock_evaluator_evaluate_async_spy.calls[1].vals[1]
-			assert.are.equal("With", ast_arg.name_node.name)
-			local monomials = ast_arg.args[1].args[1].args[2]
+			assert.are.equal("Apply", ast_arg.name_node.name)
+			assert.are.same({ type = "variable", name = "Plus" }, ast_arg.args[1])
+			assert.are.equal("HoldForm", ast_arg.args[2].name_node.name)
+			local evaluated = ast_arg.args[2].args[1]
+			assert.are.equal("Evaluate", evaluated.name_node.name)
+			local monomials = evaluated.args[1]
 			assert.are.equal("MonomialList", monomials.name_node.name)
-			assert.are.equal("Apply", ast_arg.args[2].name_node.name)
-			assert.are.equal("HoldForm", ast_arg.args[2].args[2].name_node.name)
+			assert.are.equal("List", ast_arg.args[3].name_node.name)
+			assert.are.same({ type = "number", value = 1 }, ast_arg.args[3].args[1])
+			assert.are.equal("List", monomials.args[2].name_node.name)
+			assert.are.same(monomials.args[1].args[2], monomials.args[2].args[1])
 			ast_arg = monomials.args[1]
 			assert.are.equal("function_call", ast_arg.type)
 			assert.are.equal("Collect", ast_arg.name_node.name)
@@ -600,11 +606,17 @@ describe("Tungsten core commands", function()
 			assert.spy(mock_parser_parse_spy).was.called_with("C_l")
 			assert.spy(mock_evaluator_evaluate_async_spy).was.called(1)
 			local ast_arg = mock_evaluator_evaluate_async_spy.calls[1].vals[1]
-			assert.are.equal("With", ast_arg.name_node.name)
-			local monomials = ast_arg.args[1].args[1].args[2]
+			assert.are.equal("Apply", ast_arg.name_node.name)
+			assert.are.same({ type = "variable", name = "Plus" }, ast_arg.args[1])
+			assert.are.equal("HoldForm", ast_arg.args[2].name_node.name)
+			local evaluated = ast_arg.args[2].args[1]
+			assert.are.equal("Evaluate", evaluated.name_node.name)
+			local monomials = evaluated.args[1]
 			assert.are.equal("MonomialList", monomials.name_node.name)
-			assert.are.equal("Apply", ast_arg.args[2].name_node.name)
-			assert.are.equal("HoldForm", ast_arg.args[2].args[2].name_node.name)
+			assert.are.equal("List", ast_arg.args[3].name_node.name)
+			assert.are.same({ type = "number", value = 1 }, ast_arg.args[3].args[1])
+			assert.are.equal("List", monomials.args[2].name_node.name)
+			assert.are.same(monomials.args[1].args[2], monomials.args[2].args[1])
 			ast_arg = monomials.args[1]
 			assert.are.same(variable_ast, ast_arg.args[2])
 		end)
