@@ -37,6 +37,15 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
 		end
 	end)
 
+	it("keeps Collect computational code unheld", function()
+		local node = ast.create_function_call_node(ast.create_variable_node("Collect"), {
+			ast.create_variable_node("expr"),
+			ast.create_variable_node("x"),
+			ast.create_variable_node("Simplify"),
+		})
+		assert.are.equal("Collect[expr, x, Simplify]", render_node_for_function_call(node))
+	end)
+
 	describe("number handler", function()
 		it("should convert an integer number node to its string representation", function()
 			local node = { type = "number", value = 123 }

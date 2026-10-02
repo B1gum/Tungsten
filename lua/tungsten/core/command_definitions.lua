@@ -93,6 +93,49 @@ end
 
 M.TungstenSimplify = make_simple_wrapped("Simplify", " \\rightarrow ")
 M.TungstenFactor = make_simple_wrapped("Factor", " \\rightarrow ")
+M.TungstenCollect = {
+	description = "Collect expression by powers",
+	input_handler = function()
+		return cmd_utils.parse_selected_latex("expression")
+	end,
+	task_handler = function(ast, collect_variable, numeric_mode, cb)
+		local call = ast_creator.create_function_call_node(ast_creator.create_variable_node("Collect"), {
+			ast,
+			collect_variable,
+			ast_creator.create_variable_node("Simplify"),
+		})
+		local state = require("tungsten.state")
+		-- if we use wolfram, then we also sort by powers
+		if (state.active_backend or config.backend or "wolfram") == "wolfram" then
+			local function fn(name, args)
+				return ast_creator.create_function_call_node(ast_creator.create_variable_node(name), args)
+			end
+			-- convert the collected expression to numeric form if it is specified
+			local polynomial = numeric_mode and fn("N", { call }) or call
+			-- create monomial list: {x^n a, x^(n-1) b, etc.}
+			local monomials = fn("MonomialList", { polynomial, fn("List", { collect_variable }) })
+			-- the monomials are List[...]
+			-- Apply replaces List with Plus
+			-- Hold Form prevents wolfram from reorganizing the terms
+			call = fn("Apply", {
+				ast_creator.create_variable_node("Plus"),
+				fn("HoldForm", {
+					fn("Evaluate", { monomials }),
+				}),
+				fn("List", { ast_creator.create_number_node(1) }),
+			})
+		end
+		evaluator.evaluate_async(call, numeric_mode, cb)
+	end,
+	prepare_args = function(ast, _, opts)
+		return {
+			ast,
+			opts.collect_variable,
+			config.numeric_mode,
+		}
+	end,
+	separator = " //rightarrow ",
+}
 
 M.TungstenTogglePersistence = {
 	description = "Toggle persistent engine session",

@@ -154,6 +154,18 @@ x^2 + 4x + 4 \rightarrow (x + 2)^2
 
 The standard keymapping for the `:TungstenFactor` command is `<leader>tef`
 
+## Collecting expressions
+
+To collect an expression by variable powers using Tungsten, visually select it and run the `:TungstenCollect` command. It will prompt you to enter the target variable.
+When the backend has finidhsed, Tungsten inserts the collected result as `<Expression> \righarrow <CollectedRes>`.
+This is shown underneath.
+
+**Example**
+```latex
+x (x + 1) + x (x^2 + 3x) //rightarrow x^3+4 x^2+x
+x^2 (a + b x) + 4x + 4 + x + x^2  //rightarrow b x^3+(1+a) x^2+5 x+4
+```
+
 
 ## Constants known to Tungsten
 
