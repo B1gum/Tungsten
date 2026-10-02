@@ -93,6 +93,27 @@ end
 
 M.TungstenSimplify = make_simple_wrapped("Simplify", " \\rightarrow ")
 M.TungstenFactor = make_simple_wrapped("Factor", " \\rightarrow ")
+M.TungstenCollect = {
+	description = "Collect expression by powers",
+	input_handler = function()
+		return cmd_utils.parse_selected_latex("expression")
+	end,
+	task_handler = function(ast, collect_variable, numeric_mode, cb)
+		evaluator.evaluate_async(
+			ast_creator.create_function_call_node(ast_creator.create_variable_node("Collect"), { ast, collect_variable }),
+			numeric_mode,
+			cb
+		)
+	end,
+	prepare_args = function(ast, _, opts)
+		return {
+			ast,
+			ast_creator.create_variable_node(opts.collect_variable),
+			config.numeric_mode,
+		}
+	end,
+	separator = " //rightarrow ",
+}
 
 M.TungstenTogglePersistence = {
 	description = "Toggle persistent engine session",

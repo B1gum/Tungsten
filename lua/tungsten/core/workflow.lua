@@ -4,7 +4,8 @@ local error_handler = require("tungsten.util.error_handler")
 
 local M = {}
 
-function M.run(definition)
+function M.run(definition, opts)
+    opts = opts or {}
 	local ast, text, parse_err = definition.input_handler()
 
 	if parse_err then
@@ -19,7 +20,7 @@ function M.run(definition)
 
 	local args = { ast, text }
 	if definition.prepare_args then
-		args = definition.prepare_args(ast, text)
+		args = definition.prepare_args(ast, text, opts)
 	end
 
 	local function on_complete(result, err)
