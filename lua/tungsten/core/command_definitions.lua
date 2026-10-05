@@ -134,7 +134,7 @@ M.TungstenCollect = {
 			config.numeric_mode,
 		}
 	end,
-	separator = " //rightarrow ",
+	separator = " \\rightarrow ",
 }
 
 M.TungstenTogglePersistence = {

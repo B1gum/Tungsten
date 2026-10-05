@@ -137,6 +137,7 @@ If `enable_default_mappings` is set to `true`, Tungsten registers mappings using
 | `<leader>tea` | `TungstenShowAST` | Show the Abstract Syntax Tree for debugging. |
 | `<leader>tes` | `TungstenSimplify` | Simplify the expression. |
 | `<leader>tef` | `TungstenFactor` | Factor the expression. |
+| `<leader>tec` | `TungstenCollect` | Collect by powers of a prompted variable. |
 | **Solve** | | |
 | `<leader>tss` | `TungstenSolve` | Solve an equation for a variable. |
 | `<leader>tsx` | `TungstenSolveSystem` | Solve a system of equations. |

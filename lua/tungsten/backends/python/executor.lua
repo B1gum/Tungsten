@@ -269,6 +269,16 @@ local function find_all_symbols(node)
 
 		local t = n.type
 
+		if t == "function_call" and n.name_node and (n.name_node.name or ""):lower() == "collect" then
+			-- The Collect wrapper and its Simplify callback are backend functions.
+			for index, argument in ipairs(n.args or {}) do
+				if not (index == 3 and argument.type == "variable" and argument.name == "Simplify") then
+					traverse(argument)
+				end
+			end
+			return
+		end
+
 		if t == "laplace_transform" then
 			has_laplace = true
 			symbols["t"] = true

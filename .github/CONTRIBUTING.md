@@ -63,6 +63,11 @@ Individual checks:
 
 Please ensure all checks pass before submitting a PR.
 
+The Python Collect tests also execute generated backend scripts when SymPy is installed.
+They use `TUNGSTEN_TEST_PYTHON`, if set, then the repository's `.venv` interpreter, then `python3`.
+Without SymPy, the execution tests are reported as pending; the Lua rendering and command tests still run.
+Install the Python backend dependencies as described in the [Installation Guide](../docs/introduction/installation.md), then run `make test` to exercise the execution tests as well.
+
 ## Commit Messages
 Follow a clear, consistent format so history stays readable. Recommended format:
 

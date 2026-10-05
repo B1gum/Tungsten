@@ -15,6 +15,7 @@ These commands handle general expression manipulation and evaluation.
 | **`:TungstenSwitchBackend`** | Followed by either `python` or `wolfram` and switches the configured backend. |
 | **`:TungstenSimplify`** | Attempts to simplify the selected algebraic expression. |
 | **`:TungstenFactor`** | Computes the factors of the selected polynomial or integer. |
+| **`:TungstenCollect`** | Prompts for one variable and groups the selected polynomial by its powers, simplifying the coefficients. Supports Wolfram and Python. |
 
 ### Usage Examples
 
@@ -33,6 +34,15 @@ These commands handle general expression manipulation and evaluation.
 * **Signature:** `:TungstenFactor` (on selection)
 * **Input:** `x^2 + 2x + 1`
 * **Output:** `(x+1)^2`
+
+**Collect**
+* **Signature:** `:TungstenCollect` (on selection)
+* **Input:** `a C_l^2 + b C_l^2 + C_l`
+* **Prompt:** `C_l`
+* **Output:** `(a + b) C_l^2 + C_l`
+* **Note:** The result is appended with ` \rightarrow `. The target must be a single variable or subscripted variable. An empty or cancelled prompt leaves the buffer unchanged. The default visual-mode mapping is `<leader>tec` when default mappings and `which-key.nvim` are enabled.
+
+For backend ordering and numeric mode, see [Collecting expressions](../domains/algebra.md#collecting-expressions).
 
 > **See Also:** [Arithmetic Domains](../domains/algebra.md), [Calculus](../domains/calculus.md)
 

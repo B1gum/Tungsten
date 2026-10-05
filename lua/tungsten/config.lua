@@ -41,6 +41,7 @@ local config = {
 				besseli = "BesselI",
 				besselk = "BesselK",
 				collect = "Collect",
+				evaluate = "Evaluate",
 				with = "With",
 				list = "List",
 				set = "Set",

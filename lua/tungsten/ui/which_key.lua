@@ -18,6 +18,7 @@ local mappings = {
 	{ "<leader>tea", ":<C-u>TungstenShowAST<CR>", desc = "Show AST" },
 	{ "<leader>tes", ":<C-u>TungstenSimplify<CR>", desc = "Simplify Expression" },
 	{ "<leader>tef", ":<C-u>TungstenFactor<CR>", desc = "Factor Expression" },
+	{ "<leader>tec", ":<C-u>TungstenCollect<CR>", desc = "Collect by Variable" },
 
 	{ "<leader>ts", group = "Solve" },
 	{ "<leader>tss", ":<C-u>TungstenSolve<CR>", desc = "Solve Equation" },

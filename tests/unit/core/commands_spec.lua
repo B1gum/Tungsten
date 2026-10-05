@@ -586,6 +586,23 @@ describe("Tungsten core commands", function()
 			assert.are.equal(3, #ast_arg.args)
 			assert.are.same({ type = "variable", name = "Simplify" }, ast_arg.args[3])
 			assert.spy(mock_event_bus_emit_spy).was.called_with("result_ready", match.is_table())
+			assert.are.equal(" \\rightarrow ", mock_event_bus_emit_spy.calls[1].vals[2].separator)
+		end)
+
+		it("uses the active Python backend and forwards numeric mode", function()
+			mock_config_module.backend = "wolfram"
+			mock_state_module.active_backend = "python"
+			mock_config_module.numeric_mode = true
+			local expression_ast = { type = "expression" }
+			current_parse_selected_latex_config.expression = { ast = expression_ast, text = "x + x" }
+
+			commands_module.tungsten_collect_command({})
+
+			assert.spy(mock_evaluator_evaluate_async_spy).was.called(1)
+			local call = mock_evaluator_evaluate_async_spy.calls[1].vals
+			assert.are.equal("Collect", call[1].name_node.name)
+			assert.are.same(expression_ast, call[1].args[1])
+			assert.is_true(call[2])
 		end)
 
 		it("uses the parsed subscript when collecting by C_l", function()
@@ -627,6 +644,30 @@ describe("Tungsten core commands", function()
 			commands_module.tungsten_collect_command({})
 
 			assert.spy(mock_error_handler_notify_error_spy).was.called_with("Collect", "parse error")
+			assert.spy(mock_evaluator_evaluate_async_spy).was_not.called()
+		end)
+
+		it("rejects multiple parsed variables without evaluating", function()
+			collect_variable = "x; y"
+			current_parser_configs[collect_variable] = {
+				series = { { type = "variable", name = "x" }, { type = "variable", name = "y" } },
+			}
+
+			commands_module.tungsten_collect_command({})
+
+			assert
+				.spy(mock_error_handler_notify_error_spy).was
+				.called_with("Collect", "Enter a single variable to collect by.")
+			assert.spy(mock_evaluator_evaluate_async_spy).was_not.called()
+		end)
+
+		it("rejects a parsed number without evaluating", function()
+			collect_variable = "2"
+			current_parser_configs[collect_variable] = { ast = { type = "number", value = 2 } }
+
+			commands_module.tungsten_collect_command({})
+
+			assert.spy(mock_error_handler_notify_error_spy).was.called_with("Collect", "Enter a variable to collect by.")
 			assert.spy(mock_evaluator_evaluate_async_spy).was_not.called()
 		end)
 

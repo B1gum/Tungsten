@@ -1,3 +1,19 @@
+## [Unreleased]
+
+### Features
+
+- Add Python support for `:TungstenCollect`, including expanded products, simplified coefficients, subscripted variables, and numeric mode.
+- Add a visual-mode `<leader>tec` mapping for `:TungstenCollect` when default mappings are enabled.
+
+### Fixed
+
+- Insert a valid LaTeX `\rightarrow` separator for `:TungstenCollect`.
+- Register Wolfram's `Evaluate` mapping used when ordering collected terms.
+
+### Documentation
+
+- Document `:TungstenCollect` in the command reference and describe both backends in the algebra guide.
+
 ## [0.1.0] - 2026-01-16
 
 ### Features
