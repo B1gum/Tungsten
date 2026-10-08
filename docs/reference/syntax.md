@@ -69,6 +69,7 @@ You can often omit the multiplication operator, just like in handwritten math. T
   - **Number + Variable**: `2x` becomes `2 * x`
   - **Variable + Variable**: `x y` becomes `x * y` (*Note*: `xy` is parsed as a single variable named "xy". Use a space to separate them.)
   - **Group + Variable**: `(a+b)x` becomes `(a+b) * x`
+  - **Variable + Group**: `x(x+1)` becomes `x * (x+1)` unless `x` is a known function name.
   - **Number + Greek**: `2\pi` becomes `2 * \pi`
   - **Function Chains**: `\sin(x)\cos(y)` becomes `\sin(x) * \cos(y)`
 
@@ -77,12 +78,30 @@ You can often omit the multiplication operator, just like in handwritten math. T
 ### Function Syntax
   - **Standard Calls**: `name(arg1, arg2)`
     - Example: `f(x)`, `sin(x)`
+    - Built-in functions, evaluated function definitions, and names in `symbolic_functions` are recognized as calls.
+    - The default symbolic names are `f`, `g`, `h`, and `r`, so symbolic mathematics and plotting can use them without a formula.
+    - Other names before parentheses mean multiplication. Configure `symbolic_functions` for additional undefined symbolic functions; an empty list disables the default symbolic names.
+    - Derivative notation locally identifies dependent functions, preserving initial conditions such as `y(0)` in an ODE containing `y'`.
   - **LaTeX Style Calls**: `\command{arg}`
     - Example: `\sqrt{x}`, `\frac{1}{2}`
   - **Parenthesis-less Calls**: For common log/trig functions, parentheses can sometimes be omitted if the argument is a single token.
     - `\ln x` is valid.
     - `\sin \theta` is valid.
     - `\cos(x + 1)` is valid
+
+### Session-local Function Definitions
+
+Select `f(x) = x^2` and run `:TungstenEvaluate` to define `f`. Then select `f(5)` and evaluate it to obtain `25`.
+You can also use `:=` or select the definition and run `:TungstenDefinePersistentVariable`.
+
+Definitions accept Latin identifier names and distinct Latin identifier parameters, for example `difference(x,y) = x-y`.
+Both `square(t) = t(t+1)` and subsequent calls such as `square(5)` are supported; `t(t+1)` is multiplication.
+Redefining a function replaces its previous formula. Function calls are expanded as AST expressions before evaluation by either backend, so Wolfram persistence is not required.
+
+Definitions last for the current Neovim session and are cleared by `:TungstenClearPersistentVars`.
+They currently support algebraic bodies, including built-in and other defined function calls.
+Recursive definitions and bodies containing bound-variable calculus notation such as integrals or summations are rejected.
+An equation such as `f(5) = 25` is not a definition.
 
 ### Modified Bessel Functions
 Tungsten supports the modified Bessel functions of the first and second kinds using their conventional uppercase notation:

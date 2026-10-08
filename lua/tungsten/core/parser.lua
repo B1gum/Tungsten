@@ -12,6 +12,7 @@ local error_handler = require("tungsten.util.error_handler")
 local ast = require("tungsten.core.ast")
 local helpers = require("tungsten.domains.plotting.helpers")
 local semantic_pass = require("tungsten.core.semantic_pass")
+local functions = require("tungsten.core.function_definitions")
 
 local M = {}
 
@@ -369,7 +370,7 @@ local function post_process_series(series, opts)
 	return series
 end
 
-function M.parse(input, opts)
+local function parse(input, opts)
 	opts = opts or {}
 	if opts.allow_multiple_relations then
 		input = input:gsub("\\\\%s*\n", ";"):gsub("\\\\", ";")
@@ -414,6 +415,39 @@ function M.parse(input, opts)
 
 	ast_root = semantic_pass.apply(ast_root)
 	return ast_root
+end
+
+function M.parse(input, opts)
+	local result, err, position, original_input = parse(input, opts)
+	if not result then
+		return nil, err, position, original_input
+	end
+	-- Derivative notation also declares a dependent function locally. Preserve
+	-- y(0) in an ODE containing y', without making y callable in later inputs.
+	local names = {}
+	local function collect(node)
+		if type(node) ~= "table" then
+			return
+		end
+		if node.type == "ordinary_derivative" or node.type == "partial_derivative" then
+			local expression = node.expression
+			if expression and expression.type == "variable" then
+				names[expression.name] = true
+			elseif expression and expression.type == "function_call" and expression.name_node then
+				names[expression.name_node.name] = true
+			end
+		end
+		for _, child in pairs(node) do
+			collect(child)
+		end
+	end
+	collect(result)
+	if next(names) then
+		return functions.with_symbolic_names(names, function()
+			return parse(input, opts)
+		end)
+	end
+	return result
 end
 
 function M.reset_grammar()

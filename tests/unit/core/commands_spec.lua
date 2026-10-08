@@ -295,6 +295,7 @@ describe("Tungsten core commands", function()
 			end
 		end)
 		mock_evaluator_module.evaluate_async = mock_evaluator_evaluate_async_spy
+		mock_evaluator_module.clear_cache = spy.new(function() end)
 
 		mock_event_bus_emit_spy = spy.new(function() end)
 		mock_event_bus_module.emit = mock_event_bus_emit_spy
@@ -952,9 +953,10 @@ describe("Tungsten core commands", function()
 			commands_module.tungsten_clear_persistent_vars_command({})
 
 			assert.are.same({}, mock_state_module.persistent_variables)
+			assert.spy(mock_evaluator_module.clear_cache).was.called(1)
 			assert
 				.spy(mock_logger_notify_spy).was
-				.called_with("Persistent variables cleared.", mock_logger_module.levels.INFO, match.is_table())
+				.called_with("Persistent variables and function definitions cleared.", mock_logger_module.levels.INFO, match.is_table())
 		end)
 	end)
 end)

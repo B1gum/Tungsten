@@ -2,6 +2,7 @@
 
 local ast = require("tungsten.core.ast")
 local backend_manager = require("tungsten.backends.manager")
+local functions = require("tungsten.core.function_definitions")
 
 local M = {}
 
@@ -27,8 +28,13 @@ function M.solve_asts_async(eq_asts, var_asts, is_system, callback, opts)
 	end
 
 	local solve_node = ast.create_solve_system_node(eq_asts, var_asts)
+	local expanded, err = functions.expand(solve_node)
+	if err then
+		callback(nil, err)
+		return
+	end
 
-	backend.solve_async(solve_node, backend_opts, callback)
+	backend.solve_async(expanded, backend_opts, callback)
 end
 
 return M
