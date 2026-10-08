@@ -164,6 +164,20 @@ describe("backend executors", function()
 			executor = require("tungsten.backends.wolfram.executor")
 		end)
 
+		it("preserves theta symbols and Heaviside notation in Wolfram output", function()
+			local outputs = {
+				"\\theta + 1",
+				"\\theta_m + 1",
+				"\\theta _m + 1",
+				"\\theta_{m} + 1",
+				"\\theta \\left(t\\right)",
+			}
+			for _, output in ipairs(outputs) do
+				assert.equals(output, executor.sanitize_output(output, { form = "TeXForm" }))
+				assert.equals(output, executor.sanitize_persistent_output("In[1]:= " .. output .. "\n", {}))
+			end
+		end)
+
 		it("formats errors from render failures and missing handlers", function()
 			local render = require("tungsten.core.render")
 			render.render = function()

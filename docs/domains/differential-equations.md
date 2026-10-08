@@ -106,6 +106,9 @@ e^{-at} \rightarrow \frac{e^{-\text{at}}}{s}
 
 Tungsten natively parses the heaviside step function (written as `u`) and the dirac-delta function (written as `\delta`) when doing Laplace transforms.
 
+Wolfram results retain its native TeX notation: the Heaviside step function may be displayed as `\theta(t)`.
+Tungsten does not rename `\theta` to `u` in output, so Greek variables and their subscripts remain intact.
+
 **Example**:
 ```latex
 u(t-a) \rightarrow \frac{e^{-a s} u (a)+u (-a)}{s}
