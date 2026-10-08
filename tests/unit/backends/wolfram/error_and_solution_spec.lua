@@ -55,6 +55,26 @@ describe("wolfram error and solution helpers", function()
 		assert.equals("raw text", fallback.formatted)
 	end)
 
+	it("preserves theta in solution values and fallback output", function()
+		local solution = require("tungsten.backends.wolfram.wolfram_solution")
+		for _, value in ipairs({ "\\theta", "\\theta_m", "\\theta _m" }) do
+			local result = solution.parse_wolfram_solution("{x -> " .. value .. "}", { "x" }, false)
+			assert.is_true(result.ok)
+			assert.equals("x = " .. value, result.formatted)
+			local fallback = solution.parse_wolfram_solution(value .. " = 2", { "x" }, true)
+			assert.equals(value .. " = 2", fallback.formatted)
+		end
+		local braced = solution.parse_wolfram_solution("\\theta_{m} = 2", { "x" }, true)
+		assert.equals("\\theta_{m} = 2", braced.formatted)
+	end)
+
+	it("preserves theta when it is the solve target", function()
+		local solution = require("tungsten.backends.wolfram.wolfram_solution")
+		local result = solution.parse_wolfram_solution("{\\theta -> 2}", { "\\theta" }, false)
+		assert.is_true(result.ok)
+		assert.equals("\\theta = 2", result.formatted)
+	end)
+
 	it("fills in missing variables when mapping is incomplete", function()
 		local solution = require("tungsten.backends.wolfram.wolfram_solution")
 
