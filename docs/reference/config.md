@@ -11,6 +11,7 @@ require("tungsten").setup({
     -- Core Behavior
     backend = "wolfram", -- Default backend, "wolfram" or "python"
     numeric_mode = false, -- If true, returns decimal approximations by default
+    symbolic_functions = { "f", "g", "h", "r" }, -- Undefined names that should still parse as function calls
     debug = false, -- Enable debug logging
     log_level = "INFO", -- Options: "DEBUG", "INFO", "WARN", "ERROR"
     

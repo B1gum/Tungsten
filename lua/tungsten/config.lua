@@ -3,6 +3,7 @@
 
 local config = {
 	numeric_mode = false,
+	symbolic_functions = { "f", "g", "h", "r" },
 	debug = false,
 	log_level = "INFO",
 	cache_enabled = true,

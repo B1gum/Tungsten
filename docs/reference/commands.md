@@ -6,6 +6,10 @@ Most commands in Tungsten operate on a **Visual Selection**. To use them, highli
 
 ## Core & Arithmetic
 
+`:TungstenEvaluate` also registers algebraic function definitions such as `f(x) = x^2`; subsequent evaluation of `f(5)` gives `25`.
+`:TungstenDefinePersistentVariable` accepts the same function definitions, and `:TungstenClearPersistentVars` clears both stored variables and functions.
+See [Function Definitions](syntax.md#session-local-function-definitions) for supported syntax and limitations.
+
 These commands handle general expression manipulation and evaluation.
 
 | Command | Description |

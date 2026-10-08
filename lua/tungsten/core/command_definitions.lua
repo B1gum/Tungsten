@@ -7,6 +7,7 @@ local parser = require("tungsten.core.parser")
 local persistent_vars = require("tungsten.core.persistent_vars")
 local error_handler = require("tungsten.util.error_handler")
 local logger = require("tungsten.util.logger")
+local functions = require("tungsten.core.function_definitions")
 
 local M = {}
 
@@ -14,6 +15,15 @@ local function parse_evaluate_selection()
 	local text = selection.get_visual_selection()
 	if not text or text == "" then
 		return nil, nil, "No expression selected."
+	end
+	local definition, definition_err = functions.parse_definition(text)
+	if definition_err then
+		return nil, text, definition_err
+	end
+	if definition then
+		local body = vim.deepcopy(definition.body)
+		body._function_assignment = definition
+		return body, text, nil
 	end
 
 	local assignment_name
@@ -47,6 +57,19 @@ M.TungstenEvaluate = {
 	description = "Evaluate",
 	input_handler = parse_evaluate_selection,
 	task_handler = function(ast, numeric_mode, assignment_info, callback)
+		if ast._function_assignment then
+			local definition = ast._function_assignment
+			ast._function_assignment = nil
+			local ok, err = functions.store(definition)
+			if not ok then
+				callback(nil, err)
+				return
+			end
+			evaluator.clear_cache()
+			logger.info("Tungsten", "Defined function '" .. definition.name .. "'.")
+			callback(nil, nil)
+			return
+		end
 		local function handle_result(result, err)
 			if not err and assignment_info and result and result ~= "" then
 				local backend_def, conversion_err = persistent_vars.latex_to_backend_code(assignment_info.name, result)

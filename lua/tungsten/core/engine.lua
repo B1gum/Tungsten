@@ -7,6 +7,7 @@ local logger = require("tungsten.util.logger")
 local CacheService = require("tungsten.core.cache_service")
 local JobCoordinator = require("tungsten.core.job_coordinator")
 local VariableResolver = require("tungsten.core.variable_resolver")
+local functions = require("tungsten.core.function_definitions")
 
 local M = {}
 
@@ -28,6 +29,12 @@ end
 
 function M.evaluate_async(ast, numeric, callback)
 	assert(type(callback) == "function", "evaluate_async expects a callback function")
+	local expanded, expansion_err = functions.expand(ast)
+	if expansion_err then
+		callback(nil, expansion_err)
+		return
+	end
+	ast = expanded
 
 	local config = require("tungsten.config")
 	local backend = manager.current()
