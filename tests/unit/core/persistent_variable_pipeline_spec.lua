@@ -34,6 +34,8 @@ describe("Tungsten Persistent Variable Pipeline", function()
 		"tungsten.core.workflow",
 		"tungsten.core.command_definitions",
 		"tungsten.core.engine",
+		"tungsten.core.cache_service",
+		"tungsten.core.job_coordinator",
 		"tungsten.core.parser",
 		"tungsten.backends.wolfram",
 		"tungsten.backends.manager",
@@ -70,7 +72,7 @@ describe("Tungsten Persistent Variable Pipeline", function()
 		}
 		mock_state_module = {
 			persistent_variables = {},
-			cache = {},
+			cache = { clear = spy.new(function() end) },
 			active_jobs = {},
 		}
 
@@ -419,9 +421,10 @@ describe("Tungsten Persistent Variable Pipeline", function()
 			mock_state_module.persistent_variables = { x = "1", y = "2" }
 			commands_module.tungsten_clear_persistent_vars_command({})
 			assert.are.same({}, mock_state_module.persistent_variables)
+			assert.spy(mock_state_module.cache.clear).was.called(1)
 			assert
 				.spy(mock_logger_notify_spy).was
-				.called_with("Persistent variables cleared.", mock_logger_module.levels.INFO, match.is_table())
+				.called_with("Persistent variables and function definitions cleared.", mock_logger_module.levels.INFO, match.is_table())
 		end)
 	end)
 end)

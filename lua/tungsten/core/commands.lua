@@ -232,6 +232,22 @@ end
 
 local function define_persistent_variable_command(_)
 	local selection_text = selection.get_visual_selection()
+	local functions = require("tungsten.core.function_definitions")
+	local definition, definition_err = functions.parse_definition(selection_text)
+	if definition_err then
+		error_handler.notify_error("DefineFunction", definition_err)
+		return
+	end
+	if definition then
+		local ok, err = functions.store(definition)
+		if not ok then
+			error_handler.notify_error("DefineFunction", err)
+			return
+		end
+		evaluator.clear_cache()
+		logger.info("Tungsten", "Defined function '" .. definition.name .. "'.")
+		return
+	end
 	local name, rhs, parse_err = persistent_vars.parse_definition(selection_text)
 	if parse_err then
 		error_handler.notify_error("DefineVar", parse_err)
@@ -261,7 +277,9 @@ end
 
 local function tungsten_clear_persistent_vars_command(_)
 	state.persistent_variables = {}
-	logger.info("Tungsten", "Persistent variables cleared.")
+	require("tungsten.core.function_definitions").clear()
+	evaluator.clear_cache()
+	logger.info("Tungsten", "Persistent variables and function definitions cleared.")
 end
 
 local function make_solver_callback(cmd_name, start_mark, end_mark, text, mode)

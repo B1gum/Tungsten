@@ -15,6 +15,7 @@ Below is the default configuration. You can copy and paste this into your setup 
 ```latex
 {
   numeric_mode = false,            -- If true, returns approximate numeric results (e.g., 1.414 instead of sqrt(2))
+  symbolic_functions = { "f", "g", "h", "r" }, -- Names recognized as symbolic functions without a definition
   debug = false,                    -- Enable debug logging
   log_level = "INFO",              -- Log level: "DEBUG", "INFO", "WARN", "ERROR"
   
