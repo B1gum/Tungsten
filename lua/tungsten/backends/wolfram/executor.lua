@@ -90,7 +90,7 @@ local function sanitize_wolfram_output(stdout, form_type)
 	local result = stdout
 
 	result = result:gsub('Interpreting unit ".-"%.+\n*', "")
-    result = result:gsub("\\theta%f[^%a_]", "u") -- Use u for the heaviside step function instead of theta
+	result = result:gsub("\\theta%f[^%a_]", "u") -- Use u for the heaviside step function instead of theta
 
 	if form_type == "InputForm" then
 		local format_quantities = solution_parser.format_quantities or function(x)
