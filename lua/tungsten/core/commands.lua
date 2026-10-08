@@ -306,6 +306,31 @@ local function make_solver_callback(cmd_name, start_mark, end_mark, text, mode)
 	end
 end
 
+local function is_solve_target(node)
+	if not node then
+		return false
+	end
+	if node.type == "variable" or node.type == "greek" then
+		return true
+	end
+	return node.type == "subscript" and is_solve_target(node.base)
+end
+
+local function parse_solve_target(text)
+	local ok, result, err = pcall(parser.parse, text)
+	if not ok then
+		return nil, tostring(result)
+	end
+	if not result then
+		return nil, err or "Could not parse variable."
+	end
+	local series = result.series
+	if not series or #series ~= 1 or not is_solve_target(series[1]) then
+		return nil, "Expected one variable, Greek variable, or subscript."
+	end
+	return series[1]
+end
+
 local function tungsten_solve_command(_)
 	local _, start_mark, end_mark, mode = selection.create_selection_extmarks()
 
@@ -350,10 +375,9 @@ local function tungsten_solve_command(_)
 			return
 		end
 
-		local ok, parse_res = pcall(parser.parse, trimmed)
-		local var_ast = (ok and parse_res and parse_res.series) and parse_res.series[1] or nil
-		if not ok or not var_ast or var_ast.type ~= "variable" then
-			error_handler.notify_error("Solve", "Invalid variable: '" .. trimmed .. "'. " .. tostring(var_ast or ""))
+		local var_ast, err = parse_solve_target(trimmed)
+		if not var_ast then
+			error_handler.notify_error("Solve", "Invalid variable: '" .. trimmed .. "'. " .. err)
 			return
 		end
 
@@ -397,9 +421,12 @@ local function tungsten_solve_system_command(_)
 		local var_asts = {}
 		for _, name in ipairs(var_names) do
 			local trimmed = name:match("^%s*(.-)%s*$")
-			if trimmed ~= "" then
-				table.insert(var_asts, ast_creator.create_variable_node(trimmed))
+			local var_ast, err = parse_solve_target(trimmed)
+			if not var_ast then
+				error_handler.notify_error("SolveSystem", "Invalid variable: '" .. trimmed .. "'. " .. err)
+				return
 			end
+			table.insert(var_asts, var_ast)
 		end
 
 		if #var_asts == 0 then

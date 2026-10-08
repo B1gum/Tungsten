@@ -798,6 +798,25 @@ describe("Tungsten core commands", function()
 			assert.spy(mock_error_handler_notify_error_spy).was.called()
 			assert.spy(mock_solver_solve_asts_async_spy).was_not.called()
 		end)
+
+		it("accepts Greek and subscript targets", function()
+			for _, target in ipairs({
+				{ type = "greek", name = "theta" },
+				{
+					type = "subscript",
+					base = { type = "greek", name = "theta" },
+					subscript = { type = "variable", name = "m" },
+				},
+			}) do
+				current_var_parse_behavior = function()
+					return { series = { target } }
+				end
+				commands_module.tungsten_solve_command({})
+				local calls = mock_solver_solve_asts_async_spy.calls
+				assert.are.same({ target }, calls[#calls].vals[2])
+			end
+			assert.spy(mock_solver_solve_asts_async_spy).was.called(2)
+		end)
 	end)
 
 	describe(":TungstenUnitConvert", function()
@@ -897,6 +916,8 @@ describe("Tungsten core commands", function()
 		local original_vim_ui_input
 
 		before_each(function()
+			current_parser_configs.x = { ast = { type = "variable", name = "x" } }
+			current_parser_configs.y = { ast = { type = "variable", name = "y" } }
 			original_vim_ui_input = vim.ui.input
 			mock_vim_ui_input_spy = spy.new(function(_, on_confirm_callback)
 				on_confirm_callback("x,y")
@@ -931,6 +952,60 @@ describe("Tungsten core commands", function()
 			assert.are.same({ { type = "equation", id = "eq1_ast" }, { type = "equation", id = "eq2_ast" } }, args[1])
 			assert.is_true(args[3])
 			assert.spy(mock_event_bus_emit_spy).was.called_with("result_ready", match.is_table())
+		end)
+
+		it("parses Greek and subscript targets instead of using raw names", function()
+			local theta_m = {
+				type = "subscript",
+				base = { type = "greek", name = "theta" },
+				subscript = { type = "variable", name = "m" },
+			}
+			local T_m = {
+				type = "subscript",
+				base = { type = "variable", name = "T" },
+				subscript = { type = "variable", name = "m" },
+			}
+			current_parser_configs["\\theta_m"] = { ast = theta_m }
+			current_parser_configs.T_m = { ast = T_m }
+			vim.ui.input = function(_, callback)
+				callback(" \\theta_m; T_m ")
+			end
+
+			commands_module.tungsten_solve_system_command({})
+
+			assert.spy(mock_parser_parse_spy).was.called_with("\\theta_m")
+			assert.spy(mock_parser_parse_spy).was.called_with("T_m")
+			assert.spy(mock_solver_solve_asts_async_spy).was.called(1)
+			assert.are.same({ theta_m, T_m }, mock_solver_solve_asts_async_spy.calls[1].vals[2])
+		end)
+
+		it("rejects invalid targets before submitting any equations", function()
+			current_parser_configs.y = { ast = { type = "number", value = 2 } }
+
+			commands_module.tungsten_solve_system_command({})
+
+			assert.spy(mock_error_handler_notify_error_spy).was.called()
+			assert.spy(mock_solver_solve_asts_async_spy).was_not.called()
+		end)
+
+		it("reports variable parser errors", function()
+			current_parser_configs.y = { err = "syntax error" }
+
+			commands_module.tungsten_solve_system_command({})
+
+			assert
+				.spy(mock_error_handler_notify_error_spy).was
+				.called_with("SolveSystem", "Invalid variable: 'y'. syntax error")
+			assert.spy(mock_solver_solve_asts_async_spy).was_not.called()
+		end)
+
+		it("rejects multiple targets within one entry", function()
+			current_parser_configs.y = { series = { { type = "variable", name = "y" }, { type = "variable", name = "z" } } }
+
+			commands_module.tungsten_solve_system_command({})
+
+			assert.spy(mock_error_handler_notify_error_spy).was.called()
+			assert.spy(mock_solver_solve_asts_async_spy).was_not.called()
 		end)
 
 		it("should log error if parsing fails (cmd_utils returns nil)", function()
