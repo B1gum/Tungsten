@@ -37,6 +37,49 @@ describe("Tungsten Arithmetic Wolfram Handlers", function()
 		end
 	end)
 
+	it("keeps Collect computational code unheld", function()
+		local node = ast.create_function_call_node(ast.create_variable_node("Collect"), {
+			ast.create_variable_node("expr"),
+			ast.create_variable_node("x"),
+			ast.create_variable_node("Simplify"),
+		})
+		assert.are.equal("Collect[expr, x, Simplify]", render_node_for_function_call(node))
+	end)
+
+	it("renders Collect's sorting wrappers without mapping warnings", function()
+		local logger = require("tungsten.util.logger")
+		local warn_stub = stub(logger, "warn")
+		local function render(node)
+			return handlers[node.type](node, render)
+		end
+		local function call(name, args)
+			return ast.create_function_call_node(ast.create_variable_node(name), args)
+		end
+		local collected = call("Collect", {
+			ast.create_variable_node("expr"),
+			ast.create_variable_node("x"),
+			ast.create_variable_node("Simplify"),
+		})
+		local monomials = call("MonomialList", {
+			collected,
+			call("List", { ast.create_variable_node("x") }),
+		})
+		local ordered = call("Apply", {
+			ast.create_variable_node("Plus"),
+			call("HoldForm", { call("Evaluate", { monomials }) }),
+			call("List", { ast.create_number_node(1) }),
+		})
+		local result = render(ordered)
+		local warnings = #warn_stub.calls
+		warn_stub:revert()
+
+		assert.are.equal(
+			"Apply[Plus, HoldForm[Evaluate[MonomialList[Collect[expr, x, Simplify], List[x]]]], List[1]]",
+			result
+		)
+		assert.are.equal(0, warnings)
+	end)
+
 	describe("number handler", function()
 		it("should convert an integer number node to its string representation", function()
 			local node = { type = "number", value = 123 }

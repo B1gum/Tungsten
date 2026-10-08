@@ -23,6 +23,7 @@ local builtin_mappings = {
 	simplify = "sp.simplify",
 	expand = "sp.expand",
 	factor = "sp.factor",
+	collect = "sp.collect",
 
 	sin = "sp.sin",
 	cos = "sp.cos",
@@ -182,11 +183,21 @@ for node_type, handler in pairs({
 	function_call = function(node, recur_render)
 		local func_name_str = (node.name_node and node.name_node.name) or "UnknownFunction"
 		local python_func_name = map_function_name(func_name_str)
+		local is_collect = func_name_str:lower() == "collect"
 		local rendered_args = {}
 		if node.args then
-			for _, arg_node in ipairs(node.args) do
-				table.insert(rendered_args, recur_render(arg_node))
+			for index, arg_node in ipairs(node.args) do
+				if is_collect and index == 3 and arg_node.type == "variable" and arg_node.name == "Simplify" then
+					-- Collect's coefficient processor is a callable, not a mathematical symbol.
+					table.insert(rendered_args, "sp.simplify")
+				else
+					table.insert(rendered_args, recur_render(arg_node))
+				end
 			end
+		end
+		if is_collect and rendered_args[1] then
+			-- SymPy collect does not expand products before grouping powers.
+			rendered_args[1] = ("sp.expand(%s)"):format(rendered_args[1])
 		end
 		return ("_apply(%s, %s)"):format(python_func_name, table.concat(rendered_args, ", "))
 	end,

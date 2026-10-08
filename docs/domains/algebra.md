@@ -154,6 +154,31 @@ x^2 + 4x + 4 \rightarrow (x + 2)^2
 
 The standard keymapping for the `:TungstenFactor` command is `<leader>tef`
 
+## Collecting expressions
+
+Use `:TungstenCollect` to group a polynomial's terms by powers of a chosen variable and simplify each coefficient.
+
+1. Visually select the expression.
+2. Run `:TungstenCollect`.
+3. Enter one variable, such as `x` or `C_l`, and press Enter.
+
+Tungsten appends ` \rightarrow ` and the collected result to the selection.
+Cancelling the prompt or submitting an empty value leaves the buffer unchanged.
+Numbers, compound expressions, and lists of variables are rejected as collection targets.
+
+**Examples (collecting by `x`)**
+```latex
+x (x + 1) + x (x^2 + 3x) \rightarrow x^3 + 4x^2 + x
+x^2 (a + b x) + 4x + 4 + x + x^2 \rightarrow bx^3 + (a + 1)x^2 + 5x + 4
+```
+
+Both Wolfram and Python support the command.
+Wolfram displays polynomial terms in descending powers of the chosen variable.
+Python expands products and uses SymPy's `collect` with `simplify` applied to the coefficients; its display order follows SymPy and may differ.
+When [numeric mode](../reference/config.md#general-options) is enabled, coefficients are returned as numerical approximations.
+
+The default visual-mode keybinding is `<leader>tec` when default mappings and `which-key.nvim` are enabled.
+See the [command reference](../reference/commands.md#core--arithmetic) for its signature and a subscript example.
 
 ## Constants known to Tungsten
 
